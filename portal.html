@@ -80,7 +80,12 @@
 <script>
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
+    auth: {
+      persistSession: true,
+      storage: window.sessionStorage  // Browser band = logout, Tab = session active
+    }
+  });
 
 // ── DASHBOARD REGISTRY ──────────────────────────────────────────────────────
 // Naye dashboards yahan add karo
@@ -92,18 +97,8 @@ const ALL_DASHBOARDS = [
     icon:'🎫', tag:'Operations',
     tagColor:'#f97316', tagBg:'#fff7ed',
     btnColor:'linear-gradient(135deg,#f97316,#ef4444)',
-    url:'ticket_dashboard_api.html',
+    url:'ticket_dashboard_api_1106_7.html',
     category:'Operations',
-  },
-  {
-    id:'excel-dashboard',
-    title:'Excel Dashboard',
-    desc:'Excel-based data analysis and reporting dashboard with advanced charts and filters.',
-    icon:'📊', tag:'Analytics',
-    tagColor:'#16a34a', tagBg:'#f0fdf4',
-    btnColor:'linear-gradient(135deg,#16a34a,#059669)',
-    url:'ticket_dashboard_excel.html',
-    category:'Analytics',
   },
 ];
 

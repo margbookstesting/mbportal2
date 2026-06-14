@@ -154,12 +154,21 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // Service role key — only used server-side actions (user creation)
 const SUPA_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQxMzM1MCwiZXhwIjoyMDk2OTg5MzUwfQ._f17cCzbnJVtsKSjyTWOwRIt68kOiRiA6ydHhF76_ZE';
 
-const sb      = supabase.createClient(SUPA_URL, SUPA_KEY);
-const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE);
+const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, {
+    auth: {
+      persistSession: true,
+      storage: window.sessionStorage  // Browser band = logout, Tab = session active
+    }
+  });
+const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, {
+    auth: {
+      persistSession: true,
+      storage: window.sessionStorage  // Browser band = logout, Tab = session active
+    }
+  });
 
 const ALL_DASHBOARDS = [
   {id:'ticket-dashboard', title:'Ticket Dashboard', desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
-  {id:'excel-dashboard', title:'Excel Dashboard', desc:'Excel-based data analysis and reporting', icon:'📊', tag:'Analytics'},
 ];
 
 let allUsers = [];
