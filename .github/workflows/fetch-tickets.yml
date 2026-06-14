@@ -2,15 +2,15 @@ name: Fetch Tickets & Save to Supabase
 
 on:
   schedule:
-    - cron: '30 18 * * *'   # Raat 12:00 AM IST
-  workflow_dispatch:          # Manual run button ke liye
+    - cron: '30 18 * * *'   # Raat 12:00 AM IST (18:30 UTC)
+  workflow_dispatch:          # Manual run button
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 60     # Parallel matrix runs ke liye kafi hai
     strategy:
-      fail-fast: false      
+      fail-fast: false      # Ek saal fail ho toh doosra chalta rahe
       matrix:
         include:
           - year: "2023"
