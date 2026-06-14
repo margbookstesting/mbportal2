@@ -1,0 +1,29 @@
+name: Fetch Tickets & Save to Supabase
+
+on:
+  schedule:
+    - cron: '30 18 * * *'   # Raat 12:00 AM IST = UTC 18:30
+  workflow_dispatch:          # Manual run button bhi milega
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch & Save
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python3 .github/scripts/fetch_tickets.py
