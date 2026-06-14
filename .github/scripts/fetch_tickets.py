@@ -45,8 +45,15 @@ def parse_record(r):
                 ('subDisp','SubDisposition'),('mainDisp','MainDisposition'),
                 ('probType','Problemtype'),('assignto','Assignto')]:
         if str(r.get(v,'')).strip(): rec[k] = str(r[v]).strip()
+        
     if r.get('Mobile'): rec['mobile'] = str(r['Mobile']).strip()
-    if r.get('Emailid','').strip(): rec['email'] = r['Emailid'].strip()
+    
+    # SAFE FIX: Check for None or non-string object types before stripping email
+    email_val = r.get('Emailid')
+    if email_val is not None:
+        email_str = str(email_val).strip()
+        if email_str:
+            rec['email'] = email_str
 
     tld = parse_date(r.get('TimeLineDate'))
     if tld: rec['tld'] = tld
@@ -186,12 +193,12 @@ if not RAW:
     print("No records found in this range. Exiting.", flush=True)
     exit(0)
 
-# ── Supabase Integration (Fixed Payload Approach) ────────────────────────────
+# ── Supabase Integration ──────────────────────────────────────────────────────
 supa_headers = {
     'apikey': SUPA_KEY,
     'Authorization': f'Bearer {SUPA_KEY}',
     'Content-Type': 'application/json',
-    'Prefer': 'return=minimal'  # 400 bad request error hatane ke liye isko waapas default kiya
+    'Prefer': 'return=minimal'
 }
 
 payload = {
@@ -202,8 +209,8 @@ payload = {
     'fetched_at': datetime.now(timezone.utc).isoformat()
 }
 
-# Pehle se agar is date range ka koi payload maujood hai toh use delete karein (Matrix-safe delete)
-print(f"Cleaning existing entry for date range {START_DATE} to {today}...", flush=True)
+# Purane range entries ko target delete karna takki matrix jobs ek doosre ko disturb na karein
+print(f"Cleaning existing database entry for row range {START_DATE} to {today}...", flush=True)
 requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?date_from=eq.{START_DATE}", headers=supa_headers, timeout=60)
 
 print("Saving payload to Supabase...", flush=True)
