@@ -6,15 +6,15 @@
 <title>Margbooks Dashboard Portal — Admin</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  :root{--brand:#0d9488;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f1f5f9;--card:#fff;--success:#0d9488;--danger:#e11d48;--purple:#0d9488}
+  :root{--brand:#0d9488;--brand2:#0891b2;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f1f5f9;--card:#fff;--success:#0d9488;--danger:#e11d48}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
   nav{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
   .nav-left{display:flex;align-items:center;gap:12px}
   .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
   .nav-title{font-size:16px;font-weight:800;color:var(--dark)}
-  .badge{background:#0d9488;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+  .badge{background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
   .btn-sm{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;border:none}
-  .btn-danger{background:#f0fdfa;color:var(--danger);border:1px solid #99f6e4}
+  .btn-danger{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
   .btn-back{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
   main{max-width:1000px;margin:0 auto;padding:32px 24px}
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
@@ -45,21 +45,28 @@
   .user-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
   .perm-chip{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4}
   .role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
-  .role-admin{background:#ccfbf1;color:#0d9488}
+  .role-admin{background:#ccfbf1;color:#0f766e}
   .role-user{background:#f0fdf4;color:#15803d}
   .user-actions{display:flex;gap:6px;flex-shrink:0}
   .icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s}
   .icon-btn:hover{background:var(--bg)}
-  .icon-btn.del:hover{background:#f0fdfa;border-color:#99f6e4}
+  .icon-btn.del:hover{background:#fef2f2;border-color:#fecaca}
   /* MODAL */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
   .overlay.show{display:flex}
-  .modal{background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
-  .modal-hdr{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-  .modal-title{font-size:15px;font-weight:700}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .modal-hdr{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#f0fdfa,#fff)}
+  .modal-title{font-size:15px;font-weight:700;color:var(--dark)}
   .modal-close{width:28px;height:28px;border:none;background:var(--bg);border-radius:7px;cursor:pointer;font-size:16px}
-  .modal-body{padding:20px 24px;max-height:380px;overflow-y:auto}
-  .dash-opt{display:flex;align-items:flex-start;gap:12px;padding:12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;transition:.15s}
+  .modal-body{padding:20px 24px;max-height:460px;overflow-y:auto}
+  .modal-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .modal-section:first-child{margin-top:0}
+  .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal-field{margin-bottom:12px}
+  .modal-field label{margin-bottom:4px;font-size:11px}
+  .modal-field input,.modal-field select{margin-bottom:0;font-size:13px}
+  .pass-hint{font-size:11px;color:var(--muted);margin-top:4px}
+  .dash-opt{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.15s}
   .dash-opt.sel{border-color:var(--brand);background:#f0fdfa}
   .dash-opt input[type=checkbox]{margin-top:2px;accent-color:var(--brand);width:16px;height:16px}
   .dash-opt-title{font-size:13px;font-weight:700;color:var(--dark)}
@@ -67,11 +74,14 @@
   .modal-ftr{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
   .btn-cancel{padding:9px 18px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
   .btn-save{padding:9px 18px;border:none;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+  .modal-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .modal-tab{padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.15s}
+  .modal-tab.active{color:var(--brand);border-bottom-color:var(--brand)}
   /* TOAST */
   .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;z-index:999;transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none}
   .toast.show{transform:translateY(0);opacity:1}
-  .toast.ok{background:#059669}
-  .toast.err{background:#0891b2}
+  .toast.ok{background:#0d9488}
+  .toast.err{background:#e11d48}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
   @keyframes sp{to{transform:rotate(360deg)}}
   .empty-msg{text-align:center;padding:40px;color:var(--muted);font-size:13px}
@@ -98,7 +108,6 @@
     <div class="stat"><div class="stat-val" id="stDash">—</div><div class="stat-label">Dashboards</div></div>
   </div>
   <div class="panels">
-    <!-- CREATE USER -->
     <div class="panel">
       <div class="panel-header">
         <div><div class="panel-title">➕ Create New User</div><div class="panel-sub">Add team member</div></div>
@@ -119,10 +128,9 @@
       </div>
     </div>
 
-    <!-- USER LIST -->
     <div class="panel">
       <div class="panel-header">
-        <div><div class="panel-title">👥 All Users</div><div class="panel-sub">🔑 click karke permissions do</div></div>
+        <div><div class="panel-title">👥 All Users</div><div class="panel-sub">✏️ Edit ya 🔑 Permissions do</div></div>
         <button onclick="loadUsers()" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--muted)">↻ Refresh</button>
       </div>
       <div class="user-list" id="userList"><div class="empty-msg">Loading...</div></div>
@@ -130,17 +138,63 @@
   </div>
 </main>
 
-<!-- PERMISSIONS MODAL -->
-<div class="overlay" id="permOverlay">
+<!-- EDIT/PERMISSIONS MODAL -->
+<div class="overlay" id="editOverlay">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-title" id="permTitle">Manage Permissions</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title" id="editTitle">Edit User</div>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
     </div>
-    <div class="modal-body" id="permBody"></div>
+    <div class="modal-body">
+      <!-- Tabs -->
+      <div class="modal-tabs">
+        <div class="modal-tab active" id="tab-details" onclick="switchTab('details')">👤 Details</div>
+        <div class="modal-tab" id="tab-perms" onclick="switchTab('perms')">🔑 Permissions</div>
+        <div class="modal-tab" id="tab-pass" onclick="switchTab('pass')">🔒 Password</div>
+      </div>
+
+      <!-- Tab: Details -->
+      <div id="tabContent-details">
+        <div class="modal-row">
+          <div class="modal-field">
+            <label>Full Name</label>
+            <input id="eName" type="text" placeholder="Full name"/>
+          </div>
+          <div class="modal-field">
+            <label>Role</label>
+            <select id="eRole">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label>Email</label>
+          <input id="eEmail" type="email" placeholder="email@company.com"/>
+        </div>
+      </div>
+
+      <!-- Tab: Permissions -->
+      <div id="tabContent-perms" style="display:none">
+        <div id="permBody"></div>
+      </div>
+
+      <!-- Tab: Password -->
+      <div id="tabContent-pass" style="display:none">
+        <div class="modal-field">
+          <label>New Password</label>
+          <input id="ePass" type="password" placeholder="Min 6 characters"/>
+          <div class="pass-hint">⚠️ Blank chhodo agar password nahi badalna</div>
+        </div>
+        <div class="modal-field">
+          <label>Confirm Password</label>
+          <input id="ePass2" type="password" placeholder="Confirm new password"/>
+        </div>
+      </div>
+    </div>
     <div class="modal-ftr">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="savePerms()">Save Permissions</button>
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-save" onclick="saveUser()">💾 Save Changes</button>
     </div>
   </div>
 </div>
@@ -151,23 +205,19 @@
 <script>
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-// Service role key — only used server-side actions (user creation)
 const SUPA_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQxMzM1MCwiZXhwIjoyMDk2OTg5MzUwfQ._f17cCzbnJVtsKSjyTWOwRIt68kOiRiA6ydHhF76_ZE';
 
-const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, {
-  auth: { persistSession: true, storage: window.sessionStorage }
-});
-const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, {
-  auth: { persistSession: false, storageKey: "sb-admin-token" }
-});
+const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, { auth:{ persistSession:true, storage:window.sessionStorage }});
+const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, { auth:{ persistSession:false, storageKey:'sb-admin-token' }});
 
 const ALL_DASHBOARDS = [
   {id:'ticket-dashboard', title:'Ticket Dashboard', desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
-  {id:'excel-dashboard', title:'Excel Dashboard', desc:'Excel-based data analysis and reporting', icon:'📊', tag:'Analytics'},
+  {id:'excel-dashboard',  title:'Excel Dashboard',  desc:'Excel-based data analysis and reporting',  icon:'📊', tag:'Analytics'},
 ];
 
 let allUsers = [];
 let currentUID = null;
+let currentTab = 'details';
 
 document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
 
@@ -184,7 +234,7 @@ document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
 window.loadUsers = async function(){
   document.getElementById('userList').innerHTML='<div class="empty-msg">Loading...</div>';
   const {data,error} = await sb.from('users').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:#0891b2">${error.message}</div>`;return;}
+  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:#e11d48">${error.message}</div>`;return;}
   allUsers = data||[];
   const admins = allUsers.filter(u=>u.role==='admin').length;
   document.getElementById('stTotal').textContent  = allUsers.length;
@@ -212,7 +262,7 @@ window.loadUsers = async function(){
           : '<div style="font-size:11px;color:#0d9488;margin-top:4px">✓ Full access</div>'}
       </div>
       <div class="user-actions">
-        ${u.role!=='admin'?`<button class="icon-btn" title="Permissions" onclick="openModal('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🔑</button>`:''}
+        <button class="icon-btn" title="Edit User" onclick="openEditModal('${u.id}')">✏️</button>
         <button class="icon-btn del" title="Delete" onclick="deleteUser('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🗑️</button>
       </div>
     </div>`;
@@ -230,19 +280,12 @@ window.createUser = async function(){
   if(pass.length<6){toast('Password min 6 characters','err');return;}
   btn.disabled=true;btn.innerHTML='<span class="spin"></span>Creating...';
   try{
-    // Create auth user via service role
     const {data:authData,error:authErr} = await sbAdmin.auth.admin.createUser({
-      email, password:pass,
-      user_metadata:{name},
-      email_confirm:true,
+      email, password:pass, user_metadata:{name}, email_confirm:true,
     });
     if(authErr) throw authErr;
-    // Insert into users table
     const {error:dbErr} = await sb.from('users').insert({
-      id: authData.user.id,
-      name, email, role,
-      dashboards:[],
-      created_at: new Date().toISOString(),
+      id:authData.user.id, name, email, role, dashboards:[], created_at:new Date().toISOString(),
     });
     if(dbErr) throw dbErr;
     ['nName','nEmail','nPass'].forEach(id=>document.getElementById(id).value='');
@@ -265,41 +308,98 @@ window.deleteUser = async function(id,name){
   loadUsers();
 };
 
-// ── PERMISSIONS MODAL ───────────────────────────────────────────────────────
-window.openModal = function(uid,name){
-  currentUID=uid;
-  document.getElementById('permTitle').textContent=`🔑 ${name} — Permissions`;
-  const user=allUsers.find(u=>u.id===uid);
-  const assigned=user?.dashboards||[];
-  document.getElementById('permBody').innerHTML=ALL_DASHBOARDS.map(d=>{
-    const chk=assigned.includes(d.id);
+// ── EDIT MODAL ───────────────────────────────────────────────────────────────
+window.openEditModal = function(uid){
+  currentUID = uid;
+  const user = allUsers.find(u=>u.id===uid);
+  if(!user) return;
+
+  document.getElementById('editTitle').textContent = `✏️ Edit — ${user.name||user.email}`;
+  document.getElementById('eName').value  = user.name||'';
+  document.getElementById('eEmail').value = user.email||'';
+  document.getElementById('eRole').value  = user.role||'user';
+  document.getElementById('ePass').value  = '';
+  document.getElementById('ePass2').value = '';
+
+  // Permissions tab
+  const assigned = user.dashboards||[];
+  document.getElementById('permBody').innerHTML = ALL_DASHBOARDS.map(d=>{
+    const chk = assigned.includes(d.id);
     return `<div class="dash-opt ${chk?'sel':''}" onclick="toggleDash(this)">
       <input type="checkbox" data-id="${d.id}" ${chk?'checked':''} onclick="event.stopPropagation()"/>
       <div><div class="dash-opt-title">${d.icon} ${d.title}</div><div class="dash-opt-desc">${d.desc}</div></div>
     </div>`;
   }).join('');
-  document.getElementById('permOverlay').classList.add('show');
+
+  switchTab('details');
+  document.getElementById('editOverlay').classList.add('show');
 };
-window.toggleDash=function(el){
+
+window.switchTab = function(tab){
+  currentTab = tab;
+  ['details','perms','pass'].forEach(t=>{
+    document.getElementById(`tabContent-${t}`).style.display = t===tab ? 'block' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t===tab);
+  });
+};
+
+window.toggleDash = function(el){
   el.classList.toggle('sel');
-  el.querySelector('input').checked=el.classList.contains('sel');
+  el.querySelector('input').checked = el.classList.contains('sel');
 };
-window.closeModal=function(){
-  document.getElementById('permOverlay').classList.remove('show');
-  currentUID=null;
+
+window.closeEditModal = function(){
+  document.getElementById('editOverlay').classList.remove('show');
+  currentUID = null;
 };
-window.savePerms=async function(){
+
+window.saveUser = async function(){
   if(!currentUID) return;
-  const checks=document.querySelectorAll('#permBody input[type=checkbox]');
-  const sel=[...checks].filter(c=>c.checked).map(c=>c.dataset.id);
-  const {error}=await sb.from('users').update({dashboards:sel}).eq('id',currentUID);
-  if(error){toast(error.message,'err');return;}
-  toast('✅ Permissions saved!','ok');
-  closeModal();loadUsers();
+
+  const name  = document.getElementById('eName').value.trim();
+  const email = document.getElementById('eEmail').value.trim();
+  const role  = document.getElementById('eRole').value;
+  const pass  = document.getElementById('ePass').value;
+  const pass2 = document.getElementById('ePass2').value;
+
+  if(!name||!email){toast('Name aur email zaroori hain','err');return;}
+
+  // Password validation
+  if(pass && pass !== pass2){toast('Passwords match nahi kar rahe!','err');return;}
+  if(pass && pass.length<6){toast('Password min 6 characters','err');return;}
+
+  // Permissions
+  const checks = document.querySelectorAll('#permBody input[type=checkbox]');
+  const dashboards = [...checks].filter(c=>c.checked).map(c=>c.dataset.id);
+
+  try{
+    // Update users table
+    const {error:dbErr} = await sb.from('users').update({name,email,role,dashboards}).eq('id',currentUID);
+    if(dbErr) throw dbErr;
+
+    // Update auth email if changed
+    const user = allUsers.find(u=>u.id===currentUID);
+    if(user?.email !== email){
+      const {error:emailErr} = await sbAdmin.auth.admin.updateUserById(currentUID,{email});
+      if(emailErr) throw emailErr;
+    }
+
+    // Update password if provided
+    if(pass){
+      const {error:passErr} = await sbAdmin.auth.admin.updateUserById(currentUID,{password:pass});
+      if(passErr) throw passErr;
+    }
+
+    toast('✅ User updated successfully!','ok');
+    closeEditModal();
+    loadUsers();
+  }catch(e){
+    toast(e.message,'err');
+  }
 };
 
 // ── LOGOUT ──────────────────────────────────────────────────────────────────
-window.logout=async function(){
+window.logout = async function(){
   await sb.auth.signOut();
   window.location.href='index.html';
 };
