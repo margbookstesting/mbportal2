@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -22,14 +23,15 @@
   --muted:    #6b7280;
   --muted2:   #9ca3af;
 
-  --it:    #2563eb; --it-l:#eff6ff;  --it-m:#bfdbfe; --it-g:linear-gradient(135deg,#2563eb,#1e40af);
-  --ack:   #d97706; --ack-l:#fffbeb; --ack-m:#fde68a; --ack-g:linear-gradient(135deg,#f59e0b,#d97706);
-  --ip:    #059669; --ip-l:#f0fdf4;  --ip-m:#a7f3d0; --ip-g:linear-gradient(135deg,#10b981,#059669);
-  --live:  #7c3aed; --live-l:#f5f3ff;--live-m:#ddd6fe;--live-g:linear-gradient(135deg,#8b5cf6,#7c3aed);
+  --it:    #0d9488; --it-l:#f0fdfa;  --it-m:#99f6e4; --it-g:linear-gradient(135deg,#0d9488,#0f766e);
+  --ack:   #0891b2; --ack-l:#ecfeff; --ack-m:#a5f3fc; --ack-g:linear-gradient(135deg,#0891b2,#0e7490);
+  --ip:    #0f766e; --ip-l:#f0fdfa;  --ip-m:#5eead4; --ip-g:linear-gradient(135deg,#14b8a6,#0f766e);
+  --teal:#0d9488; --teal2:#0891b2;
+  --live:  #0369a1; --live-l:#f0f9ff;--live-m:#bae6fd;--live-g:linear-gradient(135deg,#0891b2,#0369a1);
   --sup:   #dc2626; --sup-l:#fff1f2; --sup-m:#fecdd3; --sup-g:linear-gradient(135deg,#ef4444,#dc2626);
   --ret:   #0891b2; --ret-l:#ecfeff;  --ret-m:#a5f3fc; --ret-g:linear-gradient(135deg,#06b6d4,#0891b2);
   --tst:   #b45309; --tst-l:#fffbeb;  --tst-m:#fcd34d; --tst-g:linear-gradient(135deg,#f59e0b,#b45309);
-  --uat:   #7c3aed; --uat-l:#faf5ff;  --uat-m:#e9d5ff; --uat-g:linear-gradient(135deg,#a855f7,#7c3aed);
+  --uat:   #0284c7; --uat-l:#f0f9ff;  --uat-m:#bae6fd; --uat-g:linear-gradient(135deg,#0891b2,#0284c7);
   --glv:   #15803d; --glv-l:#f0fdf4;  --glv-m:#bbf7d0; --glv-g:linear-gradient(135deg,#22c55e,#15803d);
   --pend:  #ea580c;
 
@@ -55,7 +57,7 @@ body::before {
   content:'';
   position:fixed;
   inset:0;
-  background-image:radial-gradient(circle,rgba(37,99,235,.04) 1px,transparent 1px);
+  background-image:radial-gradient(circle,rgba(13,148,136,.04) 1px,transparent 1px);
   background-size:28px 28px;
   pointer-events:none;
   z-index:0;
@@ -63,9 +65,9 @@ body::before {
 
 /* ── TOPBAR ── */
 .topbar {
-  background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);
+  background:linear-gradient(135deg,#0d9488 0%,#0891b2 100%);
   position:sticky;top:0;z-index:300;
-  box-shadow:0 2px 20px rgba(0,0,0,.35);
+  box-shadow:0 4px 20px rgba(13,148,136,.35);
 }
 
 .topbar-inner {
@@ -82,13 +84,13 @@ body::before {
 .creator-badge {
   display:flex;align-items:center;gap:6px;
   margin-left:14px;padding:5px 13px;
-  background:rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.20);
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.25);
   border-radius:20px;
   white-space:nowrap;
 }
 .creator-label {
-  font-size:10px;color:rgba(255,255,255,.55);
+  font-size:10px;color:rgba(255,255,255,.7);
   letter-spacing:.4px;text-transform:uppercase;font-weight:500;
 }
 .creator-name {
@@ -101,18 +103,18 @@ body::before {
   border-radius:9px;
   display:flex;align-items:center;justify-content:center;
   font-size:16px;
-  box-shadow:0 0 20px rgba(37,99,235,.4);
+  box-shadow:0 0 20px rgba(13,148,136,.4);
   flex-shrink:0;
 }
 
 .brand-text { line-height:1.2; }
 .brand-name {
   font-size:15px;font-weight:800;
-  color:#fff;letter-spacing:-.2px;
+  color:#ffffff;letter-spacing:-.2px;
 }
 .brand-tagline {
   font-size:10px;
-  color:rgba(255,255,255,.4);
+  color:rgba(255,255,255,.7);
   font-weight:400;letter-spacing:.3px;
   margin-top:2px;
 }
@@ -124,15 +126,15 @@ body::before {
 .btn-upload {
   height:34px;padding:0 16px;
   display:flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,.1);
-  color:rgba(255,255,255,.9);
-  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.15);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.25);
   border-radius:var(--r2);
   font-size:12px;font-weight:600;
   cursor:pointer;font-family:'Sora',sans-serif;
   transition:all .2s;letter-spacing:.1px;
 }
-.btn-upload:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);}
+.btn-upload:hover{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.4);}
 
 .btn-export-all {
   height:34px;padding:0 18px;
@@ -142,10 +144,10 @@ body::before {
   border-radius:var(--r2);
   font-size:12px;font-weight:700;
   cursor:pointer;font-family:'Sora',sans-serif;
-  box-shadow:0 4px 14px rgba(37,99,235,.4);
+  box-shadow:0 4px 14px rgba(13,148,136,.4);
   transition:all .2s;letter-spacing:.1px;
 }
-.btn-export-all:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(37,99,235,.5);}
+.btn-export-all:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(13,148,136,.5);}
 
 /* ── FILTER BAR ── */
 .filter-bar {
@@ -194,10 +196,10 @@ body::before {
   border:none;border-radius:20px;
   font-size:11px;font-weight:700;
   cursor:pointer;font-family:'Sora',sans-serif;
-  box-shadow:0 3px 10px rgba(37,99,235,.35);
+  box-shadow:0 3px 10px rgba(13,148,136,.35);
   transition:all .2s;letter-spacing:.2px;
 }
-.btn-apply:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.45);}
+.btn-apply:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(13,148,136,.45);}
 
 .btn-showall {
   height:32px;padding:0 14px;
@@ -210,15 +212,7 @@ body::before {
 .btn-showall:hover{color:var(--text);border-color:var(--border2);}
 
 .filter-info {
-  margin-left:auto;
-  background:linear-gradient(135deg,var(--it-l),#fff);
-  border:1.5px solid var(--it-m);
-  border-radius:20px;
-  padding:4px 14px;
-  font-size:11px;font-weight:600;
-  color:var(--it);
-  white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis;max-width:500px;
+  display:none !important;
 }
 
 /* .filter-search removed — replaced by .search-pill */
@@ -252,7 +246,7 @@ body::before {
 .cf-clear{background:none;border:none;cursor:pointer;color:var(--sup);font-size:10px;font-weight:700;font-family:'Sora',sans-serif;}
 /* Search pill */
 .search-pill{display:flex;align-items:center;gap:6px;background:var(--s2);border:1.5px solid var(--border);border-radius:20px;padding:4px 12px;transition:border-color .2s;min-width:185px;}
-.search-pill:focus-within{border-color:var(--it);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.search-pill:focus-within{border-color:var(--it);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.08);}
 .srch-icon{color:var(--muted2);font-size:12px;flex-shrink:0;}
 .search-pill input{background:transparent;border:none;outline:none;color:var(--text);font-size:12px;font-family:'Sora',sans-serif;font-weight:500;width:130px;}
 .search-pill input::placeholder{color:var(--muted2);}
@@ -320,8 +314,8 @@ body::before {
 .kpi-top {
   height:5px;width:100%;
 }
-.c-it   .kpi-top { background:var(--it-g); box-shadow:0 2px 12px rgba(37,99,235,.3); }
-.c-ack  .kpi-top { background:var(--ack-g);box-shadow:0 2px 12px rgba(217,119,6,.3); }
+.c-it   .kpi-top { background:var(--it-g); box-shadow:0 2px 12px rgba(13,148,136,.3); }
+.c-ack  .kpi-top { background:var(--ack-g);box-shadow:0 2px 12px rgba(13,148,136,.3); }
 .c-ip   .kpi-top { background:var(--ip-g); box-shadow:0 2px 12px rgba(5,150,105,.3); }
 .c-live .kpi-top { background:var(--live-g);box-shadow:0 2px 12px rgba(124,58,237,.3);}
 .c-sup  .kpi-top { background:var(--glv-g); box-shadow:0 2px 12px rgba(21,128,61,.3); }
@@ -589,7 +583,7 @@ tbody td.r { text-align:right; }
   border:none;border-radius:20px;
   font-size:11px;font-weight:700;
   cursor:pointer;font-family:'Sora',sans-serif;
-  box-shadow:0 3px 10px rgba(37,99,235,.3);
+  box-shadow:0 3px 10px rgba(13,148,136,.3);
   display:flex;align-items:center;gap:5px;
   transition:all .2s;
 }
@@ -740,20 +734,20 @@ tbody td.r { text-align:right; }
   font-size:8px; font-weight:700; margin-top:1px; white-space:nowrap; letter-spacing:.2px;
 }
 /* Current month — blue */
-.kpi-m-cur  { background:#dbeafe; color:#1e40af; border:1.5px solid #93c5fd; }
-.kpi-m-cur::before  { background:#2563eb; }
-.kpi-m-cur .kpi-m-label { color:#1d4ed8; }
-.kpi-m-cur .kpi-m-sublabel { color:#3b82f6; }
+.kpi-m-cur  { background:#dbeafe; color:#0f766e; border:1.5px solid #93c5fd; }
+.kpi-m-cur::before  { background:#0d9488; }
+.kpi-m-cur .kpi-m-label { color:#0f766e; }
+.kpi-m-cur .kpi-m-sublabel { color:#0f766e; font-weight:800; }
 /* Previous month — amber */
 .kpi-m-prev { background:#fef3c7; color:#92400e; border:1.5px solid #fcd34d; }
 .kpi-m-prev::before { background:#d97706; }
 .kpi-m-prev .kpi-m-label { color:#b45309; }
-.kpi-m-prev .kpi-m-sublabel { color:#d97706; }
+.kpi-m-prev .kpi-m-sublabel { color:#92400e; font-weight:800; }
 /* Older — slate */
 .kpi-m-old  { background:#f1f5f9; color:#334155; border:1.5px solid #cbd5e1; }
 .kpi-m-old::before  { background:#64748b; }
 .kpi-m-old .kpi-m-label { color:#475569; }
-.kpi-m-old .kpi-m-sublabel { color:#64748b; }
+.kpi-m-old .kpi-m-sublabel { color:#334155; font-weight:800; }
 
 /* Grouped table headers (Tester/RM TAT breakdown) */
 .th-grp { text-align:center !important; border-left:1px solid var(--border); border-bottom:1px solid var(--border); }
@@ -843,7 +837,7 @@ td.grp-l { border-left:1px solid var(--border); }
 }
 .tdm-tl-content.active-stage {
   border-color:var(--it); background:#eff6ff;
-  box-shadow:0 2px 10px rgba(37,99,235,.12);
+  box-shadow:0 2px 10px rgba(13,148,136,.12);
 }
 .tdm-tl-stage {
   font-size:9px; font-weight:800; text-transform:uppercase;
@@ -948,7 +942,7 @@ td.grp-l { border-left:1px solid var(--border); }
 }
 .uc-tag.stage { background:#eff6ff; color:var(--it); border:1px solid var(--it-m); }
 .uc-tag.tester { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
-.uc-tag.rm { background:#faf5ff; color:#7c3aed; border:1px solid #e9d5ff; }
+.uc-tag.rm { background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4; }
 .uc-timeline-date { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:#92400e; margin-left:auto; }
 .upcoming-card.closed-it { background:linear-gradient(135deg,#f0fdf4,#dcfce7) !important; border-color:#86efac !important; }
 .upcoming-card.closed-it::before { background:#16a34a !important; }
@@ -978,11 +972,12 @@ td.grp-l { border-left:1px solid var(--border); }
       </div>
     </div>
     <div class="topbar-actions">
-      <div id="fetchTimeBadge" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,.13);
-        border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:5px 13px;font-size:11px;
-        font-family:'JetBrains Mono',monospace;color:#fff;letter-spacing:.2px;white-space:nowrap;">
+      <div id="fetchTimeBadge" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,.18);
+        border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:11px;
+        font-family:'JetBrains Mono',monospace;color:#fff;letter-spacing:.2px;white-space:nowrap;
+        backdrop-filter:blur(4px);">
         <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;
-          flex-shrink:0;box-shadow:0 0 6px #4ade80;"></span>
+          flex-shrink:0;box-shadow:0 0 8px #4ade80;animation:pulse 2s infinite;"></span>
         <span id="fetchTimeBadgeText">Data loaded</span>
       </div>
       <button class="btn-upload" id="btnRefresh" onclick="backgroundFetch()" title="Reload data from API">
@@ -1151,7 +1146,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
             </tr>
             <tr>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#0f766e;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1194,7 +1189,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#0f766e;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1237,7 +1232,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#0f766e;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1278,7 +1273,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
             </tr>
             <tr>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#0f766e;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1319,7 +1314,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th rowspan="2">Distribution</th>
             </tr>
             <tr>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#0f766e;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1742,12 +1737,24 @@ function monthCompareHtml(data, cls){
 function buildFiltered(from, to){
   VIEW = getGlobalFilteredRows();
   const hasTicketSearch = !!(document.getElementById('ticketSearch')?.value || '').trim();
-  const dateOk = d => hasTicketSearch || inRange(d, from, to);
-  fIT   = VIEW.filter(r => dateOk(r.a));
-  fAck  = VIEW.filter(r => dateOk(r.b));
-  fIP   = VIEW.filter(r => dateOk(r.c));
-  fSup  = VIEW.filter(r => dateOk(r.d));
-  fLive = VIEW.filter(r => dateOk(r.e));
+
+  if(hasTicketSearch){
+    // Ticket search mode: sirf woh stages dikhao jisme ticket actually gaya ho
+    // r.a = IT date, r.b = ACK date, r.c = IP date, r.d = SUP date, r.e = LIVE date
+    fIT   = VIEW.filter(r => r.a);   // IT date hai to IT mein gaya
+    fAck  = VIEW.filter(r => r.b);   // ACK date hai to ACK mein gaya
+    fIP   = VIEW.filter(r => r.c);   // IP date hai to IP mein gaya
+    fSup  = VIEW.filter(r => r.d);   // SUP date hai to SUP mein gaya
+    fLive = VIEW.filter(r => r.e);   // LIVE date hai to LIVE mein gaya
+  } else {
+    // Normal mode: date range filter
+    const dateOk = d => inRange(d, from, to);
+    fIT   = VIEW.filter(r => dateOk(r.a));
+    fAck  = VIEW.filter(r => dateOk(r.b));
+    fIP   = VIEW.filter(r => dateOk(r.c));
+    fSup  = VIEW.filter(r => dateOk(r.d));
+    fLive = VIEW.filter(r => dateOk(r.e));
+  }
   currentFrom = from; currentTo = to;
 }
 const API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail';
@@ -1890,10 +1897,10 @@ function resetAll(){
 // ===== KPI CARDS =====
 function renderKPIs(){
   const stages = [
-    { label:'Transfer to IT',   data:fIT,   tatKey:'at', cls:'c-it',   key:'IT',   pendingFn: () => fIT.filter(r=>r.sc==='IT').length   },
-    { label:'Acknowledge',      data:fAck,  tatKey:'bt', cls:'c-ack',  key:'ACK',  pendingFn: () => fAck.filter(r=>r.sc==='AK').length  },
-    { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => fIP.filter(r=>r.sc==='IP').length   },
-    { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => fSup.filter(r=>r.sc==='SP').length  },
+    { label:'Transfer to IT',   data:fIT,   tatKey:'at', cls:'c-it',   key:'IT',   pendingFn: () => RAW.filter(r=>r.sc==='IT').length   },
+    { label:'Acknowledge',      data:fAck,  tatKey:'bt', cls:'c-ack',  key:'ACK',  pendingFn: () => RAW.filter(r=>r.sc==='AK').length  },
+    { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => RAW.filter(r=>r.sc==='IP').length   },
+    { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => RAW.filter(r=>r.sc==='SP').length  },
   ];
 
   // Status-only KPIs use the current filtered dashboard view.
@@ -2057,7 +2064,7 @@ function renderKeyLic(){
     <td class="r"><span class="n-live">${r.live||'—'}</span></td>
     <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
     <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:800;font-size:13px">${r.bug||'—'}</span></td>
-    <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:800;font-size:13px">${r.dev||'—'}</span></td>
+    <td class="r" style="background:#eff6ff"><span style="color:#0f766e;font-weight:800;font-size:13px">${r.dev||'—'}</span></td>
     <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:800;font-size:13px">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
   </tr>`).join('')
   + `<tr class="total-row">
@@ -2068,7 +2075,7 @@ function renderKeyLic(){
     <td class="r"><strong class="n-live">${fmt(tot.live)}</strong></td>
     <td class="r"><strong class="n-sup">${fmt(tot.sup)}</strong></td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(tot.bug)}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(tot.dev)}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#0f766e">${fmt(tot.dev)}</strong></td>
     <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,(tot.sup||0)-(tot.bug||0)-(tot.dev||0)))}</strong></td>
   </tr>`;
 }
@@ -2162,7 +2169,7 @@ function renderTester(){
       <td class="r">${tatCellIn(r.sT.inC,r.sT.outC)}</td>
       <td class="r">${tatCellOut(r.sT.inC,r.sT.outC)}</td>
       <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td>
-      <td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td>
+      <td class="r" style="background:#eff6ff">${bd(r.supDev,'#0f766e')}</td>
       <td class="r" style="background:#f8fafc">${bd(r.sup - r.supBug - r.supDev,'#6b7280')}</td>
     </tr>`;
   }).join('')
@@ -2181,7 +2188,7 @@ function renderTester(){
     <td class="r">${tatCellIn(TsT.inC,TsT.outC)}</td>
     <td class="r">${tatCellOut(TsT.inC,TsT.outC)}</td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.supBug||0),0))}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#0f766e">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
     <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.supBug||0)-(r.supDev||0)),0))}</strong></td>
   </tr>`
   : `<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
@@ -2248,7 +2255,7 @@ function renderRM(){
       <td class="r">${tatCellIn(r.sT.inC,r.sT.outC)}</td>
       <td class="r">${tatCellOut(r.sT.inC,r.sT.outC)}</td>
       <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td>
-      <td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td>
+      <td class="r" style="background:#eff6ff">${bd(r.supDev,'#0f766e')}</td>
       <td class="r" style="background:#f8fafc">${bd(r.sup - r.supBug - r.supDev,'#6b7280')}</td>
     </tr>`).join('')
   + `<tr class="total-row">
@@ -2266,7 +2273,7 @@ function renderRM(){
     <td class="r">${tatCellIn(TsT.inC,TsT.outC)}</td>
     <td class="r">${tatCellOut(TsT.inC,TsT.outC)}</td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.supBug||0),0))}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#0f766e">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
     <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.supBug||0)-(r.supDev||0)),0))}</strong></td>
   </tr>`
   : `<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
@@ -2305,7 +2312,7 @@ function renderClients(){
     <td class="r"><span class="n-live">${r.live||'—'}</span></td>
     <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
     <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:700">${r.bug||'—'}</span></td>
-    <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:700">${r.dev||'—'}</span></td>
+    <td class="r" style="background:#eff6ff"><span style="color:#0f766e;font-weight:700">${r.dev||'—'}</span></td>
     <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:700">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
   </tr>`).join('')
   + `<tr class="total-row">
@@ -2316,7 +2323,7 @@ function renderClients(){
     <td class="r"><strong class="n-live">${fmt(cTotals.live)}</strong></td>
     <td class="r"><strong class="n-sup">${fmt(cTotals.sup)}</strong></td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(cTotals.bug)}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(cTotals.dev)}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#0f766e">${fmt(cTotals.dev)}</strong></td>
     <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,(cTotals.sup||0)-(cTotals.bug||0)-(cTotals.dev||0)))}</strong></td>
   </tr>`
   : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
@@ -2370,9 +2377,9 @@ function renderPlan(){
       <td class="r"><span class="n-live">${r.live||'—'}</span></td>
       <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
       <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:700">${r.bug||'—'}</span></td>
-      <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:700">${r.dev||'—'}</span></td>
+      <td class="r" style="background:#eff6ff"><span style="color:#0f766e;font-weight:700">${r.dev||'—'}</span></td>
       <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:700">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
-      <td>${r.isBlank ? '' : barHtml(r.it,totalIT,'#2563eb')}</td>
+      <td>${r.isBlank ? '' : barHtml(r.it,totalIT,'#0d9488')}</td>
     </tr>`;
   }).join('')
   + `<tr class="total-row">
@@ -2383,7 +2390,7 @@ function renderPlan(){
     <td class="r"><strong class="n-live">${fmt(pTotals.live)}</strong></td>
     <td class="r"><strong class="n-sup">${fmt(pTotals.sup)}</strong></td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.bug||0),0))}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.dev||0),0))}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#0f766e">${fmt(rows.reduce((s,r)=>s+(r.dev||0),0))}</strong></td>
     <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0)),0))}</strong></td>
     <td></td>
   </tr>`
@@ -2404,12 +2411,12 @@ function renderCharts(){
   const rglCount = VIEW.filter(r=>r.sc==='LV').length;
 
   const ST = [
-    {label:'Transfer to IT',    short:'IT',  n:fIT.length,   in:fIT.filter(r=>r.at==='I').length,   out:fIT.filter(r=>r.at==='O').length,   c:'#2563eb'},
+    {label:'Transfer to IT',    short:'IT',  n:fIT.length,   in:fIT.filter(r=>r.at==='I').length,   out:fIT.filter(r=>r.at==='O').length,   c:'#0d9488'},
     {label:'Acknowledge',       short:'ACK', n:fAck.length,  in:fAck.filter(r=>r.bt==='I').length,  out:fAck.filter(r=>r.bt==='O').length,  c:'#d97706'},
     {label:'In Progress',       short:'IP',  n:fIP.length,   in:fIP.filter(r=>r.ct==='I').length,   out:fIP.filter(r=>r.ct==='O').length,   c:'#059669'},
-    {label:'Go Live',           short:'Live',n:fLive.length, in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#7c3aed'},
+    {label:'Go Live',           short:'Live',n:fLive.length, in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#0369a1'},
     {label:'Close by IT',       short:'SUP', n:fSup.length,  in:fSup.filter(r=>r.dt==='I').length,  out:fSup.filter(r=>r.dt==='O').length,  c:'#dc2626'},
-    {label:'Return to Support', short:'RTS', n:rsCount,      in:0,  out:0,  c:'#f97316', statusOnly:true},
+    {label:'Return to Support', short:'RTS', n:rsCount,      in:0,  out:0,  c:'#0891b2', statusOnly:true},
     {label:'Ready for Testing', short:'RFT', n:rtCount,      in:0,  out:0,  c:'#0891b2', statusOnly:true},
     {label:'Ready for UAT',     short:'RFU', n:ruCount,      in:0,  out:0,  c:'#84cc16', statusOnly:true},
     {label:'Ready for Go Live', short:'RGL', n:rglCount,     in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#a21caf'},
@@ -2458,7 +2465,7 @@ function renderCharts(){
     data:{
       labels: ST.map(s=>s.short),
       datasets:[
-        { label:'InTAT %',  data:ST.map(s=>s.n?parseFloat((s.in/s.n*100).toFixed(1)):0),  backgroundColor:'#10b98122', borderColor:'#059669', borderWidth:2, borderRadius:5, borderSkipped:false },
+        { label:'InTAT %',  data:ST.map(s=>s.n?parseFloat((s.in/s.n*100).toFixed(1)):0),  backgroundColor:'#0d948822', borderColor:'#0f766e', borderWidth:2, borderRadius:5, borderSkipped:false },
         { label:'OutTAT %', data:ST.map(s=>s.n?parseFloat((s.out/s.n*100).toFixed(1)):0), backgroundColor:'#ef444422', borderColor:'#dc2626', borderWidth:2, borderRadius:5, borderSkipped:false },
       ]
     },
@@ -2539,10 +2546,10 @@ function buildTesterChartData(){
   return {
     labels: rows.map(r=>r.n),
     datasets:[
-      dsBar('IT',  rows.map(r=>r.it),  '#2563eb'),
-      dsBar('ACK', rows.map(r=>r.ack), '#d97706'),
-      dsBar('IP',  rows.map(r=>r.ip),  '#059669'),
-      dsBar('Live',rows.map(r=>r.live),'#7c3aed'),
+      dsBar('IT',  rows.map(r=>r.it),  '#0d9488'),
+      dsBar('ACK', rows.map(r=>r.ack), '#0891b2'),
+      dsBar('IP',  rows.map(r=>r.ip),  '#0f766e'),
+      dsBar('Live',rows.map(r=>r.live),'#0369a1'),
       dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
     ]
   };
@@ -2559,10 +2566,10 @@ function buildRMChartData(){
   return {
     labels: rows.map(r=>r.n),
     datasets:[
-      dsBar('IT',  rows.map(r=>r.it),  '#2563eb'),
-      dsBar('ACK', rows.map(r=>r.ack), '#d97706'),
-      dsBar('IP',  rows.map(r=>r.ip),  '#059669'),
-      dsBar('Live',rows.map(r=>r.live),'#7c3aed'),
+      dsBar('IT',  rows.map(r=>r.it),  '#0d9488'),
+      dsBar('ACK', rows.map(r=>r.ack), '#0891b2'),
+      dsBar('IP',  rows.map(r=>r.ip),  '#0f766e'),
+      dsBar('Live',rows.map(r=>r.live),'#0369a1'),
       dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
     ]
   };
@@ -2579,10 +2586,10 @@ function buildPlanChartData(){
   return {
     labels: rows.map(r=>r.p),
     datasets:[
-      dsBar('IT',  rows.map(r=>r.it),  '#2563eb'),
-      dsBar('ACK', rows.map(r=>r.ack), '#d97706'),
-      dsBar('IP',  rows.map(r=>r.ip),  '#059669'),
-      dsBar('Live',rows.map(r=>r.live),'#7c3aed'),
+      dsBar('IT',  rows.map(r=>r.it),  '#0d9488'),
+      dsBar('ACK', rows.map(r=>r.ack), '#0891b2'),
+      dsBar('IP',  rows.map(r=>r.ip),  '#0f766e'),
+      dsBar('Live',rows.map(r=>r.live),'#0369a1'),
       dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
     ]
   };
@@ -2604,10 +2611,10 @@ function buildClientChartData(){
   return {
     labels,
     datasets:[
-      dsBar('IT',  top10.map(r=>r.it),  '#2563eb'),
-      dsBar('ACK', top10.map(r=>r.ack), '#d97706'),
-      dsBar('IP',  top10.map(r=>r.ip),  '#059669'),
-      dsBar('Live',top10.map(r=>r.live),'#7c3aed'),
+      dsBar('IT',  top10.map(r=>r.it),  '#0d9488'),
+      dsBar('ACK', top10.map(r=>r.ack), '#0891b2'),
+      dsBar('IP',  top10.map(r=>r.ip),  '#0f766e'),
+      dsBar('Live',top10.map(r=>r.live),'#0369a1'),
       dsBar('SUP', top10.map(r=>r.sup), '#dc2626'),
     ]
   };
@@ -2841,13 +2848,13 @@ function exportModalExcel(){
 // ===== TICKET TIMELINE BUILDER =====
 function buildTicketTimeline(rec, stageCfg) {
   const stages = [
-    { key:'a',  tatKey:'at', durKey:'ad', actKey:'av', label:'Transfer to IT',   pendingSc:'IT', color:'#2563eb',
+    { key:'a',  tatKey:'at', durKey:'ad', actKey:'av', label:'Transfer to IT',   pendingSc:'IT', color:'#0d9488',
       agent: rec.t,  agentLabel:'Tester / Transfer To' },
     { key:'b',  tatKey:'bt', durKey:'bd', actKey:'bv', label:'Acknowledge',       pendingSc:'AK', color:'#d97706',
       agent: rec.ta, agentLabel:'Ack Agent' },
     { key:'c',  tatKey:'ct', durKey:'cd', actKey:'cv', label:'In Progress',       pendingSc:'IP', color:'#059669',
       agent: rec.ti, agentLabel:'IP Agent' },
-    { key:'e',  tatKey:'et', durKey:'',   actKey:'ev', label:'Ready to Go Live',  pendingSc:'LV', color:'#7c3aed',
+    { key:'e',  tatKey:'et', durKey:'',   actKey:'ev', label:'Ready to Go Live',  pendingSc:'LV', color:'#0369a1',
       agent: rec.eb, agentLabel:'Go Live By' },
     { key:'d',  tatKey:'dt', durKey:'dd', actKey:'dv', label:'Close by IT',       pendingSc:'SP', color:'#dc2626',
       agent: rec.ts, agentLabel:'Support Agent' },
@@ -3277,48 +3284,43 @@ function showEmptyState(){
   document.getElementById('fInfo').textContent = 'Select date range and click Fetch to load data';
 }
 
-// ===== SUPABASE CACHE SYSTEM =====
-// Data Supabase DB mein save hota hai — sab devices par same data milta hai
-const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+// ===== PERSISTENT LOCAL CACHE (IndexedDB) =====
+// Fetched data browser me save rehta hai — tab close/reopen par bhi wahi data
+// load hota hai jab tak user ⟳ Refresh par click na kare.
+const CACHE_DB = 'mbTicketDashCache', CACHE_STORE = 'kv', CACHE_KEY = 'rawData';
 
+function idbOpen(){
+  return new Promise((res, rej)=>{
+    const rq = indexedDB.open(CACHE_DB, 1);
+    rq.onupgradeneeded = ()=> rq.result.createObjectStore(CACHE_STORE);
+    rq.onsuccess = ()=> res(rq.result);
+    rq.onerror   = ()=> rej(rq.error);
+  });
+}
+async function cacheSave(raw){
+  try{
+    const db = await idbOpen();
+    const tx = db.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put({ ts: Date.now(), raw }, CACHE_KEY);
+    await new Promise(r=>{ tx.oncomplete = r; tx.onerror = r; });
+    db.close();
+  }catch(e){ console.warn('Cache save failed:', e); }
+}
+async function cacheLoad(){
+  try{
+    const db = await idbOpen();
+    const tx = db.transaction(CACHE_STORE, 'readonly');
+    const rq = tx.objectStore(CACHE_STORE).get(CACHE_KEY);
+    const out = await new Promise(res=>{ rq.onsuccess = ()=>res(rq.result||null); rq.onerror = ()=>res(null); });
+    db.close();
+    return out;
+  }catch(e){ return null; }
+}
 function cacheAgeLabel(ts){
   const d = new Date(ts);
   const date = d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
   const time = d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
   return `${date} at ${time}`;
-}
-
-// Supabase se latest cached data load karo
-async function cacheLoad(){
-  try{
-    const { data, error } = await sb
-      .from('ticket_cache')
-      .select('data, fetched_at, total_count')
-      .order('fetched_at', { ascending: false })
-      .limit(1)
-      .single();
-    if(error || !data) return null;
-    return { raw: data.data, ts: new Date(data.fetched_at).getTime() };
-  } catch(e){ console.warn('Supabase cacheLoad failed:', e); return null; }
-}
-
-// Refresh ke baad Supabase mein data save karo — sab users ko latest milega
-async function cacheSave(raw){
-  try{
-    const today = new Date().toISOString().split('T')[0];
-    await sb.from('ticket_cache').delete().neq('id', 0);
-    const { error } = await sb.from('ticket_cache').insert({
-      data: raw,
-      total_count: raw.length,
-      date_from: '2023-04-01',
-      date_to: today,
-      fetched_at: new Date().toISOString()
-    });
-    if(error) console.warn('Supabase save error:', error.message);
-    else console.log('✅ Data saved to Supabase:', raw.length, 'tickets');
-  } catch(e){ console.warn('cacheSave failed:', e); }
 }
 
 // ===== BACKGROUND FETCH with live timer loader =====
@@ -3419,47 +3421,102 @@ async function init(){
   document.getElementById('dateFrom').value = from;
   document.getElementById('dateTo').value   = to;
 
-  // Loader show karo with timer
-  document.getElementById('loaderTitle').textContent = 'Loading Data…';
-  document.getElementById('loaderMsg').textContent   = 'Connecting to database…';
-  document.getElementById('loaderStep').textContent  = 'Fetching from Supabase';
-  document.getElementById('loaderBar').style.width   = '15%';
-  document.getElementById('loaderOverlay').classList.add('active');
-  startLoaderTimer();
-
+  // Pehle cache check karo — agar pichhli fetch ka data saved hai to wahi use karo
   const cached = await cacheLoad();
-
   if(cached && Array.isArray(cached.raw) && cached.raw.length){
     RAW = cached.raw;
     refreshFilterOptions();
-
-    document.getElementById('loaderMsg').textContent  = `${fmt(RAW.length)} tickets loaded!`;
-    document.getElementById('loaderStep').textContent = 'Complete';
-    document.getElementById('loaderBar').style.width  = '100%';
-    stopLoaderTimer();
-
-    setTimeout(()=>{
-      document.getElementById('loaderOverlay').classList.remove('active');
-      document.getElementById('loaderBar').style.width = '0%';
-      resetAll();
-      const badge = document.getElementById('fetchTimeBadge');
-      document.getElementById('fetchTimeBadgeText').textContent =
-        `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
-      badge.style.display = 'flex';
-      showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
-    }, 500);
-    return;
+    resetAll(); // current month default load
+    const badge = document.getElementById('fetchTimeBadge');
+    document.getElementById('fetchTimeBadgeText').textContent =
+      `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
+    badge.style.display = 'flex';
+    showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
+    return; // koi API call nahi — Refresh par hi naya data aayega
   }
 
-  // Supabase mein data nahi — API se fetch karo
-  stopLoaderTimer();
-  document.getElementById('loaderOverlay').classList.remove('active');
+  // Cache khali hai → pehli baar fetch karo
   showEmptyState();
   backgroundFetch();
 }
+// ===== MIDNIGHT AUTO-FETCH SCHEDULER =====
+// Raat 12 baje ek baar automatically data fetch karke cache kar leta hai.
+// Agar system band hai tab bhi — jab page dobara khulega to check karta hai
+// ki kya aaj ka midnight auto-fetch ho chuka hai ya nahi. Agar nahi to fetch karta hai.
+
+const MIDNIGHT_KEY = 'mbLastMidnightFetch';
+
+function todayDateStr(){
+  // Returns "YYYY-MM-DD" for today (local time)
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function midnightFetchIfNeeded(){
+  // Check IndexedDB for last midnight-fetch date
+  try {
+    const db = await idbOpen();
+    const tx = db.transaction(CACHE_STORE,'readonly');
+    const rq = tx.objectStore(CACHE_STORE).get(MIDNIGHT_KEY);
+    const saved = await new Promise(res=>{ rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); });
+    db.close();
+    if(saved && saved.date === todayDateStr()){
+      return; // aaj pehle se fetch ho chuka hai
+    }
+  } catch(e){ /* ignore */ }
+
+  // Aaj fetch nahi hua — background mein silently data refresh karo
+  console.log('[MidnightScheduler] Auto-fetching data for', todayDateStr());
+  try {
+    const today = new Date();
+    const toDate   = today.toISOString().split('T')[0];
+    const fromDate = '2023-04-01';
+    const url = `${API_URL}?FDate=${fromDate}&ToDate=${toDate}&TicketNo=`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if(json.Status !== 'Success') throw new Error(json.Message || 'API error');
+    const details = json.Details || [];
+    const map = new Map();
+    details.forEach(r=>{ const rec = parseAPIRecord(r); if(rec && rec.n) map.set(rec.n, rec); });
+    RAW = Array.from(map.values());
+    await cacheSave(RAW);
+    // Save today's date as midnight-fetch done
+    const db2 = await idbOpen();
+    const tx2 = db2.transaction(CACHE_STORE,'readwrite');
+    tx2.objectStore(CACHE_STORE).put({ date: todayDateStr() }, MIDNIGHT_KEY);
+    await new Promise(r=>{ tx2.oncomplete=r; tx2.onerror=r; });
+    db2.close();
+    // Update badge silently
+    const badge = document.getElementById('fetchTimeBadge');
+    document.getElementById('fetchTimeBadgeText').textContent =
+      `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(Date.now())}`;
+    badge.style.display = 'flex';
+    console.log('[MidnightScheduler] Done —', RAW.length, 'tickets cached');
+  } catch(e){
+    console.warn('[MidnightScheduler] Auto-fetch failed:', e.message);
+  }
+}
+
+function scheduleMidnightFetch(){
+  const now = new Date();
+  // Next midnight = today 00:00 + 1 day
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5); // 00:00:05
+  const msUntilMidnight = nextMidnight - now;
+  console.log(`[MidnightScheduler] Next auto-fetch in ${Math.round(msUntilMidnight/60000)} min`);
+  setTimeout(async ()=>{
+    await midnightFetchIfNeeded();
+    scheduleMidnightFetch(); // reschedule for next night
+  }, msUntilMidnight);
+}
 
 window.addEventListener('DOMContentLoaded', ()=>{
-  init();
+  init(); // normal dashboard init
+  // On page open: check if today's midnight-fetch already happened
+  // (Handles the case where system was off at midnight)
+  setTimeout(midnightFetchIfNeeded, 3000); // 3s delay taaki normal load pehle ho
+  // Schedule for tonight's midnight
+  scheduleMidnightFetch();
 });
 </script>
 </body>
