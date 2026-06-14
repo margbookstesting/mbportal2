@@ -120,6 +120,52 @@ body::before {
 
 .topbar-actions {
   display:flex;gap:10px;align-items:center;
+  flex-shrink:0;
+}
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:768px){
+  .topbar-inner{
+    padding:8px 14px;height:auto;
+    flex-direction:column;align-items:stretch;gap:6px;
+  }
+  /* Row 1: Brand */
+  .brand{
+    gap:8px;
+  }
+  .brand-name{ font-size:13px; }
+  .brand-tagline{ font-size:9px; }
+  .creator-badge{
+    margin-left:auto;padding:4px 10px;
+  }
+  .creator-label{ font-size:9px; }
+  .creator-name{ font-size:11px; }
+  /* Row 2: Sync badge + Buttons — full width row */
+  .topbar-actions{
+    width:100%;display:flex;flex-wrap:wrap;
+    gap:6px;align-items:center;justify-content:space-between;
+  }
+  /* Sync badge — full width on its own line */
+  #fetchTimeBadge{
+    width:100%;justify-content:center;
+    font-size:10px !important;padding:4px 10px !important;
+    border-radius:8px !important;
+  }
+  .btn-upload{
+    height:30px;padding:0 10px;font-size:11px;flex:1;
+    justify-content:center;
+  }
+  .btn-export-all{
+    height:30px;padding:0 10px;font-size:11px;flex:1;
+    justify-content:center;
+  }
+}
+
+@media(max-width:480px){
+  .brand-icon{ width:28px;height:28px;font-size:13px; }
+  .brand-name{ font-size:12px; }
+  .brand-tagline{ display:none; }
+  .creator-badge{ display:none; }
 }
 
 .btn-upload {
