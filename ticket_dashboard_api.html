@@ -3419,24 +3419,41 @@ async function init(){
   document.getElementById('dateFrom').value = from;
   document.getElementById('dateTo').value   = to;
 
-  // Pehle Supabase se cached data load karo
-  showLoader('Loading data...', 10, 'Connecting to database...');
+  // Loader show karo with timer
+  document.getElementById('loaderTitle').textContent = 'Loading Data…';
+  document.getElementById('loaderMsg').textContent   = 'Connecting to database…';
+  document.getElementById('loaderStep').textContent  = 'Fetching from Supabase';
+  document.getElementById('loaderBar').style.width   = '15%';
+  document.getElementById('loaderOverlay').classList.add('active');
+  startLoaderTimer();
+
   const cached = await cacheLoad();
+
   if(cached && Array.isArray(cached.raw) && cached.raw.length){
     RAW = cached.raw;
     refreshFilterOptions();
-    resetAll();
-    hideLoader();
-    const badge = document.getElementById('fetchTimeBadge');
-    document.getElementById('fetchTimeBadgeText').textContent =
-      `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
-    badge.style.display = 'flex';
-    showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
-    return; // Supabase se data aa gaya — API call nahi hogi
+
+    document.getElementById('loaderMsg').textContent  = `${fmt(RAW.length)} tickets loaded!`;
+    document.getElementById('loaderStep').textContent = 'Complete';
+    document.getElementById('loaderBar').style.width  = '100%';
+    stopLoaderTimer();
+
+    setTimeout(()=>{
+      document.getElementById('loaderOverlay').classList.remove('active');
+      document.getElementById('loaderBar').style.width = '0%';
+      resetAll();
+      const badge = document.getElementById('fetchTimeBadge');
+      document.getElementById('fetchTimeBadgeText').textContent =
+        `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
+      badge.style.display = 'flex';
+      showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
+    }, 500);
+    return;
   }
 
-  // Supabase mein koi data nahi — pehli baar API se fetch karo
-  hideLoader();
+  // Supabase mein data nahi — API se fetch karo
+  stopLoaderTimer();
+  document.getElementById('loaderOverlay').classList.remove('active');
   showEmptyState();
   backgroundFetch();
 }
