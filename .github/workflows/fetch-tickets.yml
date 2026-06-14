@@ -2,15 +2,15 @@ name: Fetch Tickets & Save to Supabase
 
 on:
   schedule:
-    - cron: '30 18 * * *'   # Raat 12:00 AM IST = UTC 18:30[cite: 2]
-  workflow_dispatch:          # Manual run button[cite: 2]
+    - cron: '30 18 * * *'   # Raat 12:00 AM IST
+  workflow_dispatch:          # Manual run button ke liye
 
 jobs:
   fetch:
-    runs-on: ubuntu-latest[cite: 2]
-    timeout-minutes: 60     # Parallel chalne par 1 ghanta bohot zyada hai
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
-      fail-fast: false      # Agar ek saal fail ho, toh baaki chalte rahein
+      fail-fast: false      
       matrix:
         include:
           - year: "2023"
@@ -28,21 +28,21 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4[cite: 2]
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v5[cite: 2]
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'[cite: 2]
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests python-dateutil[cite: 2]
+        run: pip install requests python-dateutil
 
       - name: Fetch & Save
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}[cite: 2]
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}[cite: 2]
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           START_DATE_OVERRIDE: ${{ matrix.start }}
           END_DATE_OVERRIDE: ${{ matrix.end }}
           IS_MATRIX_RUN: "true"
-        run: python3 .github/scripts/fetch_tickets.py[cite: 2]
+        run: python3 .github/scripts/fetch_tickets.py
