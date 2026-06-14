@@ -3349,7 +3349,7 @@ function cacheAgeLabel(ts){
 async function cacheLoad(){
   try{
     // Saari rows fetch karo — matrix run mein har saal ki alag row hoti hai
-    const { data, error } = await sb.from('ticket_cache').select('*');
+    const { data, error } = await sb.from('ticket_cache').select('id, data, fetched_at, total_count, date_from, date_to');
     if(error){ console.warn('Supabase cacheLoad error:', error.message); return null; }
     if(!data || data.length === 0) return null;
 
@@ -3441,72 +3441,109 @@ function stopLoaderTimer(){
   if(_timerInterval){ clearInterval(_timerInterval); _timerInterval = null; }
 }
 
+// ── Year-wise chunk fetch helper ────────────────────────────────────────────
+async function fetchYearChunk(yearStart, yearEnd, label, progressCb){
+  const url = `${API_URL}?FDate=${yearStart}&ToDate=${yearEnd}&TicketNo=`;
+  progressCb(`Fetching ${label}...`);
+  const res = await fetch(url, {
+    headers:{ 'Accept':'application/json', 'User-Agent':'Mozilla/5.0' }
+  });
+  if(!res.ok) throw new Error(`HTTP ${res.status} for ${label}`);
+  const json = await res.json();
+  if(json.Status !== 'Success') throw new Error(json.Message || `API error for ${label}`);
+  const records = json.Details || [];
+  const map = new Map();
+  records.forEach(r=>{ const rec=parseAPIRecord(r); if(rec&&rec.n) map.set(rec.n,rec); });
+  return Array.from(map.values());
+}
+
 async function backgroundFetch(){
   const _fetchStart = Date.now();
-  // Show loader with live timer
-  document.getElementById('loaderTitle').textContent = 'Loading Data…';
-  document.getElementById('loaderMsg').textContent   = 'Fetching all tickets from server…';
+  document.getElementById('loaderTitle').textContent = 'Refreshing Data...';
+  document.getElementById('loaderMsg').textContent   = 'Starting year-wise fetch...';
   document.getElementById('loaderStep').textContent  = 'Connecting to API';
-  document.getElementById('loaderBar').style.width   = '10%';
+  document.getElementById('loaderBar').style.width   = '5%';
   document.getElementById('loaderOverlay').classList.add('active');
   startLoaderTimer();
 
-  const today     = new Date();
-  const toDate    = today.toISOString().split('T')[0];
-  const fromDate  = '2023-04-01';
-  try {
-    const url = `${API_URL}?FDate=${fromDate}&ToDate=${toDate}&TicketNo=`;
+  const currentYear = new Date().getFullYear();
+  const today = new Date().toISOString().split('T')[0];
 
-    document.getElementById('loaderMsg').textContent  = `Downloading ${fromDate} → ${toDate}…`;
-    document.getElementById('loaderStep').textContent = 'Waiting for response';
-    document.getElementById('loaderBar').style.width  = '30%';
+  // Year chunks — 2023 se current year tak
+  const years = [];
+  for(let y = 2023; y <= currentYear; y++){
+    const start = y === 2023 ? '2023-04-01' : `${y}-01-01`;
+    const end   = y === currentYear ? today : `${y}-12-31`;
+    years.push({ year: y, start, end, label: String(y) });
+  }
 
-    const res = await fetch(url);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const totalYears = years.length;
+  const allTicketsMap = new Map();
 
-    document.getElementById('loaderMsg').textContent  = 'Parsing response…';
-    document.getElementById('loaderStep').textContent = 'Processing records';
-    document.getElementById('loaderBar').style.width  = '65%';
+  try{
+    for(let i = 0; i < years.length; i++){
+      const { year, start, end, label } = years[i];
+      const pct = Math.round(10 + (i / totalYears) * 75);
 
-    const json = await res.json();
-    if(json.Status !== 'Success') throw new Error(json.Message || 'API error');
+      document.getElementById('loaderMsg').textContent  = `Fetching ${label} data (${i+1}/${totalYears})...`;
+      document.getElementById('loaderStep').textContent = `Year ${label}: ${start} to ${end}`;
+      document.getElementById('loaderBar').style.width  = pct + '%';
 
-    document.getElementById('loaderMsg').textContent  = 'Building index…';
-    document.getElementById('loaderStep').textContent = 'Indexing tickets';
-    document.getElementById('loaderBar').style.width  = '85%';
+      try{
+        const yearData = await fetchYearChunk(start, end, label, msg=>{
+          document.getElementById('loaderMsg').textContent = msg;
+        });
+        yearData.forEach(r=>{ if(r.n) allTicketsMap.set(r.n, r); });
+        console.log(`Year ${label}: ${yearData.length} tickets`);
 
-    const details = json.Details || [];
-    const map = new Map();
-    details.forEach(r=>{
-      const rec = parseAPIRecord(r);
-      if(rec && rec.n) map.set(rec.n, rec);
-    });
-    RAW = Array.from(map.values());
+        // Save this year to Supabase immediately
+        const yearStart2 = year === 2023 ? '2023-04-01' : `${year}-01-01`;
+        try{
+          await sb.from('ticket_cache').delete().eq('date_from', yearStart2);
+          await sb.from('ticket_cache').insert({
+            data: yearData,
+            total_count: yearData.length,
+            date_from: yearStart2,
+            date_to: end,
+            fetched_at: new Date().toISOString()
+          });
+          console.log(`✅ Year ${label} saved to Supabase`);
+        }catch(saveErr){
+          console.warn(`Save failed for ${label}:`, saveErr.message);
+        }
+
+      }catch(yearErr){
+        console.warn(`Year ${label} failed:`, yearErr.message);
+        showToast(`⚠️ ${label} data fetch failed — skipping`);
+      }
+    }
+
+    // Combine all years
+    RAW = Array.from(allTicketsMap.values());
     refreshFilterOptions();
-    cacheSave(RAW); // persist for next session — Refresh tak yahi data rahega
 
-    document.getElementById('loaderMsg').textContent  = `${fmt(RAW.length)} tickets loaded successfully!`;
+    document.getElementById('loaderMsg').textContent  = `${fmt(RAW.length)} tickets loaded!`;
     document.getElementById('loaderStep').textContent = 'Complete';
     document.getElementById('loaderBar').style.width  = '100%';
 
-    const _fetchSecs = ((Date.now() - _fetchStart) / 1000);
-    const _fetchMin  = Math.floor(_fetchSecs / 60);
-    const _fetchRemS = (_fetchSecs % 60).toFixed(1);
-    const _fetchTime = _fetchMin > 0 ? `${_fetchMin}m ${_fetchRemS}s` : `${_fetchSecs.toFixed(1)}s`;
+    const _secs = ((Date.now() - _fetchStart) / 1000);
+    const _time = _secs > 60
+      ? `${Math.floor(_secs/60)}m ${(_secs%60).toFixed(0)}s`
+      : `${_secs.toFixed(1)}s`;
+
     stopLoaderTimer();
     setTimeout(()=>{
       document.getElementById('loaderOverlay').classList.remove('active');
       document.getElementById('loaderBar').style.width = '0%';
-      // Auto-load current month data by default after fetch completes
       resetAll();
-      // Show fetch time badge in topbar
       const badge = document.getElementById('fetchTimeBadge');
       document.getElementById('fetchTimeBadgeText').textContent =
-        `${fmt(RAW.length)} tickets · fetched in ${_fetchTime}`;
+        `${fmt(RAW.length)} tickets · fetched in ${_time}`;
       badge.style.display = 'flex';
+      showToast(`✅ ${fmt(RAW.length)} tickets refreshed in ${_time}`);
     }, 600);
 
-  } catch(err){
+  }catch(err){
     stopLoaderTimer();
     document.getElementById('loaderOverlay').classList.remove('active');
     document.getElementById('loaderBar').style.width = '0%';
