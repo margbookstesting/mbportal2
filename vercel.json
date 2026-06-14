@@ -3,6 +3,7 @@
     { "source": "/", "destination": "/index.html" },
     { "source": "/portal", "destination": "/portal.html" },
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/dashboard", "destination": "/ticket_dashboard_api.html" }
+    { "source": "/dashboard", "destination": "/ticket_dashboard_api.html" },
+    { "source": "/excel", "destination": "/ticket_dashboard_excel.html" }
   ]
 }
