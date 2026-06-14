@@ -1,0 +1,3515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MARG · IT Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #f0f2f9;
+  --surface:  #ffffff;
+  --s2:       #f7f8fd;
+  --border:   #e8eaf4;
+  --border2:  #d4d8ec;
+  --navy:     #08101e;
+  --navy2:    #0f1d34;
+  --text:     #111827;
+  --text2:    #374151;
+  --muted:    #6b7280;
+  --muted2:   #9ca3af;
+
+  --it:    #2563eb; --it-l:#eff6ff;  --it-m:#bfdbfe; --it-g:linear-gradient(135deg,#2563eb,#1e40af);
+  --ack:   #d97706; --ack-l:#fffbeb; --ack-m:#fde68a; --ack-g:linear-gradient(135deg,#f59e0b,#d97706);
+  --ip:    #059669; --ip-l:#f0fdf4;  --ip-m:#a7f3d0; --ip-g:linear-gradient(135deg,#10b981,#059669);
+  --live:  #7c3aed; --live-l:#f5f3ff;--live-m:#ddd6fe;--live-g:linear-gradient(135deg,#8b5cf6,#7c3aed);
+  --sup:   #dc2626; --sup-l:#fff1f2; --sup-m:#fecdd3; --sup-g:linear-gradient(135deg,#ef4444,#dc2626);
+  --ret:   #0891b2; --ret-l:#ecfeff;  --ret-m:#a5f3fc; --ret-g:linear-gradient(135deg,#06b6d4,#0891b2);
+  --tst:   #b45309; --tst-l:#fffbeb;  --tst-m:#fcd34d; --tst-g:linear-gradient(135deg,#f59e0b,#b45309);
+  --uat:   #7c3aed; --uat-l:#faf5ff;  --uat-m:#e9d5ff; --uat-g:linear-gradient(135deg,#a855f7,#7c3aed);
+  --glv:   #15803d; --glv-l:#f0fdf4;  --glv-m:#bbf7d0; --glv-g:linear-gradient(135deg,#22c55e,#15803d);
+  --pend:  #ea580c;
+
+  --sh-s: 0 1px 3px rgba(8,16,30,.06),0 1px 2px rgba(8,16,30,.04);
+  --sh-m: 0 4px 16px rgba(8,16,30,.08),0 1px 3px rgba(8,16,30,.04);
+  --sh-l: 0 12px 48px rgba(8,16,30,.12),0 4px 8px rgba(8,16,30,.06);
+  --r: 12px; --r2: 7px; --r3: 5px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body {
+  font-family:'Sora',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;
+  line-height:1.5;
+  min-height:100vh;
+}
+
+/* Background subtle pattern */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:radial-gradient(circle,rgba(37,99,235,.04) 1px,transparent 1px);
+  background-size:28px 28px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);
+  position:sticky;top:0;z-index:300;
+  box-shadow:0 2px 20px rgba(0,0,0,.35);
+}
+
+.topbar-inner {
+  display:flex;align-items:center;
+  justify-content:space-between;
+  padding:0 28px;height:58px;
+  max-width:1700px;margin:0 auto;
+}
+
+.brand {
+  display:flex;align-items:center;gap:14px;
+}
+
+.creator-badge {
+  display:flex;align-items:center;gap:6px;
+  margin-left:14px;padding:5px 13px;
+  background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.20);
+  border-radius:20px;
+  white-space:nowrap;
+}
+.creator-label {
+  font-size:10px;color:rgba(255,255,255,.55);
+  letter-spacing:.4px;text-transform:uppercase;font-weight:500;
+}
+.creator-name {
+  font-size:12px;color:#fff;font-weight:800;letter-spacing:.2px;
+}
+
+.brand-icon {
+  width:36px;height:36px;
+  background:var(--it-g);
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  box-shadow:0 0 20px rgba(37,99,235,.4);
+  flex-shrink:0;
+}
+
+.brand-text { line-height:1.2; }
+.brand-name {
+  font-size:15px;font-weight:800;
+  color:#fff;letter-spacing:-.2px;
+}
+.brand-tagline {
+  font-size:10px;
+  color:rgba(255,255,255,.4);
+  font-weight:400;letter-spacing:.3px;
+  margin-top:2px;
+}
+
+.topbar-actions {
+  display:flex;gap:10px;align-items:center;
+}
+
+.btn-upload {
+  height:34px;padding:0 16px;
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.1);
+  color:rgba(255,255,255,.9);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:var(--r2);
+  font-size:12px;font-weight:600;
+  cursor:pointer;font-family:'Sora',sans-serif;
+  transition:all .2s;letter-spacing:.1px;
+}
+.btn-upload:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);}
+
+.btn-export-all {
+  height:34px;padding:0 18px;
+  display:flex;align-items:center;gap:6px;
+  background:var(--it-g);
+  color:#fff;border:none;
+  border-radius:var(--r2);
+  font-size:12px;font-weight:700;
+  cursor:pointer;font-family:'Sora',sans-serif;
+  box-shadow:0 4px 14px rgba(37,99,235,.4);
+  transition:all .2s;letter-spacing:.1px;
+}
+.btn-export-all:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(37,99,235,.5);}
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  background:var(--surface);
+  border-bottom:2px solid var(--border);
+  position:sticky;top:58px;z-index:290;
+  box-shadow:var(--sh-s);
+}
+
+.filter-inner {
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:8px 28px;min-height:50px;
+  max-width:1700px;margin:0 auto;
+}
+
+.filter-label {
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted2);white-space:nowrap;
+}
+
+.date-pill {
+  display:flex;align-items:center;gap:8px;
+  background:var(--s2);
+  border:1.5px solid var(--border);
+  border-radius:20px;
+  padding:5px 14px;
+  transition:border-color .2s;
+}
+.date-pill:focus-within{border-color:var(--it);}
+
+.date-pill input[type=date] {
+  background:transparent;border:none;
+  color:var(--text);font-size:12px;
+  font-family:'Sora',sans-serif;
+  font-weight:500;outline:none;cursor:pointer;
+  width:120px;
+}
+.date-arrow {
+  color:var(--muted2);font-size:12px;font-weight:700;
+}
+
+.btn-apply {
+  height:32px;padding:0 18px;
+  background:var(--it-g);color:#fff;
+  border:none;border-radius:20px;
+  font-size:11px;font-weight:700;
+  cursor:pointer;font-family:'Sora',sans-serif;
+  box-shadow:0 3px 10px rgba(37,99,235,.35);
+  transition:all .2s;letter-spacing:.2px;
+}
+.btn-apply:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.45);}
+
+.btn-showall {
+  height:32px;padding:0 14px;
+  background:transparent;color:var(--muted);
+  border:1.5px solid var(--border);
+  border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;font-family:'Sora',sans-serif;
+  transition:all .2s;
+}
+.btn-showall:hover{color:var(--text);border-color:var(--border2);}
+
+.filter-info {
+  margin-left:auto;
+  background:linear-gradient(135deg,var(--it-l),#fff);
+  border:1.5px solid var(--it-m);
+  border-radius:20px;
+  padding:4px 14px;
+  font-size:11px;font-weight:600;
+  color:var(--it);
+  white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:500px;
+}
+
+/* .filter-search removed — replaced by .search-pill */
+
+/* Custom Filter Dropdowns */
+.cf-wrap { position:relative;display:inline-block; }
+.cf-btn {
+  display:flex;align-items:center;gap:5px;height:32px;padding:0 10px 0 12px;
+  background:var(--s2);border:1.5px solid var(--border);border-radius:20px;
+  font-size:11px;font-weight:700;color:var(--text2);font-family:'Sora',sans-serif;
+  cursor:pointer;white-space:nowrap;transition:all .18s;user-select:none;
+}
+.cf-btn:hover{border-color:var(--border2);}
+.cf-btn.active{background:var(--it-l);border-color:var(--it);color:var(--it);}
+.cf-btn .cf-arrow{font-size:8px;color:var(--muted2);transition:transform .18s;}
+.cf-btn.open .cf-arrow{transform:rotate(180deg);}
+.cf-badge{background:var(--it);color:#fff;border-radius:20px;font-size:9px;font-weight:800;padding:1px 5px;min-width:16px;text-align:center;}
+.cf-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.13);z-index:9999;min-width:210px;max-width:270px;overflow:hidden;}
+.cf-panel.open{display:block;}
+.cf-search-wrap{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);}
+.cf-search-wrap input{flex:1;border:none;outline:none;font-size:11px;font-family:'Sora',sans-serif;color:var(--text);background:transparent;}
+.cf-options{max-height:210px;overflow-y:auto;padding:4px 0;}
+.cf-options::-webkit-scrollbar{width:4px;}
+.cf-options::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+.cf-opt{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:600;color:var(--text2);transition:background .1s;}
+.cf-opt:hover{background:var(--s2);}
+.cf-opt.sel{background:var(--it-l);color:var(--it);}
+.cf-opt input[type=checkbox]{accent-color:var(--it);width:13px;height:13px;cursor:pointer;flex-shrink:0;}
+.cf-footer{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-top:1px solid var(--border);}
+.cf-count{font-size:10px;font-weight:700;color:var(--muted2);}
+.cf-clear{background:none;border:none;cursor:pointer;color:var(--sup);font-size:10px;font-weight:700;font-family:'Sora',sans-serif;}
+/* Search pill */
+.search-pill{display:flex;align-items:center;gap:6px;background:var(--s2);border:1.5px solid var(--border);border-radius:20px;padding:4px 12px;transition:border-color .2s;min-width:185px;}
+.search-pill:focus-within{border-color:var(--it);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+.srch-icon{color:var(--muted2);font-size:12px;flex-shrink:0;}
+.search-pill input{background:transparent;border:none;outline:none;color:var(--text);font-size:12px;font-family:'Sora',sans-serif;font-weight:500;width:130px;}
+.search-pill input::placeholder{color:var(--muted2);}
+.srch-clear{background:none;border:none;cursor:pointer;color:var(--muted2);font-size:13px;padding:0 2px;display:none;transition:color .15s;}
+.srch-clear.vis{display:block;}
+.srch-clear:hover{color:var(--sup);}
+/* Search banner */
+.search-banner{display:none;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-bottom:2px solid #fcd34d;padding:6px 28px;font-size:12px;font-weight:600;color:#92400e;align-items:center;gap:10px;}
+.search-banner.vis{display:flex;}
+.search-banner b{font-family:'JetBrains Mono',monospace;}
+.search-banner-close{margin-left:auto;background:#dc2626;color:#fff;border:none;border-radius:20px;padding:3px 12px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;}
+
+/* ── MAIN ── */
+.main {
+  padding:24px 28px;
+  max-width:1700px;margin:0 auto;
+  position:relative;z-index:1;
+}
+
+/* ── KPI STRIP ── */
+.kpi-strip {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:14px;
+}
+.kpi-row {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+@media(max-width:1200px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){.kpi-row{grid-template-columns:1fr;}}
+
+.kpi-row-label {
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:-2px;
+}
+.kpi-row-label-text {
+  font-size:9px;font-weight:800;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--muted2);
+  white-space:nowrap;
+}
+.kpi-row-label-line {
+  flex:1;height:1.5px;
+  background:linear-gradient(90deg,var(--border2),transparent);
+  border-radius:2px;
+}
+
+.kpi-card {
+  background:var(--surface);
+  border-radius:var(--r);
+  border:1.5px solid var(--border);
+  box-shadow:var(--sh-s);
+  overflow:hidden;
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+  cursor:default;position:relative;
+}
+.kpi-card:hover {
+  transform:translateY(-4px);
+  box-shadow:var(--sh-l);
+}
+
+/* Gradient top stripe - full bleed */
+.kpi-top {
+  height:5px;width:100%;
+}
+.c-it   .kpi-top { background:var(--it-g); box-shadow:0 2px 12px rgba(37,99,235,.3); }
+.c-ack  .kpi-top { background:var(--ack-g);box-shadow:0 2px 12px rgba(217,119,6,.3); }
+.c-ip   .kpi-top { background:var(--ip-g); box-shadow:0 2px 12px rgba(5,150,105,.3); }
+.c-live .kpi-top { background:var(--live-g);box-shadow:0 2px 12px rgba(124,58,237,.3);}
+.c-sup  .kpi-top { background:var(--glv-g); box-shadow:0 2px 12px rgba(21,128,61,.3); }
+.c-ret  .kpi-top { background:var(--ret-g); box-shadow:0 2px 12px rgba(8,145,178,.3); }
+.c-tst  .kpi-top { background:var(--tst-g); box-shadow:0 2px 12px rgba(180,83,9,.3); }
+.c-uat  .kpi-top { background:var(--uat-g); box-shadow:0 2px 12px rgba(124,58,237,.3); }
+.c-glv  .kpi-top { background:var(--glv-g); box-shadow:0 2px 12px rgba(21,128,61,.3); }
+
+.kpi-body { padding:10px 14px 8px; }
+
+.kpi-stage {
+  font-size:9px;font-weight:800;
+  text-transform:uppercase;letter-spacing:1.2px;
+  margin-bottom:5px;
+}
+.c-it   .kpi-stage { color:var(--it);   }
+.c-ack  .kpi-stage { color:var(--ack);  }
+.c-ip   .kpi-stage { color:var(--ip);   }
+.c-live .kpi-stage { color:var(--live); }
+.c-sup  .kpi-stage { color:var(--glv);  }
+.c-ret  .kpi-stage { color:var(--ret);  }
+.c-tst  .kpi-stage { color:var(--tst);  }
+.c-uat  .kpi-stage { color:var(--uat);  }
+.c-glv  .kpi-stage { color:var(--glv);  }
+
+.kpi-row1 { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+
+.kpi-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:30px;font-weight:700;
+  line-height:1;color:var(--text);
+  letter-spacing:-1.5px;
+}
+
+.pend-badge {
+  display:flex;align-items:center;gap:4px;
+  background:#fff4ed;
+  border:1.5px solid #fdbf9a;
+  border-radius:20px;
+  padding:4px 9px;
+  font-size:10px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+  color:var(--pend);
+  white-space:nowrap;
+}
+
+/* TAT track bars */
+.kpi-tat-wrap { margin-bottom:6px; }
+.tat-row {
+  display:flex;align-items:center;
+  justify-content:space-between;
+  gap:6px;margin-bottom:3px;
+}
+.tat-label {
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;
+  color:var(--muted);width:46px;flex-shrink:0;
+}
+.tat-track {
+  flex:1;height:4px;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:4px;overflow:hidden;
+}
+.tat-fill { height:100%;border-radius:4px;transition:width .8s ease; }
+.tat-fill.in  { background:linear-gradient(90deg,#10b981,#059669); }
+.tat-fill.out { background:linear-gradient(90deg,#f87171,#dc2626); }
+.tat-val {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;font-weight:600;
+  color:var(--text2);width:36px;text-align:right;flex-shrink:0;
+}
+
+.kpi-footer {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px;
+  background:var(--s2);
+  border-top:1px solid var(--border);
+}
+
+.kpi-link {
+  font-size:10px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:4px;
+  letter-spacing:.2px;transition:opacity .2s;
+}
+.kpi-link:hover{opacity:.7;}
+.c-it   .kpi-link { color:var(--it);   }
+.c-ack  .kpi-link { color:var(--ack);  }
+.c-ip   .kpi-link { color:var(--ip);   }
+.c-live .kpi-link { color:var(--live); }
+.c-sup  .kpi-link { color:var(--glv);  }
+
+.kpi-xls {
+  height:24px;padding:0 10px;
+  border-radius:20px;font-size:9px;font-weight:700;
+  cursor:pointer;border:1.5px solid;
+  font-family:'Sora',sans-serif;
+  background:transparent;
+  transition:all .2s;letter-spacing:.3px;
+}
+.kpi-xls:hover{opacity:.7;}
+.c-it   .kpi-xls { color:var(--it);   border-color:var(--it-m);   }
+.c-ack  .kpi-xls { color:var(--ack);  border-color:var(--ack-m);  }
+.c-ip   .kpi-xls { color:var(--ip);   border-color:var(--ip-m);   }
+.c-live .kpi-xls { color:var(--live); border-color:var(--live-m); }
+.c-sup  .kpi-xls { color:var(--glv);  border-color:var(--glv-m);  }
+.c-ret  .kpi-xls { color:var(--ret);  border-color:var(--ret-m);  }
+.c-tst  .kpi-xls { color:var(--tst);  border-color:var(--tst-m);  }
+.c-uat  .kpi-xls { color:var(--uat);  border-color:var(--uat-m);  }
+.c-glv  .kpi-xls { color:var(--glv);  border-color:var(--glv-m);  }
+
+/* ── SECTION ── */
+.grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px; }
+.grid-1 { margin-bottom:16px; }
+@media(max-width:960px){.grid-2{grid-template-columns:1fr;}}
+
+.section {
+  background:var(--surface);
+  border-radius:var(--r);
+  border:1.5px solid var(--border);
+  box-shadow:var(--sh-s);
+  overflow:hidden;
+}
+
+.sec-hdr {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;
+  background:linear-gradient(135deg,#fafbff 0%,var(--surface) 100%);
+  border-bottom:1.5px solid var(--border);
+}
+
+.sec-title-wrap { display:flex;align-items:center;gap:10px; }
+
+.sec-accent {
+  width:4px;height:28px;border-radius:4px;flex-shrink:0;
+}
+
+.sec-title {
+  font-size:11px;font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.8px;color:var(--text);
+}
+
+.sec-sub {
+  font-size:10px;font-weight:400;
+  text-transform:none;letter-spacing:0;
+  color:var(--muted);margin-top:1px;
+}
+
+/* ── TABLES ── */
+.tbl-wrap { overflow-x:auto; }
+
+table { width:100%;border-collapse:collapse;font-size:12px; }
+
+thead th {
+  padding:9px 14px;
+  font-size:9px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.9px;
+  color:var(--muted);text-align:left;
+  background:var(--s2);
+  border-bottom:1.5px solid var(--border);
+  white-space:nowrap;
+}
+thead th.r { text-align:right; }
+thead th.it-h   { color:var(--it);   }
+thead th.ack-h  { color:var(--ack);  }
+thead th.ip-h   { color:var(--ip);   }
+thead th.live-h { color:var(--live); }
+thead th.sup-h  { color:var(--sup);  }
+
+tbody tr { border-bottom:1px solid #f0f1f8; transition:background .1s; }
+tbody tr:nth-child(even) { background:#fafbfe; }
+tbody tr:last-child { border:none; }
+tbody tr:hover { background:#f0f4ff; }
+tbody tr.blank-row { background:#fbfbfb; }
+tbody tr.blank-row td { color:var(--muted2);font-style:italic; }
+tbody tr.total-row {
+  background:linear-gradient(135deg,#f0f4ff 0%,#f5f3ff 100%);
+  border-top:2px solid var(--border2);
+}
+tbody tr.total-row td { font-weight:700; }
+
+tbody td { padding:10px 14px; color:var(--text2); }
+tbody td.r { text-align:right; }
+
+/* Stage number styling */
+.n-it   { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--it);  font-size:13px; }
+.n-ack  { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ack); font-size:13px; }
+.n-ip   { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ip);  font-size:13px; }
+.n-live { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--live);font-size:13px; }
+.n-sup  { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--sup); font-size:13px; }
+.n-tot  { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);font-size:13px; }
+.n-muted{ font-family:'JetBrains Mono',monospace;color:var(--muted2);font-size:11px; }
+
+/* Rank badges */
+.rk {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:6px;
+  font-size:10px;font-weight:800;
+  font-family:'JetBrains Mono',monospace;
+}
+.rk.g { background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;box-shadow:0 1px 4px rgba(251,191,36,.3); }
+.rk.s { background:linear-gradient(135deg,#f1f5f9,#e2e8f0);color:#475569; }
+.rk.b { background:linear-gradient(135deg,#fdf4ff,#f3e8ff);color:#9d174d; }
+.rk.n { background:#f8fafc;color:#94a3b8; }
+
+/* Plan tags */
+.tag {
+  display:inline-block;padding:3px 9px;
+  border-radius:20px;font-size:10px;
+  font-weight:700;letter-spacing:.2px;
+  white-space:nowrap;
+}
+.tag-D { background:var(--it-l);  color:var(--it);  border:1px solid var(--it-m);  }
+.tag-E { background:var(--live-l);color:var(--live);border:1px solid var(--live-m);}
+.tag-P { background:var(--ip-l);  color:var(--ip);  border:1px solid var(--ip-m);  }
+.tag-G { background:var(--ack-l); color:var(--ack); border:1px solid var(--ack-m); }
+.tag-O { background:#f8fafc;      color:var(--muted);border:1px solid var(--border);}
+
+/* Mini bar */
+.bar-row { display:flex;align-items:center;gap:6px; }
+.bar-bg  { flex:1;height:4px;background:#eaecf5;border-radius:4px;overflow:hidden;min-width:40px; }
+.bar-fg  { height:100%;border-radius:4px;background:var(--it-g); }
+.pct-txt { font-size:9px;color:var(--muted);min-width:30px;font-family:'JetBrains Mono',monospace; }
+
+/* ── MODAL ── */
+.overlay {
+  display:none;position:fixed;inset:0;
+  background:rgba(8,16,30,.6);
+  backdrop-filter:blur(6px);
+  z-index:1000;
+  align-items:center;justify-content:center;padding:20px;
+}
+.overlay.open { display:flex; }
+
+.modal {
+  background:var(--surface);
+  border-radius:16px;
+  width:100%;max-width:940px;
+  max-height:88vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 24px 80px rgba(8,16,30,.25);
+  border:1.5px solid var(--border);
+  animation:rise .22s cubic-bezier(.34,1.4,.64,1);
+}
+@keyframes rise {
+  from{opacity:0;transform:translateY(16px) scale(.98);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+
+.modal-hdr {
+  padding:14px 20px;
+  border-bottom:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,#fafbff,var(--surface));
+  border-radius:16px 16px 0 0;
+}
+.modal-title { font-size:13px;font-weight:800;color:var(--text);letter-spacing:-.1px; }
+
+.modal-hdr-btns { display:flex;gap:8px; }
+
+.btn-mxls {
+  height:30px;padding:0 14px;
+  background:var(--it-g);color:#fff;
+  border:none;border-radius:20px;
+  font-size:11px;font-weight:700;
+  cursor:pointer;font-family:'Sora',sans-serif;
+  box-shadow:0 3px 10px rgba(37,99,235,.3);
+  display:flex;align-items:center;gap:5px;
+  transition:all .2s;
+}
+.btn-mxls:hover{transform:translateY(-1px);}
+
+.btn-mclose {
+  height:30px;padding:0 14px;
+  background:transparent;color:var(--muted);
+  border:1.5px solid var(--border);border-radius:20px;
+  font-size:11px;cursor:pointer;font-family:'Sora',sans-serif;
+  transition:all .2s;
+}
+.btn-mclose:hover{border-color:var(--border2);color:var(--text);}
+
+.modal-stats {
+  display:flex;gap:8px;flex-wrap:wrap;
+  padding:12px 20px;border-bottom:1.5px solid var(--border);
+  background:var(--s2);
+}
+.ms {
+  padding:5px 12px;border-radius:20px;
+  font-size:11px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+}
+.ms-total { background:var(--it-l);color:var(--it);border:1px solid var(--it-m); }
+.ms-pend  { background:#fff4ed;color:var(--pend);border:1px solid #fdbf9a; }
+.ms-in    { background:var(--ip-l);color:var(--ip);border:1px solid var(--ip-m); }
+.ms-out   { background:var(--sup-l);color:var(--sup);border:1px solid var(--sup-m); }
+.ms-na    { background:#f8fafc;color:var(--muted);border:1px solid var(--border); }
+
+.modal-body { overflow-y:auto;flex:1; }
+
+/* ── LOADER ── */
+.loader-overlay {
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(240,242,249,.88);
+  backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;
+}
+.loader-overlay.active { display:flex; }
+
+.loader-box {
+  background:var(--surface);
+  border-radius:20px;
+  padding:40px 52px;
+  text-align:center;
+  box-shadow:var(--sh-l);
+  border:1.5px solid var(--border);
+  min-width:280px;
+}
+
+.ldr-ring { width:60px;height:60px;margin:0 auto 20px; }
+.ldr-ring svg { width:60px;height:60px;animation:lspin 1.1s linear infinite; }
+.l-track { fill:none;stroke:var(--border2);stroke-width:4; }
+.l-arc   { fill:none;stroke:var(--it);stroke-width:4;stroke-linecap:round;
+           stroke-dasharray:140;stroke-dashoffset:0;
+           animation:larc 1.1s ease-in-out infinite; }
+@keyframes lspin { to{transform:rotate(360deg);} }
+@keyframes larc  { 0%{stroke-dashoffset:140;}50%{stroke-dashoffset:28;}100%{stroke-dashoffset:140;} }
+
+.ldr-title { font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px; }
+.ldr-msg   { font-size:11px;color:var(--muted);margin-bottom:16px; }
+.ldr-track { background:var(--s2);border-radius:20px;height:5px;overflow:hidden; }
+.ldr-fill  { height:100%;border-radius:20px;background:var(--it-g);width:0%;transition:width .3s ease; }
+.ldr-step  { font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px; }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed;bottom:22px;right:22px;
+  background:var(--navy);color:#fff;
+  padding:11px 18px;border-radius:10px;
+  font-size:12px;font-weight:600;
+  z-index:9999;opacity:0;
+  transform:translateY(10px);
+  transition:all .25s cubic-bezier(.34,1.4,.64,1);
+  box-shadow:var(--sh-l);border:1px solid rgba(255,255,255,.08);
+}
+.toast.show { opacity:1;transform:translateY(0); }
+
+/* ── DISPOSITION CENTER ── */
+.dc { text-align:center; }
+
+/* ── CHARTS ── */
+.charts-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-bottom:16px;
+}
+@media(max-width:960px){.charts-row{grid-template-columns:1fr;}}
+
+.chart-card {
+  background:var(--surface);
+  border-radius:var(--r);
+  border:1.5px solid var(--border);
+  box-shadow:var(--sh-s);
+  overflow:hidden;
+}
+
+.chart-body {
+  padding:16px 20px;
+  position:relative;
+  height:280px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.donut-center {
+  position:absolute;
+  text-align:center;
+  pointer-events:none;
+}
+.donut-center-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:22px;font-weight:700;color:var(--text);
+  line-height:1;
+}
+.donut-center-label {
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;
+  color:var(--muted);margin-top:3px;
+}
+
+/* Modal filter transition */
+.ms-btn { transition:all .18s; }
+
+/* KPI Month comparison row */
+.kpi-month-row {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:4px;
+  margin-top:6px; margin-bottom:0px;
+}
+.kpi-m-badge {
+  display:flex; flex-direction:column; align-items:center; text-align:center; gap:1px;
+  padding:5px 3px; border-radius:6px;
+  position:relative; overflow:hidden; min-width:0;
+}
+.kpi-m-badge::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:2px 2px 0 0;
+}
+.kpi-m-label {
+  font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.7px; white-space:nowrap;
+}
+.kpi-m-num {
+  font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:800; line-height:1.1;
+}
+.kpi-m-sublabel {
+  font-size:8px; font-weight:700; margin-top:1px; white-space:nowrap; letter-spacing:.2px;
+}
+/* Current month — blue */
+.kpi-m-cur  { background:#dbeafe; color:#1e40af; border:1.5px solid #93c5fd; }
+.kpi-m-cur::before  { background:#2563eb; }
+.kpi-m-cur .kpi-m-label { color:#1d4ed8; }
+.kpi-m-cur .kpi-m-sublabel { color:#3b82f6; }
+/* Previous month — amber */
+.kpi-m-prev { background:#fef3c7; color:#92400e; border:1.5px solid #fcd34d; }
+.kpi-m-prev::before { background:#d97706; }
+.kpi-m-prev .kpi-m-label { color:#b45309; }
+.kpi-m-prev .kpi-m-sublabel { color:#d97706; }
+/* Older — slate */
+.kpi-m-old  { background:#f1f5f9; color:#334155; border:1.5px solid #cbd5e1; }
+.kpi-m-old::before  { background:#64748b; }
+.kpi-m-old .kpi-m-label { color:#475569; }
+.kpi-m-old .kpi-m-sublabel { color:#64748b; }
+
+/* Grouped table headers (Tester/RM TAT breakdown) */
+.th-grp { text-align:center !important; border-left:1px solid var(--border); border-bottom:1px solid var(--border); }
+.th-sub { font-size:8px !important; padding-top:4px !important; padding-bottom:6px !important; }
+td.grp-l { border-left:1px solid var(--border); }
+
+/* Ticket detail modal (nested) */
+.ticket-detail-overlay {
+  position:fixed; inset:0; z-index:10000;
+  background:rgba(8,16,30,.65); backdrop-filter:blur(4px);
+  display:none; align-items:center; justify-content:center; padding:20px;
+}
+.ticket-detail-overlay.open { display:flex; }
+.ticket-detail-modal {
+  background:#fff; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.28);
+  width:100%; max-width:720px; max-height:82vh; overflow:hidden;
+  display:flex; flex-direction:column;
+  border:1.5px solid var(--border);
+}
+.tdm-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 18px; border-bottom:1.5px solid var(--border);
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);
+  flex-shrink:0;
+}
+.tdm-title {
+  font-size:13px; font-weight:800; color:#fff; letter-spacing:-.2px;
+  display:flex; align-items:center; gap:8px;
+}
+.tdm-ticket-id {
+  font-family:"JetBrains Mono",monospace; font-size:13px; font-weight:700;
+  color:#7dd3fc; letter-spacing:.5px;
+}
+.tdm-close {
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
+  color:#fff; border-radius:7px; padding:4px 11px; font-size:11px; font-weight:700;
+  cursor:pointer; font-family:"Sora",sans-serif; transition:all .2s;
+}
+.tdm-close:hover { background:rgba(255,255,255,.22); }
+.tdm-body { overflow-y:auto; padding:14px 16px; flex:1; }
+.tdm-section { margin-bottom:12px; }
+.tdm-section-title {
+  font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px;
+  color:var(--muted); margin-bottom:7px; padding-bottom:5px;
+  border-bottom:1.5px solid var(--border); display:flex; align-items:center; gap:6px;
+}
+.tdm-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.tdm-grid-3 { grid-template-columns:1fr 1fr 1fr; }
+.tdm-grid-4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+.tdm-field { background:var(--s2); border-radius:6px; padding:7px 10px; border:1px solid var(--border); }
+.tdm-field-label { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted2); margin-bottom:2px; }
+.tdm-field-value { font-size:12px; font-weight:600; color:var(--text); line-height:1.3; }
+.tdm-field-value.mono { font-family:"JetBrains Mono",monospace; color:var(--it); }
+.tdm-field-value.muted { color:var(--muted); font-weight:400; font-size:11px; }
+.tdm-desc-box {
+  background:var(--s2); border:1px solid var(--border); border-radius:6px;
+  padding:8px 10px; font-size:12px; color:var(--text2); line-height:1.6;
+  min-height:40px;
+}
+.tdm-desc-box.empty { color:var(--muted2); font-style:italic; font-size:11px; }
+
+/* clickable row in modal table */
+#modalTable tbody tr { cursor:pointer; }
+#modalTable tbody tr:hover { background:#e8f0fe !important; }
+
+/* ── TICKET TIMELINE ── */
+.tdm-timeline { position:relative; padding:4px 0 4px 0; }
+.tdm-timeline-track {
+  position:absolute; left:20px; top:0; bottom:0;
+  width:2px; background:var(--border2); border-radius:2px;
+}
+.tdm-tl-item {
+  position:relative; padding-left:52px; margin-bottom:14px;
+}
+.tdm-tl-item:last-child { margin-bottom:0; }
+.tdm-tl-dot {
+  position:absolute; left:12px; top:3px;
+  width:18px; height:18px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:800; border:2.5px solid #fff;
+  box-shadow:0 1px 6px rgba(0,0,0,.15); z-index:1;
+}
+.tdm-tl-dot.active { width:20px; height:20px; left:11px; top:2px; }
+.tdm-tl-content {
+  background:var(--s2); border:1px solid var(--border);
+  border-radius:8px; padding:8px 12px; position:relative;
+}
+.tdm-tl-content.active-stage {
+  border-color:var(--it); background:#eff6ff;
+  box-shadow:0 2px 10px rgba(37,99,235,.12);
+}
+.tdm-tl-stage {
+  font-size:9px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.9px; margin-bottom:3px;
+}
+.tdm-tl-date {
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px; font-weight:600; color:var(--text);
+}
+.tdm-tl-meta {
+  font-size:10px; color:var(--muted); margin-top:3px;
+  display:flex; gap:10px; flex-wrap:wrap;
+}
+.tdm-tl-tat-badge {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:1px 7px; border-radius:20px; font-size:9px; font-weight:700;
+}
+.tdm-tl-tat-badge.in  { background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; }
+.tdm-tl-tat-badge.out { background:#fee2e2; color:#dc2626; border:1px solid #fecaca; }
+.tdm-tl-pending-chip {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:1px 7px; border-radius:20px; font-size:9px; font-weight:700;
+  background:#fff4ed; color:#ea580c; border:1px solid #fdbf9a;
+}
+
+/* ── UPCOMING DEADLINES KPI ── */
+.upcoming-kpi {
+  background:var(--surface);
+  border-radius:var(--r);
+  border:2px solid #fde68a;
+  box-shadow:var(--sh-s), 0 0 0 0 rgba(251,191,36,0);
+  overflow:hidden;
+  margin-bottom:20px;
+  animation:upcomingPulse 3s ease-in-out infinite;
+}
+@keyframes upcomingPulse {
+  0%,100% { box-shadow:var(--sh-s), 0 0 0 0 rgba(251,191,36,0); }
+  50%      { box-shadow:var(--sh-m), 0 0 0 4px rgba(251,191,36,.12); }
+}
+.upcoming-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 18px;
+  background:linear-gradient(135deg,#fffbeb 0%,#fef9c3 100%);
+  border-bottom:1.5px solid #fde68a;
+}
+.upcoming-title {
+  font-size:11px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.8px; color:#92400e;
+  display:flex; align-items:center; gap:8px;
+}
+.upcoming-subtitle { font-size:10px; font-weight:400; text-transform:none; letter-spacing:0; color:#b45309; margin-top:1px; }
+.upcoming-count-badge {
+  background:#dc2626; color:#fff;
+  border-radius:20px; padding:3px 11px;
+  font-size:11px; font-weight:800;
+  font-family:'JetBrains Mono',monospace;
+  box-shadow:0 2px 8px rgba(220,38,38,.3);
+}
+.upcoming-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:10px;
+  padding:14px 16px;
+}
+.upcoming-card {
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  cursor:pointer;
+  transition:all .2s;
+  position:relative;
+  overflow:hidden;
+}
+.upcoming-card::before {
+  content:'';
+  position:absolute; left:0; top:0; bottom:0;
+  width:4px; border-radius:4px 0 0 4px;
+}
+.upcoming-card:hover { transform:translateY(-2px); box-shadow:var(--sh-m); border-color:var(--it-m); }
+.upcoming-card.days-0,.upcoming-card.days-1 { border-color:#fca5a5; }
+.upcoming-card.days-0::before,.upcoming-card.days-1::before { background:#dc2626; }
+.upcoming-card.days-2,.upcoming-card.days-3 { border-color:#fdba74; }
+.upcoming-card.days-2::before,.upcoming-card.days-3::before { background:#ea580c; }
+.upcoming-card.days-4,.upcoming-card.days-5 { border-color:#fde68a; }
+.upcoming-card.days-4::before,.upcoming-card.days-5::before { background:#d97706; }
+.uc-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.uc-ticket { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--it); }
+.uc-days-badge {
+  font-size:9px; font-weight:800; padding:2px 8px;
+  border-radius:20px; text-transform:uppercase; letter-spacing:.5px;
+}
+.days-0 .uc-days-badge,.days-1 .uc-days-badge { background:#fee2e2; color:#dc2626; border:1px solid #fecaca; }
+.days-2 .uc-days-badge,.days-3 .uc-days-badge { background:#ffedd5; color:#ea580c; border:1px solid #fdba74; }
+.days-4 .uc-days-badge,.days-5 .uc-days-badge { background:#fef9c3; color:#92400e; border:1px solid #fde68a; }
+.uc-client { font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; line-height:1.3; }
+.uc-desc { font-size:10px; color:var(--muted2); line-height:1.4; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.uc-footer { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.uc-tag {
+  font-size:9px; font-weight:700; padding:1px 7px;
+  border-radius:20px; display:flex; align-items:center; gap:3px;
+}
+.uc-tag.stage { background:#eff6ff; color:var(--it); border:1px solid var(--it-m); }
+.uc-tag.tester { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+.uc-tag.rm { background:#faf5ff; color:#7c3aed; border:1px solid #e9d5ff; }
+.uc-timeline-date { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:#92400e; margin-left:auto; }
+.upcoming-card.closed-it { background:linear-gradient(135deg,#f0fdf4,#dcfce7) !important; border-color:#86efac !important; }
+.upcoming-card.closed-it::before { background:#16a34a !important; }
+.upcoming-card.closed-it .uc-ticket { color:#15803d !important; }
+.upcoming-card.closed-it .uc-client { color:#166534 !important; }
+.upcoming-card.closed-it .uc-days-badge { background:#dcfce7 !important; color:#16a34a !important; border-color:#86efac !important; }
+.upcoming-empty {
+  text-align:center; padding:32px; color:var(--muted);
+  font-size:13px; display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+</style>
+</head>
+<body>
+
+<!-- ████ TOP BAR ████ -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <div class="brand-text">
+        <div class="brand-name">MARG · IT Operations Dashboard</div>
+        <div class="brand-tagline">Transfer to IT &nbsp;·&nbsp; Acknowledge &nbsp;·&nbsp; In Progress &nbsp;·&nbsp; Go Live &nbsp;·&nbsp; Support</div>
+      </div>
+      <div class="creator-badge" title="Dashboard creator">
+        <span class="creator-label">Created by</span>
+        <span class="creator-name">Ajay Rai</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div id="fetchTimeBadge" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,.13);
+        border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:5px 13px;font-size:11px;
+        font-family:'JetBrains Mono',monospace;color:#fff;letter-spacing:.2px;white-space:nowrap;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;
+          flex-shrink:0;box-shadow:0 0 6px #4ade80;"></span>
+        <span id="fetchTimeBadgeText">Data loaded</span>
+      </div>
+      <button class="btn-upload" id="btnRefresh" onclick="backgroundFetch()" title="Reload data from API">
+        ↺ Refresh Data
+      </button>
+      <button class="btn-export-all" onclick="exportExcel()">↓ Export All</button>
+    </div>
+  </div>
+</header>
+
+<!-- ████ FILTER BAR ████ -->
+<div class="filter-bar">
+  <div class="filter-inner">
+    <div class="search-pill">
+      <span class="srch-icon">&#128269;</span>
+      <input type="text" id="ticketSearch" placeholder="Search Ticket No&#8230;" autocomplete="off"
+        oninput="onSearchInput(this.value)" onkeydown="if(event.key==='Enter')doTicketSearch()">
+      <button class="srch-clear" id="srchClear" onclick="clearSearch()" title="Clear">&#10005;</button>
+    </div>
+    <span class="filter-label" style="margin-left:4px">Date</span>
+    <div class="date-pill">
+      <input type="date" id="dateFrom">
+      <span class="date-arrow">&#8594;</span>
+      <input type="date" id="dateTo">
+    </div>
+    <button class="btn-apply" id="btnApply" onclick="applyFilter()">Apply</button>
+    <div class="cf-wrap">
+      <div class="cf-btn" id="cfBtn_tester" onclick="toggleCF('tester')">&#128100; Tester <span class="cf-badge" id="cfBadge_tester" style="display:none"></span><span class="cf-arrow">&#9660;</span></div>
+      <div class="cf-panel" id="cfPanel_tester"><div class="cf-search-wrap">&#128269; <input type="text" placeholder="Search&#8230;" oninput="filterCFOpts('tester',this.value)"></div><div class="cf-options" id="cfOpts_tester"></div><div class="cf-footer"><span class="cf-count" id="cfCount_tester">0 selected</span><button class="cf-clear" onclick="clearCF('tester')">Clear all</button></div></div>
+    </div>
+    <div class="cf-wrap">
+      <div class="cf-btn" id="cfBtn_rm" onclick="toggleCF('rm')">&#128084; RM <span class="cf-badge" id="cfBadge_rm" style="display:none"></span><span class="cf-arrow">&#9660;</span></div>
+      <div class="cf-panel" id="cfPanel_rm"><div class="cf-search-wrap">&#128269; <input type="text" placeholder="Search&#8230;" oninput="filterCFOpts('rm',this.value)"></div><div class="cf-options" id="cfOpts_rm"></div><div class="cf-footer"><span class="cf-count" id="cfCount_rm">0 selected</span><button class="cf-clear" onclick="clearCF('rm')">Clear all</button></div></div>
+    </div>
+    <div class="cf-wrap">
+      <div class="cf-btn" id="cfBtn_dev" onclick="toggleCF('dev')">&#128187; Dev <span class="cf-badge" id="cfBadge_dev" style="display:none"></span><span class="cf-arrow">&#9660;</span></div>
+      <div class="cf-panel" id="cfPanel_dev"><div class="cf-search-wrap">&#128269; <input type="text" placeholder="Search&#8230;" oninput="filterCFOpts('dev',this.value)"></div><div class="cf-options" id="cfOpts_dev"></div><div class="cf-footer"><span class="cf-count" id="cfCount_dev">0 selected</span><button class="cf-clear" onclick="clearCF('dev')">Clear all</button></div></div>
+    </div>
+    <div class="cf-wrap">
+      <div class="cf-btn" id="cfBtn_status" onclick="toggleCF('status')">&#128278; Status <span class="cf-badge" id="cfBadge_status" style="display:none"></span><span class="cf-arrow">&#9660;</span></div>
+      <div class="cf-panel" id="cfPanel_status"><div class="cf-search-wrap">&#128269; <input type="text" placeholder="Search&#8230;" oninput="filterCFOpts('status',this.value)"></div><div class="cf-options" id="cfOpts_status"></div><div class="cf-footer"><span class="cf-count" id="cfCount_status">0 selected</span><button class="cf-clear" onclick="clearCF('status')">Clear all</button></div></div>
+    </div>
+    <button class="btn-showall" id="btnClearAll" onclick="clearExtraFilters()" style="display:none">&#10005; Clear All</button>
+    <span class="filter-info" id="fInfo">Initialising&#8230;</span>
+  </div>
+</div>
+<div class="search-banner" id="searchBanner">
+  &#128269; Ticket: <b id="bannerTicket">&#8212;</b>
+  <span style="font-size:11px;color:#b45309;font-weight:500">&#183; Dashboard filtered to this ticket only</span>
+  <button class="search-banner-close" onclick="clearSearch()">&#10005; Clear</button>
+</div>
+<select id="testerFilter" multiple style="display:none"></select>
+<select id="rmFilter" multiple style="display:none"></select>
+<select id="developerFilter" multiple style="display:none"></select>
+<select id="statusFilter" multiple style="display:none"></select>
+
+<!-- ████ MAIN ████ -->
+<main class="main">
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip" id="kpiRow"></div>
+
+  <!-- UPCOMING DEADLINES KPI -->
+  <div class="upcoming-kpi" id="upcomingKPI">
+    <div class="upcoming-hdr">
+      <div>
+        <div class="upcoming-title">⏰ Upcoming Timeline Deadlines
+          <span style="font-size:9px;font-weight:500;text-transform:none;letter-spacing:0;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:20px;padding:2px 9px" id="upcomingDateRange"></span>
+        </div>
+        <div class="upcoming-subtitle">Tickets whose stage deadline falls within next 7 days — click to view full details</div>
+      </div>
+      <span class="upcoming-count-badge" id="upcomingCount">0</span>
+    </div>
+    <div class="upcoming-grid" id="upcomingGrid">
+      <div class="upcoming-empty">
+        <span style="font-size:32px">🗓️</span>
+        <span>Loading upcoming deadlines…</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="charts-row" id="chartsRow">
+    <div class="chart-card">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--it),var(--live))"></div>
+          <div>
+            <div class="sec-title">Stage Volume Distribution</div>
+            <div class="sec-sub">Ticket count across all 5 stages</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px 20px 16px;height:290px;position:relative;">
+        <canvas id="chartDonut"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--ip),var(--sup))"></div>
+          <div>
+            <div class="sec-title">InTAT vs OutTAT — Per Stage</div>
+            <div class="sec-sub">Performance against SLA targets</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px 20px 16px;height:290px;position:relative;">
+        <canvas id="chartBar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACK DISPOSITION -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--it),var(--ack))"></div>
+          <div>
+            <div class="sec-title">Acknowledgement Disposition</div>
+            <div class="sec-sub">Stage-wise breakdown by ticket type</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tDisp">
+          <thead>
+            <tr>
+              <th>Disposition Type</th>
+              <th class="r it-h">Transfer to IT</th>
+              <th class="r ack-h">Acknowledge</th>
+              <th class="r ip-h">In Progress</th>
+              <th class="r live-h">Go Live</th>
+              <th class="r sup-h">Close by IT</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KEY LICENCES -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--ip),var(--live))"></div>
+          <div>
+            <div class="sec-title">Key Licences — Bug / Development Breakdown</div>
+            <div class="sec-sub">Stage-wise breakdown for Implementation, International &amp; Margbooks Sales</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tLic">
+          <thead>
+            <tr>
+              <th rowspan="2">Licence</th>
+              <th class="r it-h" rowspan="2">Transfer to IT</th>
+              <th class="r ack-h" rowspan="2">Acknowledge</th>
+              <th class="r ip-h" rowspan="2">In Progress</th>
+              <th class="r live-h" rowspan="2">Ready to Go Live</th>
+              <th class="r sup-h" rowspan="2">Close by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+            </tr>
+            <tr>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TESTER -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:var(--it-g)"></div>
+          <div>
+            <div class="sec-title">TransferTo (Tester) Wise</div>
+            <div class="sec-sub">Stage-wise ticket count per agent</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <div id="cw_chartTester" style="display:none;padding:12px 16px 16px;border-bottom:1px solid var(--border);background:var(--s2);">
+        <div style="position:relative;height:260px;">
+          <canvas id="chartTester"></canvas>
+        </div>
+      </div>
+      <table id="tTester">
+          <thead>
+            <tr>
+              <th style="width:30px" rowspan="2">#</th>
+              <th rowspan="2">Tester / Agent</th>
+              <th colspan="3" class="th-grp ack-h">Acknowledge</th>
+              <th colspan="3" class="th-grp ip-h">In Progress</th>
+              <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
+              <th colspan="3" class="th-grp sup-h">Close by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+            </tr>
+            <tr>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RM -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:var(--ack-g)"></div>
+          <div>
+            <div class="sec-title">RM Wise Count</div>
+            <div class="sec-sub">Stage-wise ticket count per Reporting Manager</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <div id="cw_chartRM" style="display:none;padding:12px 16px 16px;border-bottom:1px solid var(--border);background:var(--s2);">
+        <div style="position:relative;height:200px;">
+          <canvas id="chartRM"></canvas>
+        </div>
+      </div>
+      <table id="tRM">
+          <thead>
+            <tr>
+              <th style="width:30px" rowspan="2">#</th>
+              <th rowspan="2">Reporting Manager</th>
+              <th colspan="3" class="th-grp ack-h">Acknowledge</th>
+              <th colspan="3" class="th-grp ip-h">In Progress</th>
+              <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
+              <th colspan="3" class="th-grp sup-h">Close by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+            </tr>
+            <tr>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP 10 CLIENTS -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:var(--live-g)"></div>
+          <div>
+            <div class="sec-title">Top 10 Clients — Max Transfer to IT</div>
+            <div class="sec-sub">Stage-wise ticket count per client</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <div id="cw_chartClients" style="display:none;padding:12px 16px 16px;border-bottom:1px solid var(--border);background:var(--s2);">
+        <div style="position:relative;height:280px;">
+          <canvas id="chartClients"></canvas>
+        </div>
+      </div>
+      <table id="tClients">
+          <thead>
+            <tr>
+              <th style="width:30px" rowspan="2">#</th>
+              <th rowspan="2">Client Name</th>
+              <th rowspan="2">Plan</th>
+              <th class="r it-h" rowspan="2">Transfer to IT</th>
+              <th class="r ack-h" rowspan="2">Acknowledge</th>
+              <th class="r ip-h" rowspan="2">In Progress</th>
+              <th class="r live-h" rowspan="2">Go Live</th>
+              <th class="r sup-h" rowspan="2">Close by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+            </tr>
+            <tr>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN WISE -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:var(--ip-g)"></div>
+          <div>
+            <div class="sec-title">Plan Wise Transfer Count</div>
+            <div class="sec-sub">Stage-wise by subscription plan</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <div id="cw_chartPlan" style="display:none;padding:12px 16px 16px;border-bottom:1px solid var(--border);background:var(--s2);">
+        <div style="position:relative;height:200px;">
+          <canvas id="chartPlan"></canvas>
+        </div>
+      </div>
+      <table id="tPlan">
+          <thead>
+            <tr>
+              <th style="width:30px" rowspan="2">#</th>
+              <th rowspan="2">Subscription Plan</th>
+              <th class="r it-h" rowspan="2">Transfer to IT</th>
+              <th class="r ack-h" rowspan="2">Acknowledge</th>
+              <th class="r ip-h" rowspan="2">In Progress</th>
+              <th class="r live-h" rowspan="2">Go Live</th>
+              <th class="r sup-h" rowspan="2">Close by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th rowspan="2">Distribution</th>
+            </tr>
+            <tr>
+              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ████ MODAL ████ -->
+<div class="overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modalTitle">Ticket Details</div>
+      <div class="modal-hdr-btns">
+        <button class="btn-mxls" onclick="exportModalExcel()">↓ Export Excel</button>
+        <button class="btn-mclose" onclick="closeModalDirect()">✕ Close</button>
+      </div>
+    </div>
+    <div class="modal-stats" id="modalStats"></div>
+    <div class="modal-body tbl-wrap">
+      <table id="modalTable">
+        <thead>
+          <tr>
+            <th>Ticket No</th><th>Created</th><th>Client</th>
+            <th>Plan</th><th>Stage Date</th><th>Status</th>
+            <th>SLA</th><th>Duration</th><th>TAT</th>
+            <th>Disposition</th><th>Tester</th><th>RM</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ████ TICKET DETAIL MODAL ████ -->
+<div class="ticket-detail-overlay" id="ticketDetailOverlay" onclick="closeTicketDetail(event)">
+  <div class="ticket-detail-modal">
+    <div class="tdm-hdr">
+      <div class="tdm-title">
+        <span>📋 CUSTOMER TICKET DETAILS</span>
+        <span class="tdm-ticket-id" id="tdmTicketId"></span>
+      </div>
+      <button class="tdm-close" onclick="closeTicketDetailDirect()">✕ Close</button>
+    </div>
+    <div class="tdm-body" id="tdmBody">
+    </div>
+  </div>
+</div>
+
+<!-- ████ LOADER ████ -->
+<div class="loader-overlay" id="loaderOverlay">
+  <div class="loader-box">
+    <div class="ldr-ring">
+      <svg viewBox="0 0 60 60">
+        <circle class="l-track" cx="30" cy="30" r="24"/>
+        <circle class="l-arc" cx="30" cy="30" r="24" transform="rotate(-90 30 30)"/>
+      </svg>
+    </div>
+    <div class="ldr-title" id="loaderTitle">Loading Data…</div>
+    <div class="ldr-msg" id="loaderMsg">Connecting to server…</div>
+    <div class="ldr-track"><div class="ldr-fill" id="loaderBar"></div></div>
+    <div class="ldr-step" id="loaderStep">Initialising</div>
+    <div id="loaderTimer" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--it);letter-spacing:-1px;">0s</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+// ===== DATA PLACEHOLDER =====
+let RAW = [];
+
+// ===== STATE =====
+let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[];
+let VIEW = [];
+let currentFrom='', currentTo='';
+const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+
+// ===== UTILS =====
+const fmt = n => n.toLocaleString('en-IN');
+function inRange(d, from, to){
+  if(!d) return false;
+  if(from && d < from) return false;
+  if(to && d > to) return false;
+  return true;
+}
+function countByKey(arr, key){
+  const m={};
+  arr.forEach(r=>{ const v=r[key]; if(v) m[v]=(m[v]||0)+1; });
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+}
+function selectedValues(id){
+  const el = document.getElementById(id);
+  return el ? [...el.selectedOptions].map(o=>o.value).filter(Boolean) : [];
+}
+function setSelectOptions(id, values, labelFn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const keep = new Set(selectedValues(id));
+  el.innerHTML = values.map(v=>{
+    const label = labelFn ? labelFn(v) : v;
+    const selected = keep.has(v) ? ' selected' : '';
+    return `<option value="${String(v).replace(/"/g,'&quot;')}"${selected}>${label}</option>`;
+  }).join('');
+}
+function refreshFilterOptions(){
+  const clean = v => v && String(v).trim();
+  const uniq  = arr => [...new Set(arr.filter(clean).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
+  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  CF_ALL.tester = uniq(RAW.flatMap(r=>[r.t,r.ta,r.ti,r.ts,r.eb]));
+  CF_ALL.rm     = uniq(RAW.map(r=>r.r));
+  CF_ALL.dev    = uniq(RAW.map(r=>r.dev));
+  CF_ALL.status = uniq(RAW.map(r=>r.sc));
+  buildCFOptions('tester', CF_ALL.tester, v=>v);
+  buildCFOptions('rm',     CF_ALL.rm,     v=>v);
+  buildCFOptions('dev',    CF_ALL.dev,    v=>v);
+  buildCFOptions('status', CF_ALL.status, v=>SL[v]||v);
+  // Sync hidden selects
+  const MAP = {tester:'testerFilter',rm:'rmFilter',dev:'developerFilter',status:'statusFilter'};
+  Object.entries(CF_ALL).forEach(([key,vals])=>{
+    const sel=document.getElementById(MAP[key]);
+    if(sel) sel.innerHTML = vals.map(v=>`<option value="${v}">${key==='status'?(SL[v]||v):v}</option>`).join('');
+  });
+}
+
+// ── CF State & Logic ──
+const CF_STATE = {tester:new Set(),rm:new Set(),dev:new Set(),status:new Set()};
+const CF_ALL   = {tester:[],rm:[],dev:[],status:[]};
+
+function buildCFOptions(key, vals, labelFn){
+  const el = document.getElementById('cfOpts_'+key);
+  if(!el) return;
+  el.innerHTML = vals.map(v=>`<label class="cf-opt${CF_STATE[key].has(v)?' sel':''}" data-val="${CSS.escape(v)}"><input type="checkbox" ${CF_STATE[key].has(v)?'checked':''} onchange="toggleCFVal('${key}','${v.replace(/'/g,"\'")}',this.checked)">${labelFn(v)}</label>`).join('');
+  updateCFBadge(key);
+}
+function filterCFOpts(key,q){
+  q=q.toLowerCase();
+  document.querySelectorAll(`#cfOpts_${key} .cf-opt`).forEach(o=>{
+    o.style.display=o.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+function toggleCF(key){
+  const panel=document.getElementById('cfPanel_'+key);
+  const btn=document.getElementById('cfBtn_'+key);
+  const wasOpen=panel.classList.contains('open');
+  document.querySelectorAll('.cf-panel.open').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.cf-btn.open').forEach(b=>b.classList.remove('open'));
+  if(!wasOpen){panel.classList.add('open');btn.classList.add('open');}
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.cf-wrap')){
+    document.querySelectorAll('.cf-panel.open').forEach(p=>p.classList.remove('open'));
+    document.querySelectorAll('.cf-btn.open').forEach(b=>b.classList.remove('open'));
+  }
+});
+function toggleCFVal(key,val,checked){
+  if(checked) CF_STATE[key].add(val); else CF_STATE[key].delete(val);
+  const MAP={tester:'testerFilter',rm:'rmFilter',dev:'developerFilter',status:'statusFilter'};
+  const sel=document.getElementById(MAP[key]);
+  if(sel)[...sel.options].forEach(o=>o.selected=CF_STATE[key].has(o.value));
+  const opt=document.querySelector(`#cfOpts_${key} [data-val="${CSS.escape(val)}"]`);
+  if(opt) opt.classList.toggle('sel',checked);
+  updateCFBadge(key);
+  applyFilter();
+}
+function updateCFBadge(key){
+  const n=CF_STATE[key].size;
+  const badge=document.getElementById('cfBadge_'+key);
+  const btn=document.getElementById('cfBtn_'+key);
+  const count=document.getElementById('cfCount_'+key);
+  if(badge){badge.textContent=n;badge.style.display=n?'':'none';}
+  if(btn) btn.classList.toggle('active',n>0);
+  if(count) count.textContent=n?`${n} selected`:'0 selected';
+  const anyActive=Object.values(CF_STATE).some(s=>s.size>0);
+  const clr=document.getElementById('btnClearAll');
+  if(clr) clr.style.display=anyActive?'':'none';
+}
+function clearCF(key){
+  CF_STATE[key].clear();
+  const MAP={tester:'testerFilter',rm:'rmFilter',dev:'developerFilter',status:'statusFilter'};
+  const sel=document.getElementById(MAP[key]);
+  if(sel)[...sel.options].forEach(o=>o.selected=false);
+  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  buildCFOptions(key, CF_ALL[key], v=>key==='status'?(SL[v]||v):v);
+  updateCFBadge(key);
+  applyFilter();
+}
+// Ticket Search
+function onSearchInput(val){
+  document.getElementById('srchClear').classList.toggle('vis',val.trim().length>0);
+}
+function doTicketSearch(){
+  const raw=(document.getElementById('ticketSearch').value||'').trim();
+  if(!raw){clearSearch();return;}
+  const q=raw.replace(/[\s\-]/g,'').toUpperCase();
+  const found=RAW.find(r=>r.n&&r.n.replace(/[\s\-]/g,'').toUpperCase().includes(q));
+  if(!found){showToast('Ticket "'+raw+'" not found');return;}
+  document.getElementById('ticketSearch').value=found.n;
+  document.getElementById('bannerTicket').textContent=found.n;
+  document.getElementById('searchBanner').classList.add('vis');
+  applyFilter();
+}
+function clearSearch(){
+  document.getElementById('ticketSearch').value='';
+  document.getElementById('srchClear').classList.remove('vis');
+  document.getElementById('searchBanner').classList.remove('vis');
+  applyFilter();
+}
+
+function matchAny(values, fields){
+  if(!values.length) return true;
+  return values.some(v=>fields.some(f=>String(f||'').trim()===v));
+}
+function getGlobalFilteredRows(){
+  const ticket = (document.getElementById('ticketSearch')?.value || '').trim();
+  const testers  = [...(CF_STATE.tester  || new Set())];
+  const rms      = [...(CF_STATE.rm      || new Set())];
+  const devs     = [...(CF_STATE.dev     || new Set())];
+  const statuses = [...(CF_STATE.status  || new Set())];
+  return RAW.filter(r=>{
+    if(ticket){
+      const q=ticket.replace(/[\s\-]/g,'').toUpperCase();
+      if(!String(r.n||'').replace(/[\s\-]/g,'').toUpperCase().includes(q)) return false;
+    }
+    return matchAny(testers,[r.t,r.ta,r.ti,r.ts,r.eb])
+        && matchAny(rms,[r.r])
+        && matchAny(devs,[r.dev])
+        && (!statuses.length||statuses.includes(r.sc));
+  });
+}
+function activeFilterSummary(){
+  const parts=[];
+  const ticket=(document.getElementById('ticketSearch')?.value||'').trim();
+  if(ticket) parts.push(`Ticket: ${ticket}`);
+  if(CF_STATE.tester.size)  parts.push(`Tester: ${CF_STATE.tester.size}`);
+  if(CF_STATE.rm.size)      parts.push(`RM: ${CF_STATE.rm.size}`);
+  if(CF_STATE.dev.size)     parts.push(`Dev: ${CF_STATE.dev.size}`);
+  if(CF_STATE.status.size)  parts.push(`Status: ${CF_STATE.status.size}`);
+  return parts.length ? ` | ${parts.join(' · ')}` : '';
+}
+function clearExtraFilters(){
+  // Reset CF state
+  Object.keys(CF_STATE).forEach(key=>{
+    CF_STATE[key].clear();
+    updateCFBadge(key);
+    buildCFOptions(key, CF_ALL[key], v=>{
+      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+      return key==='status'?(SL[v]||v):v;
+    });
+  });
+  // Reset hidden selects + search
+  ['ticketSearch','testerFilter','rmFilter','developerFilter','statusFilter'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    if(el.tagName==='SELECT') [...el.options].forEach(o=>o.selected=false);
+    else el.value='';
+  });
+  document.getElementById('srchClear')?.classList.remove('vis');
+  document.getElementById('searchBanner')?.classList.remove('vis');
+  document.getElementById('btnClearAll').style.display='none';
+  applyFilter();
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ===== LOADER CONTROLS =====
+function showLoader(msg, pct, step){
+  document.getElementById('loaderOverlay').classList.add('active');
+  document.getElementById('loaderMsg').textContent  = msg  || 'Processing…';
+  document.getElementById('loaderBar').style.width  = (pct||0) + '%';
+  document.getElementById('loaderStep').textContent = step || '';
+}
+function updateLoader(msg, pct, step){
+  document.getElementById('loaderMsg').textContent  = msg;
+  document.getElementById('loaderBar').style.width  = pct + '%';
+  if(step) document.getElementById('loaderStep').textContent = step;
+}
+function hideLoader(){
+  document.getElementById('loaderBar').style.width = '100%';
+  setTimeout(()=>{
+    document.getElementById('loaderOverlay').classList.remove('active');
+    document.getElementById('loaderBar').style.width = '0%';
+  }, 400);
+}
+function planTag(p){
+  if(!p) return `<span class="tag tag-O">—</span>`;
+  if(p.includes('Diamond')) return `<span class="tag tag-D">${p}</span>`;
+  if(p.includes('Enterprise')) return `<span class="tag tag-E">${p}</span>`;
+  if(p.includes('Platinum')) return `<span class="tag tag-P">${p}</span>`;
+  if(p.includes('Gold')) return `<span class="tag tag-G">${p}</span>`;
+  return `<span class="tag tag-O">${p}</span>`;
+}
+function rkHtml(i){
+  const cls = i===0?'g':i===1?'s':i===2?'b':'n';
+  return `<span class="rk ${cls}">${i+1}</span>`;
+}
+function barHtml(val, max, col){
+  const w = max>0 ? Math.round(val/max*100) : 0;
+  return `<div class="bar-row"><div class="bar-bg"><div class="bar-fg" style="width:${w}%;background:${col}"></div></div><span class="pct-txt">${max>0?((val/max)*100).toFixed(1):'0.0'}%</span></div>`;
+}
+
+// ===== BUG / DEVELOPMENT / TAT HELPERS =====
+function isBug(r){ return r.q && /^bug/i.test(String(r.q)); }
+function isDev(r){ return r.q && /^development/i.test(String(r.q)); }
+
+// Unique tickets (dedup by TicketNo) across multiple [array, predicate] pairs
+function uniqTickets(pairs){
+  const m = new Map();
+  pairs.forEach(([arr,pred])=>arr.forEach(r=>{ if(pred(r) && r.n) m.set(r.n,r); }));
+  return [...m.values()];
+}
+
+// Count InTAT/OutTAT across stage arrays using each stage's own TAT flag
+// pairs = [[array, predicate, tatKey], ...]  e.g. [[fAck, r=>r.t===name, 'bt']]
+function tatCounts(pairs){
+  let inC = 0, outC = 0;
+  pairs.forEach(([arr,pred,key])=>arr.forEach(r=>{
+    if(!pred(r)) return;
+    if(r[key]==='I') inC++;
+    else if(r[key]==='O') outC++;
+  }));
+  return { inC, outC };
+}
+
+// Render "count (pct%)" cell — green for InTAT, red for OutTAT
+function tatCellIn(inC, outC){
+  const tot = inC + outC;
+  const pct = tot ? Math.round(inC/tot*100) : 0;
+  return tot ? `<span style="color:#059669;font-weight:700">${fmt(inC)}</span> <span style="color:#10b981;font-size:9px;font-weight:600">(${pct}%)</span>` : '—';
+}
+function tatCellOut(inC, outC){
+  const tot = inC + outC;
+  const pct = tot ? Math.round(outC/tot*100) : 0;
+  return tot ? `<span style="color:#dc2626;font-weight:700">${fmt(outC)}</span> <span style="color:#ef4444;font-size:9px;font-weight:600">(${pct}%)</span>` : '—';
+}
+
+// ===== FILTER =====
+function getLastDataMonthRange(){
+  // Find the latest date across all stage dates in RAW
+  let maxDate = '';
+  RAW.forEach(r => {
+    for(const k of ['a','b','c','d','e']){
+      if(r[k] && r[k] > maxDate) maxDate = r[k];
+    }
+  });
+  if(!maxDate) return getCurrentMonthRange();
+  // Return the full month of the latest data date
+  const y = maxDate.slice(0,4), m = maxDate.slice(5,7);
+  const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+  return [`${y}-${m}-01`, `${y}-${m}-${String(lastDay).padStart(2,'0')}`];
+}
+
+function getCurrentMonthRange(){
+  const now = new Date();
+  const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+  const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  return [`${y}-${m}-01`, `${y}-${m}-${String(lastDay).padStart(2,'0')}`];
+}
+
+// Returns YYYY-MM prefix strings for: thisMonth, prevMonth, olderLabel
+function getMonthLabels(from, to){
+  // Use the 'from' date to determine the selected month
+  if(!from) return { thisM: null, prevM: null };
+  const d = new Date(from);
+  const thisY = d.getFullYear(), thisM = d.getMonth(); // 0-indexed
+  // Previous month
+  const prevD = new Date(thisY, thisM - 1, 1);
+  const prevPrefix = `${prevD.getFullYear()}-${String(prevD.getMonth()+1).padStart(2,'0')}`;
+  const thisPrefix = `${thisY}-${String(thisM+1).padStart(2,'0')}`;
+  return { thisPrefix, prevPrefix };
+}
+
+// Count tickets for a dataset by ticket created date (tc) matching a YYYY-MM prefix
+function countByMonth(arr, prefix){
+  if(!prefix) return 0;
+  return arr.filter(r => r.tc && r.tc.startsWith(prefix)).length;
+}
+
+// Build month-comparison mini HTML for KPI card
+function monthCompareHtml(data, cls){
+  const { thisPrefix, prevPrefix } = getMonthLabels(currentFrom, currentTo);
+  if(!thisPrefix) return '';
+  const thisCnt  = countByMonth(data, thisPrefix);
+  const prevCnt  = countByMonth(data, prevPrefix);
+  const olderCnt = data.filter(r => r.tc && !r.tc.startsWith(thisPrefix) && !r.tc.startsWith(prevPrefix)).length;
+  const [ty,tm] = thisPrefix.split('-');
+  const [py,pm] = prevPrefix.split('-');
+  const thisLabel = new Date(parseInt(ty), parseInt(tm)-1, 1).toLocaleString('en-IN',{month:'long'});
+  const prevLabel = new Date(parseInt(py), parseInt(pm)-1, 1).toLocaleString('en-IN',{month:'long'});
+  const tot = data.length || 1;
+  const thisPct  = Math.round(thisCnt/tot*100);
+  const prevPct  = Math.round(prevCnt/tot*100);
+  const olderPct = Math.round(olderCnt/tot*100);
+  return `
+    <div class="kpi-month-row">
+      <div class="kpi-m-badge kpi-m-cur">
+        <span class="kpi-m-label">${thisLabel}</span>
+        <span class="kpi-m-num">${fmt(thisCnt)}</span>
+        <span class="kpi-m-sublabel">${thisPct}% of total</span>
+      </div>
+      <div class="kpi-m-badge kpi-m-prev">
+        <span class="kpi-m-label">${prevLabel}</span>
+        <span class="kpi-m-num">${fmt(prevCnt)}</span>
+        <span class="kpi-m-sublabel">${prevPct}% of total</span>
+      </div>
+      <div class="kpi-m-badge kpi-m-old">
+        <span class="kpi-m-label">Older</span>
+        <span class="kpi-m-num">${fmt(olderCnt)}</span>
+        <span class="kpi-m-sublabel">${olderPct}% of total</span>
+      </div>
+    </div>`;
+}
+function buildFiltered(from, to){
+  VIEW = getGlobalFilteredRows();
+  const hasTicketSearch = !!(document.getElementById('ticketSearch')?.value || '').trim();
+  const dateOk = d => hasTicketSearch || inRange(d, from, to);
+  fIT   = VIEW.filter(r => dateOk(r.a));
+  fAck  = VIEW.filter(r => dateOk(r.b));
+  fIP   = VIEW.filter(r => dateOk(r.c));
+  fSup  = VIEW.filter(r => dateOk(r.d));
+  fLive = VIEW.filter(r => dateOk(r.e));
+  currentFrom = from; currentTo = to;
+}
+const API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail';
+
+function getTATFlag(v){ if(!v) return null; const s=String(v); return s.includes('InTAT')?'I':s.includes('OutTAT')?'O':null; }
+function compactTATStr(v){
+  if(!v) return null;
+  const m = String(v).match(/(\d+)\s+days?\s+(\d+)\s+hours?/);
+  return m ? `${m[1]}d ${m[2]}h` : null;
+}
+function parseAPIDate(v){
+  if(!v || v==='1900-01-01T00:00:00') return null;
+  const s = String(v).trim();
+  // DD-MM-YYYY format (e.g. "16-06-2026") — convert to YYYY-MM-DD
+  const ddmmyyyy = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if(ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+  // ISO or YYYY-MM-DD format
+  return s.split('T')[0];
+}
+
+const STATUS_MAP_API = {
+  'Transfer To IT':'IT','Acknowledge':'AK','In Progress':'IP',
+  'Ready To Go Live':'LV','Transfer To Support':'SP','Closed':'CL',
+  'Return To Support':'RS','Ready For Testing':'RT','Ready For UAT':'RU',
+  'Return to Support':'RS','Ready for Testing':'RT','Ready for UAT':'RU'
+};
+
+function parseAPIRecord(r){
+  const rec = {};
+  if(r.TicketNo)              rec.n  = r.TicketNo;
+  if(r.LicNo)                 rec.l  = r.LicNo;
+  if(r.UserName&&r.UserName.trim()) rec.u = r.UserName.trim();
+  if(r.subscriptionPlan&&r.subscriptionPlan.trim()) rec.p = r.subscriptionPlan.trim();
+  if(r.Ack_Disp)              rec.q  = r.Ack_Disp;
+  if(r.RM&&r.RM.trim())       rec.r  = r.RM.trim();
+  if(r.TransferTo)            rec.t  = r.TransferTo;
+  if(r.AcknowledgebyAgents)   rec.ta = r.AcknowledgebyAgents;
+  if(r.InProgressByAgent)     rec.ti = r.InProgressByAgent;
+  if(r.TransferTosupportBy)   rec.ts = r.TransferTosupportBy;
+  if(r.ReadyToGoLiveBy)       rec.eb = r.ReadyToGoLiveBy;
+  if(r.Description&&r.Description.trim())     rec.desc    = r.Description.trim();
+  if(r.Remarks&&r.Remarks.trim())             rec.remarks = r.Remarks.trim();
+  if(r.SubDisposition&&r.SubDisposition.trim()) rec.subDisp = r.SubDisposition.trim();
+  if(r.MainDisposition&&r.MainDisposition.trim()) rec.mainDisp = r.MainDisposition.trim();
+  if(r.Problemtype&&r.Problemtype.trim())     rec.probType = r.Problemtype.trim();
+  if(r.Mobile&&String(r.Mobile).trim())       rec.mobile   = String(r.Mobile).trim();
+  if(r.Emailid&&r.Emailid.trim())             rec.email    = r.Emailid.trim();
+  if(r.Assignto&&r.Assignto.trim())           rec.assignto = r.Assignto.trim();
+  if(r.Developer&&r.Developer.trim())         rec.dev      = r.Developer.trim();
+  const tld = parseAPIDate(r.TimeLineDate);
+  if(tld) rec.tld = tld;
+  const tc = parseAPIDate(r.TicketCreatedDate);
+  if(tc) rec.tc = tc;
+
+  const a = parseAPIDate(r.TransfertoITDate);
+  const b = parseAPIDate(r.AcknowledgeDate);
+  const c = parseAPIDate(r.InProgressDate);
+  const d = parseAPIDate(r.TransferTosupportDate);
+  const e = parseAPIDate(r.ReadyToGoLiveDate);
+
+  if(a){ rec.a=a;
+    const at=getTATFlag(r.TransferToIT_TATDetails);   if(at) rec.at=at;
+    const av=compactTATStr(r.TransferToIT_TATDetails);if(av) rec.av=av;
+    if(r.TransferToIT_TatDuration) rec.ad=String(r.TransferToIT_TatDuration); }
+  if(b){ rec.b=b;
+    const bt=getTATFlag(r.Ack_TATDetails);   if(bt) rec.bt=bt;
+    const bv=compactTATStr(r.Ack_TATDetails);if(bv) rec.bv=bv;
+    if(r.Ack_TatDuration) rec.bd=String(r.Ack_TatDuration); }
+  if(c){ rec.c=c;
+    const ct=getTATFlag(r.InProgress_TATDetails);   if(ct) rec.ct=ct;
+    const cv=compactTATStr(r.InProgress_TATDetails);if(cv) rec.cv=cv;
+    if(r.InProgress_TatDuration) rec.cd=String(r.InProgress_TatDuration); }
+  if(d){ rec.d=d;
+    const dt=getTATFlag(r.TransfertoSupport_TATDetails);   if(dt) rec.dt=dt;
+    const dv=compactTATStr(r.TransfertoSupport_TATDetails);if(dv) rec.dv=dv;
+    if(r.TransferToSupport_TatDuration) rec.dd=String(r.TransferToSupport_TatDuration); }
+  if(e){ rec.e=e;
+    const et=getTATFlag(r.ReadyToGoLive_TATDetails);   if(et) rec.et=et;
+    const ev=compactTATStr(r.ReadyToGoLive_TATDetails);if(ev) rec.ev=ev; }
+
+  rec.sc = STATUS_MAP_API[r.Status] || 'OT';
+  const statusOnlyOk = ['RS','RT','RU'].includes(rec.sc);
+  return (a||b||c||d||e||statusOnlyOk) ? rec : null;
+}
+
+async function fetchData(from, to){
+  showLoader(`Fetching data ${from} → ${to}`, 20, 'Connecting to API…');
+  try{
+    const url = `${API_URL}?FDate=${from}&ToDate=${to}&TicketNo=`;
+    const res  = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if(json.Status !== 'Success') throw new Error(json.Message || 'API error');
+
+    updateLoader('Parsing records…', 60, 'Processing data');
+    const details = json.Details || [];
+
+    // Deduplicate by TicketNo — keep last occurrence
+    const map = new Map();
+    details.forEach(r=>{
+      const rec = parseAPIRecord(r);
+      if(rec && rec.n) map.set(rec.n, rec);
+    });
+    RAW = Array.from(map.values());
+    updateLoader('Rendering dashboard…', 85, 'Almost done');
+    return true;
+  } catch(err){
+    hideLoader();
+    showToast(`❌ API Error: ${err.message}`);
+    document.getElementById('fInfo').textContent = `Error: ${err.message}`;
+    return false;
+  }
+}
+
+// Applies HTML date filter on already-loaded RAW data (no new API call)
+function applyFilter(){
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+  if(!from || !to){ showToast('Please select both From and To dates'); return; }
+  if(RAW.length === 0){ showToast('⏳ Data is still loading, please wait…'); return; }
+  buildFiltered(from, to);
+  const ticketQ=(document.getElementById('ticketSearch')?.value||'').trim();
+  if(ticketQ){
+    document.getElementById('bannerTicket').textContent=ticketQ;
+    document.getElementById('searchBanner').classList.add('vis');
+  } else {
+    document.getElementById('searchBanner').classList.remove('vis');
+  }
+  document.getElementById('fInfo').textContent =
+    `${from} → ${to}  ·  IT:${fmt(fIT.length)} ACK:${fmt(fAck.length)} IP:${fmt(fIP.length)} Sup:${fmt(fSup.length)} Live:${fmt(fLive.length)}  (${fmt(VIEW.length)}/${fmt(RAW.length)})${activeFilterSummary()}`;
+  renderAll();
+}
+function resetAll(){
+  const [from,to] = getCurrentMonthRange();
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value   = to;
+  applyFilter();
+}
+
+// ===== KPI CARDS =====
+function renderKPIs(){
+  const stages = [
+    { label:'Transfer to IT',   data:fIT,   tatKey:'at', cls:'c-it',   key:'IT',   pendingFn: () => fIT.filter(r=>r.sc==='IT').length   },
+    { label:'Acknowledge',      data:fAck,  tatKey:'bt', cls:'c-ack',  key:'ACK',  pendingFn: () => fAck.filter(r=>r.sc==='AK').length  },
+    { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => fIP.filter(r=>r.sc==='IP').length   },
+    { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => fSup.filter(r=>r.sc==='SP').length  },
+  ];
+
+  // Status-only KPIs use the current filtered dashboard view.
+  const statusOnlyStages = [
+    { label:'Return to Support',  sc:'RS', cls:'c-ret', key:'RTS' },
+    { label:'Ready for Testing',  sc:'RT', cls:'c-tst', key:'RFT' },
+    { label:'Ready for UAT',      sc:'RU', cls:'c-uat', key:'RFU' },
+    { label:'Ready for Go Live',  sc:'LV', cls:'c-glv', key:'RGL' },
+  ];
+
+  const dateFilteredCards = stages.map(s=>{
+    const tot     = s.data.length;
+    const intat   = s.data.filter(r=>r[s.tatKey]==='I').length;
+    const outtat  = s.data.filter(r=>r[s.tatKey]==='O').length;
+    const pending = s.pendingFn(); // always from RAW — shows actual current status count
+    const inPct   = tot ? Math.round(intat/tot*100)  : 0;
+    const outPct  = tot ? Math.round(outtat/tot*100) : 0;
+    return `<div class="kpi-card ${s.cls}">
+      <div class="kpi-top"></div>
+      <div class="kpi-body">
+        <div class="kpi-stage">${s.label}</div>
+        <div class="kpi-row1">
+          <div class="kpi-num">${fmt(tot)}</div>
+          <div class="pend-badge" title="Currently at this stage (from all data, not date-filtered)">Now: ${fmt(pending)}</div>
+        </div>
+        <div class="kpi-tat-wrap">
+          <div class="tat-row">
+            <span class="tat-label">InTAT</span>
+            <div class="tat-track"><div class="tat-fill in" style="width:${inPct}%"></div></div>
+            <span class="tat-val">${inPct}%</span>
+          </div>
+          <div class="tat-row">
+            <span class="tat-label">OutTAT</span>
+            <div class="tat-track"><div class="tat-fill out" style="width:${outPct}%"></div></div>
+            <span class="tat-val">${outPct}%</span>
+          </div>
+        </div>
+        ${monthCompareHtml(s.data, s.cls)}
+      </div>
+      <div class="kpi-footer">
+        <span class="kpi-link" onclick="openModal('${s.key}')">🔍 View Details</span>
+        <button class="kpi-xls" onclick="exportStage('${s.key}')">↓ Excel</button>
+      </div>
+    </div>`;
+  });
+
+  const statusOnlyCards = statusOnlyStages.map(s=>{
+    const count = VIEW.filter(r=>r.sc===s.sc).length;
+    return `<div class="kpi-card ${s.cls}">
+      <div class="kpi-top"></div>
+      <div class="kpi-body">
+        <div class="kpi-stage">${s.label}</div>
+        <div class="kpi-row1">
+          <div class="kpi-num">${fmt(count)}</div>
+          <div class="pend-badge" style="font-size:9px;padding:2px 7px;opacity:.75">ALL DATA</div>
+        </div>
+        <div class="kpi-tat-wrap" style="padding:6px 0 2px;">
+          <div style="font-size:10px;color:var(--muted2);line-height:1.6;">
+            Count of tickets currently at this stage across all loaded data (no date filter applied).
+          </div>
+        </div>
+      </div>
+      <div class="kpi-footer">
+        <span class="kpi-link" onclick="openModal('${s.key}')">🔍 View Details</span>
+        <button class="kpi-xls" onclick="exportStage('${s.key}')">↓ Excel</button>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('kpiRow').innerHTML =
+    `<div class="kpi-row-label">
+       <span class="kpi-row-label-text">📅 Date-Filtered Stages</span>
+       <span class="kpi-row-label-line"></span>
+     </div>
+     <div class="kpi-row">${dateFilteredCards.join('')}</div>
+     <div class="kpi-row-label" style="margin-top:4px">
+       <span class="kpi-row-label-text">🔖 Current Status (All Data)</span>
+       <span class="kpi-row-label-line"></span>
+     </div>
+     <div class="kpi-row">${statusOnlyCards.join('')}</div>`;
+}
+
+
+function renderDisp(){
+  const DISPS = ['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
+  function dispGroup(disp, q){
+    if(!q) return 'Others';
+    if(q===disp) return disp;
+    return null;
+  }
+  function countForDisp(arr, dispName){
+    return arr.filter(r=>{
+      if(!r.q) return dispName==='Others';
+      if(dispName==='Others') return !DISPS.slice(0,-1).includes(r.q);
+      return r.q===dispName;
+    }).length;
+  }
+  const tbody = document.querySelector('#tDisp tbody');
+  let rows = DISPS.map(d=>{
+    const it   = countForDisp(fIT,   d);
+    const ack  = countForDisp(fAck,  d);
+    const ip   = countForDisp(fIP,   d);
+    const live = countForDisp(fLive, d);
+    const sup  = countForDisp(fSup,  d);
+    return {d, it, ack, ip, live, sup, total: it+ack+ip+live+sup};
+  }).filter(r=>r.total>0);
+
+  const tot = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
+  const grandTotal = tot.it+tot.ack+tot.ip+tot.live+tot.sup;
+
+  tbody.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${r.d}</strong></td>
+    <td class="r dc"><span class="n-it">${fmt(r.it)}</span></td>
+    <td class="r dc"><span class="n-ack">${fmt(r.ack)}</span></td>
+    <td class="r dc"><span class="n-ip">${fmt(r.ip)}</span></td>
+    <td class="r dc"><span class="n-live">${fmt(r.live)}</span></td>
+    <td class="r dc"><span class="n-sup">${fmt(r.sup)}</span></td>
+  </tr>`).join('')
+  + `<tr class="total-row">
+    <td><strong>Grand Total</strong></td>
+    <td class="r dc"><strong class="n-it">${fmt(tot.it)}</strong></td>
+    <td class="r dc"><strong class="n-ack">${fmt(tot.ack)}</strong></td>
+    <td class="r dc"><strong class="n-ip">${fmt(tot.ip)}</strong></td>
+    <td class="r dc"><strong class="n-live">${fmt(tot.live)}</strong></td>
+    <td class="r dc"><strong class="n-sup">${fmt(tot.sup)}</strong></td>
+  </tr>`;
+}
+
+// ===== KEY LICENCES TABLE =====
+const KEY_LICENCES = [
+  { lic:'8011594', name:'Implementation',  email:'implementation@margerp.com' },
+  { lic:'8011595', name:'International',   email:'international@margerp.com'  },
+  { lic:'8011596', name:'Margbooks Sales', email:'margbookssales@gmail.com'   },
+];
+function renderKeyLic(){
+  const tbody = document.querySelector('#tLic tbody');
+  if(!tbody) return;
+  const rows = KEY_LICENCES.map(k=>{
+    const pred = r=>String(r.l)===k.lic;
+    const supRows = fSup.filter(pred);
+    return {
+      ...k,
+      bug:  supRows.filter(isBug).length,
+      dev:  supRows.filter(isDev).length,
+      it:   fIT.filter(pred).length,
+      ack:  fAck.filter(pred).length,
+      ip:   fIP.filter(pred).length,
+      live: fLive.filter(pred).length,
+      sup:  fSup.filter(pred).length,
+    };
+  });
+  const tot = ['bug','dev','it','ack','ip','live','sup'].reduce((o,key)=>{o[key]=rows.reduce((s,r)=>s+r[key],0);return o;},{});
+  tbody.innerHTML = rows.map(r=>`<tr>
+    <td>
+      <strong>${r.name}</strong>
+      <div style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.lic} · ${r.email}</div>
+    </td>
+    <td class="r"><span class="n-it">${r.it||'—'}</span></td>
+    <td class="r"><span class="n-ack">${r.ack||'—'}</span></td>
+    <td class="r"><span class="n-ip">${r.ip||'—'}</span></td>
+    <td class="r"><span class="n-live">${r.live||'—'}</span></td>
+    <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
+    <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:800;font-size:13px">${r.bug||'—'}</span></td>
+    <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:800;font-size:13px">${r.dev||'—'}</span></td>
+    <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:800;font-size:13px">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
+  </tr>`).join('')
+  + `<tr class="total-row">
+    <td><strong>Grand Total</strong></td>
+    <td class="r"><strong class="n-it">${fmt(tot.it)}</strong></td>
+    <td class="r"><strong class="n-ack">${fmt(tot.ack)}</strong></td>
+    <td class="r"><strong class="n-ip">${fmt(tot.ip)}</strong></td>
+    <td class="r"><strong class="n-live">${fmt(tot.live)}</strong></td>
+    <td class="r"><strong class="n-sup">${fmt(tot.sup)}</strong></td>
+    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(tot.bug)}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(tot.dev)}</strong></td>
+    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,(tot.sup||0)-(tot.bug||0)-(tot.dev||0)))}</strong></td>
+  </tr>`;
+}
+
+// ===== TESTER TABLE =====
+// IT/ACK/IP/SUP → TransferTo(t) | LIVE → ReadyToGoLiveBy(eb)
+// (Blank) row added so Total always matches KPI count
+function renderTester(){
+  // Date-range filtered stages only: ACK / IP / Ready-to-Go-Live carry TAT,
+  // Close by IT (SUP) shows count only. Each stage array already has unique tickets.
+  const namedSet = new Set([
+    ...fAck.filter(r=>r.t).map(r=>r.t),
+    ...fIP.filter(r=>r.t).map(r=>r.t),
+    ...fSup.filter(r=>r.t).map(r=>r.t),
+    ...fLive.filter(r=>r.eb).map(r=>r.eb),
+  ]);
+  // Per-stage TAT counts for a predicate
+  function stTat(arr, pred, key){
+    let inC=0, outC=0;
+    arr.forEach(r=>{ if(!pred(r)) return; if(r[key]==='I') inC++; else if(r[key]==='O') outC++; });
+    return { inC, outC };
+  }
+  function buildRow(name, pred, predLive){
+    const ackArr  = fAck.filter(pred);
+    const ipArr   = fIP.filter(pred);
+    const liveArr = fLive.filter(predLive);
+    const supArr  = fSup.filter(pred);
+    const ack  = ackArr.length;
+    const ip   = ipArr.length;
+    const live = liveArr.length;
+    const sup  = supArr.length;
+    const aT = stTat(fAck,  pred,     'bt');
+    const iT = stTat(fIP,   pred,     'ct');
+    const lT = stTat(fLive, predLive, 'et');
+    const sT = stTat(fSup,  pred,     'dt');
+    const ackBug  = ackArr.filter(isBug).length,  ackDev  = ackArr.filter(isDev).length;
+    const ipBug   = ipArr.filter(isBug).length,   ipDev   = ipArr.filter(isDev).length;
+    const liveBug = liveArr.filter(isBug).length, liveDev = liveArr.filter(isDev).length;
+    const supBug  = supArr.filter(isBug).length,  supDev  = supArr.filter(isDev).length;
+    return { name, ack, ip, live, sup, aT, iT, lT, sT,
+      ackBug, ackDev, ipBug, ipDev, liveBug, liveDev, supBug, supDev,
+      bug: supBug, dev: supDev };
+  }
+  // Agar Tester filter laga hai to sirf selected naam hi dikhao
+  let names = [...namedSet];
+  const selT = (typeof CF_STATE!=='undefined' && CF_STATE.tester) ? CF_STATE.tester : new Set();
+  if(selT.size) names = names.filter(n=>selT.has(n));
+  const rows = names
+    .map(name=>buildRow(name, r=>r.t===name, r=>r.eb===name))
+    .filter(r=>r.ack||r.ip||r.live||r.sup)
+    .sort((a,b)=>(b.ack+b.ip+b.live+b.sup)-(a.ack+a.ip+a.live+a.sup));
+
+  // (Blank) row for unassigned tickets — Total KPI se match rahe
+  if(!selT.size){
+    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.eb);
+    if(bRow.ack||bRow.ip||bRow.live||bRow.sup){ bRow.isBlank = true; rows.push(bRow); }
+  }
+
+  // Totals: bina filter = KPI match; tester filter active = sirf selected testers ka sum
+  const tPred  = selT.size ? (r=>selT.has(r.t))  : (()=>true);
+  const tPredL = selT.size ? (r=>selT.has(r.eb)) : (()=>true);
+  const totAck = selT.size ? fAck.filter(tPred).length   : fAck.length;
+  const totIP  = selT.size ? fIP.filter(tPred).length    : fIP.length;
+  const totLive= selT.size ? fLive.filter(tPredL).length : fLive.length;
+  const totSup = selT.size ? fSup.filter(tPred).length   : fSup.length;
+  const TaT = stTat(fAck, tPred,  'bt');
+  const TiT = stTat(fIP,  tPred,  'ct');
+  const TlT = stTat(fLive,tPredL, 'et');
+  const TsT = stTat(fSup, tPred,  'dt');
+  const sumBug = rows.reduce((s,r)=>s+r.bug,0), sumDev = rows.reduce((s,r)=>s+r.dev,0);
+  const namedRows = rows.filter(r=>!r.isBlank);
+
+  const tbody = document.querySelector('#tTester tbody');
+  tbody.innerHTML = rows.length ? rows.map((r,i)=>{
+    const idx = r.isBlank ? -1 : namedRows.indexOf(r);
+    const rk = r.isBlank ? `<span style="color:var(--muted);font-size:10px">—</span>` : rkHtml(idx);
+    const bd = (v,c) => v ? `<span style="color:${c};font-weight:700;font-size:11px">${v}</span>` : '—';
+    return `<tr ${r.isBlank ? 'class="blank-row"' : ''}>
+      <td>${rk}</td>
+      <td>${r.name}</td>
+      <td class="r grp-l"><span class="n-ack">${r.ack||'—'}</span></td>
+      <td class="r">${tatCellIn(r.aT.inC,r.aT.outC)}</td>
+      <td class="r">${tatCellOut(r.aT.inC,r.aT.outC)}</td>
+      <td class="r grp-l"><span class="n-ip">${r.ip||'—'}</span></td>
+      <td class="r">${tatCellIn(r.iT.inC,r.iT.outC)}</td>
+      <td class="r">${tatCellOut(r.iT.inC,r.iT.outC)}</td>
+      <td class="r grp-l"><span class="n-live">${r.live||'—'}</span></td>
+      <td class="r">${tatCellIn(r.lT.inC,r.lT.outC)}</td>
+      <td class="r">${tatCellOut(r.lT.inC,r.lT.outC)}</td>
+      <td class="r grp-l"><span class="n-sup">${r.sup||'—'}</span></td>
+      <td class="r">${tatCellIn(r.sT.inC,r.sT.outC)}</td>
+      <td class="r">${tatCellOut(r.sT.inC,r.sT.outC)}</td>
+      <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td>
+      <td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td>
+      <td class="r" style="background:#f8fafc">${bd(r.sup - r.supBug - r.supDev,'#6b7280')}</td>
+    </tr>`;
+  }).join('')
+  + `<tr class="total-row">
+    <td colspan="2"><strong>Total</strong></td>
+    <td class="r grp-l"><strong class="n-ack">${fmt(totAck)}</strong></td>
+    <td class="r">${tatCellIn(TaT.inC,TaT.outC)}</td>
+    <td class="r">${tatCellOut(TaT.inC,TaT.outC)}</td>
+    <td class="r grp-l"><strong class="n-ip">${fmt(totIP)}</strong></td>
+    <td class="r">${tatCellIn(TiT.inC,TiT.outC)}</td>
+    <td class="r">${tatCellOut(TiT.inC,TiT.outC)}</td>
+    <td class="r grp-l"><strong class="n-live">${fmt(totLive)}</strong></td>
+    <td class="r">${tatCellIn(TlT.inC,TlT.outC)}</td>
+    <td class="r">${tatCellOut(TlT.inC,TlT.outC)}</td>
+    <td class="r grp-l"><strong class="n-sup">${fmt(totSup)}</strong></td>
+    <td class="r">${tatCellIn(TsT.inC,TsT.outC)}</td>
+    <td class="r">${tatCellOut(TsT.inC,TsT.outC)}</td>
+    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.supBug||0),0))}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
+    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.supBug||0)-(r.supDev||0)),0))}</strong></td>
+  </tr>`
+  : `<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+}
+
+// ===== RM TABLE =====
+function renderRM(){
+  // Sirf wahi tickets jinme RM assigned hai — blank/no-RM tickets is table me nahi aate
+  const hasRM = r => r.r && String(r.r).trim();
+  const namedRMs = [...new Set([...fAck,...fIP,...fLive,...fSup,...fIT]
+    .filter(hasRM).map(r=>r.r))];
+
+  function stTat(arr, pred, key){
+    let inC=0, outC=0;
+    arr.forEach(r=>{ if(!pred(r)) return; if(r[key]==='I') inC++; else if(r[key]==='O') outC++; });
+    return { inC, outC };
+  }
+  const rows = namedRMs.map(name=>{
+    const pred = r=>r.r===name;
+    const ackArr  = fAck.filter(pred);
+    const ipArr   = fIP.filter(pred);
+    const liveArr = fLive.filter(pred);
+    const supArr  = fSup.filter(pred);
+    const ack  = ackArr.length;
+    const ip   = ipArr.length;
+    const live = liveArr.length;
+    const sup  = supArr.length;
+    const aT = stTat(fAck,  pred, 'bt');
+    const iT = stTat(fIP,   pred, 'ct');
+    const lT = stTat(fLive, pred, 'et');
+    const sT = stTat(fSup,  pred, 'dt');
+    const ackBug  = ackArr.filter(isBug).length,  ackDev  = ackArr.filter(isDev).length;
+    const ipBug   = ipArr.filter(isBug).length,   ipDev   = ipArr.filter(isDev).length;
+    const liveBug = liveArr.filter(isBug).length, liveDev = liveArr.filter(isDev).length;
+    const supBug  = supArr.filter(isBug).length,  supDev  = supArr.filter(isDev).length;
+    return { name, ack, ip, live, sup, aT, iT, lT, sT,
+      ackBug, ackDev, ipBug, ipDev, liveBug, liveDev, supBug, supDev };
+  }).filter(r=>r.ack||r.ip||r.live||r.sup)
+    .sort((a,b)=>(b.ack+b.ip+b.live+b.sup)-(a.ack+a.ip+a.live+a.sup));
+
+  // Totals = sirf RM-wale tickets ke counts (KPI totals se alag ho sakte hain)
+  const totAck = fAck.filter(hasRM).length, totIP  = fIP.filter(hasRM).length;
+  const totLive= fLive.filter(hasRM).length, totSup = fSup.filter(hasRM).length;
+  const TaT = stTat(fAck,  hasRM, 'bt');
+  const TiT = stTat(fIP,   hasRM, 'ct');
+  const TlT = stTat(fLive, hasRM, 'et');
+  const TsT = stTat(fSup,  hasRM, 'dt');
+
+  const bd = (v,c) => v ? `<span style="color:${c};font-weight:700;font-size:11px">${v}</span>` : '—';
+  const tbody = document.querySelector('#tRM tbody');
+  tbody.innerHTML = rows.length ? rows.map((r,i)=>`<tr>
+      <td>${rkHtml(i)}</td>
+      <td>${r.name}</td>
+      <td class="r grp-l"><span class="n-ack">${r.ack||'—'}</span></td>
+      <td class="r">${tatCellIn(r.aT.inC,r.aT.outC)}</td>
+      <td class="r">${tatCellOut(r.aT.inC,r.aT.outC)}</td>
+      <td class="r grp-l"><span class="n-ip">${r.ip||'—'}</span></td>
+      <td class="r">${tatCellIn(r.iT.inC,r.iT.outC)}</td>
+      <td class="r">${tatCellOut(r.iT.inC,r.iT.outC)}</td>
+      <td class="r grp-l"><span class="n-live">${r.live||'—'}</span></td>
+      <td class="r">${tatCellIn(r.lT.inC,r.lT.outC)}</td>
+      <td class="r">${tatCellOut(r.lT.inC,r.lT.outC)}</td>
+      <td class="r grp-l"><span class="n-sup">${r.sup||'—'}</span></td>
+      <td class="r">${tatCellIn(r.sT.inC,r.sT.outC)}</td>
+      <td class="r">${tatCellOut(r.sT.inC,r.sT.outC)}</td>
+      <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td>
+      <td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td>
+      <td class="r" style="background:#f8fafc">${bd(r.sup - r.supBug - r.supDev,'#6b7280')}</td>
+    </tr>`).join('')
+  + `<tr class="total-row">
+    <td colspan="2"><strong>Total (RM-assigned)</strong></td>
+    <td class="r grp-l"><strong class="n-ack">${fmt(totAck)}</strong></td>
+    <td class="r">${tatCellIn(TaT.inC,TaT.outC)}</td>
+    <td class="r">${tatCellOut(TaT.inC,TaT.outC)}</td>
+    <td class="r grp-l"><strong class="n-ip">${fmt(totIP)}</strong></td>
+    <td class="r">${tatCellIn(TiT.inC,TiT.outC)}</td>
+    <td class="r">${tatCellOut(TiT.inC,TiT.outC)}</td>
+    <td class="r grp-l"><strong class="n-live">${fmt(totLive)}</strong></td>
+    <td class="r">${tatCellIn(TlT.inC,TlT.outC)}</td>
+    <td class="r">${tatCellOut(TlT.inC,TlT.outC)}</td>
+    <td class="r grp-l"><strong class="n-sup">${fmt(totSup)}</strong></td>
+    <td class="r">${tatCellIn(TsT.inC,TsT.outC)}</td>
+    <td class="r">${tatCellOut(TsT.inC,TsT.outC)}</td>
+    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.supBug||0),0))}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
+    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.supBug||0)-(r.supDev||0)),0))}</strong></td>
+  </tr>`
+  : `<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+}
+
+// ===== CLIENTS TABLE =====
+function renderClients(){
+  const licMap = {};
+  fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{
+    if(!licMap[r.l]) licMap[r.l]={lic:r.l,name:r.u||'—',plan:r.p||'',it:0,ack:0,ip:0,live:0,sup:0};
+    licMap[r.l].it++;
+    if(r.u&&String(r.u).length>String(licMap[r.l].name).length) licMap[r.l].name=r.u;
+  });
+  fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].ack++; });
+  fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].ip++; });
+  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].live++; });
+  fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].sup++; });
+
+  const top10 = Object.values(licMap).sort((a,b)=>b.it-a.it).slice(0,10);
+  // Bug/Dev per client — unique tickets across all stages for that licence
+  top10.forEach(c=>{
+    const supRows = fSup.filter(r=>String(r.l)===String(c.lic));
+    c.bug = supRows.filter(isBug).length;
+    c.dev = supRows.filter(isDev).length;
+  });
+  const tbody = document.querySelector('#tClients tbody');
+  // Top 10 subtotal (not full KPI — by design for Top 10 table)
+  const cTotals = ['it','ack','ip','live','sup','bug','dev'].reduce((o,k)=>{o[k]=top10.reduce((s,r)=>s+(r[k]||0),0);return o;},{});
+  tbody.innerHTML = top10.length ? top10.map((r,i)=>`<tr>
+    <td>${rkHtml(i)}</td>
+    <td><strong>${r.name}</strong></td>
+    <td>${planTag(r.plan)}</td>
+    <td class="r"><span class="n-it">${r.it||'—'}</span></td>
+    <td class="r"><span class="n-ack">${r.ack||'—'}</span></td>
+    <td class="r"><span class="n-ip">${r.ip||'—'}</span></td>
+    <td class="r"><span class="n-live">${r.live||'—'}</span></td>
+    <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
+    <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:700">${r.bug||'—'}</span></td>
+    <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:700">${r.dev||'—'}</span></td>
+    <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:700">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
+  </tr>`).join('')
+  + `<tr class="total-row">
+    <td colspan="3"><strong>Top 10 Total</strong></td>
+    <td class="r"><strong class="n-it">${fmt(cTotals.it)}</strong></td>
+    <td class="r"><strong class="n-ack">${fmt(cTotals.ack)}</strong></td>
+    <td class="r"><strong class="n-ip">${fmt(cTotals.ip)}</strong></td>
+    <td class="r"><strong class="n-live">${fmt(cTotals.live)}</strong></td>
+    <td class="r"><strong class="n-sup">${fmt(cTotals.sup)}</strong></td>
+    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(cTotals.bug)}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(cTotals.dev)}</strong></td>
+    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,(cTotals.sup||0)-(cTotals.bug||0)-(cTotals.dev||0)))}</strong></td>
+  </tr>`
+  : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+}
+
+// ===== PLAN TABLE =====
+function renderPlan(){
+  // Get all unique named plans
+  const namedPlans = [...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
+    .filter(r=>r.p && String(r.p).trim()).map(r=>r.p))];
+
+  function planStats(pred){
+    const supRows = fSup.filter(pred);
+    return { bug: supRows.filter(isBug).length, dev: supRows.filter(isDev).length };
+  }
+  const rows = namedPlans.map(p=>({
+    p,
+    it:   fIT.filter(r=>r.p===p).length,
+    ack:  fAck.filter(r=>r.p===p).length,
+    ip:   fIP.filter(r=>r.p===p).length,
+    live: fLive.filter(r=>r.p===p).length,
+    sup:  fSup.filter(r=>r.p===p).length,
+    ...planStats(r=>r.p===p),
+  })).sort((a,b)=>b.it-a.it);
+
+  // Add (Blank) row for tickets with no plan
+  const blankIT   = fIT.filter(r=>!r.p||!String(r.p).trim()).length;
+  const blankAck  = fAck.filter(r=>!r.p||!String(r.p).trim()).length;
+  const blankIP   = fIP.filter(r=>!r.p||!String(r.p).trim()).length;
+  const blankLive = fLive.filter(r=>!r.p||!String(r.p).trim()).length;
+  const blankSup  = fSup.filter(r=>!r.p||!String(r.p).trim()).length;
+  if(blankIT||blankAck||blankIP||blankLive||blankSup)
+    rows.push({p:'(Blank)', it:blankIT, ack:blankAck, ip:blankIP, live:blankLive, sup:blankSup,
+      ...planStats(r=>!r.p||!String(r.p).trim()), isBlank:true});
+
+  // Grand Total must match KPI counts exactly
+  const pTotals = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
+  const totalIT = fIT.length||1;
+  const namedRows = rows.filter(r=>!r.isBlank);
+  const tbody = document.querySelector('#tPlan tbody');
+
+  tbody.innerHTML = rows.length ? rows.map((r,i)=>{
+    const idx = r.isBlank ? -1 : namedRows.indexOf(r);
+    const rk  = r.isBlank ? `<span style="color:var(--muted);font-size:10px">—</span>` : rkHtml(idx);
+    return `<tr ${r.isBlank ? 'class="blank-row"' : ''}>
+      <td>${rk}</td>
+      <td>${r.isBlank ? '<span style="color:var(--muted)">(Blank)</span>' : planTag(r.p)}</td>
+      <td class="r"><span class="n-it">${r.it||'—'}</span></td>
+      <td class="r"><span class="n-ack">${r.ack||'—'}</span></td>
+      <td class="r"><span class="n-ip">${r.ip||'—'}</span></td>
+      <td class="r"><span class="n-live">${r.live||'—'}</span></td>
+      <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
+      <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:700">${r.bug||'—'}</span></td>
+      <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:700">${r.dev||'—'}</span></td>
+      <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:700">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
+      <td>${r.isBlank ? '' : barHtml(r.it,totalIT,'#2563eb')}</td>
+    </tr>`;
+  }).join('')
+  + `<tr class="total-row">
+    <td colspan="2"><strong>Grand Total</strong></td>
+    <td class="r"><strong class="n-it">${fmt(pTotals.it)}</strong></td>
+    <td class="r"><strong class="n-ack">${fmt(pTotals.ack)}</strong></td>
+    <td class="r"><strong class="n-ip">${fmt(pTotals.ip)}</strong></td>
+    <td class="r"><strong class="n-live">${fmt(pTotals.live)}</strong></td>
+    <td class="r"><strong class="n-sup">${fmt(pTotals.sup)}</strong></td>
+    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.bug||0),0))}</strong></td>
+    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.dev||0),0))}</strong></td>
+    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0)),0))}</strong></td>
+    <td></td>
+  </tr>`
+  : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+}
+
+// ===== RENDER ALL =====
+let _charts = {};
+
+function renderCharts(){
+  if(typeof Chart==='undefined') return;
+
+  // Date-filtered stages use fIT/fAck/fIP/fLive/fSup
+  // Status-only stages use the current filtered dashboard view.
+  const rsCount  = VIEW.filter(r=>r.sc==='RS').length;
+  const rtCount  = VIEW.filter(r=>r.sc==='RT').length;
+  const ruCount  = VIEW.filter(r=>r.sc==='RU').length;
+  const rglCount = VIEW.filter(r=>r.sc==='LV').length;
+
+  const ST = [
+    {label:'Transfer to IT',    short:'IT',  n:fIT.length,   in:fIT.filter(r=>r.at==='I').length,   out:fIT.filter(r=>r.at==='O').length,   c:'#2563eb'},
+    {label:'Acknowledge',       short:'ACK', n:fAck.length,  in:fAck.filter(r=>r.bt==='I').length,  out:fAck.filter(r=>r.bt==='O').length,  c:'#d97706'},
+    {label:'In Progress',       short:'IP',  n:fIP.length,   in:fIP.filter(r=>r.ct==='I').length,   out:fIP.filter(r=>r.ct==='O').length,   c:'#059669'},
+    {label:'Go Live',           short:'Live',n:fLive.length, in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#7c3aed'},
+    {label:'Close by IT',       short:'SUP', n:fSup.length,  in:fSup.filter(r=>r.dt==='I').length,  out:fSup.filter(r=>r.dt==='O').length,  c:'#dc2626'},
+    {label:'Return to Support', short:'RTS', n:rsCount,      in:0,  out:0,  c:'#f97316', statusOnly:true},
+    {label:'Ready for Testing', short:'RFT', n:rtCount,      in:0,  out:0,  c:'#0891b2', statusOnly:true},
+    {label:'Ready for UAT',     short:'RFU', n:ruCount,      in:0,  out:0,  c:'#84cc16', statusOnly:true},
+    {label:'Ready for Go Live', short:'RGL', n:rglCount,     in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#a21caf'},
+  ];
+  const total = ST.reduce((s,x)=>s+x.n,0);
+  const totalDateFiltered = ST.filter(s=>!s.statusOnly).reduce((s,x)=>s+x.n,0);
+
+  const TT = { backgroundColor:'#0f172a', titleColor:'#fff', bodyColor:'#e2e8f0', padding:10, cornerRadius:8 };
+  const FONT = {family:"'Sora',sans-serif"};
+  const destroyMake = (key, canvas, cfg) => {
+    if(_charts[key]) _charts[key].destroy();
+    if(canvas) _charts[key] = new Chart(canvas, cfg);
+  };
+
+  /* ── 1. STAGE DONUT ── */
+  destroyMake('donut', document.getElementById('chartDonut'), {
+    type:'doughnut',
+    data:{
+      labels: ST.map(s=>s.label),
+      datasets:[{ data:ST.map(s=>s.n),
+        backgroundColor:ST.map(s=>s.statusOnly ? s.c+'99' : s.c),
+        borderWidth:3, borderColor:'#fff',
+        borderDash: ST.map(s=>s.statusOnly?[4,2]:[]),
+        hoverBorderWidth:0, hoverOffset:6 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'70%',
+      layout:{padding:10},
+      plugins:{
+        legend:{ position:'bottom', labels:{ color:'#374151', font:{...FONT,size:11},
+          padding:14, boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:'circle',
+          generateLabels: (chart) => {
+            const ds = chart.data.datasets[0]; const tot2 = ds.data.reduce((a,b)=>a+b,0);
+            return chart.data.labels.map((lbl,i)=>({text: lbl+': '+(tot2?((ds.data[i]/tot2)*100).toFixed(1):0)+'%', fillStyle:ds.backgroundColor[i], strokeStyle:ds.backgroundColor[i], hidden:false, index:i}));
+          }
+        }},
+        tooltip:{ ...TT, callbacks:{ label:c=>`  ${c.label}: ${fmt(c.raw)}  (${total?((c.raw/total)*100).toFixed(1):0}%)`}}
+      },
+      animation:{ duration:700 }
+    }
+  });
+
+  /* ── 2. InTAT vs OutTAT bar (%) ── */
+  destroyMake('bar', document.getElementById('chartBar'), {
+    type:'bar',
+    data:{
+      labels: ST.map(s=>s.short),
+      datasets:[
+        { label:'InTAT %',  data:ST.map(s=>s.n?parseFloat((s.in/s.n*100).toFixed(1)):0),  backgroundColor:'#10b98122', borderColor:'#059669', borderWidth:2, borderRadius:5, borderSkipped:false },
+        { label:'OutTAT %', data:ST.map(s=>s.n?parseFloat((s.out/s.n*100).toFixed(1)):0), backgroundColor:'#ef444422', borderColor:'#dc2626', borderWidth:2, borderRadius:5, borderSkipped:false },
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#374151', font:{...FONT,size:11}, padding:14, usePointStyle:true, pointStyle:'circle' }},
+        tooltip:{ ...TT, callbacks:{ label: ctx => ' '+ctx.dataset.label+': '+ctx.raw+'%' } }},
+      scales:{
+        x:{ ticks:{color:'#6b7280',font:{...FONT,size:11}}, grid:{display:false} },
+        y:{ ticks:{color:'#6b7280',font:{...FONT,size:10}, callback: v=>v+'%'}, grid:{color:'rgba(0,0,0,.05)'}, beginAtZero:true, max:100 }
+      },
+      animation:{duration:600}
+    }
+  });
+
+  /* ── 3. TESTER horizontal bar ── */
+  const tData = buildTesterChartData();
+  destroyMake('tester', document.getElementById('chartTester'), buildHorizStackedCfg(
+    tData.labels, tData.datasets, 'Tickets per Tester / Agent'
+  ));
+
+  /* ── 4. RM horizontal bar ── */
+  const rmData = buildRMChartData();
+  destroyMake('rm', document.getElementById('chartRM'), buildHorizStackedCfg(
+    rmData.labels, rmData.datasets, 'Tickets per Reporting Manager'
+  ));
+
+  /* ── 5. PLAN bar ── */
+  const plData = buildPlanChartData();
+  destroyMake('plan', document.getElementById('chartPlan'), buildHorizStackedCfg(
+    plData.labels, plData.datasets, 'Tickets per Subscription Plan'
+  ));
+
+  /* ── 6. TOP 10 CLIENTS bar ── */
+  const clData = buildClientChartData();
+  destroyMake('clients', document.getElementById('chartClients'), buildHorizStackedCfg(
+    clData.labels, clData.datasets, 'Top 10 Clients — IT Ticket Volume'
+  ));
+}
+
+/* ── CHART DATA BUILDERS ── */
+function buildHorizStackedCfg(labels, datasets, title){
+  const TT = { backgroundColor:'#0f172a', titleColor:'#fff', bodyColor:'#e2e8f0', padding:10, cornerRadius:8 };
+  const FONT = {family:"'Sora',sans-serif"};
+  return {
+    type:'bar',
+    data:{ labels, datasets },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'top', labels:{ color:'#374151', font:{...FONT,size:10},
+          padding:12, usePointStyle:true, pointStyle:'circle', boxWidth:8, boxHeight:8 }},
+        tooltip:{ ...TT }
+      },
+      scales:{
+        x:{ stacked:true, ticks:{color:'#6b7280',font:{...FONT,size:10}}, grid:{color:'rgba(0,0,0,.04)'}, beginAtZero:true },
+        y:{ stacked:true, ticks:{color:'#374151',font:{...FONT,size:11}}, grid:{display:false} }
+      },
+      animation:{duration:500}
+    }
+  };
+}
+
+function dsBar(label, data, color, alpha=0.65){
+  return { label, data, backgroundColor: color+Math.round(alpha*255).toString(16).padStart(2,'0'),
+    borderColor:color, borderWidth:1.5, borderRadius:3, borderSkipped:false };
+}
+
+function buildTesterChartData(){
+  const namedSet = new Set([...fIT.filter(r=>r.t).map(r=>r.t),
+    ...fAck.filter(r=>r.t).map(r=>r.t), ...fIP.filter(r=>r.t).map(r=>r.t),
+    ...fSup.filter(r=>r.t).map(r=>r.t), ...fLive.filter(r=>r.eb).map(r=>r.eb)]);
+  let rows = [...namedSet].map(n=>({n,
+    it:fIT.filter(r=>r.t===n).length, ack:fAck.filter(r=>r.t===n).length,
+    ip:fIP.filter(r=>r.t===n).length, live:fLive.filter(r=>r.eb===n).length,
+    sup:fSup.filter(r=>r.t===n).length
+  })).sort((a,b)=>b.it-a.it).slice(0,12);
+  return {
+    labels: rows.map(r=>r.n),
+    datasets:[
+      dsBar('IT',  rows.map(r=>r.it),  '#2563eb'),
+      dsBar('ACK', rows.map(r=>r.ack), '#d97706'),
+      dsBar('IP',  rows.map(r=>r.ip),  '#059669'),
+      dsBar('Live',rows.map(r=>r.live),'#7c3aed'),
+      dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
+    ]
+  };
+}
+
+function buildRMChartData(){
+  const namedRMs = [...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
+    .filter(r=>r.r&&String(r.r).trim()).map(r=>r.r))];
+  let rows = namedRMs.map(n=>({n,
+    it:fIT.filter(r=>r.r===n).length, ack:fAck.filter(r=>r.r===n).length,
+    ip:fIP.filter(r=>r.r===n).length, live:fLive.filter(r=>r.r===n).length,
+    sup:fSup.filter(r=>r.r===n).length
+  })).sort((a,b)=>b.it-a.it);
+  return {
+    labels: rows.map(r=>r.n),
+    datasets:[
+      dsBar('IT',  rows.map(r=>r.it),  '#2563eb'),
+      dsBar('ACK', rows.map(r=>r.ack), '#d97706'),
+      dsBar('IP',  rows.map(r=>r.ip),  '#059669'),
+      dsBar('Live',rows.map(r=>r.live),'#7c3aed'),
+      dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
+    ]
+  };
+}
+
+function buildPlanChartData(){
+  const plans=[...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
+    .filter(r=>r.p&&String(r.p).trim()).map(r=>r.p))];
+  let rows = plans.map(p=>({p,
+    it:fIT.filter(r=>r.p===p).length, ack:fAck.filter(r=>r.p===p).length,
+    ip:fIP.filter(r=>r.p===p).length, live:fLive.filter(r=>r.p===p).length,
+    sup:fSup.filter(r=>r.p===p).length
+  })).sort((a,b)=>b.it-a.it);
+  return {
+    labels: rows.map(r=>r.p),
+    datasets:[
+      dsBar('IT',  rows.map(r=>r.it),  '#2563eb'),
+      dsBar('ACK', rows.map(r=>r.ack), '#d97706'),
+      dsBar('IP',  rows.map(r=>r.ip),  '#059669'),
+      dsBar('Live',rows.map(r=>r.live),'#7c3aed'),
+      dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
+    ]
+  };
+}
+
+function buildClientChartData(){
+  const licMap={};
+  fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{
+    if(!licMap[r.l]) licMap[r.l]={name:r.u||String(r.l),it:0,ack:0,ip:0,live:0,sup:0};
+    licMap[r.l].it++;
+    if(r.u&&String(r.u).length>String(licMap[r.l].name).length) licMap[r.l].name=r.u;
+  });
+  fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].ack++; });
+  fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{  if(licMap[r.l]) licMap[r.l].ip++;  });
+  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].live++; });
+  fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{  if(licMap[r.l]) licMap[r.l].sup++;  });
+  const top10 = Object.values(licMap).sort((a,b)=>b.it-a.it).slice(0,10);
+  const labels = top10.map(r=>r.name.length>20?r.name.slice(0,18)+'…':r.name);
+  return {
+    labels,
+    datasets:[
+      dsBar('IT',  top10.map(r=>r.it),  '#2563eb'),
+      dsBar('ACK', top10.map(r=>r.ack), '#d97706'),
+      dsBar('IP',  top10.map(r=>r.ip),  '#059669'),
+      dsBar('Live',top10.map(r=>r.live),'#7c3aed'),
+      dsBar('SUP', top10.map(r=>r.sup), '#dc2626'),
+    ]
+  };
+}
+
+
+function toggleChart(id){
+  const wrap = document.getElementById('cw_'+id);
+  const btn  = document.getElementById('btn_'+id);
+  if(!wrap) return;
+  const visible = wrap.style.display !== 'none';
+  wrap.style.display = visible ? 'none' : 'block';
+  if(btn){
+    btn.style.background    = visible ? 'transparent' : 'var(--it-l)';
+    btn.style.color         = visible ? 'var(--muted)' : 'var(--it)';
+    btn.style.borderColor   = visible ? 'var(--border)' : 'var(--it-m)';
+    btn.textContent         = visible ? '📊 View Chart' : '📋 View Table';
+  }
+  if(!visible) renderCharts(); // render on first open
+}
+
+function injectChartBtns(){
+  const map = [
+    ['chartTester',  'TransferTo (Tester) Wise'],
+    ['chartRM',      'RM Wise Count'],
+    ['chartClients', 'Top 10 Clients — Max Transfer to IT'],
+    ['chartPlan',    'Plan Wise Transfer Count'],
+  ];
+  map.forEach(([cid, title])=>{
+    if(document.getElementById('btn_'+cid)) return; // already exists
+    // Find the sec-hdr that contains this title
+    const hdrs = document.querySelectorAll('.sec-hdr');
+    hdrs.forEach(hdr=>{
+      const t = hdr.querySelector('.sec-title');
+      if(t && t.textContent.trim() === title){
+        const btn = document.createElement('button');
+        btn.id = 'btn_'+cid;
+        btn.textContent = '📊 View Chart';
+        btn.onclick = ()=>toggleChart(cid);
+        Object.assign(btn.style, {
+          height:'28px', padding:'0 13px', borderRadius:'20px',
+          fontSize:'10px', fontWeight:'700', cursor:'pointer',
+          border:'1.5px solid var(--border)', background:'transparent',
+          color:'var(--muted)', fontFamily:"'Sora',sans-serif",
+          transition:'all .2s', whiteSpace:'nowrap', marginLeft:'auto'
+        });
+        btn.onmouseover = ()=>{ if(btn.textContent.includes('View Chart')){ btn.style.borderColor='var(--it)'; btn.style.color='var(--it)'; }};
+        btn.onmouseout  = ()=>{ if(btn.textContent.includes('View Chart')){ btn.style.borderColor='var(--border)'; btn.style.color='var(--muted)'; }};
+        hdr.style.justifyContent = 'space-between';
+        hdr.appendChild(btn);
+      }
+    });
+  });
+}
+
+function renderAll(){
+  renderKPIs();
+  renderCharts();
+  renderDisp();
+  renderKeyLic();
+  renderTester();
+  renderRM();
+  renderClients();
+  renderPlan();
+  renderUpcomingDeadlines();
+  injectChartBtns();
+}
+
+// ===== MODAL =====
+let _modalKey = null;
+// ── MODAL FILTER STATE ──
+let _modalData = [], _modalTatKey = '', _modalDateKey = '', _modalDurKey = '',
+    _modalActKey = '', _modalPendSc = '', _modalFilter = 'all';
+
+function renderModalTable(rows){
+  const {tatKey, dateKey, durKey, actKey, pendingSc} = {
+    tatKey:_modalTatKey, dateKey:_modalDateKey, durKey:_modalDurKey,
+    actKey:_modalActKey, pendingSc:_modalPendSc
+  };
+  const slice = rows.slice(0,500);
+  const stageCfg = _modalKey ? getStageConfig(_modalKey) : null;
+  const tbody = document.querySelector('#modalTable tbody');
+  tbody.innerHTML = slice.map((r,ri)=>{
+    const tatHtml = r[tatKey]==='I'
+      ? `<span style="color:var(--ip);font-weight:700;font-size:11px">✔ InTAT</span>`
+      : r[tatKey]==='O'
+      ? `<span style="color:var(--sup);font-weight:700;font-size:11px">✘ OutTAT</span>`
+      : `<span style="color:var(--muted2);font-size:11px">—</span>`;
+    const isPend = r.sc === pendingSc;
+    const pendHtml = isPend
+      ? `<span class="pend-badge" style="font-size:9px;padding:2px 7px">⏳ Pending</span>`
+      : `<span style="color:var(--ip);font-size:10px;font-weight:700">✔ Moved</span>`;
+    return `<tr onclick="openTicketDetail(_filteredRows[${ri}], _stageCfgSnap)" title="Click to view ticket details">
+      <td style="font-size:11px;color:var(--it);font-family:'JetBrains Mono',monospace;font-weight:700">${r.n||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${r.tc||'—'}</td>
+      <td style="font-weight:500">${r.u||'—'}</td>
+      <td>${planTag(r.p)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${r[dateKey]||'—'}</td>
+      <td>${pendHtml}</td>
+      <td style="font-size:11px;color:var(--muted2)">${durKey?r[durKey]||'—':'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${r[actKey]||'—'}</td>
+      <td>${tatHtml}</td>
+      <td style="font-size:11px">${r.q||'—'}</td>
+      <td style="font-size:11px">${r.t||r.eb||'—'}</td>
+      <td style="font-size:11px">${r.r||'—'}</td>
+    </tr>`;
+  }).join('');
+  // Store rendered slice for click access
+  window._filteredRows = slice;
+  window._stageCfgSnap = stageCfg;
+  if(rows.length > 500) tbody.innerHTML +=
+    `<tr><td colspan="12" style="text-align:center;color:var(--muted2);padding:12px;font-size:11px">
+      Showing first 500 of ${fmt(rows.length)} rows — export Excel for full data
+    </td></tr>`;
+}
+
+function setModalFilter(f){
+  _modalFilter = f;
+  const data = _modalData;
+  const tk = _modalTatKey, ps = _modalPendSc;
+
+  // Update active badge styles
+  document.querySelectorAll('.ms-btn').forEach(el=>{
+    const isActive = el.dataset.f === f;
+    el.style.opacity       = isActive ? '1' : '.45';
+    el.style.transform     = isActive ? 'scale(1.05)' : 'scale(1)';
+    el.style.boxShadow     = isActive ? '0 2px 8px rgba(0,0,0,.12)' : 'none';
+    el.style.cursor        = 'pointer';
+  });
+
+  // Update count badge
+  let filtered, label;
+  if(f==='all')    { filtered=data;                                label=`Showing all ${fmt(filtered.length)}`; }
+  else if(f==='pend')  { filtered=data.filter(r=>r.sc===ps);          label=`Pending: ${fmt(filtered.length)}`; }
+  else if(f==='in')    { filtered=data.filter(r=>r[tk]==='I');         label=`InTAT: ${fmt(filtered.length)}`; }
+  else if(f==='out')   { filtered=data.filter(r=>r[tk]==='O');         label=`OutTAT: ${fmt(filtered.length)}`; }
+  else if(f==='notat') { filtered=data.filter(r=>r[tk]!=='I'&&r[tk]!=='O'); label=`No TAT: ${fmt(filtered.length)}`; }
+
+  document.getElementById('modalFilterLabel').textContent = label;
+  renderModalTable(filtered);
+}
+
+function openModal(key){
+  _modalKey = key;
+  const cfg = getStageConfig(key);
+  const {data, tatKey, dateKey, durKey, actKey, pendingSc, label} = cfg;
+
+  _modalData    = data;
+  _modalTatKey  = tatKey;
+  _modalDateKey = dateKey;
+  _modalDurKey  = durKey  || '';
+  _modalActKey  = actKey  || '';
+  _modalPendSc  = pendingSc;
+  _modalFilter  = 'all';
+
+  document.getElementById('modalTitle').textContent = label + ' — Ticket Details';
+
+  const intat   = data.filter(r=>r[tatKey]==='I').length;
+  const outtat  = data.filter(r=>r[tatKey]==='O').length;
+  const notat   = data.length - intat - outtat;
+  const pending = data.filter(r=>r.sc===pendingSc).length;
+
+  document.getElementById('modalStats').innerHTML = `
+    <span class="ms ms-total ms-btn" data-f="all"    onclick="setModalFilter('all')"   style="cursor:pointer">Total: ${fmt(data.length)}</span>
+    <span class="ms ms-pend  ms-btn" data-f="pend"   onclick="setModalFilter('pend')"  style="cursor:pointer">⏳ Pending: ${fmt(pending)}</span>
+    <span class="ms ms-in    ms-btn" data-f="in"     onclick="setModalFilter('in')"    style="cursor:pointer">✔ InTAT: ${fmt(intat)}</span>
+    <span class="ms ms-out   ms-btn" data-f="out"    onclick="setModalFilter('out')"   style="cursor:pointer">✘ OutTAT: ${fmt(outtat)}</span>
+    <span class="ms ms-na    ms-btn" data-f="notat"  onclick="setModalFilter('notat')" style="cursor:pointer">No TAT: ${fmt(notat)}</span>
+    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+
+  renderModalTable(data);
+  setTimeout(()=>setModalFilter('all'), 0); // apply active state
+  document.getElementById('modalOverlay').classList.add('open');
+}
+// ===== MODAL EXCEL EXPORT =====
+function exportModalExcel(){
+  if(!_modalKey) return;
+  const cfg = getStageConfig(_modalKey);
+  const {data, tatKey, dateKey, durKey, actKey, pendingSc, label, filename} = cfg;
+  const wb = XLSX.utils.book_new();
+
+  const intat   = data.filter(r=>r[tatKey]==='I').length;
+  const outtat  = data.filter(r=>r[tatKey]==='O').length;
+  const pending = data.filter(r=>r.sc===pendingSc).length;
+
+  const sumRows = [
+    [label + ' — Detailed Export'],
+    ['Date Range', currentFrom+' to '+currentTo],
+    [],
+    ['Total', data.length],
+    ['Pending', pending],
+    ['InTAT', intat],
+    ['OutTAT', outtat],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumRows), 'Summary');
+
+  const header = ['Ticket No','Created Date','Client Name','LicNo','Subscription Plan',
+                  'Stage Date','Pending Status','SLA Duration','Actual Duration',
+                  'TAT Status','Ack Disposition','Tester','RM'];
+  const rows = [header];
+  data.forEach(r=>{
+    rows.push([
+      r.n||'', r.tc||'', r.u||'', r.l||'', r.p||'',
+      r[dateKey]||'',
+      r.sc===pendingSc?'Pending':'Moved Forward',
+      durKey ? r[durKey]||'' : '—',
+      r[actKey]||'',
+      r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
+      r.q||'', r.t||r.eb||'', r.r||''
+    ]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:12},{wch:32},{wch:10},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10},{wch:8},{wch:18},{wch:20},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws, label.slice(0,31));
+
+  // Pending only sheet
+  const pendRows = [header, ...data.filter(r=>r.sc===pendingSc).map(r=>[
+    r.n||'', r.tc||'', r.u||'', r.l||'', r.p||'',
+    r[dateKey]||'', 'Pending',
+    durKey ? r[durKey]||'' : '—',
+    r[actKey]||'',
+    r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
+    r.q||'', r.t||r.eb||'', r.r||''
+  ])];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pendRows), 'Pending Only');
+
+  XLSX.writeFile(wb, `MARG_${filename}_Detail_${currentFrom}_to_${currentTo}.xlsx`);
+  showToast(`${label} detail exported!`);
+}
+
+// ===== TICKET TIMELINE BUILDER =====
+function buildTicketTimeline(rec, stageCfg) {
+  const stages = [
+    { key:'a',  tatKey:'at', durKey:'ad', actKey:'av', label:'Transfer to IT',   pendingSc:'IT', color:'#2563eb',
+      agent: rec.t,  agentLabel:'Tester / Transfer To' },
+    { key:'b',  tatKey:'bt', durKey:'bd', actKey:'bv', label:'Acknowledge',       pendingSc:'AK', color:'#d97706',
+      agent: rec.ta, agentLabel:'Ack Agent' },
+    { key:'c',  tatKey:'ct', durKey:'cd', actKey:'cv', label:'In Progress',       pendingSc:'IP', color:'#059669',
+      agent: rec.ti, agentLabel:'IP Agent' },
+    { key:'e',  tatKey:'et', durKey:'',   actKey:'ev', label:'Ready to Go Live',  pendingSc:'LV', color:'#7c3aed',
+      agent: rec.eb, agentLabel:'Go Live By' },
+    { key:'d',  tatKey:'dt', durKey:'dd', actKey:'dv', label:'Close by IT',       pendingSc:'SP', color:'#dc2626',
+      agent: rec.ts, agentLabel:'Support Agent' },
+  ];
+
+  const presentStages = stages.filter(s => rec[s.key]);
+  if(!presentStages.length) return '<div style="padding:12px;color:var(--muted2);font-size:11px;font-style:italic">No stage dates available for this ticket.</div>';
+
+  // Sort by date
+  presentStages.sort((a,b) => (rec[a.key]||'').localeCompare(rec[b.key]||''));
+
+  const activeSc = rec.sc;
+  let html = '<div class="tdm-timeline"><div class="tdm-timeline-track"></div>';
+
+  presentStages.forEach(s => {
+    const date = rec[s.key];
+    const tatVal = rec[s.tatKey];
+    const durVal = s.durKey ? rec[s.durKey] : null;
+    const actVal = s.actKey ? rec[s.actKey] : null;
+    const isPendingHere = rec.sc === s.pendingSc;
+    const isActive = isPendingHere || (rec.sc === s.pendingSc);
+
+    const stageNum = presentStages.indexOf(s) + 1;
+    const tatBadge = tatVal === 'I'
+      ? '<span class="tdm-tl-tat-badge in">✔ InTAT</span>'
+      : tatVal === 'O'
+      ? '<span class="tdm-tl-tat-badge out">✘ OutTAT</span>'
+      : '';
+    const pendChip = isPendingHere
+      ? '<span class="tdm-tl-pending-chip">⏳ Currently Pending</span>'
+      : '';
+
+    html += `<div class="tdm-tl-item">
+      <div class="tdm-tl-dot${isPendingHere?' active':''}" style="background:${s.color}">
+        <span style="color:#fff">${stageNum}</span>
+      </div>
+      <div class="tdm-tl-content${isPendingHere?' active-stage':''}">
+        <div class="tdm-tl-stage" style="color:${s.color}">${s.label}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          <div class="tdm-tl-date">📅 ${date}</div>
+          ${tatBadge}
+          ${pendChip}
+        </div>
+        <div class="tdm-tl-meta">
+          ${durVal ? `<span>⏱ SLA: ${durVal}</span>` : ''}
+          ${actVal ? `<span>🕐 Actual: ${actVal}</span>` : ''}
+          ${s.agent ? `<span>👤 ${s.agentLabel}: <strong>${s.agent}</strong></span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += '</div>';
+  return html;
+}
+
+// ===== UPCOMING DEADLINES KPI =====
+function renderUpcomingDeadlines(){
+  if(!RAW || !RAW.length) return;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const plus7 = new Date(today);
+  plus7.setDate(plus7.getDate() + 7);
+
+  const todayStr = today.toISOString().split('T')[0];
+  const plus7Str = plus7.toISOString().split('T')[0];
+
+  // Format date for display
+  const fmtD = d => d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+  // Update date range label
+  document.getElementById('upcomingDateRange').textContent = `${fmtD(today)} → ${fmtD(plus7)}`;
+
+  // Find tickets where TimeLineDate (tld) falls within today → today+5
+  const upcomingTickets = VIEW
+    .filter(rec => rec.tld && rec.tld > todayStr && rec.tld <= plus7Str)
+    .map(rec => {
+      const dateObj = new Date(rec.tld);
+      const diffMs = dateObj - today;
+      const daysLeft = Math.round(diffMs / (1000*60*60*24));
+
+      // Stage label
+      const STAGE_LABELS = {
+        IT:'Transfer to IT', AK:'Acknowledge', IP:'In Progress',
+        SP:'Close by IT', LV:'Ready to Go Live', CL:'Closed',
+        RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT', OT:'Other'
+      };
+      const stageLabel = STAGE_LABELS[rec.sc] || rec.sc || '—';
+
+      // Tester = TransferTo for most stages; ReadyToGoLiveBy for Go Live
+      const testerName = rec.eb || rec.t || rec.ti || rec.ta || rec.ts || '—';
+      const rmName = rec.r || '—';
+      const devName = rec.dev || '—';
+
+      return { rec, stageLabel, daysLeft };
+    })
+    .sort((a, b) => a.rec.tld.localeCompare(b.rec.tld));
+
+  document.getElementById('upcomingCount').textContent = upcomingTickets.length;
+
+  const grid = document.getElementById('upcomingGrid');
+  if(!upcomingTickets.length){
+    grid.innerHTML = `<div class="upcoming-empty">
+      <span style="font-size:32px">✅</span>
+      <span>No timeline deadlines in next 7 days</span>
+      <span style="font-size:10px;color:var(--muted2)">No tickets with TimeLineDate between ${fmtD(new Date(todayStr+'T00:00:00'))} and ${fmtD(plus7)}</span>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = upcomingTickets.map(({ rec, stageLabel, daysLeft }) => {
+    const daysClass = `days-${Math.min(daysLeft, 7)}`;
+    const daysLabel = daysLeft === 0
+      ? '🔴 Today!'
+      : daysLeft === 1
+      ? '🟠 Tomorrow'
+      : `🟡 In ${daysLeft} days`;
+
+    const descText = (rec.desc || rec.remarks || '').slice(0, 90) || 'No description';
+    const testerName = rec.eb || rec.t || rec.ti || rec.ta || rec.ts || '—';
+    const rmName = rec.r || '—';
+    const devName = rec.dev || '—';
+
+    // Format timeline date nicely
+    const tldFormatted = new Date(rec.tld+'T00:00:00').toLocaleDateString('en-IN',{
+      weekday:'short', day:'2-digit', month:'short', year:'numeric'
+    });
+
+    const closedClass = rec.sc==='SP' ? ' closed-it' : '';
+    return `<div class="upcoming-card ${daysClass}${closedClass}" onclick="openUpcomingTicket('${rec.n}')" title="Click to open ticket details">
+      <div class="uc-top">
+        <span class="uc-ticket">${rec.n || '—'}</span>
+        <span class="uc-days-badge">${daysLabel}</span>
+      </div>
+      <div class="uc-client">${rec.u || '—'}</div>
+      <div class="uc-desc" title="${(rec.desc||rec.remarks||'').replace(/"/g,'&quot;')}">${descText}</div>
+      <div class="uc-footer">
+        <span class="uc-tag stage">📍 ${stageLabel}</span>
+        ${testerName !== '—' ? `<span class="uc-tag tester">🧑‍💻 ${testerName}</span>` : ''}
+        ${rmName !== '—' ? `<span class="uc-tag rm">👔 ${rmName}</span>` : ''}
+        ${devName !== '—' ? `<span class="uc-tag" style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd">💻 ${devName}</span>` : ''}
+      </div>
+      <div style="margin-top:7px;padding-top:7px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:6px">
+        <span style="font-size:9px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.6px">📅 Timeline Date</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:2px 8px">${tldFormatted}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openUpcomingTicket(ticketNo){
+  const rec = VIEW.find(r => r.n === ticketNo) || RAW.find(r => r.n === ticketNo);
+  if(!rec) return;
+  // Find best stage config
+  const KEY_MAP = { IT:'IT', AK:'ACK', IP:'IP', SP:'SUP', LV:'LIVE' };
+  const cfgKey = KEY_MAP[rec.sc];
+  const stageCfg = cfgKey ? getStageConfig(cfgKey) : null;
+  openTicketDetail(rec, stageCfg);
+}
+
+// ===== TICKET DETAIL MODAL =====
+function openTicketDetail(rec, stageCfg){
+  if(!rec) return;
+  document.getElementById('tdmTicketId').textContent = rec.n || '';
+
+  // Build status badge
+  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const statusLabel = STATUS_LABELS[rec.sc] || rec.sc || '—';
+  const tatKey = stageCfg ? stageCfg.tatKey : '';
+  const dateKey = stageCfg ? stageCfg.dateKey : '';
+  const durKey  = stageCfg ? stageCfg.durKey : '';
+  const actKey  = stageCfg ? stageCfg.actKey : '';
+  const pendingSc = stageCfg ? stageCfg.pendingSc : '';
+  const isPend = rec.sc === pendingSc;
+  const tatVal = rec[tatKey];
+  const tatDisplay = tatVal==='I' ? '<span style="color:#059669;font-weight:700">✔ InTAT</span>' : tatVal==='O' ? '<span style="color:#dc2626;font-weight:700">✘ OutTAT</span>' : '<span style="color:#9ca3af">— No TAT Data</span>';
+
+  function field(label, val, mono){
+    const cls = mono ? 'mono' : (val&&val!=='—'?'':'muted');
+    return '<div class="tdm-field"><div class="tdm-field-label">'+label+'</div><div class="tdm-field-value '+cls+'">'+(val||'—')+'</div></div>';
+  }
+
+  // Description from API
+  const descText = rec.desc || rec.remarks || '';
+
+  document.getElementById('tdmBody').innerHTML =
+    // ── Row 1: Description (TOP) ──
+    '<div class="tdm-section"><div class="tdm-section-title">📝 Description / Remarks</div>'
+    + '<div class="tdm-desc-box'+(descText ? '' : ' empty')+'">'+(descText ? descText.replace(/\n/g,'<br>') : 'No description available')+'</div>'
+    + '</div>'
+
+    // ── Row 2: Ticket Info (4 cols) ──
+    + '<div class="tdm-section"><div class="tdm-section-title">🎫 Ticket Info</div>'
+    + '<div class="tdm-grid tdm-grid-4">'
+    + field('Ticket ID', rec.n, true)
+    + field('Created Date', rec.tc)
+    + field('Status', statusLabel)
+    + field('Source', 'Customer')
+    + '</div></div>'
+
+    // ── Row 2: Customer Info (4 cols) ──
+    + '<div class="tdm-section"><div class="tdm-section-title">👤 Customer Details</div>'
+    + '<div class="tdm-grid tdm-grid-4">'
+    + field('Licence No', rec.l)
+    + field('Customer Name', rec.u)
+    + field('Subscription Plan', rec.p)
+    + field('RM', rec.r)
+    + '</div>'
+    + '<div class="tdm-grid tdm-grid-3" style="margin-top:7px">'
+    + field('Mobile', rec.mobile)
+    + field('Email', rec.email)
+    + field('Assign To', rec.assignto)
+    + '</div></div>'
+
+    // ── Row 3: Stage + TAT ──
+    + '<div class="tdm-section"><div class="tdm-section-title">📅 Stage & TAT</div>'
+    + '<div class="tdm-grid tdm-grid-4">'
+    + field('Stage Date', rec[dateKey])
+    + field('SLA Duration', durKey ? rec[durKey] : '—')
+    + field('Actual Duration', actKey ? rec[actKey] : '—')
+    + '<div class="tdm-field"><div class="tdm-field-label">TAT Status</div><div class="tdm-field-value">'+tatDisplay+'</div></div>'
+    + '</div>'
+    + '<div class="tdm-grid tdm-grid-3" style="margin-top:7px">'
+    + '<div class="tdm-field" style="border:2px solid'+(rec.tld?'#f59e0b':'var(--border)')+';background:'+(rec.tld?'#fffbeb':'var(--s2)')+'"><div class="tdm-field-label" style="color:'+(rec.tld?'#92400e':'var(--muted2)')+'">📅 Timeline Date</div><div class="tdm-field-value" style="'+(rec.tld?'color:#92400e;font-weight:800;font-size:13px':'')+'font-family:JetBrains Mono,monospace">'+(rec.tld ? new Date(rec.tld+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}) : '<span style="color:var(--muted2);font-weight:400;font-size:11px">Not set</span>')+'</div></div>'
+    + field('Pending Status', isPend ? '<span style="color:#ea580c;font-weight:700">⏳ Pending at this stage</span>' : '<span style="color:#059669;font-weight:700">✔ Moved Forward</span>')
+    + field('Developer', rec.dev)
+    + '</div></div>'
+
+    // ── Row 4: Agents (4 cols) ──
+    + '<div class="tdm-section"><div class="tdm-section-title">🧑‍💼 Agent Details</div>'
+    + '<div class="tdm-grid tdm-grid-4">'
+    + field('Transfer To', rec.t || rec.eb)
+    + field('Ack Agent', rec.ta)
+    + field('IP Agent', rec.ti)
+    + field('Support Agent', rec.ts)
+    + '</div></div>'
+
+    // ── Row 5: Disposition ──
+    + '<div class="tdm-section"><div class="tdm-section-title">📋 Disposition & Problem</div>'
+    + '<div class="tdm-grid tdm-grid-4">'
+    + field('Main Disposition', rec.mainDisp)
+    + field('Sub Disposition', rec.subDisp)
+    + field('Problem Type', rec.probType)
+    + field('Ack Disposition', rec.q)
+    + '</div></div>'
+
+    // ── Row 6: Timeline ──
+    + '<div class="tdm-section"><div class="tdm-section-title">📈 Stage Timeline</div>'
+    + buildTicketTimeline(rec, stageCfg)
+    + '</div>';
+
+  document.getElementById('ticketDetailOverlay').classList.add('open');
+  // Scroll reset — naya ticket kholne par scroll top par aaye (stuck fix)
+  const tdmBody = document.getElementById('tdmBody');
+  tdmBody.scrollTop = 0;
+  requestAnimationFrame(()=>{ tdmBody.scrollTop = 0; });
+}
+function closeTicketDetail(e){ if(e.target===document.getElementById('ticketDetailOverlay')) closeTicketDetailDirect(); }
+function closeTicketDetailDirect(){ document.getElementById('ticketDetailOverlay').classList.remove('open'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeTicketDetailDirect(); closeModalDirect(); } });
+
+function closeModal(e){ if(e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect(){ document.getElementById('modalOverlay').classList.remove('open'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModalDirect(); });
+
+// ===== PER-STAGE EXCEL EXPORT =====
+function getStageConfig(key){
+  const cfg = {
+    IT:   { data:fIT,   tatKey:'at', dateKey:'a', durKey:'ad', actKey:'av', pendingSc:'IT', label:'Transfer to IT',    filename:'TransferToIT'    },
+    ACK:  { data:fAck,  tatKey:'bt', dateKey:'b', durKey:'bd', actKey:'bv', pendingSc:'AK', label:'Acknowledge',        filename:'Acknowledge'     },
+    IP:   { data:fIP,   tatKey:'ct', dateKey:'c', durKey:'cd', actKey:'cv', pendingSc:'IP', label:'In Progress',        filename:'InProgress'      },
+    SUP:  { data:fSup,  tatKey:'dt', dateKey:'d', durKey:'dd', actKey:'dv', pendingSc:'SP', label:'Transfer to Support',filename:'TransferToSupport'},
+    LIVE: { data:fLive, tatKey:'et', dateKey:'e', durKey:'',   actKey:'ev', pendingSc:'LV', label:'Ready to Go Live',   filename:'ReadyToGoLive'   },
+    // Status-only KPIs use the current filtered dashboard view.
+    RTS:  { data:VIEW.filter(r=>r.sc==='RS'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RS', label:'Return to Support',  filename:'ReturnToSupport'  },
+    RFT:  { data:VIEW.filter(r=>r.sc==='RT'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RT', label:'Ready for Testing',  filename:'ReadyForTesting'  },
+    RFU:  { data:VIEW.filter(r=>r.sc==='RU'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RU', label:'Ready for UAT',      filename:'ReadyForUAT'      },
+    RGL:  { data:VIEW.filter(r=>r.sc==='LV'), tatKey:'et', dateKey:'e', durKey:'', actKey:'ev', pendingSc:'LV', label:'Ready for Go Live', filename:'ReadyForGoLive' },
+  };
+  return cfg[key];
+}
+
+function buildSheetRows(data, tatKey, dateKey, pendingSc){
+  const header = ['Ticket No','Created Date','Client Name','LicNo','Subscription Plan','Stage Date','Pending Status',
+                  'TAT Status','Ack Disposition','Tester (TransferTo)','RM','Pending','InTAT','OutTAT'];
+  const rows = [header];
+  data.forEach(r=>{
+    const tatStatus     = r[tatKey]==='I' ? 'InTAT' : r[tatKey]==='O' ? 'OutTAT' : 'No TAT';
+    const pendingStatus = r.sc===pendingSc ? 'Pending' : 'Moved Forward';
+    rows.push([
+      r.n  || '',
+      r.tc || '',
+      r.u  || '',
+      r.l  || '',
+      r.p  || '',
+      r[dateKey] || '',
+      pendingStatus,
+      tatStatus,
+      r.q  || '',
+      r.t  || '',
+      r.r  || '',
+      r.sc===pendingSc ? 1 : 0,
+      r[tatKey]==='I' ? 1 : 0,
+      r[tatKey]==='O' ? 1 : 0,
+    ]);
+  });
+  return rows;
+}
+
+function exportStage(key){
+  const cfg = getStageConfig(key);
+  const wb  = XLSX.utils.book_new();
+
+  // --- Sheet 1: Summary ---
+  const intat  = cfg.data.filter(r=>r[cfg.tatKey]==='I').length;
+  const outtat = cfg.data.filter(r=>r[cfg.tatKey]==='O').length;
+  const notat  = cfg.data.length - intat - outtat;
+  const sumRows = [
+    ['MARG IT Dashboard — Stage Export'],
+    ['Stage', cfg.label],
+    ['Date Range', `${currentFrom||'All'} to ${currentTo||'All'}`],
+    ['Generated On', new Date().toLocaleString('en-IN')],
+    [],
+    ['Metric','Count'],
+    ['Total Tickets', cfg.data.length],
+    ['InTAT',  intat],
+    ['OutTAT', outtat],
+    ['No TAT Data', notat],
+    [],
+    ['InTAT %',  cfg.data.length ? ((intat/cfg.data.length)*100).toFixed(1)+'%' : '—'],
+    ['OutTAT %', cfg.data.length ? ((outtat/cfg.data.length)*100).toFixed(1)+'%' : '—'],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(sumRows);
+  wsSummary['!cols'] = [{wch:22},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  // --- Sheet 2: InTAT Tickets ---
+  const inRows = buildSheetRows(cfg.data.filter(r=>r[cfg.tatKey]==='I'), cfg.tatKey, cfg.dateKey, cfg.pendingSc);
+  const wsIn = XLSX.utils.aoa_to_sheet(inRows);
+  wsIn['!cols'] = [{wch:14},{wch:32},{wch:10},{wch:14},{wch:12},{wch:10},{wch:18},{wch:20},{wch:18},{wch:7},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, wsIn, 'InTAT');
+
+  // --- Sheet 3: OutTAT Tickets ---
+  const outRows = buildSheetRows(cfg.data.filter(r=>r[cfg.tatKey]==='O'), cfg.tatKey, cfg.dateKey, cfg.pendingSc);
+  const wsOut = XLSX.utils.aoa_to_sheet(outRows);
+  wsOut['!cols'] = wsIn['!cols'];
+  XLSX.utils.book_append_sheet(wb, wsOut, 'OutTAT');
+
+  // --- Sheet 4: All Tickets ---
+  const allRows = buildSheetRows(cfg.data, cfg.tatKey, cfg.dateKey, cfg.pendingSc);
+  const wsAll = XLSX.utils.aoa_to_sheet(allRows);
+  wsAll['!cols'] = wsIn['!cols'];
+  XLSX.utils.book_append_sheet(wb, wsAll, 'All Tickets');
+
+  const fname = `MARG_${cfg.filename}_${currentFrom||'All'}_to_${currentTo||'All'}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  showToast(`${cfg.label} report exported (${fmt(cfg.data.length)} rows)!`);
+}
+
+// ===== GLOBAL EXPORT (all stages) =====
+function exportExcel(){
+  const wb = XLSX.utils.book_new();
+
+  // Summary
+  const sumRows = [
+    ['MARG IT Dashboard — Full Export'],
+    ['Date Range', `${currentFrom||'All'} to ${currentTo||'All'}`],
+    ['Generated On', new Date().toLocaleString('en-IN')],
+    [],
+    ['Stage','Total','InTAT','OutTAT','InTAT %','OutTAT %'],
+    ['Transfer to IT', fIT.length,  fIT.filter(r=>r.at==='I').length,  fIT.filter(r=>r.at==='O').length,
+      fIT.length?((fIT.filter(r=>r.at==='I').length/fIT.length)*100).toFixed(1)+'%':'—',
+      fIT.length?((fIT.filter(r=>r.at==='O').length/fIT.length)*100).toFixed(1)+'%':'—'],
+    ['Acknowledge',    fAck.length, fAck.filter(r=>r.bt==='I').length, fAck.filter(r=>r.bt==='O').length,
+      fAck.length?((fAck.filter(r=>r.bt==='I').length/fAck.length)*100).toFixed(1)+'%':'—',
+      fAck.length?((fAck.filter(r=>r.bt==='O').length/fAck.length)*100).toFixed(1)+'%':'—'],
+    ['In Progress',    fIP.length,  fIP.filter(r=>r.ct==='I').length,  fIP.filter(r=>r.ct==='O').length,
+      fIP.length?((fIP.filter(r=>r.ct==='I').length/fIP.length)*100).toFixed(1)+'%':'—',
+      fIP.length?((fIP.filter(r=>r.ct==='O').length/fIP.length)*100).toFixed(1)+'%':'—'],
+    ['Close by IT',    fSup.length, fSup.filter(r=>r.dt==='I').length, fSup.filter(r=>r.dt==='O').length,
+      fSup.length?((fSup.filter(r=>r.dt==='I').length/fSup.length)*100).toFixed(1)+'%':'—',
+      fSup.length?((fSup.filter(r=>r.dt==='O').length/fSup.length)*100).toFixed(1)+'%':'—'],
+    ['Ready to Go Live',fLive.length,fLive.filter(r=>r.et==='I').length,fLive.filter(r=>r.et==='O').length,
+      fLive.length?((fLive.filter(r=>r.et==='I').length/fLive.length)*100).toFixed(1)+'%':'—',
+      fLive.length?((fLive.filter(r=>r.et==='O').length/fLive.length)*100).toFixed(1)+'%':'—'],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumRows), 'Summary');
+
+  // All 4 stages as separate sheets
+  [
+    {key:'IT',   label:'Transfer to IT'},
+    {key:'ACK',  label:'Acknowledge'},
+    {key:'IP',   label:'In Progress'},
+    {key:'SUP',  label:'Close by IT'},
+    {key:'LIVE', label:'Ready to Go Live'},
+  ].forEach(s=>{
+    const cfg = getStageConfig(s.key);
+    const rows = buildSheetRows(cfg.data, cfg.tatKey, cfg.dateKey, cfg.pendingSc);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:14},{wch:32},{wch:10},{wch:14},{wch:12},{wch:10},{wch:18},{wch:20},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, ws, s.label);
+  });
+
+  XLSX.writeFile(wb, `MARG_IT_Dashboard_Full_${currentFrom||'All'}_to_${currentTo||'All'}.xlsx`);
+  showToast('Full dashboard exported successfully!');
+}
+
+
+// ===== INIT =====
+function showEmptyState(){
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi-row" style="grid-template-columns:1fr">
+      <div style="background:#fff;border-radius:12px;border:2px dashed var(--border2);
+      padding:56px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">
+        <div style="font-size:52px;line-height:1">📊</div>
+        <div style="font-size:17px;font-weight:800;color:var(--text)">Loading Dashboard…</div>
+        <div style="font-size:12px;color:var(--muted);max-width:380px;line-height:1.7">
+          Data is loading in the background. <b>Current month</b> data will load automatically once ready.
+        </div>
+      </div>
+    </div>`;
+  ['tDisp','tLic','tTester','tRM','tClients','tPlan'].forEach(id=>{
+    const el = document.querySelector('#'+id+' tbody');
+    if(el) el.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted2);font-size:11px;">Select date range and click Fetch</td></tr>';
+  });
+  document.getElementById('fInfo').textContent = 'Select date range and click Fetch to load data';
+}
+
+// ===== PERSISTENT LOCAL CACHE (IndexedDB) =====
+// Fetched data browser me save rehta hai — tab close/reopen par bhi wahi data
+// load hota hai jab tak user ⟳ Refresh par click na kare.
+const CACHE_DB = 'mbTicketDashCache', CACHE_STORE = 'kv', CACHE_KEY = 'rawData';
+
+function idbOpen(){
+  return new Promise((res, rej)=>{
+    const rq = indexedDB.open(CACHE_DB, 1);
+    rq.onupgradeneeded = ()=> rq.result.createObjectStore(CACHE_STORE);
+    rq.onsuccess = ()=> res(rq.result);
+    rq.onerror   = ()=> rej(rq.error);
+  });
+}
+async function cacheSave(raw){
+  try{
+    const db = await idbOpen();
+    const tx = db.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put({ ts: Date.now(), raw }, CACHE_KEY);
+    await new Promise(r=>{ tx.oncomplete = r; tx.onerror = r; });
+    db.close();
+  }catch(e){ console.warn('Cache save failed:', e); }
+}
+async function cacheLoad(){
+  try{
+    const db = await idbOpen();
+    const tx = db.transaction(CACHE_STORE, 'readonly');
+    const rq = tx.objectStore(CACHE_STORE).get(CACHE_KEY);
+    const out = await new Promise(res=>{ rq.onsuccess = ()=>res(rq.result||null); rq.onerror = ()=>res(null); });
+    db.close();
+    return out;
+  }catch(e){ return null; }
+}
+function cacheAgeLabel(ts){
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const time = d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+  return `${date} at ${time}`;
+}
+
+// ===== BACKGROUND FETCH with live timer loader =====
+let _timerInterval = null;
+
+function startLoaderTimer(){
+  let secs = 0;
+  document.getElementById('loaderTimer').textContent = '0s';
+  _timerInterval = setInterval(()=>{
+    secs++;
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    document.getElementById('loaderTimer').textContent =
+      m > 0 ? m + 'm ' + String(s).padStart(2,'0') + 's' : secs + 's';
+  }, 1000);
+}
+
+function stopLoaderTimer(){
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval = null; }
+}
+
+async function backgroundFetch(){
+  const _fetchStart = Date.now();
+  // Show loader with live timer
+  document.getElementById('loaderTitle').textContent = 'Loading Data…';
+  document.getElementById('loaderMsg').textContent   = 'Fetching all tickets from server…';
+  document.getElementById('loaderStep').textContent  = 'Connecting to API';
+  document.getElementById('loaderBar').style.width   = '10%';
+  document.getElementById('loaderOverlay').classList.add('active');
+  startLoaderTimer();
+
+  const today     = new Date();
+  const toDate    = today.toISOString().split('T')[0];
+  const fromDate  = '2023-04-01';
+  try {
+    const url = `${API_URL}?FDate=${fromDate}&ToDate=${toDate}&TicketNo=`;
+
+    document.getElementById('loaderMsg').textContent  = `Downloading ${fromDate} → ${toDate}…`;
+    document.getElementById('loaderStep').textContent = 'Waiting for response';
+    document.getElementById('loaderBar').style.width  = '30%';
+
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    document.getElementById('loaderMsg').textContent  = 'Parsing response…';
+    document.getElementById('loaderStep').textContent = 'Processing records';
+    document.getElementById('loaderBar').style.width  = '65%';
+
+    const json = await res.json();
+    if(json.Status !== 'Success') throw new Error(json.Message || 'API error');
+
+    document.getElementById('loaderMsg').textContent  = 'Building index…';
+    document.getElementById('loaderStep').textContent = 'Indexing tickets';
+    document.getElementById('loaderBar').style.width  = '85%';
+
+    const details = json.Details || [];
+    const map = new Map();
+    details.forEach(r=>{
+      const rec = parseAPIRecord(r);
+      if(rec && rec.n) map.set(rec.n, rec);
+    });
+    RAW = Array.from(map.values());
+    refreshFilterOptions();
+    cacheSave(RAW); // persist for next session — Refresh tak yahi data rahega
+
+    document.getElementById('loaderMsg').textContent  = `${fmt(RAW.length)} tickets loaded successfully!`;
+    document.getElementById('loaderStep').textContent = 'Complete';
+    document.getElementById('loaderBar').style.width  = '100%';
+
+    const _fetchSecs = ((Date.now() - _fetchStart) / 1000);
+    const _fetchMin  = Math.floor(_fetchSecs / 60);
+    const _fetchRemS = (_fetchSecs % 60).toFixed(1);
+    const _fetchTime = _fetchMin > 0 ? `${_fetchMin}m ${_fetchRemS}s` : `${_fetchSecs.toFixed(1)}s`;
+    stopLoaderTimer();
+    setTimeout(()=>{
+      document.getElementById('loaderOverlay').classList.remove('active');
+      document.getElementById('loaderBar').style.width = '0%';
+      // Auto-load current month data by default after fetch completes
+      resetAll();
+      // Show fetch time badge in topbar
+      const badge = document.getElementById('fetchTimeBadge');
+      document.getElementById('fetchTimeBadgeText').textContent =
+        `${fmt(RAW.length)} tickets · fetched in ${_fetchTime}`;
+      badge.style.display = 'flex';
+    }, 600);
+
+  } catch(err){
+    stopLoaderTimer();
+    document.getElementById('loaderOverlay').classList.remove('active');
+    document.getElementById('loaderBar').style.width = '0%';
+    document.getElementById('fInfo').textContent = `⚠️ Load failed: ${err.message}`;
+    showToast(`❌ ${err.message}`);
+  }
+}
+
+async function init(){
+  const [from, to] = getCurrentMonthRange();
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value   = to;
+
+  // Pehle cache check karo — agar pichhli fetch ka data saved hai to wahi use karo
+  const cached = await cacheLoad();
+  if(cached && Array.isArray(cached.raw) && cached.raw.length){
+    RAW = cached.raw;
+    refreshFilterOptions();
+    resetAll(); // current month default load
+    const badge = document.getElementById('fetchTimeBadge');
+    document.getElementById('fetchTimeBadgeText').textContent =
+      `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
+    badge.style.display = 'flex';
+    showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
+    return; // koi API call nahi — Refresh par hi naya data aayega
+  }
+
+  // Cache khali hai → pehli baar fetch karo
+  showEmptyState();
+  backgroundFetch();
+}
+// ===== MIDNIGHT AUTO-FETCH SCHEDULER =====
+// Raat 12 baje ek baar automatically data fetch karke cache kar leta hai.
+// Agar system band hai tab bhi — jab page dobara khulega to check karta hai
+// ki kya aaj ka midnight auto-fetch ho chuka hai ya nahi. Agar nahi to fetch karta hai.
+
+const MIDNIGHT_KEY = 'mbLastMidnightFetch';
+
+function todayDateStr(){
+  // Returns "YYYY-MM-DD" for today (local time)
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function midnightFetchIfNeeded(){
+  // Check IndexedDB for last midnight-fetch date
+  try {
+    const db = await idbOpen();
+    const tx = db.transaction(CACHE_STORE,'readonly');
+    const rq = tx.objectStore(CACHE_STORE).get(MIDNIGHT_KEY);
+    const saved = await new Promise(res=>{ rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); });
+    db.close();
+    if(saved && saved.date === todayDateStr()){
+      return; // aaj pehle se fetch ho chuka hai
+    }
+  } catch(e){ /* ignore */ }
+
+  // Aaj fetch nahi hua — background mein silently data refresh karo
+  console.log('[MidnightScheduler] Auto-fetching data for', todayDateStr());
+  try {
+    const today = new Date();
+    const toDate   = today.toISOString().split('T')[0];
+    const fromDate = '2023-04-01';
+    const url = `${API_URL}?FDate=${fromDate}&ToDate=${toDate}&TicketNo=`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if(json.Status !== 'Success') throw new Error(json.Message || 'API error');
+    const details = json.Details || [];
+    const map = new Map();
+    details.forEach(r=>{ const rec = parseAPIRecord(r); if(rec && rec.n) map.set(rec.n, rec); });
+    RAW = Array.from(map.values());
+    await cacheSave(RAW);
+    // Save today's date as midnight-fetch done
+    const db2 = await idbOpen();
+    const tx2 = db2.transaction(CACHE_STORE,'readwrite');
+    tx2.objectStore(CACHE_STORE).put({ date: todayDateStr() }, MIDNIGHT_KEY);
+    await new Promise(r=>{ tx2.oncomplete=r; tx2.onerror=r; });
+    db2.close();
+    // Update badge silently
+    const badge = document.getElementById('fetchTimeBadge');
+    document.getElementById('fetchTimeBadgeText').textContent =
+      `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(Date.now())}`;
+    badge.style.display = 'flex';
+    console.log('[MidnightScheduler] Done —', RAW.length, 'tickets cached');
+  } catch(e){
+    console.warn('[MidnightScheduler] Auto-fetch failed:', e.message);
+  }
+}
+
+function scheduleMidnightFetch(){
+  const now = new Date();
+  // Next midnight = today 00:00 + 1 day
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5); // 00:00:05
+  const msUntilMidnight = nextMidnight - now;
+  console.log(`[MidnightScheduler] Next auto-fetch in ${Math.round(msUntilMidnight/60000)} min`);
+  setTimeout(async ()=>{
+    await midnightFetchIfNeeded();
+    scheduleMidnightFetch(); // reschedule for next night
+  }, msUntilMidnight);
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  init(); // normal dashboard init
+  // On page open: check if today's midnight-fetch already happened
+  // (Handles the case where system was off at midnight)
+  setTimeout(midnightFetchIfNeeded, 3000); // 3s delay taaki normal load pehle ho
+  // Schedule for tonight's midnight
+  scheduleMidnightFetch();
+});
+</script>
+</body>
+</html>

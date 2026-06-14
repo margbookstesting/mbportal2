@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MB Portal — Login</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--brand:#f97316;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--error:#ef4444}
+  body{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);
+    font-family:'Segoe UI',system-ui,sans-serif;position:relative;overflow:hidden;
+  }
+  body::before{
+    content:'';position:absolute;inset:0;
+    background-image:radial-gradient(circle at 1px 1px,rgba(249,115,22,.15) 1px,transparent 0);
+    background-size:40px 40px;animation:bgshift 20s linear infinite;
+  }
+  @keyframes bgshift{0%{transform:translate(0,0)}100%{transform:translate(40px,40px)}}
+  .card{
+    background:rgba(255,255,255,.97);border-radius:20px;padding:44px 40px 36px;
+    width:100%;max-width:400px;position:relative;z-index:1;
+    box-shadow:0 25px 60px rgba(0,0,0,.4);
+  }
+  .logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .logo-icon{
+    width:42px;height:42px;border-radius:10px;
+    background:linear-gradient(135deg,var(--brand),#ef4444);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:900;color:#fff;
+    box-shadow:0 4px 12px rgba(249,115,22,.4);
+  }
+  .logo-text{font-size:22px;font-weight:800;color:var(--dark)}
+  .logo-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .divider{height:1px;background:var(--border);margin:20px 0}
+  h2{font-size:17px;font-weight:700;color:var(--text);margin-bottom:4px}
+  .subtitle{font-size:13px;color:var(--muted);margin-bottom:24px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
+  input{
+    width:100%;border:1.5px solid var(--border);border-radius:10px;
+    padding:11px 14px;font-size:14px;color:var(--text);outline:none;
+    transition:.2s;background:#fafafa;margin-bottom:14px;
+  }
+  input:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(249,115,22,.1)}
+  .pass-wrap{position:relative;margin-bottom:0}
+  .pass-wrap input{margin-bottom:0;padding-right:40px}
+  .eye{position:absolute;right:12px;top:12px;cursor:pointer;font-size:16px;color:var(--muted)}
+  .btn{
+    width:100%;padding:13px;border:none;border-radius:10px;cursor:pointer;
+    font-size:15px;font-weight:700;transition:.2s;margin-top:14px;
+    background:linear-gradient(135deg,var(--brand),#ef4444);color:#fff;
+    box-shadow:0 4px 14px rgba(249,115,22,.4);
+  }
+  .btn:hover{transform:translateY(-1px)}
+  .btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+  .err{
+    background:#fef2f2;border:1px solid #fecaca;border-radius:8px;
+    padding:10px 14px;font-size:13px;color:var(--error);margin-bottom:12px;display:none;
+  }
+  .err.show{display:block}
+  .footer{text-align:center;font-size:12px;color:var(--muted);margin-top:20px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">MB</div>
+    <div>
+      <div class="logo-text">MB Portal</div>
+      <div class="logo-sub">Dashboard Hub</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <h2>Welcome back 👋</h2>
+  <p class="subtitle">Sign in to access your dashboards</p>
+  <div class="err" id="err"></div>
+  <label>Email Address</label>
+  <input type="email" id="email" placeholder="you@company.com" autocomplete="email"/>
+  <label>Password</label>
+  <div class="pass-wrap">
+    <input type="password" id="pass" placeholder="••••••••"/>
+    <span class="eye" onclick="togglePass()">👁️</span>
+  </div>
+  <button class="btn" id="btn" onclick="login()">Sign In</button>
+  <div class="footer">Trouble signing in? Contact your administrator.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Already logged in? Redirect
+sb.auth.getSession().then(({data})=>{
+  if(data.session) window.location.href='portal.html';
+});
+
+async function login(){
+  const email = document.getElementById('email').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const btn   = document.getElementById('btn');
+  const err   = document.getElementById('err');
+  err.classList.remove('show');
+  if(!email||!pass){showErr('Email aur password zaroori hain');return;}
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span>Signing in...';
+  const {error} = await sb.auth.signInWithPassword({email,password:pass});
+  if(error){
+    let msg='Invalid email or password.';
+    if(error.message.includes('Email not confirmed')) msg='Please verify your email first.';
+    if(error.message.includes('network')) msg='Network error. Check connection.';
+    showErr(msg);
+    btn.disabled=false;btn.innerHTML='Sign In';
+  } else {
+    window.location.href='portal.html';
+  }
+}
+
+function showErr(msg){
+  const e=document.getElementById('err');
+  e.textContent='⚠️ '+msg;e.classList.add('show');
+}
+function togglePass(){
+  const p=document.getElementById('pass');
+  p.type=p.type==='password'?'text':'password';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+</script>
+</body>
+</html>

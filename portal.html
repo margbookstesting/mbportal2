@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MB Portal — My Dashboards</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--brand:#f97316;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;--card:#fff}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  nav{
+    background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:60px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);
+  }
+  .nav-left{display:flex;align-items:center;gap:12px}
+  .logo-icon{
+    width:36px;height:36px;border-radius:8px;
+    background:linear-gradient(135deg,var(--brand),#ef4444);
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;
+  }
+  .nav-title{font-size:16px;font-weight:800;color:var(--dark)}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .user-chip{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--bg);border-radius:20px;border:1px solid var(--border);font-size:13px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--brand),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+  .btn-sm{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;border:none}
+  .btn-danger{background:#fef2f2;color:#ef4444;border:1px solid #fecaca}
+  .btn-danger:hover{background:#fee2e2}
+  .btn-admin{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}
+  .btn-admin:hover{opacity:.9}
+  main{max-width:1100px;margin:0 auto;padding:32px 24px}
+  .page-header{margin-bottom:28px}
+  .page-header h1{font-size:22px;font-weight:800;color:var(--dark)}
+  .page-header p{font-size:14px;color:var(--muted);margin-top:4px}
+  .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:24px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+  .dash-card{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;transition:.2s;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+  .dash-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+  .card-thumb{height:100px;display:flex;align-items:center;justify-content:center;font-size:44px}
+  .card-body{padding:16px 18px 18px}
+  .card-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;padding:3px 8px;border-radius:20px;margin-bottom:8px}
+  .card-title{font-size:15px;font-weight:700;color:var(--dark);margin-bottom:4px}
+  .card-desc{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:14px}
+  .card-footer{display:flex;align-items:center;justify-content:space-between}
+  .open-btn{padding:7px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff}
+  .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:16px;color:var(--muted)}
+  .spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .empty{text-align:center;padding:80px 20px;color:var(--muted)}
+  .empty .icon{font-size:48px;margin-bottom:16px;display:block}
+  .empty h3{font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-left">
+    <div class="logo-icon">MB</div>
+    <span class="nav-title">MB Portal</span>
+  </div>
+  <div class="nav-right">
+    <div class="user-chip">
+      <div class="avatar" id="avatarEl">?</div>
+      <span id="userNameEl">Loading...</span>
+    </div>
+    <button class="btn-sm btn-admin" id="adminBtn" onclick="window.location.href='admin.html'" style="display:none">⚙️ Admin</button>
+    <button class="btn-sm btn-danger" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+<main>
+  <div class="page-header">
+    <h1>My Dashboards</h1>
+    <p id="subtitleEl">Loading your dashboards...</p>
+  </div>
+  <div id="content">
+    <div class="loading"><div class="spin"></div><span>Fetching dashboards...</span></div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── DASHBOARD REGISTRY ──────────────────────────────────────────────────────
+// Naye dashboards yahan add karo
+const ALL_DASHBOARDS = [
+  {
+    id:'ticket-dashboard',
+    title:'Ticket Dashboard',
+    desc:'Stage-wise ticket tracking with Tester & RM breakdown, TAT analysis and live counts.',
+    icon:'🎫', tag:'Operations',
+    tagColor:'#f97316', tagBg:'#fff7ed',
+    btnColor:'linear-gradient(135deg,#f97316,#ef4444)',
+    url:'ticket_dashboard_api_1106_7.html',
+    category:'Operations',
+  },
+];
+
+(async()=>{
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ window.location.href='index.html'; return; }
+
+  const user = session.user;
+  const name = user.user_metadata?.name || user.email.split('@')[0];
+  const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('avatarEl').textContent  = initials;
+  document.getElementById('userNameEl').textContent = name;
+
+  // Fetch user profile from DB
+  const {data:profile} = await sb.from('users').select('*').eq('id',user.id).single();
+
+  const isAdmin = profile?.role === 'admin';
+  const perms   = profile?.dashboards || [];
+
+  if(isAdmin){
+    document.getElementById('adminBtn').style.display='block';
+    document.getElementById('subtitleEl').textContent='Admin access — all dashboards visible';
+    renderDashboards(ALL_DASHBOARDS);
+  } else if(perms.length){
+    const allowed = ALL_DASHBOARDS.filter(d=>perms.includes(d.id));
+    document.getElementById('subtitleEl').textContent=`${allowed.length} dashboard${allowed.length!==1?'s':''} available`;
+    renderDashboards(allowed);
+  } else {
+    document.getElementById('subtitleEl').textContent='No dashboards assigned yet';
+    document.getElementById('content').innerHTML=`
+      <div class="empty">
+        <span class="icon">🔒</span>
+        <h3>No dashboards yet</h3>
+        <p>Your administrator hasn't assigned any dashboards.<br>Please contact admin.</p>
+      </div>`;
+  }
+})();
+
+function renderDashboards(list){
+  const groups={};
+  list.forEach(d=>{ const c=d.category||'General'; if(!groups[c])groups[c]=[]; groups[c].push(d); });
+  let html='';
+  for(const [cat,items] of Object.entries(groups)){
+    html+=`<div class="section-label">${cat}</div><div class="grid">`;
+    items.forEach(d=>{
+      html+=`<div class="dash-card" onclick="window.location.href='${d.url}'">
+        <div class="card-thumb" style="background:linear-gradient(135deg,${d.tagBg},#f1f5f9)">${d.icon}</div>
+        <div class="card-body">
+          <span class="card-tag" style="color:${d.tagColor};background:${d.tagBg}">${d.tag}</span>
+          <div class="card-title">${d.title}</div>
+          <div class="card-desc">${d.desc}</div>
+          <div class="card-footer">
+            <button class="open-btn" style="background:${d.btnColor}" onclick="event.stopPropagation();window.location.href='${d.url}'">Open →</button>
+            <span style="font-size:11px;color:var(--muted)">Click to open</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  document.getElementById('content').innerHTML=html;
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  window.location.href='index.html';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MB Portal — Admin</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--brand:#f97316;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;--card:#fff;--success:#059669;--danger:#ef4444;--purple:#7c3aed}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  nav{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .nav-left{display:flex;align-items:center;gap:12px}
+  .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),#ef4444);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
+  .nav-title{font-size:16px;font-weight:800;color:var(--dark)}
+  .badge{background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+  .btn-sm{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;border:none}
+  .btn-danger{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
+  .btn-back{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+  main{max-width:1000px;margin:0 auto;padding:32px 24px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .stat-val{font-size:24px;font-weight:800;color:var(--dark)}
+  .stat-label{font-size:12px;color:var(--muted);margin-top:2px}
+  .panels{display:grid;grid-template-columns:1fr 1.6fr;gap:20px;align-items:start}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .panel-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .panel-title{font-size:14px;font-weight:700;color:var(--dark)}
+  .panel-sub{font-size:12px;color:var(--muted);margin-top:1px}
+  .form{padding:20px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
+  input,select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;transition:.2s;background:#fafafa;margin-bottom:14px}
+  input:focus,select:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(249,115,22,.1)}
+  .btn-primary{width:100%;padding:10px;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;transition:.2s;background:linear-gradient(135deg,var(--brand),#ef4444);color:#fff;box-shadow:0 3px 10px rgba(249,115,22,.3)}
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+  .user-list{max-height:560px;overflow-y:auto}
+  .user-item{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;transition:.15s}
+  .user-item:last-child{border-bottom:none}
+  .user-item:hover{background:#fafafa}
+  .avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--brand),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+  .avatar.admin-av{background:linear-gradient(135deg,#7c3aed,#4f46e5)}
+  .user-info{flex:1;min-width:0}
+  .user-name{font-size:13px;font-weight:700;color:var(--dark)}
+  .user-email{font-size:11px;color:var(--muted);margin-top:1px}
+  .user-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .perm-chip{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+  .role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+  .role-admin{background:#ede9fe;color:#6d28d9}
+  .role-user{background:#f0fdf4;color:#15803d}
+  .user-actions{display:flex;gap:6px;flex-shrink:0}
+  .icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s}
+  .icon-btn:hover{background:var(--bg)}
+  .icon-btn.del:hover{background:#fef2f2;border-color:#fecaca}
+  /* MODAL */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+  .modal-hdr{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .modal-title{font-size:15px;font-weight:700}
+  .modal-close{width:28px;height:28px;border:none;background:var(--bg);border-radius:7px;cursor:pointer;font-size:16px}
+  .modal-body{padding:20px 24px;max-height:380px;overflow-y:auto}
+  .dash-opt{display:flex;align-items:flex-start;gap:12px;padding:12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;transition:.15s}
+  .dash-opt.sel{border-color:var(--brand);background:#fff7ed}
+  .dash-opt input[type=checkbox]{margin-top:2px;accent-color:var(--brand);width:16px;height:16px}
+  .dash-opt-title{font-size:13px;font-weight:700;color:var(--dark)}
+  .dash-opt-desc{font-size:11px;color:var(--muted);margin-top:2px}
+  .modal-ftr{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+  .btn-cancel{padding:9px 18px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
+  .btn-save{padding:9px 18px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--brand),#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;z-index:999;transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.ok{background:#059669}
+  .toast.err{background:#ef4444}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .empty-msg{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-left">
+    <div class="logo-icon">MB</div>
+    <span class="nav-title">MB Portal</span>
+    <span class="badge">Admin Panel</span>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn-sm btn-back" onclick="window.location.href='portal.html'">← Portal</button>
+    <button class="btn-sm btn-danger" onclick="logout()">Sign Out</button>
+  </div>
+</nav>
+
+<main>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="stTotal">—</div><div class="stat-label">Total Users</div></div>
+    <div class="stat"><div class="stat-val" id="stAdmins">—</div><div class="stat-label">Admins</div></div>
+    <div class="stat"><div class="stat-val" id="stUsers">—</div><div class="stat-label">Regular Users</div></div>
+    <div class="stat"><div class="stat-val" id="stDash">—</div><div class="stat-label">Dashboards</div></div>
+  </div>
+  <div class="panels">
+    <!-- CREATE USER -->
+    <div class="panel">
+      <div class="panel-header">
+        <div><div class="panel-title">➕ Create New User</div><div class="panel-sub">Add team member</div></div>
+      </div>
+      <div class="form">
+        <label>Full Name</label>
+        <input id="nName" type="text" placeholder="Rahul Sharma"/>
+        <label>Email</label>
+        <input id="nEmail" type="email" placeholder="rahul@margerp.net"/>
+        <label>Password</label>
+        <input id="nPass" type="password" placeholder="Min 8 characters"/>
+        <label>Role</label>
+        <select id="nRole">
+          <option value="user">User (limited access)</option>
+          <option value="admin">Admin (full access)</option>
+        </select>
+        <button class="btn-primary" id="createBtn" onclick="createUser()">Create User</button>
+      </div>
+    </div>
+
+    <!-- USER LIST -->
+    <div class="panel">
+      <div class="panel-header">
+        <div><div class="panel-title">👥 All Users</div><div class="panel-sub">🔑 click karke permissions do</div></div>
+        <button onclick="loadUsers()" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--muted)">↻ Refresh</button>
+      </div>
+      <div class="user-list" id="userList"><div class="empty-msg">Loading...</div></div>
+    </div>
+  </div>
+</main>
+
+<!-- PERMISSIONS MODAL -->
+<div class="overlay" id="permOverlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="permTitle">Manage Permissions</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="permBody"></div>
+    <div class="modal-ftr">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="savePerms()">Save Permissions</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+// Service role key — only used server-side actions (user creation)
+const SUPA_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQxMzM1MCwiZXhwIjoyMDk2OTg5MzUwfQ._f17cCzbnJVtsKSjyTWOwRIt68kOiRiA6ydHhF76_ZE';
+
+const sb      = supabase.createClient(SUPA_URL, SUPA_KEY);
+const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE);
+
+const ALL_DASHBOARDS = [
+  {id:'ticket-dashboard', title:'Ticket Dashboard', desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
+];
+
+let allUsers = [];
+let currentUID = null;
+
+document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
+
+// Auth guard
+(async()=>{
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  const {data:p} = await sb.from('users').select('role').eq('id',session.user.id).single();
+  if(p?.role!=='admin'){alert('Admin only!');window.location.href='portal.html';return;}
+  loadUsers();
+})();
+
+// ── LOAD USERS ──────────────────────────────────────────────────────────────
+window.loadUsers = async function(){
+  document.getElementById('userList').innerHTML='<div class="empty-msg">Loading...</div>';
+  const {data,error} = await sb.from('users').select('*').order('created_at',{ascending:false});
+  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:#ef4444">${error.message}</div>`;return;}
+  allUsers = data||[];
+  const admins = allUsers.filter(u=>u.role==='admin').length;
+  document.getElementById('stTotal').textContent  = allUsers.length;
+  document.getElementById('stAdmins').textContent = admins;
+  document.getElementById('stUsers').textContent  = allUsers.length-admins;
+
+  if(!allUsers.length){document.getElementById('userList').innerHTML='<div class="empty-msg">No users yet.</div>';return;}
+
+  document.getElementById('userList').innerHTML = allUsers.map(u=>{
+    const init = (u.name||u.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const perms = (u.dashboards||[]).map(id=>{
+      const d=ALL_DASHBOARDS.find(x=>x.id===id);
+      return d?`<span class="perm-chip">${d.icon} ${d.title}</span>`:'';
+    }).join('');
+    return `<div class="user-item">
+      <div class="avatar ${u.role==='admin'?'admin-av':''}">${init}</div>
+      <div class="user-info">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="user-name">${u.name||'—'}</span>
+          <span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role||'user'}</span>
+        </div>
+        <div class="user-email">${u.email||''}</div>
+        ${u.role!=='admin'
+          ? `<div class="user-perms">${perms||'<span style="font-size:11px;color:var(--muted)">No dashboards assigned</span>'}</div>`
+          : '<div style="font-size:11px;color:#7c3aed;margin-top:4px">✓ Full access</div>'}
+      </div>
+      <div class="user-actions">
+        ${u.role!=='admin'?`<button class="icon-btn" title="Permissions" onclick="openModal('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🔑</button>`:''}
+        <button class="icon-btn del" title="Delete" onclick="deleteUser('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+// ── CREATE USER ─────────────────────────────────────────────────────────────
+window.createUser = async function(){
+  const name  = document.getElementById('nName').value.trim();
+  const email = document.getElementById('nEmail').value.trim();
+  const pass  = document.getElementById('nPass').value;
+  const role  = document.getElementById('nRole').value;
+  const btn   = document.getElementById('createBtn');
+  if(!name||!email||!pass){toast('Sabhi fields zaroori hain','err');return;}
+  if(pass.length<6){toast('Password min 6 characters','err');return;}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Creating...';
+  try{
+    // Create auth user via service role
+    const {data:authData,error:authErr} = await sbAdmin.auth.admin.createUser({
+      email, password:pass,
+      user_metadata:{name},
+      email_confirm:true,
+    });
+    if(authErr) throw authErr;
+    // Insert into users table
+    const {error:dbErr} = await sb.from('users').insert({
+      id: authData.user.id,
+      name, email, role,
+      dashboards:[],
+      created_at: new Date().toISOString(),
+    });
+    if(dbErr) throw dbErr;
+    ['nName','nEmail','nPass'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('nRole').value='user';
+    toast(`✅ ${name} created!`,'ok');
+    loadUsers();
+  }catch(e){
+    let msg=e.message;
+    if(msg.includes('already registered')) msg='Email already exists';
+    toast(msg,'err');
+  }finally{btn.disabled=false;btn.innerHTML='Create User';}
+};
+
+// ── DELETE USER ─────────────────────────────────────────────────────────────
+window.deleteUser = async function(id,name){
+  if(!confirm(`"${name}" ko delete karna chahte hain?`)) return;
+  await sb.from('users').delete().eq('id',id);
+  await sbAdmin.auth.admin.deleteUser(id);
+  toast(`${name} deleted`,'ok');
+  loadUsers();
+};
+
+// ── PERMISSIONS MODAL ───────────────────────────────────────────────────────
+window.openModal = function(uid,name){
+  currentUID=uid;
+  document.getElementById('permTitle').textContent=`🔑 ${name} — Permissions`;
+  const user=allUsers.find(u=>u.id===uid);
+  const assigned=user?.dashboards||[];
+  document.getElementById('permBody').innerHTML=ALL_DASHBOARDS.map(d=>{
+    const chk=assigned.includes(d.id);
+    return `<div class="dash-opt ${chk?'sel':''}" onclick="toggleDash(this)">
+      <input type="checkbox" data-id="${d.id}" ${chk?'checked':''} onclick="event.stopPropagation()"/>
+      <div><div class="dash-opt-title">${d.icon} ${d.title}</div><div class="dash-opt-desc">${d.desc}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('permOverlay').classList.add('show');
+};
+window.toggleDash=function(el){
+  el.classList.toggle('sel');
+  el.querySelector('input').checked=el.classList.contains('sel');
+};
+window.closeModal=function(){
+  document.getElementById('permOverlay').classList.remove('show');
+  currentUID=null;
+};
+window.savePerms=async function(){
+  if(!currentUID) return;
+  const checks=document.querySelectorAll('#permBody input[type=checkbox]');
+  const sel=[...checks].filter(c=>c.checked).map(c=>c.dataset.id);
+  const {error}=await sb.from('users').update({dashboards:sel}).eq('id',currentUID);
+  if(error){toast(error.message,'err');return;}
+  toast('✅ Permissions saved!','ok');
+  closeModal();loadUsers();
+};
+
+// ── LOGOUT ──────────────────────────────────────────────────────────────────
+window.logout=async function(){
+  await sb.auth.signOut();
+  window.location.href='index.html';
+};
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function toast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+</script>
+</body>
+</html>
