@@ -1511,11 +1511,15 @@ function onSearchInput(val){
 function doTicketSearch(){
   const raw=(document.getElementById('ticketSearch').value||'').trim();
   if(!raw){clearSearch();return;}
-  const q=raw.replace(/[\s\-]/g,'').toUpperCase();
-  const found=RAW.find(r=>r.n&&r.n.replace(/[\s\-]/g,'').toUpperCase().includes(q));
-  if(!found){showToast('Ticket "'+raw+'" not found');return;}
-  document.getElementById('ticketSearch').value=found.n;
-  document.getElementById('bannerTicket').textContent=found.n;
+  // Normalize: remove spaces, dashes, "MB" prefix — handle all formats
+  // "MB - 036061", "MB-036061", "036061" sab match honge
+  const normalize = v => String(v||'').replace(/[\s\-]/gi,'').replace(/^MB/i,'').toUpperCase();
+  const q = normalize(raw);
+  const found = RAW.find(r => r.n && normalize(r.n) === q)        // exact match pehle
+             || RAW.find(r => r.n && normalize(r.n).includes(q)); // phir partial
+  if(!found){ showToast('Ticket "'+raw+'" not found'); return; }
+  document.getElementById('ticketSearch').value = String(found.n);
+  document.getElementById('bannerTicket').textContent = String(found.n);
   document.getElementById('searchBanner').classList.add('vis');
   applyFilter();
 }
@@ -1538,8 +1542,10 @@ function getGlobalFilteredRows(){
   const statuses = [...(CF_STATE.status  || new Set())];
   return RAW.filter(r=>{
     if(ticket){
-      const q=ticket.replace(/[\s\-]/g,'').toUpperCase();
-      if(!String(r.n||'').replace(/[\s\-]/g,'').toUpperCase().includes(q)) return false;
+      // Same normalize: remove spaces/dashes/MB prefix — handle all input formats
+      const normalize = v => String(v||'').replace(/[\s\-]/gi,'').replace(/^MB/i,'').toUpperCase();
+      const q = normalize(ticket);
+      if(!normalize(r.n).includes(q)) return false;
     }
     return matchAny(testers,[r.t,r.ta,r.ti,r.ts,r.eb])
         && matchAny(rms,[r.r])
@@ -1736,12 +1742,14 @@ function buildFiltered(from, to){
   VIEW = getGlobalFilteredRows();
   const hasTicketSearch = !!(document.getElementById('ticketSearch')?.value || '').trim();
   if(hasTicketSearch){
-    fIT   = VIEW.filter(r => r.a);
-    fAck  = VIEW.filter(r => r.b);
-    fIP   = VIEW.filter(r => r.c);
-    fSup  = VIEW.filter(r => r.d);
-    fLive = VIEW.filter(r => r.e);
+    // Ticket search: sirf woh stage dikhao jisme ticket actually gaya ho (date exist ho)
+    fIT   = VIEW.filter(r => !!r.a);
+    fAck  = VIEW.filter(r => !!r.b);
+    fIP   = VIEW.filter(r => !!r.c);
+    fSup  = VIEW.filter(r => !!r.d);
+    fLive = VIEW.filter(r => !!r.e);
   } else {
+    // Normal: date range filter
     const dateOk = d => inRange(d, from, to);
     fIT   = VIEW.filter(r => dateOk(r.a));
     fAck  = VIEW.filter(r => dateOk(r.b));
@@ -3294,14 +3302,16 @@ function cacheAgeLabel(ts){
 // Supabase se latest cached data load karo
 async function cacheLoad(){
   try{
+    // .single() ki jagah array use karo — safer
     const { data, error } = await sb
       .from('ticket_cache')
       .select('data, fetched_at, total_count')
       .order('fetched_at', { ascending: false })
-      .limit(1)
-      .single();
-    if(error || !data) return null;
-    return { raw: data.data, ts: new Date(data.fetched_at).getTime() };
+      .limit(1);
+    if(error){ console.warn('Supabase cacheLoad error:', error.message); return null; }
+    if(!data || !data.length || !data[0].data) return null;
+    const row = data[0];
+    return { raw: row.data, ts: new Date(row.fetched_at).getTime() };
   } catch(e){ console.warn('Supabase cacheLoad failed:', e); return null; }
 }
 
@@ -3309,7 +3319,8 @@ async function cacheLoad(){
 async function cacheSave(raw){
   try{
     const today = new Date().toISOString().split('T')[0];
-    await sb.from('ticket_cache').delete().neq('id', 0);
+    // Delete existing (ignore error if table empty)
+    try{ await sb.from('ticket_cache').delete().neq('id', 0); }catch(_){}
     const { error } = await sb.from('ticket_cache').insert({
       data: raw,
       total_count: raw.length,
