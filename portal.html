@@ -37,11 +37,7 @@ main{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:16px 28px
 .welcome-badge{display:flex;align-items:center;gap:6px;padding:6px 12px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1px solid #99f6e4;border-radius:20px;font-size:12px;color:#0f766e;font-weight:600}
 
 /* STATS */
-.stats-bar{display:flex;gap:10px;flex-shrink:0}
-.stat-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;min-width:130px}
-.stat-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;background:#f0fdfa}
-.stat-val{font-size:18px;font-weight:800;color:var(--dark);line-height:1}
-.stat-lbl{font-size:10px;color:var(--muted);margin-top:1px}
+
 
 /* CARDS AREA - fills remaining space */
 .cards-area{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px}
@@ -109,10 +105,7 @@ main{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:16px 28px
     </div>
   </div>
 
-  <div class="stats-bar" id="statsBar" style="display:none">
-    <div class="stat-card"><div class="stat-icon">📊</div><div><div class="stat-val" id="sDash">—</div><div class="stat-lbl">Dashboards</div></div></div>
-    <div class="stat-card"><div class="stat-icon">👥</div><div><div class="stat-val" id="sUsers">—</div><div class="stat-lbl">Total Users</div></div></div>
-  </div>
+
 
   <div class="cards-area" id="cardsArea">
     <div class="loading"><div class="spin"></div>Loading dashboards...</div>
@@ -154,10 +147,7 @@ const ALL_DASHBOARDS = [
   if(isAdmin){
     document.getElementById('adminBtn').style.display = 'block';
     document.getElementById('subtitleEl').textContent  = 'Admin access — all dashboards visible';
-    document.getElementById('statsBar').style.display  = 'flex';
-    document.getElementById('sDash').textContent = ALL_DASHBOARDS.length;
-    const {data:users} = await sb.from('users').select('id');
-    document.getElementById('sUsers').textContent = users?.length||0;
+
     renderDashboards(ALL_DASHBOARDS);
   } else if(perms.length){
     const allowed = ALL_DASHBOARDS.filter(d=>perms.includes(d.id));
