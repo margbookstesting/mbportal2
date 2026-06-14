@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MB Portal — Admin</title>
+<title>Margbooks Dashboard Portal — Admin</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  :root{--brand:#f97316;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f8fafc;--card:#fff;--success:#059669;--danger:#ef4444;--purple:#7c3aed}
+  :root{--brand:#0d9488;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f1f5f9;--card:#fff;--success:#0d9488;--danger:#e11d48;--purple:#0d9488}
   body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
   nav{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
   .nav-left{display:flex;align-items:center;gap:12px}
-  .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--brand),#ef4444);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
+  .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
   .nav-title{font-size:16px;font-weight:800;color:var(--dark)}
-  .badge{background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
+  .badge{background:#0d9488;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
   .btn-sm{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;border:none}
-  .btn-danger{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
+  .btn-danger{background:#f0fdfa;color:var(--danger);border:1px solid #99f6e4}
   .btn-back{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
   main{max-width:1000px;margin:0 auto;padding:32px 24px}
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
@@ -29,28 +29,28 @@
   .form{padding:20px}
   label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
   input,select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;transition:.2s;background:#fafafa;margin-bottom:14px}
-  input:focus,select:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(249,115,22,.1)}
-  .btn-primary{width:100%;padding:10px;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;transition:.2s;background:linear-gradient(135deg,var(--brand),#ef4444);color:#fff;box-shadow:0 3px 10px rgba(249,115,22,.3)}
+  input:focus,select:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+  .btn-primary{width:100%;padding:10px;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;transition:.2s;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;box-shadow:0 3px 10px rgba(13,148,136,.3)}
   .btn-primary:hover{transform:translateY(-1px)}
   .btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
   .user-list{max-height:560px;overflow-y:auto}
   .user-item{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;transition:.15s}
   .user-item:last-child{border-bottom:none}
   .user-item:hover{background:#fafafa}
-  .avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--brand),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
-  .avatar.admin-av{background:linear-gradient(135deg,#7c3aed,#4f46e5)}
+  .avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+  .avatar.admin-av{background:linear-gradient(135deg,#0d9488,#0891b2)}
   .user-info{flex:1;min-width:0}
   .user-name{font-size:13px;font-weight:700;color:var(--dark)}
   .user-email{font-size:11px;color:var(--muted);margin-top:1px}
   .user-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-  .perm-chip{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+  .perm-chip{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4}
   .role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
-  .role-admin{background:#ede9fe;color:#6d28d9}
+  .role-admin{background:#ccfbf1;color:#0d9488}
   .role-user{background:#f0fdf4;color:#15803d}
   .user-actions{display:flex;gap:6px;flex-shrink:0}
   .icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s}
   .icon-btn:hover{background:var(--bg)}
-  .icon-btn.del:hover{background:#fef2f2;border-color:#fecaca}
+  .icon-btn.del:hover{background:#f0fdfa;border-color:#99f6e4}
   /* MODAL */
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
   .overlay.show{display:flex}
@@ -60,18 +60,18 @@
   .modal-close{width:28px;height:28px;border:none;background:var(--bg);border-radius:7px;cursor:pointer;font-size:16px}
   .modal-body{padding:20px 24px;max-height:380px;overflow-y:auto}
   .dash-opt{display:flex;align-items:flex-start;gap:12px;padding:12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;transition:.15s}
-  .dash-opt.sel{border-color:var(--brand);background:#fff7ed}
+  .dash-opt.sel{border-color:var(--brand);background:#f0fdfa}
   .dash-opt input[type=checkbox]{margin-top:2px;accent-color:var(--brand);width:16px;height:16px}
   .dash-opt-title{font-size:13px;font-weight:700;color:var(--dark)}
   .dash-opt-desc{font-size:11px;color:var(--muted);margin-top:2px}
   .modal-ftr{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
   .btn-cancel{padding:9px 18px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
-  .btn-save{padding:9px 18px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--brand),#ef4444);color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-save{padding:9px 18px;border:none;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:13px;font-weight:700;cursor:pointer}
   /* TOAST */
   .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;z-index:999;transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none}
   .toast.show{transform:translateY(0);opacity:1}
   .toast.ok{background:#059669}
-  .toast.err{background:#ef4444}
+  .toast.err{background:#0891b2}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
   @keyframes sp{to{transform:rotate(360deg)}}
   .empty-msg{text-align:center;padding:40px;color:var(--muted);font-size:13px}
@@ -81,7 +81,7 @@
 <nav>
   <div class="nav-left">
     <div class="logo-icon">MB</div>
-    <span class="nav-title">MB Portal</span>
+    <span class="nav-title">Margbooks Dashboard Portal</span>
     <span class="badge">Admin Panel</span>
   </div>
   <div style="display:flex;gap:10px">
@@ -155,20 +155,15 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const SUPA_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQxMzM1MCwiZXhwIjoyMDk2OTg5MzUwfQ._f17cCzbnJVtsKSjyTWOwRIt68kOiRiA6ydHhF76_ZE';
 
 const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, {
-    auth: {
-      persistSession: true,
-      storage: window.sessionStorage  // Browser band = logout, Tab = session active
-    }
-  });
+  auth: { persistSession: true, storage: window.sessionStorage }
+});
 const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, {
-    auth: {
-      persistSession: true,
-      storage: window.sessionStorage  // Browser band = logout, Tab = session active
-    }
-  });
+  auth: { persistSession: false, storageKey: "sb-admin-token" }
+});
 
 const ALL_DASHBOARDS = [
   {id:'ticket-dashboard', title:'Ticket Dashboard', desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
+  {id:'excel-dashboard', title:'Excel Dashboard', desc:'Excel-based data analysis and reporting', icon:'📊', tag:'Analytics'},
 ];
 
 let allUsers = [];
@@ -189,7 +184,7 @@ document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
 window.loadUsers = async function(){
   document.getElementById('userList').innerHTML='<div class="empty-msg">Loading...</div>';
   const {data,error} = await sb.from('users').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:#ef4444">${error.message}</div>`;return;}
+  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:#0891b2">${error.message}</div>`;return;}
   allUsers = data||[];
   const admins = allUsers.filter(u=>u.role==='admin').length;
   document.getElementById('stTotal').textContent  = allUsers.length;
@@ -214,7 +209,7 @@ window.loadUsers = async function(){
         <div class="user-email">${u.email||''}</div>
         ${u.role!=='admin'
           ? `<div class="user-perms">${perms||'<span style="font-size:11px;color:var(--muted)">No dashboards assigned</span>'}</div>`
-          : '<div style="font-size:11px;color:#7c3aed;margin-top:4px">✓ Full access</div>'}
+          : '<div style="font-size:11px;color:#0d9488;margin-top:4px">✓ Full access</div>'}
       </div>
       <div class="user-actions">
         ${u.role!=='admin'?`<button class="icon-btn" title="Permissions" onclick="openModal('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🔑</button>`:''}
