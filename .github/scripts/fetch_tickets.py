@@ -1,5 +1,7 @@
-import json, os, requests, re
+import json, os, requests, re, time
 from datetime import datetime, timezone
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail'
 SUPA_URL = os.environ['SUPABASE_URL']
@@ -94,17 +96,54 @@ def parse_record(r):
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
     return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU']) else None
 
-# Step 1: API fetch
+# ── Step 1: API fetch with retry + stream ──────────────────────────────────────
 today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 url = f"{API_URL}?FDate=2023-04-01&ToDate={today}&TicketNo="
 print(f"Fetching: {url}")
 
-resp = requests.get(url, timeout=1200, headers={
-    'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0'
-})
-resp.raise_for_status()
-data = resp.json()
+# Session with retry logic
+session = requests.Session()
+retry = Retry(total=3, backoff_factor=10, status_forcelist=[500, 502, 503, 504])
+adapter = HTTPAdapter(max_retries=retry)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
+
+MAX_ATTEMPTS = 3
+for attempt in range(1, MAX_ATTEMPTS + 1):
+    try:
+        print(f"Attempt {attempt}/{MAX_ATTEMPTS} ...")
+        # stream=True — data chunks mein aayega, connection nahi tutega
+        resp = session.get(
+            url,
+            timeout=(30, 2400),   # (connect timeout, read timeout) = 40 min read
+            stream=True,
+            headers={
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0',
+                'Connection': 'keep-alive',
+            }
+        )
+        resp.raise_for_status()
+
+        print("Response received, reading data...")
+        # Pura content stream se ekatha karo
+        content = b""
+        for chunk in resp.iter_content(chunk_size=65536):
+            if chunk:
+                content += chunk
+
+        data = json.loads(content.decode('utf-8'))
+        print("Data parsed successfully!")
+        break  # success — loop se bahar
+
+    except Exception as ex:
+        print(f"Attempt {attempt} failed: {ex}")
+        if attempt < MAX_ATTEMPTS:
+            wait = 30 * attempt
+            print(f"Waiting {wait}s before retry...")
+            time.sleep(wait)
+        else:
+            raise
 
 if data.get('Status') != 'Success':
     raise Exception(f"API Error: {data.get('Message')}")
@@ -112,7 +151,7 @@ if data.get('Status') != 'Success':
 details = data.get('Details', [])
 print(f"API records: {len(details)}")
 
-# Step 2: Parse
+# ── Step 2: Parse ──────────────────────────────────────────────────────────────
 ticket_map = {}
 for r in details:
     rec = parse_record(r)
@@ -121,8 +160,8 @@ for r in details:
 RAW = list(ticket_map.values())
 print(f"Unique tickets: {len(RAW)}")
 
-# Step 3: Save to Supabase
-headers = {
+# ── Step 3: Save to Supabase ───────────────────────────────────────────────────
+supa_headers = {
     'apikey': SUPA_KEY,
     'Authorization': f'Bearer {SUPA_KEY}',
     'Content-Type': 'application/json',
@@ -130,7 +169,7 @@ headers = {
 }
 
 # Delete old
-requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?id=neq.0", headers=headers)
+requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?id=neq.0", headers=supa_headers)
 print("Old data cleared")
 
 # Insert new
@@ -141,6 +180,6 @@ payload = {
     'date_to': today,
     'fetched_at': datetime.now(timezone.utc).isoformat()
 }
-r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=payload, headers=headers)
+r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=payload, headers=supa_headers, timeout=60)
 r.raise_for_status()
 print(f"✅ Saved {len(RAW)} tickets to Supabase!")
