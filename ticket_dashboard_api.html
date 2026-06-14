@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg:       #f0f2f9;
@@ -3276,43 +3277,48 @@ function showEmptyState(){
   document.getElementById('fInfo').textContent = 'Select date range and click Fetch to load data';
 }
 
-// ===== PERSISTENT LOCAL CACHE (IndexedDB) =====
-// Fetched data browser me save rehta hai — tab close/reopen par bhi wahi data
-// load hota hai jab tak user ⟳ Refresh par click na kare.
-const CACHE_DB = 'mbTicketDashCache', CACHE_STORE = 'kv', CACHE_KEY = 'rawData';
+// ===== SUPABASE CACHE SYSTEM =====
+// Data Supabase DB mein save hota hai — sab devices par same data milta hai
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-function idbOpen(){
-  return new Promise((res, rej)=>{
-    const rq = indexedDB.open(CACHE_DB, 1);
-    rq.onupgradeneeded = ()=> rq.result.createObjectStore(CACHE_STORE);
-    rq.onsuccess = ()=> res(rq.result);
-    rq.onerror   = ()=> rej(rq.error);
-  });
-}
-async function cacheSave(raw){
-  try{
-    const db = await idbOpen();
-    const tx = db.transaction(CACHE_STORE, 'readwrite');
-    tx.objectStore(CACHE_STORE).put({ ts: Date.now(), raw }, CACHE_KEY);
-    await new Promise(r=>{ tx.oncomplete = r; tx.onerror = r; });
-    db.close();
-  }catch(e){ console.warn('Cache save failed:', e); }
-}
-async function cacheLoad(){
-  try{
-    const db = await idbOpen();
-    const tx = db.transaction(CACHE_STORE, 'readonly');
-    const rq = tx.objectStore(CACHE_STORE).get(CACHE_KEY);
-    const out = await new Promise(res=>{ rq.onsuccess = ()=>res(rq.result||null); rq.onerror = ()=>res(null); });
-    db.close();
-    return out;
-  }catch(e){ return null; }
-}
 function cacheAgeLabel(ts){
   const d = new Date(ts);
   const date = d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
   const time = d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
   return `${date} at ${time}`;
+}
+
+// Supabase se latest cached data load karo
+async function cacheLoad(){
+  try{
+    const { data, error } = await sb
+      .from('ticket_cache')
+      .select('data, fetched_at, total_count')
+      .order('fetched_at', { ascending: false })
+      .limit(1)
+      .single();
+    if(error || !data) return null;
+    return { raw: data.data, ts: new Date(data.fetched_at).getTime() };
+  } catch(e){ console.warn('Supabase cacheLoad failed:', e); return null; }
+}
+
+// Refresh ke baad Supabase mein data save karo — sab users ko latest milega
+async function cacheSave(raw){
+  try{
+    const today = new Date().toISOString().split('T')[0];
+    await sb.from('ticket_cache').delete().neq('id', 0);
+    const { error } = await sb.from('ticket_cache').insert({
+      data: raw,
+      total_count: raw.length,
+      date_from: '2023-04-01',
+      date_to: today,
+      fetched_at: new Date().toISOString()
+    });
+    if(error) console.warn('Supabase save error:', error.message);
+    else console.log('✅ Data saved to Supabase:', raw.length, 'tickets');
+  } catch(e){ console.warn('cacheSave failed:', e); }
 }
 
 // ===== BACKGROUND FETCH with live timer loader =====
@@ -3413,102 +3419,30 @@ async function init(){
   document.getElementById('dateFrom').value = from;
   document.getElementById('dateTo').value   = to;
 
-  // Pehle cache check karo — agar pichhli fetch ka data saved hai to wahi use karo
+  // Pehle Supabase se cached data load karo
+  showLoader('Loading data...', 10, 'Connecting to database...');
   const cached = await cacheLoad();
   if(cached && Array.isArray(cached.raw) && cached.raw.length){
     RAW = cached.raw;
     refreshFilterOptions();
-    resetAll(); // current month default load
+    resetAll();
+    hideLoader();
     const badge = document.getElementById('fetchTimeBadge');
     document.getElementById('fetchTimeBadgeText').textContent =
       `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
     badge.style.display = 'flex';
     showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
-    return; // koi API call nahi — Refresh par hi naya data aayega
+    return; // Supabase se data aa gaya — API call nahi hogi
   }
 
-  // Cache khali hai → pehli baar fetch karo
+  // Supabase mein koi data nahi — pehli baar API se fetch karo
+  hideLoader();
   showEmptyState();
   backgroundFetch();
 }
-// ===== MIDNIGHT AUTO-FETCH SCHEDULER =====
-// Raat 12 baje ek baar automatically data fetch karke cache kar leta hai.
-// Agar system band hai tab bhi — jab page dobara khulega to check karta hai
-// ki kya aaj ka midnight auto-fetch ho chuka hai ya nahi. Agar nahi to fetch karta hai.
-
-const MIDNIGHT_KEY = 'mbLastMidnightFetch';
-
-function todayDateStr(){
-  // Returns "YYYY-MM-DD" for today (local time)
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-async function midnightFetchIfNeeded(){
-  // Check IndexedDB for last midnight-fetch date
-  try {
-    const db = await idbOpen();
-    const tx = db.transaction(CACHE_STORE,'readonly');
-    const rq = tx.objectStore(CACHE_STORE).get(MIDNIGHT_KEY);
-    const saved = await new Promise(res=>{ rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); });
-    db.close();
-    if(saved && saved.date === todayDateStr()){
-      return; // aaj pehle se fetch ho chuka hai
-    }
-  } catch(e){ /* ignore */ }
-
-  // Aaj fetch nahi hua — background mein silently data refresh karo
-  console.log('[MidnightScheduler] Auto-fetching data for', todayDateStr());
-  try {
-    const today = new Date();
-    const toDate   = today.toISOString().split('T')[0];
-    const fromDate = '2023-04-01';
-    const url = `${API_URL}?FDate=${fromDate}&ToDate=${toDate}&TicketNo=`;
-    const res = await fetch(url);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if(json.Status !== 'Success') throw new Error(json.Message || 'API error');
-    const details = json.Details || [];
-    const map = new Map();
-    details.forEach(r=>{ const rec = parseAPIRecord(r); if(rec && rec.n) map.set(rec.n, rec); });
-    RAW = Array.from(map.values());
-    await cacheSave(RAW);
-    // Save today's date as midnight-fetch done
-    const db2 = await idbOpen();
-    const tx2 = db2.transaction(CACHE_STORE,'readwrite');
-    tx2.objectStore(CACHE_STORE).put({ date: todayDateStr() }, MIDNIGHT_KEY);
-    await new Promise(r=>{ tx2.oncomplete=r; tx2.onerror=r; });
-    db2.close();
-    // Update badge silently
-    const badge = document.getElementById('fetchTimeBadge');
-    document.getElementById('fetchTimeBadgeText').textContent =
-      `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(Date.now())}`;
-    badge.style.display = 'flex';
-    console.log('[MidnightScheduler] Done —', RAW.length, 'tickets cached');
-  } catch(e){
-    console.warn('[MidnightScheduler] Auto-fetch failed:', e.message);
-  }
-}
-
-function scheduleMidnightFetch(){
-  const now = new Date();
-  // Next midnight = today 00:00 + 1 day
-  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 5); // 00:00:05
-  const msUntilMidnight = nextMidnight - now;
-  console.log(`[MidnightScheduler] Next auto-fetch in ${Math.round(msUntilMidnight/60000)} min`);
-  setTimeout(async ()=>{
-    await midnightFetchIfNeeded();
-    scheduleMidnightFetch(); // reschedule for next night
-  }, msUntilMidnight);
-}
 
 window.addEventListener('DOMContentLoaded', ()=>{
-  init(); // normal dashboard init
-  // On page open: check if today's midnight-fetch already happened
-  // (Handles the case where system was off at midnight)
-  setTimeout(midnightFetchIfNeeded, 3000); // 3s delay taaki normal load pehle ho
-  // Schedule for tonight's midnight
-  scheduleMidnightFetch();
+  init();
 });
 </script>
 </body>
