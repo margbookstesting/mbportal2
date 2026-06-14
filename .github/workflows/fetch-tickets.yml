@@ -8,7 +8,7 @@ on:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 60      # 25 se badhakar 60 kiya — API 20 min leta hai
+    timeout-minutes: 360     # 6 ghante max — chunks mein fetch hoga
 
     steps:
       - name: Checkout repo
@@ -20,7 +20,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests python-dateutil
 
       - name: Fetch & Save
         env:
