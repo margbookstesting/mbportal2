@@ -3348,34 +3348,77 @@ function cacheAgeLabel(ts){
 // Supabase se latest cached data load karo
 async function cacheLoad(){
   try{
-    // .single() ki jagah array use karo — safer
-    const { data, error } = await sb
-      .from('ticket_cache')
-      .select('data, fetched_at, total_count')
-      .order('fetched_at', { ascending: false })
-      .limit(1);
+    // Saari rows fetch karo — matrix run mein har saal ki alag row hoti hai
+    const { data, error } = await sb.from('ticket_cache').select('*');
     if(error){ console.warn('Supabase cacheLoad error:', error.message); return null; }
-    if(!data || !data.length || !data[0].data) return null;
-    const row = data[0];
-    return { raw: row.data, ts: new Date(row.fetched_at).getTime() };
+    if(!data || data.length === 0) return null;
+
+    let allTickets = [];
+    let absoluteMinDate = null;
+    let absoluteMaxDate = null;
+    let latestFetchedAt = null;
+
+    // Saari rows ka data merge karo
+    data.forEach(row => {
+      if(row.data && Array.isArray(row.data)){
+        allTickets = allTickets.concat(row.data);
+      }
+      if(row.date_from && (!absoluteMinDate || row.date_from < absoluteMinDate))
+        absoluteMinDate = row.date_from;
+      if(row.date_to && (!absoluteMaxDate || row.date_to > absoluteMaxDate))
+        absoluteMaxDate = row.date_to;
+      if(row.fetched_at && (!latestFetchedAt || row.fetched_at > latestFetchedAt))
+        latestFetchedAt = row.fetched_at;
+    });
+
+    // Duplicate tickets filter karo
+    const uniqueMap = {};
+    allTickets.forEach(t => { if(t && t.n) uniqueMap[t.n] = t; });
+    const finalTickets = Object.values(uniqueMap);
+
+    console.log(`Loaded & Merged: ${finalTickets.length} unique tickets from ${data.length} rows`);
+    if(!finalTickets.length) return null;
+
+    return {
+      raw: finalTickets,
+      ts: latestFetchedAt ? new Date(latestFetchedAt).getTime() : Date.now(),
+      date_from: absoluteMinDate,
+      date_to: absoluteMaxDate
+    };
   } catch(e){ console.warn('Supabase cacheLoad failed:', e); return null; }
 }
 
-// Refresh ke baad Supabase mein data save karo — sab users ko latest milega
+// Refresh ke baad sirf current year ki row update karo
+// (Baaki saal ki rows GitHub Actions se aati hain — unhe mat chhuo)
 async function cacheSave(raw){
   try{
     const today = new Date().toISOString().split('T')[0];
-    // Delete existing (ignore error if table empty)
-    try{ await sb.from('ticket_cache').delete().neq('id', 0); }catch(_){}
+    const currentYear = new Date().getFullYear().toString();
+    const yearStart = `${currentYear}-01-01`;
+
+    // Sirf current year ke tickets filter karo
+    const yearRaw = raw.filter(r => {
+      const d = r.a || r.b || r.c || r.d || r.e || r.tld || r.tc || '';
+      return d.startsWith(currentYear);
+    });
+
+    // Current year ki purani row delete karo
+    try{
+      await sb.from('ticket_cache')
+        .delete()
+        .eq('date_from', yearStart);
+    }catch(_){}
+
+    // Current year ki nai row insert karo
     const { error } = await sb.from('ticket_cache').insert({
-      data: raw,
-      total_count: raw.length,
-      date_from: '2023-04-01',
+      data: yearRaw.length ? yearRaw : raw, // fallback to all if filter empty
+      total_count: (yearRaw.length ? yearRaw : raw).length,
+      date_from: yearStart,
       date_to: today,
       fetched_at: new Date().toISOString()
     });
     if(error) console.warn('Supabase save error:', error.message);
-    else console.log('✅ Data saved to Supabase:', raw.length, 'tickets');
+    else console.log('✅ Saved to Supabase:', (yearRaw.length||raw.length), 'tickets for', currentYear);
   } catch(e){ console.warn('cacheSave failed:', e); }
 }
 
