@@ -1,5 +1,6 @@
 import json, os, requests, re, time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
+from dateutil.relativedelta import relativedelta
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -96,71 +97,98 @@ def parse_record(r):
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
     return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU']) else None
 
-# ── Step 1: API fetch with retry + stream ──────────────────────────────────────
-today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-url = f"{API_URL}?FDate=2023-04-01&ToDate={today}&TicketNo="
-print(f"Fetching: {url}")
+# ── Date chunks banana ─────────────────────────────────────────────────────────
+def make_chunks(start_str, end_date, months=3):
+    """Puri date range ko 3-3 mahine ke chunks mein todta hai"""
+    chunks = []
+    current = datetime.strptime(start_str, '%Y-%m-%d').date()
+    while current <= end_date:
+        chunk_end = min(current + relativedelta(months=months) - relativedelta(days=1), end_date)
+        chunks.append((current.strftime('%Y-%m-%d'), chunk_end.strftime('%Y-%m-%d')))
+        current = chunk_end + relativedelta(days=1)
+    return chunks
 
-# Session with retry logic
+# ── Ek chunk fetch karna ──────────────────────────────────────────────────────
+def fetch_chunk(session, fdate, todate, attempt_no, total):
+    url = f"{API_URL}?FDate={fdate}&ToDate={todate}&TicketNo="
+    print(f"\n[Chunk {attempt_no}/{total}] {fdate} → {todate}", flush=True)
+    print(f"  Fetching: {url}", flush=True)
+
+    for try_no in range(1, 4):  # 3 chances har chunk ko
+        try:
+            resp = session.get(
+                url,
+                timeout=(60, 1800),  # connect=1min, read=30min per chunk
+                stream=True,
+                headers={
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0',
+                    'Connection': 'keep-alive',
+                }
+            )
+            resp.raise_for_status()
+            print(f"  Response received! Reading...", flush=True)
+
+            content = b""
+            for chunk in resp.iter_content(chunk_size=65536):
+                if chunk:
+                    content += chunk
+
+            data = json.loads(content.decode('utf-8'))
+
+            if data.get('Status') != 'Success':
+                raise Exception(f"API Error: {data.get('Message')}")
+
+            records = data.get('Details', [])
+            print(f"  ✅ Got {len(records)} records", flush=True)
+            return records
+
+        except Exception as ex:
+            print(f"  ❌ Try {try_no}/3 failed: {ex}", flush=True)
+            if try_no < 3:
+                wait = 30 * try_no
+                print(f"  Waiting {wait}s...", flush=True)
+                time.sleep(wait)
+            else:
+                print(f"  ⚠️ Chunk {fdate}→{todate} skip kar raha hoon!", flush=True)
+                return []  # is chunk ko skip karo, baaki chalte raho
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+today = date.today()
+START_DATE = '2023-04-01'
+
+# Session setup
 session = requests.Session()
-retry = Retry(total=3, backoff_factor=10, status_forcelist=[500, 502, 503, 504])
+retry = Retry(total=0)  # Retry hum khud handle kar rahe hain
 adapter = HTTPAdapter(max_retries=retry)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
 
-MAX_ATTEMPTS = 3
-for attempt in range(1, MAX_ATTEMPTS + 1):
-    try:
-        print(f"Attempt {attempt}/{MAX_ATTEMPTS} ...")
-        # stream=True — data chunks mein aayega, connection nahi tutega
-        resp = session.get(
-            url,
-            timeout=(30, 2400),   # (connect timeout, read timeout) = 40 min read
-            stream=True,
-            headers={
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0',
-                'Connection': 'keep-alive',
-            }
-        )
-        resp.raise_for_status()
+# Chunks banao
+chunks = make_chunks(START_DATE, today, months=3)
+print(f"Total chunks: {len(chunks)}", flush=True)
+for i, (f, t) in enumerate(chunks, 1):
+    print(f"  Chunk {i}: {f} → {t}", flush=True)
 
-        print("Response received, reading data...")
-        # Pura content stream se ekatha karo
-        content = b""
-        for chunk in resp.iter_content(chunk_size=65536):
-            if chunk:
-                content += chunk
-
-        data = json.loads(content.decode('utf-8'))
-        print("Data parsed successfully!")
-        break  # success — loop se bahar
-
-    except Exception as ex:
-        print(f"Attempt {attempt} failed: {ex}")
-        if attempt < MAX_ATTEMPTS:
-            wait = 30 * attempt
-            print(f"Waiting {wait}s before retry...")
-            time.sleep(wait)
-        else:
-            raise
-
-if data.get('Status') != 'Success':
-    raise Exception(f"API Error: {data.get('Message')}")
-
-details = data.get('Details', [])
-print(f"API records: {len(details)}")
-
-# ── Step 2: Parse ──────────────────────────────────────────────────────────────
+# Sabhi chunks fetch karo
 ticket_map = {}
-for r in details:
-    rec = parse_record(r)
-    if rec and rec.get('n'):
-        ticket_map[rec['n']] = rec
-RAW = list(ticket_map.values())
-print(f"Unique tickets: {len(RAW)}")
+for i, (fdate, todate) in enumerate(chunks, 1):
+    records = fetch_chunk(session, fdate, todate, i, len(chunks))
+    for r in records:
+        rec = parse_record(r)
+        if rec and rec.get('n'):
+            ticket_map[rec['n']] = rec  # duplicate ticket override hoga
 
-# ── Step 3: Save to Supabase ───────────────────────────────────────────────────
+    # Chunks ke beech thodi rest (server par load kam)
+    if i < len(chunks):
+        print(f"  Resting 5s before next chunk...", flush=True)
+        time.sleep(5)
+
+RAW = list(ticket_map.values())
+print(f"\n{'='*50}", flush=True)
+print(f"Total unique tickets: {len(RAW)}", flush=True)
+
+# ── Supabase mein save ────────────────────────────────────────────────────────
 supa_headers = {
     'apikey': SUPA_KEY,
     'Authorization': f'Bearer {SUPA_KEY}',
@@ -168,18 +196,17 @@ supa_headers = {
     'Prefer': 'return=minimal'
 }
 
-# Delete old
-requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?id=neq.0", headers=supa_headers)
-print("Old data cleared")
+print("Clearing old data...", flush=True)
+requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?id=neq.0", headers=supa_headers, timeout=60)
+print("Old data cleared!", flush=True)
 
-# Insert new
 payload = {
     'data': RAW,
     'total_count': len(RAW),
-    'date_from': '2023-04-01',
-    'date_to': today,
+    'date_from': START_DATE,
+    'date_to': today.strftime('%Y-%m-%d'),
     'fetched_at': datetime.now(timezone.utc).isoformat()
 }
-r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=payload, headers=supa_headers, timeout=60)
+r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=payload, headers=supa_headers, timeout=120)
 r.raise_for_status()
-print(f"✅ Saved {len(RAW)} tickets to Supabase!")
+print(f"✅ Saved {len(RAW)} tickets to Supabase!", flush=True)
