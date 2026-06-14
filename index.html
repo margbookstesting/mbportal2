@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MB Portal — Login</title>
+<title>Margbooks Dashboard Portal — Login</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  :root{--brand:#f97316;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--error:#ef4444}
+  :root{--brand:#0d9488;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--error:#0891b2}
   body{
     min-height:100vh;display:flex;align-items:center;justify-content:center;
     background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);
@@ -26,10 +26,10 @@
   .logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .logo-icon{
     width:42px;height:42px;border-radius:10px;
-    background:linear-gradient(135deg,var(--brand),#ef4444);
+    background:linear-gradient(135deg,var(--brand),#0891b2);
     display:flex;align-items:center;justify-content:center;
     font-size:16px;font-weight:900;color:#fff;
-    box-shadow:0 4px 12px rgba(249,115,22,.4);
+    box-shadow:0 4px 12px rgba(13,148,136,.4);
   }
   .logo-text{font-size:22px;font-weight:800;color:var(--dark)}
   .logo-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
@@ -49,8 +49,8 @@
   .btn{
     width:100%;padding:13px;border:none;border-radius:10px;cursor:pointer;
     font-size:15px;font-weight:700;transition:.2s;margin-top:14px;
-    background:linear-gradient(135deg,var(--brand),#ef4444);color:#fff;
-    box-shadow:0 4px 14px rgba(249,115,22,.4);
+    background:linear-gradient(135deg,var(--brand),#0891b2);color:#fff;
+    box-shadow:0 4px 14px rgba(13,148,136,.4);
   }
   .btn:hover{transform:translateY(-1px)}
   .btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
@@ -59,7 +59,6 @@
     padding:10px 14px;font-size:13px;color:var(--error);margin-bottom:12px;display:none;
   }
   .err.show{display:block}
-  .footer{text-align:center;font-size:12px;color:var(--muted);margin-top:20px}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);
     border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -70,8 +69,8 @@
   <div class="logo">
     <div class="logo-icon">MB</div>
     <div>
-      <div class="logo-text">MB Portal</div>
-      <div class="logo-sub">Dashboard Hub</div>
+      <div class="logo-text">Margbooks</div>
+      <div class="logo-sub">Dashboard Portal</div>
     </div>
   </div>
   <div class="divider"></div>
@@ -86,19 +85,13 @@
     <span class="eye" onclick="togglePass()">👁️</span>
   </div>
   <button class="btn" id="btn" onclick="login()">Sign In</button>
-  <div class="footer">Trouble signing in? Contact your administrator.</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
-    auth: {
-      persistSession: true,
-      storage: window.sessionStorage  // Browser band = logout, Tab = session active
-    }
-  });
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // Already logged in? Redirect
 sb.auth.getSession().then(({data})=>{
