@@ -321,15 +321,16 @@ window.openEditModal = function(uid){
   document.getElementById('ePass').value  = '';
   document.getElementById('ePass2').value = '';
 
-  // Permissions tab
+  // Permissions tab — admin ke liye sab checked, user ke liye assigned
   const assigned = user.dashboards||[];
+  const isAdminUser = user.role === 'admin';
   document.getElementById('permBody').innerHTML = ALL_DASHBOARDS.map(d=>{
-    const chk = assigned.includes(d.id);
-    return `<div class="dash-opt ${chk?'sel':''}" onclick="toggleDash(this)">
-      <input type="checkbox" data-id="${d.id}" ${chk?'checked':''} onclick="event.stopPropagation()"/>
+    const chk = isAdminUser || assigned.includes(d.id); // admin = all ticked
+    return `<div class="dash-opt ${chk?'sel':''}" onclick="${isAdminUser?'':' toggleDash(this)'}">
+      <input type="checkbox" data-id="${d.id}" ${chk?'checked':''} ${isAdminUser?'disabled':''} onclick="event.stopPropagation()"/>
       <div><div class="dash-opt-title">${d.icon} ${d.title}</div><div class="dash-opt-desc">${d.desc}</div></div>
     </div>`;
-  }).join('');
+  }).join('') + (isAdminUser ? '<p style="font-size:12px;color:#0d9488;margin-top:12px;text-align:center">✓ Admin ko sab dashboards automatically milte hain</p>' : '');
 
   switchTab('details');
   document.getElementById('editOverlay').classList.add('show');
