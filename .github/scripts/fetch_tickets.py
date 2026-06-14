@@ -183,19 +183,30 @@ RAW = list(ticket_map.values())
 print(f"\nTotal unique tickets in this chunk: {len(RAW)}", flush=True)
 
 if not RAW:
-    print("No records found. Exiting.", flush=True)
+    print("No records found in this range. Exiting.", flush=True)
     exit(0)
 
-# ── Supabase Integration ──────────────────────────────────────────────────────
+# ── Supabase Integration (Fixed Payload Approach) ────────────────────────────
 supa_headers = {
     'apikey': SUPA_KEY,
     'Authorization': f'Bearer {SUPA_KEY}',
     'Content-Type': 'application/json',
-    'Prefer': 'resolution=merge-duplicates'  # Safe upsert for parallel runs
+    'Prefer': 'return=minimal'  # 400 bad request error hatane ke liye isko waapas default kiya
 }
 
-# Supabase direct list expect karta hai, payload template nahi
-print("Upserting list directly to Supabase...", flush=True)
-r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=RAW, headers=supa_headers, timeout=120)
+payload = {
+    'data': RAW,
+    'total_count': len(RAW),
+    'date_from': START_DATE,
+    'date_to': today.strftime('%Y-%m-%d'),
+    'fetched_at': datetime.now(timezone.utc).isoformat()
+}
+
+# Pehle se agar is date range ka koi payload maujood hai toh use delete karein (Matrix-safe delete)
+print(f"Cleaning existing entry for date range {START_DATE} to {today}...", flush=True)
+requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?date_from=eq.{START_DATE}", headers=supa_headers, timeout=60)
+
+print("Saving payload to Supabase...", flush=True)
+r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=payload, headers=supa_headers, timeout=120)
 r.raise_for_status()
-print(f"✅ Successfully merged {len(RAW)} tickets to Supabase!", flush=True)
+print(f"✅ Successfully saved {len(RAW)} tickets data to Supabase!", flush=True)
