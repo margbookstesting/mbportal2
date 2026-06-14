@@ -2,28 +2,47 @@ name: Fetch Tickets & Save to Supabase
 
 on:
   schedule:
-    - cron: '30 18 * * *'   # Raat 12:00 AM IST = UTC 18:30
-  workflow_dispatch:          # Manual run button bhi milega
+    - cron: '30 18 * * *'   # Raat 12:00 AM IST = UTC 18:30[cite: 2]
+  workflow_dispatch:          # Manual run button[cite: 2]
 
 jobs:
   fetch:
-    runs-on: ubuntu-latest
-    timeout-minutes: 360     # 6 ghante max — chunks mein fetch hoga
+    runs-on: ubuntu-latest[cite: 2]
+    timeout-minutes: 60     # Parallel chalne par 1 ghanta bohot zyada hai
+    strategy:
+      fail-fast: false      # Agar ek saal fail ho, toh baaki chalte rahein
+      matrix:
+        include:
+          - year: "2023"
+            start: "2023-04-01"
+            end: "2023-12-31"
+          - year: "2024"
+            start: "2024-01-01"
+            end: "2024-12-31"
+          - year: "2025"
+            start: "2025-01-01"
+            end: "2025-12-31"
+          - year: "2026"
+            start: "2026-01-01"
+            end: "2026-12-31"
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4[cite: 2]
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5[cite: 2]
         with:
-          python-version: '3.11'
+          python-version: '3.11'[cite: 2]
 
       - name: Install dependencies
-        run: pip install requests python-dateutil
+        run: pip install requests python-dateutil[cite: 2]
 
       - name: Fetch & Save
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python3 .github/scripts/fetch_tickets.py
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}[cite: 2]
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}[cite: 2]
+          START_DATE_OVERRIDE: ${{ matrix.start }}
+          END_DATE_OVERRIDE: ${{ matrix.end }}
+          IS_MATRIX_RUN: "true"
+        run: python3 .github/scripts/fetch_tickets.py[cite: 2]
