@@ -211,8 +211,10 @@ const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, { auth:{ persistSessio
 const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, { auth:{ persistSession:false, storageKey:'sb-admin-token' }});
 
 const ALL_DASHBOARDS = [
-  {id:'ticket-dashboard', title:'Ticket Dashboard', desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
-  {id:'excel-dashboard',  title:'Excel Dashboard',  desc:'Excel-based data analysis and reporting',  icon:'📊', tag:'Analytics'},
+  {id:'it-dashboard',       title:'Marg IT Dashboard',       desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
+  {id:'tat-dashboard',      title:'Marg TAT Dashboard',      desc:'TAT + Stage-wise pending summary',         icon:'📊', tag:'Analytics'},
+  {id:'upcoming-dashboard', title:'Marg Upcoming Deadlines', desc:'Upcoming deadlines 1-7, 8-15, 16-30, 31-60 days', icon:'📅', tag:'Planning'},
+  {id:'excel-dashboard',    title:'Excel Dashboard',         desc:'Excel-based data analysis and reporting',  icon:'📈', tag:'Analytics'},
 ];
 
 let allUsers = [];

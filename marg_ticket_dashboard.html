@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Marg TAT Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f0f2f9;--surface:#fff;--s2:#f7f8fd;--border:#e8eaf4;
+  --text:#111827;--text2:#374151;--muted:#6b7280;--muted2:#9ca3af;
+  --teal:#0d9488;--teal2:#0891b2;--teal-l:#f0fdfa;--teal-m:#99f6e4;
+  --red:#dc2626;--red-l:#fef2f2;--red-m:#fecaca;
+  --green:#16a34a;--green-l:#f0fdf4;--green-m:#bbf7d0;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-m:#fde68a;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-m:#bfdbfe;
+  --purple:#7c3aed;--purple-l:#f5f3ff;--purple-m:#ddd6fe;
+  --sh-s:0 1px 3px rgba(0,0,0,.07);--sh-m:0 4px 14px rgba(0,0,0,.1);
+}
+body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:linear-gradient(135deg,#0d9488,#0891b2);position:sticky;top:0;z-index:300;box-shadow:0 4px 20px rgba(13,148,136,.35)}
+.topbar-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:0 24px;height:56px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px}
+.brand-sub{font-size:10px;color:rgba(255,255,255,.7)}
+.topbar-sep{width:1px;height:22px;background:rgba(255,255,255,.2);margin:0 4px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.sync-badge{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#fff;white-space:nowrap}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.btn-nav{padding:6px 13px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);transition:.15s;font-family:'Sora',sans-serif}
+.btn-nav:hover{background:rgba(255,255,255,.25)}
+
+/* FILTER BAR */
+.filter-bar{background:#fff;border-bottom:1px solid var(--border);padding:10px 24px;position:sticky;top:56px;z-index:200}
+.filter-bar-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-pill{display:flex;align-items:center;gap:5px;padding:5px 11px;background:var(--s2);border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-weight:600}
+.filter-pill select{border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;outline:none;font-family:'Sora',sans-serif;color:var(--text)}
+.date-pill{display:flex;align-items:center;gap:6px;padding:5px 11px;background:var(--s2);border:1.5px solid var(--border);border-radius:20px;font-size:12px}
+.date-pill input[type=date]{border:none;background:transparent;font-size:12px;font-family:'Sora',sans-serif;outline:none;cursor:pointer}
+.btn-apply{padding:6px 16px;border:none;border-radius:20px;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif}
+.stat-count{font-size:11px;color:var(--muted);margin-left:auto}
+
+/* MAIN */
+.main{max-width:1400px;margin:0 auto;padding:20px 24px}
+
+/* SUMMARY KPIs */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.kpi-grid{grid-template-columns:1fr}}
+
+.kpi-card{background:#fff;border-radius:14px;border:1px solid var(--border);padding:16px 18px;box-shadow:var(--sh-s);position:relative;overflow:hidden;cursor:pointer;transition:.2s}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-card.it::before{background:linear-gradient(90deg,#0d9488,#0f766e)}
+.kpi-card.ack::before{background:linear-gradient(90deg,#0891b2,#0e7490)}
+.kpi-card.ip::before{background:linear-gradient(90deg,#0f766e,#0d9488)}
+.kpi-card.sup::before{background:linear-gradient(90deg,#0369a1,#0891b2)}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+.kpi-total{font-size:28px;font-weight:800;color:var(--text);line-height:1;margin-bottom:8px}
+.kpi-pending-row{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.pend-badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.pend-badge.pending{background:#fef3c7;color:#b45309;border:1px solid #fde68a}
+.pend-badge.moved{background:var(--green-l);color:var(--green);border:1px solid var(--green-m)}
+.tat-bars{display:flex;flex-direction:column;gap:5px}
+.tat-bar-row{display:flex;align-items:center;gap:8px}
+.tat-bar-label{font-size:10px;font-weight:600;color:var(--muted);width:50px;flex-shrink:0}
+.tat-bar-track{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.tat-bar-fill{height:100%;border-radius:4px;transition:.6s}
+.tat-bar-pct{font-size:10px;font-weight:700;width:32px;text-align:right;flex-shrink:0}
+.in-color{background:var(--teal)}
+.out-color{background:var(--red)}
+
+/* CHARTS ROW */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+@media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+.chart-card{background:#fff;border-radius:14px;border:1px solid var(--border);padding:18px 20px;box-shadow:var(--sh-s)}
+.chart-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:14px}
+.chart-wrap{height:260px;position:relative}
+
+/* PENDING TABLE */
+.table-card{background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:22px}
+.table-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#0d9488,#0891b2)}
+.table-title{font-size:13px;font-weight:800;color:#fff}
+.table-sub{font-size:11px;color:rgba(255,255,255,.8);margin-top:1px}
+.stage-tabs{display:flex;gap:6px}
+.stage-tab{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);background:rgba(255,255,255,.1);transition:.15s}
+.stage-tab.active{background:#fff;color:var(--teal)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);background:var(--s2);border-bottom:1px solid var(--border)}
+.tbl td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--s2)}
+.tbl-ticket{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--teal)}
+.tat-chip{padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.tat-in{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m)}
+.tat-out{background:var(--red-l);color:var(--red);border:1px solid var(--red-m)}
+.tat-no{background:var(--s2);color:var(--muted);border:1px solid var(--border)}
+.pend-chip{padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;background:#fef3c7;color:#b45309;border:1px solid #fde68a}
+.moved-chip{padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;background:var(--green-l);color:var(--green);border:1px solid var(--green-m)}
+.tbl-wrap{max-height:400px;overflow-y:auto}
+.tbl-wrap::-webkit-scrollbar{width:4px}
+.tbl-wrap::-webkit-scrollbar-thumb{background:var(--teal-m);border-radius:4px}
+.empty-tbl{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+
+/* Loading */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.load-text{font-size:14px;font-weight:700;color:var(--teal)}
+.load-sub{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spin"></div>
+  <div class="load-text">Marg TAT Dashboard</div>
+  <div class="load-sub" id="loadMsg">Loading from Supabase...</div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <div>
+        <div class="brand-name">Marg TAT Dashboard</div>
+        <div class="brand-sub">TAT Analysis · Stage-wise Pending Summary</div>
+      </div>
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-right">
+      <div class="sync-badge" id="syncBadge" style="display:none">
+        <span class="sync-dot"></span>
+        <span id="syncText">—</span>
+      </div>
+      <button class="btn-nav" onclick="window.location.href='ticket_dashboard_api.html'">← IT Dashboard</button>
+      <button class="btn-nav" onclick="window.location.href='portal.html'">🏠 Portal</button>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <div class="filter-bar-inner">
+    <div class="date-pill">
+      📅 <input type="date" id="dateFrom"/>
+      <span style="color:var(--muted)">→</span>
+      <input type="date" id="dateTo"/>
+    </div>
+    <div class="filter-pill">
+      <span>🧑‍💻</span>
+      <select id="filterTester" onchange="render()"><option value="">All Testers</option></select>
+    </div>
+    <div class="filter-pill">
+      <span>👔</span>
+      <select id="filterRM" onchange="render()"><option value="">All RMs</option></select>
+    </div>
+    <div class="filter-pill">
+      <span>💻</span>
+      <select id="filterDev" onchange="render()"><option value="">All Devs</option></select>
+    </div>
+    <button class="btn-apply" onclick="render()">Apply</button>
+    <span class="stat-count" id="statCount">—</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Stage KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card it" onclick="showStageTable('IT')">
+      <div class="kpi-label">Transfer to IT</div>
+      <div class="kpi-total" id="kIT">—</div>
+      <div class="kpi-pending-row">
+        <span class="pend-badge pending" id="pIT">⏳ —</span>
+        <span class="pend-badge moved" id="mIT">✔ —</span>
+      </div>
+      <div class="tat-bars">
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--teal)">InTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill in-color" id="bInIT" style="width:0%"></div></div>
+          <span class="tat-bar-pct in-color" id="pctInIT">0%</span>
+        </div>
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--red)">OutTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill out-color" id="bOutIT" style="width:0%"></div></div>
+          <span class="tat-bar-pct out-color" id="pctOutIT">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-card ack" onclick="showStageTable('ACK')">
+      <div class="kpi-label">Acknowledge</div>
+      <div class="kpi-total" id="kACK">—</div>
+      <div class="kpi-pending-row">
+        <span class="pend-badge pending" id="pACK">⏳ —</span>
+        <span class="pend-badge moved" id="mACK">✔ —</span>
+      </div>
+      <div class="tat-bars">
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--teal)">InTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill in-color" id="bInACK" style="width:0%"></div></div>
+          <span class="tat-bar-pct in-color" id="pctInACK">0%</span>
+        </div>
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--red)">OutTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill out-color" id="bOutACK" style="width:0%"></div></div>
+          <span class="tat-bar-pct out-color" id="pctOutACK">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-card ip" onclick="showStageTable('IP')">
+      <div class="kpi-label">In Progress</div>
+      <div class="kpi-total" id="kIP">—</div>
+      <div class="kpi-pending-row">
+        <span class="pend-badge pending" id="pIP">⏳ —</span>
+        <span class="pend-badge moved" id="mIP">✔ —</span>
+      </div>
+      <div class="tat-bars">
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--teal)">InTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill in-color" id="bInIP" style="width:0%"></div></div>
+          <span class="tat-bar-pct in-color" id="pctInIP">0%</span>
+        </div>
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--red)">OutTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill out-color" id="bOutIP" style="width:0%"></div></div>
+          <span class="tat-bar-pct out-color" id="pctOutIP">0%</span>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-card sup" onclick="showStageTable('SUP')">
+      <div class="kpi-label">Close by IT</div>
+      <div class="kpi-total" id="kSUP">—</div>
+      <div class="kpi-pending-row">
+        <span class="pend-badge pending" id="pSUP">⏳ —</span>
+        <span class="pend-badge moved" id="mSUP">✔ —</span>
+      </div>
+      <div class="tat-bars">
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--teal)">InTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill in-color" id="bInSUP" style="width:0%"></div></div>
+          <span class="tat-bar-pct in-color" id="pctInSUP">0%</span>
+        </div>
+        <div class="tat-bar-row">
+          <span class="tat-bar-label" style="color:var(--red)">OutTAT</span>
+          <div class="tat-bar-track"><div class="tat-bar-fill out-color" id="bOutSUP" style="width:0%"></div></div>
+          <span class="tat-bar-pct out-color" id="pctOutSUP">0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">InTAT vs OutTAT — Per Stage</div>
+      <div class="chart-sub">Percentage comparison across all stages</div>
+      <div class="chart-wrap"><canvas id="chartTAT"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Stage-wise Pending vs Moved</div>
+      <div class="chart-sub">Current pending vs tickets that moved forward</div>
+      <div class="chart-wrap"><canvas id="chartPend"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Pending Table -->
+  <div class="table-card">
+    <div class="table-hdr">
+      <div>
+        <div class="table-title" id="tableTitle">Ticket Details</div>
+        <div class="table-sub" id="tableSub">Click a KPI card to filter by stage</div>
+      </div>
+      <div class="stage-tabs">
+        <button class="stage-tab active" onclick="showStageTable('ALL')" id="tab-ALL">All</button>
+        <button class="stage-tab" onclick="showStageTable('IT')"  id="tab-IT">IT</button>
+        <button class="stage-tab" onclick="showStageTable('ACK')" id="tab-ACK">ACK</button>
+        <button class="stage-tab" onclick="showStageTable('IP')"  id="tab-IP">IP</button>
+        <button class="stage-tab" onclick="showStageTable('SUP')" id="tab-SUP">SUP</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Customer</th>
+            <th>Stage</th>
+            <th>TAT Status</th>
+            <th>Pending</th>
+            <th>Duration</th>
+            <th>Tester/Agent</th>
+            <th>RM</th>
+            <th>Dev</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let RAW = [];
+let VIEW = [];
+let chartTAT = null, chartPend = null;
+let currentStage = 'ALL';
+
+const STAGES = {
+  IT:  { label:'Transfer to IT',  dateKey:'a', tatKey:'at', durKey:'ad', actKey:'ta', pendSc:'IT' },
+  ACK: { label:'Acknowledge',     dateKey:'b', tatKey:'bt', durKey:'bd', actKey:'ta', pendSc:'AK' },
+  IP:  { label:'In Progress',     dateKey:'c', tatKey:'ct', durKey:'cd', actKey:'ti', pendSc:'IP' },
+  SUP: { label:'Close by IT',     dateKey:'d', tatKey:'dt', durKey:'dd', actKey:'ts', pendSc:'SP' },
+};
+
+const fmt = n => n?.toLocaleString('en-IN') ?? '—';
+
+// ── Load Supabase ─────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    document.getElementById('loadMsg').textContent = 'Connecting to Supabase...';
+    const { data, error } = await sb.from('ticket_cache')
+      .select('data, fetched_at, date_from, date_to');
+    if(error) throw error;
+    if(!data?.length) throw new Error('No data found');
+
+    let all = []; let latestTs = null;
+    data.forEach(row=>{
+      if(row.data && Array.isArray(row.data)) all = all.concat(row.data);
+      if(row.fetched_at && (!latestTs || row.fetched_at > latestTs)) latestTs = row.fetched_at;
+    });
+    const map = {}; all.forEach(t=>{ if(t?.n) map[t.n]=t; });
+    RAW = Object.values(map);
+
+    if(latestTs){
+      const d = new Date(latestTs);
+      document.getElementById('syncText').textContent =
+        'Last fetched: ' + d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+        + ' at ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      document.getElementById('syncBadge').style.display = 'flex';
+    }
+
+    // Set default date range — current month
+    const today = new Date();
+    const y = today.getFullYear(), m = String(today.getMonth()+1).padStart(2,'0');
+    document.getElementById('dateFrom').value = `${y}-${m}-01`;
+    document.getElementById('dateTo').value   = today.toISOString().split('T')[0];
+
+    populateFilters();
+    render();
+
+  }catch(e){
+    document.getElementById('loadMsg').textContent = 'Error: ' + e.message;
+    setTimeout(()=>document.getElementById('loadingOverlay').style.display='none', 2000);
+    return;
+  }
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function populateFilters(){
+  const testers=new Set(), rms=new Set(), devs=new Set();
+  RAW.forEach(r=>{
+    const t = r.eb||r.t||r.ti||r.ta||r.ts||'';
+    if(t) testers.add(t);
+    if(r.r) rms.add(r.r);
+    if(r.dev) devs.add(r.dev);
+  });
+  fill('filterTester',[...testers].sort(),'All Testers');
+  fill('filterRM',[...rms].sort(),'All RMs');
+  fill('filterDev',[...devs].sort(),'All Devs');
+}
+function fill(id, items, ph){
+  const s=document.getElementById(id);
+  s.innerHTML=`<option value="">${ph}</option>`;
+  items.forEach(v=>{ const o=document.createElement('option'); o.value=o.textContent=v; s.appendChild(o); });
+}
+
+function inRange(d, from, to){ return d && d >= from && d <= to; }
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  const from   = document.getElementById('dateFrom').value;
+  const to     = document.getElementById('dateTo').value;
+  const tester = document.getElementById('filterTester').value;
+  const rm     = document.getElementById('filterRM').value;
+  const dev    = document.getElementById('filterDev').value;
+
+  // Filter rows that appear in any stage within date range
+  VIEW = RAW.filter(r=>{
+    const inAnyStage = inRange(r.a,from,to)||inRange(r.b,from,to)||inRange(r.c,from,to)||inRange(r.d,from,to);
+    if(!inAnyStage) return false;
+    if(tester){ const t=r.eb||r.t||r.ti||r.ta||r.ts||''; if(t!==tester) return false; }
+    if(rm && r.r!==rm) return false;
+    if(dev && r.dev!==dev) return false;
+    return true;
+  });
+
+  document.getElementById('statCount').textContent = fmt(VIEW.length) + ' tickets';
+  updateKPIs(from, to);
+  updateCharts();
+  showStageTable(currentStage);
+}
+
+// ── KPI Cards ─────────────────────────────────────────────────────────────────
+function updateKPIs(from, to){
+  const keys = ['IT','ACK','IP','SUP'];
+  keys.forEach(k=>{
+    const cfg = STAGES[k];
+    const stageRows = VIEW.filter(r => inRange(r[cfg.dateKey], from, to));
+    const total  = stageRows.length;
+    const inTAT  = stageRows.filter(r=>r[cfg.tatKey]==='I').length;
+    const outTAT = stageRows.filter(r=>r[cfg.tatKey]==='O').length;
+    const pend   = RAW.filter(r=>r.sc===cfg.pendSc).length;
+    const moved  = total - pend;
+    const inPct  = total ? Math.round(inTAT/total*100) : 0;
+    const outPct = total ? Math.round(outTAT/total*100) : 0;
+
+    document.getElementById(`k${k}`).textContent   = fmt(total);
+    document.getElementById(`p${k}`).textContent   = `⏳ ${fmt(pend)} pending`;
+    document.getElementById(`m${k}`).textContent   = `✔ ${fmt(Math.max(0,moved))} moved`;
+    document.getElementById(`bIn${k}`).style.width  = inPct + '%';
+    document.getElementById(`bOut${k}`).style.width = outPct + '%';
+    document.getElementById(`pctIn${k}`).textContent  = inPct + '%';
+    document.getElementById(`pctOut${k}`).textContent = outPct + '%';
+  });
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+function updateCharts(){
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+
+  const labels  = ['Transfer to IT','Acknowledge','In Progress','Close by IT'];
+  const keys    = ['IT','ACK','IP','SUP'];
+  const inData  = [], outData = [], pendData = [], movedData = [];
+
+  keys.forEach(k=>{
+    const cfg = STAGES[k];
+    const rows = VIEW.filter(r=>inRange(r[cfg.dateKey],from,to));
+    const total = rows.length;
+    inData.push(total ? Math.round(rows.filter(r=>r[cfg.tatKey]==='I').length/total*100) : 0);
+    outData.push(total ? Math.round(rows.filter(r=>r[cfg.tatKey]==='O').length/total*100) : 0);
+    pendData.push(RAW.filter(r=>r.sc===cfg.pendSc).length);
+    movedData.push(Math.max(0, total - RAW.filter(r=>r.sc===cfg.pendSc).length));
+  });
+
+  // TAT Chart
+  if(chartTAT) chartTAT.destroy();
+  chartTAT = new Chart(document.getElementById('chartTAT'), {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'InTAT %', data:inData,  backgroundColor:'#0d9488', borderRadius:6},
+        {label:'OutTAT %',data:outData, backgroundColor:'#dc2626', borderRadius:6},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Sora',size:11}}}},scales:{y:{max:100,ticks:{callback:v=>v+'%',font:{family:'Sora',size:10}},grid:{color:'#f0f2f9'}},x:{ticks:{font:{family:'Sora',size:10}},grid:{display:false}}}}
+  });
+
+  // Pending Chart
+  if(chartPend) chartPend.destroy();
+  chartPend = new Chart(document.getElementById('chartPend'), {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Pending', data:pendData,  backgroundColor:'#f59e0b', borderRadius:6},
+        {label:'Moved',   data:movedData, backgroundColor:'#0d9488', borderRadius:6},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Sora',size:11}}}},scales:{y:{ticks:{font:{family:'Sora',size:10}},grid:{color:'#f0f2f9'}},x:{ticks:{font:{family:'Sora',size:10}},grid:{display:false}}}}
+  });
+}
+
+// ── Stage Table ───────────────────────────────────────────────────────────────
+function showStageTable(stageKey){
+  currentStage = stageKey;
+
+  // Update tab styles
+  document.querySelectorAll('.stage-tab').forEach(t=>{
+    t.classList.toggle('active', t.id === `tab-${stageKey}`);
+  });
+
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+
+  let rows = [];
+  const stageConfigs = stageKey === 'ALL'
+    ? Object.entries(STAGES)
+    : [[stageKey, STAGES[stageKey]]];
+
+  if(stageKey === 'ALL'){
+    // All stages — show each ticket once with its latest stage
+    rows = VIEW.map(r=>{
+      // Find which stages this ticket went through
+      const stagesHit = Object.entries(STAGES).filter(([k,cfg])=>inRange(r[cfg.dateKey],from,to));
+      if(!stagesHit.length) return null;
+      const [lastKey, lastCfg] = stagesHit[stagesHit.length-1];
+      return { r, stageKey:lastKey, cfg:lastCfg };
+    }).filter(Boolean);
+  } else {
+    const cfg = STAGES[stageKey];
+    rows = VIEW
+      .filter(r=>inRange(r[cfg.dateKey],from,to))
+      .map(r=>({ r, stageKey, cfg }));
+  }
+
+  const stageLabel = stageKey==='ALL' ? 'All Stages' : STAGES[stageKey]?.label || stageKey;
+  document.getElementById('tableTitle').textContent = stageLabel + ' — Ticket Details';
+  document.getElementById('tableSub').textContent   = `${fmt(rows.length)} tickets`;
+
+  const STAGE_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Go Live',CL:'Closed',RS:'Return',RT:'Ready Test',RU:'Ready UAT',OT:'Other'};
+
+  document.getElementById('tblBody').innerHTML = rows.length ? rows.slice(0,500).map(({r,stageKey:sk,cfg})=>{
+    const tatVal = r[cfg.tatKey];
+    const tatHtml = tatVal==='I'
+      ? '<span class="tat-chip tat-in">✔ InTAT</span>'
+      : tatVal==='O'
+      ? '<span class="tat-chip tat-out">✘ OutTAT</span>'
+      : '<span class="tat-chip tat-no">— No TAT</span>';
+    const isPend = r.sc === cfg.pendSc;
+    const pendHtml = isPend
+      ? '<span class="pend-chip">⏳ Pending</span>'
+      : '<span class="moved-chip">✔ Moved</span>';
+    const agent = r[cfg.actKey] || r.ta || r.ti || r.ts || r.eb || '—';
+    return `<tr>
+      <td class="tbl-ticket">${r.n||'—'}</td>
+      <td style="font-size:12px">${r.u||'—'}</td>
+      <td style="font-size:11px;color:var(--teal);font-weight:600">${STAGE_LABELS[r.sc]||r.sc||'—'}</td>
+      <td>${tatHtml}</td>
+      <td>${pendHtml}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${r[cfg.durKey]||'—'}</td>
+      <td style="font-size:11px">${agent}</td>
+      <td style="font-size:11px">${r.r||'—'}</td>
+      <td style="font-size:11px">${r.dev||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${r[cfg.dateKey]||'—'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="10"><div class="empty-tbl">No tickets found for selected filters</div></td></tr>`;
+}
+
+loadData();
+</script>
+</body>
+</html>
