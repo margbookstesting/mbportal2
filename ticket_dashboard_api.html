@@ -2133,7 +2133,7 @@ function renderTester(){
   const namedSet = new Set([
     ...fAck.filter(r=>r.t).map(r=>r.t),
     ...fIP.filter(r=>r.t).map(r=>r.t),
-    ...fSup.filter(r=>r.t).map(r=>r.t),
+    ...fSup.filter(r=>r.ts).map(r=>r.ts),
     ...fLive.filter(r=>r.eb).map(r=>r.eb),
   ]);
   // Per-stage TAT counts for a predicate
@@ -2142,11 +2142,12 @@ function renderTester(){
     arr.forEach(r=>{ if(!pred(r)) return; if(r[key]==='I') inC++; else if(r[key]==='O') outC++; });
     return { inC, outC };
   }
-  function buildRow(name, pred, predLive){
+  function buildRow(name, pred, predLive, predSup){
+    predSup = predSup || pred;
     const ackArr  = fAck.filter(pred);
     const ipArr   = fIP.filter(pred);
     const liveArr = fLive.filter(predLive);
-    const supArr  = fSup.filter(pred);
+    const supArr  = fSup.filter(predSup);
     const ack  = ackArr.length;
     const ip   = ipArr.length;
     const live = liveArr.length;
@@ -2154,7 +2155,7 @@ function renderTester(){
     const aT = stTat(fAck,  pred,     'bt');
     const iT = stTat(fIP,   pred,     'ct');
     const lT = stTat(fLive, predLive, 'et');
-    const sT = stTat(fSup,  pred,     'dt');
+    const sT = stTat(fSup,  predSup,  'dt');
     const ackBug  = ackArr.filter(isBug).length,  ackDev  = ackArr.filter(isDev).length;
     const ipBug   = ipArr.filter(isBug).length,   ipDev   = ipArr.filter(isDev).length;
     const liveBug = liveArr.filter(isBug).length, liveDev = liveArr.filter(isDev).length;
@@ -2168,27 +2169,28 @@ function renderTester(){
   const selT = (typeof CF_STATE!=='undefined' && CF_STATE.tester) ? CF_STATE.tester : new Set();
   if(selT.size) names = names.filter(n=>selT.has(n));
   const rows = names
-    .map(name=>buildRow(name, r=>r.t===name, r=>r.eb===name))
+    .map(name=>buildRow(name, r=>r.t===name, r=>r.eb===name, r=>r.ts===name))
     .filter(r=>r.ack||r.ip||r.live||r.sup)
     .sort((a,b)=>(b.ack+b.ip+b.live+b.sup)-(a.ack+a.ip+a.live+a.sup));
 
   // (Blank) row for unassigned tickets — Total KPI se match rahe
   if(!selT.size){
-    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.eb);
+    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.eb, r=>!r.ts);
     if(bRow.ack||bRow.ip||bRow.live||bRow.sup){ bRow.isBlank = true; rows.push(bRow); }
   }
 
   // Totals: bina filter = KPI match; tester filter active = sirf selected testers ka sum
   const tPred  = selT.size ? (r=>selT.has(r.t))  : (()=>true);
   const tPredL = selT.size ? (r=>selT.has(r.eb)) : (()=>true);
+  const tPredS = selT.size ? (r=>selT.has(r.ts)) : (()=>true);
   const totAck = selT.size ? fAck.filter(tPred).length   : fAck.length;
   const totIP  = selT.size ? fIP.filter(tPred).length    : fIP.length;
   const totLive= selT.size ? fLive.filter(tPredL).length : fLive.length;
-  const totSup = selT.size ? fSup.filter(tPred).length   : fSup.length;
+  const totSup = selT.size ? fSup.filter(tPredS).length  : fSup.length;
   const TaT = stTat(fAck, tPred,  'bt');
   const TiT = stTat(fIP,  tPred,  'ct');
   const TlT = stTat(fLive,tPredL, 'et');
-  const TsT = stTat(fSup, tPred,  'dt');
+  const TsT = stTat(fSup, tPredS, 'dt');
   const sumBug = rows.reduce((s,r)=>s+r.bug,0), sumDev = rows.reduce((s,r)=>s+r.dev,0);
   const namedRows = rows.filter(r=>!r.isBlank);
 
@@ -2581,11 +2583,11 @@ function dsBar(label, data, color, alpha=0.65){
 function buildTesterChartData(){
   const namedSet = new Set([...fIT.filter(r=>r.t).map(r=>r.t),
     ...fAck.filter(r=>r.t).map(r=>r.t), ...fIP.filter(r=>r.t).map(r=>r.t),
-    ...fSup.filter(r=>r.t).map(r=>r.t), ...fLive.filter(r=>r.eb).map(r=>r.eb)]);
+    ...fSup.filter(r=>r.ts).map(r=>r.ts), ...fLive.filter(r=>r.eb).map(r=>r.eb)]);
   let rows = [...namedSet].map(n=>({n,
     it:fIT.filter(r=>r.t===n).length, ack:fAck.filter(r=>r.t===n).length,
     ip:fIP.filter(r=>r.t===n).length, live:fLive.filter(r=>r.eb===n).length,
-    sup:fSup.filter(r=>r.t===n).length
+    sup:fSup.filter(r=>r.ts===n).length
   })).sort((a,b)=>b.it-a.it).slice(0,12);
   return {
     labels: rows.map(r=>r.n),
