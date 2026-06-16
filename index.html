@@ -170,8 +170,12 @@ function togglePass(){
   else{p.type='password';eye.textContent='👁️';}
 }
 document.addEventListener('keydown', e=>{ if(e.key==='Enter'){e.preventDefault();login();} });
-document.getElementById('pass').addEventListener('keyup', e=>{
-  document.getElementById('capsWarn').classList.toggle('show', e.getModifierState&&e.getModifierState('CapsLock'));
+document.getElementById('pass').addEventListener('keydown', e=>{
+  if(e.getModifierState)
+    document.getElementById('capsWarn').classList.toggle('show', e.getModifierState('CapsLock'));
+});
+document.getElementById('pass').addEventListener('blur', ()=>{
+  document.getElementById('capsWarn').classList.remove('show');
 });
 document.getElementById('email').addEventListener('input', hideErr);
 document.getElementById('pass').addEventListener('input', hideErr);

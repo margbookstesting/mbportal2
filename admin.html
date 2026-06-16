@@ -3,193 +3,366 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Margbooks Dashboard Portal — Admin</title>
+<title>Margbooks — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  :root{--brand:#0d9488;--brand2:#0891b2;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f1f5f9;--card:#fff;--success:#0d9488;--danger:#e11d48}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-  nav{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-  .nav-left{display:flex;align-items:center;gap:12px}
-  .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff}
-  .nav-title{font-size:16px;font-weight:800;color:var(--dark)}
-  .badge{background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
-  .btn-sm{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;border:none}
-  .btn-danger{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
-  .btn-back{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
-  main{max-width:1000px;margin:0 auto;padding:32px 24px}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
-  .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
-  .stat-val{font-size:24px;font-weight:800;color:var(--dark)}
-  .stat-label{font-size:12px;color:var(--muted);margin-top:2px}
-  .panels{display:grid;grid-template-columns:1fr 1.6fr;gap:20px;align-items:start}
-  .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-  .panel-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-  .panel-title{font-size:14px;font-weight:700;color:var(--dark)}
-  .panel-sub{font-size:12px;color:var(--muted);margin-top:1px}
-  .form{padding:20px}
-  label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:5px}
-  input,select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;transition:.2s;background:#fafafa;margin-bottom:14px}
-  input:focus,select:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
-  .btn-primary{width:100%;padding:10px;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;transition:.2s;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;box-shadow:0 3px 10px rgba(13,148,136,.3)}
-  .btn-primary:hover{transform:translateY(-1px)}
-  .btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
-  .user-list{max-height:560px;overflow-y:auto}
-  .user-item{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;transition:.15s}
-  .user-item:last-child{border-bottom:none}
-  .user-item:hover{background:#fafafa}
-  .avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
-  .avatar.admin-av{background:linear-gradient(135deg,#0d9488,#0891b2)}
-  .user-info{flex:1;min-width:0}
-  .user-name{font-size:13px;font-weight:700;color:var(--dark)}
-  .user-email{font-size:11px;color:var(--muted);margin-top:1px}
-  .user-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-  .perm-chip{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4}
-  .role-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
-  .role-admin{background:#ccfbf1;color:#0f766e}
-  .role-user{background:#f0fdf4;color:#15803d}
-  .user-actions{display:flex;gap:6px;flex-shrink:0}
-  .icon-btn{width:30px;height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.15s}
-  .icon-btn:hover{background:var(--bg)}
-  .icon-btn.del:hover{background:#fef2f2;border-color:#fecaca}
-  /* MODAL */
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
-  .overlay.show{display:flex}
-  .modal{background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
-  .modal-hdr{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#f0fdfa,#fff)}
-  .modal-title{font-size:15px;font-weight:700;color:var(--dark)}
-  .modal-close{width:28px;height:28px;border:none;background:var(--bg);border-radius:7px;cursor:pointer;font-size:16px}
-  .modal-body{padding:20px 24px;max-height:460px;overflow-y:auto}
-  .modal-section{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-  .modal-section:first-child{margin-top:0}
-  .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .modal-field{margin-bottom:12px}
-  .modal-field label{margin-bottom:4px;font-size:11px}
-  .modal-field input,.modal-field select{margin-bottom:0;font-size:13px}
-  .pass-hint{font-size:11px;color:var(--muted);margin-top:4px}
-  .dash-opt{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.15s}
-  .dash-opt.sel{border-color:var(--brand);background:#f0fdfa}
-  .dash-opt input[type=checkbox]{margin-top:2px;accent-color:var(--brand);width:16px;height:16px}
-  .dash-opt-title{font-size:13px;font-weight:700;color:var(--dark)}
-  .dash-opt-desc{font-size:11px;color:var(--muted);margin-top:2px}
-  .modal-ftr{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
-  .btn-cancel{padding:9px 18px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted)}
-  .btn-save{padding:9px 18px;border:none;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:13px;font-weight:700;cursor:pointer}
-  .modal-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
-  .modal-tab{padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.15s}
-  .modal-tab.active{color:var(--brand);border-bottom-color:var(--brand)}
-  /* TOAST */
-  .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;z-index:999;transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none}
-  .toast.show{transform:translateY(0);opacity:1}
-  .toast.ok{background:#0d9488}
-  .toast.err{background:#e11d48}
-  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .empty-msg{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#0d9488;--brand2:#0891b2;--brand-g:linear-gradient(135deg,#0d9488,#0891b2);
+  --dark:#08101e;--text:#1e293b;--muted:#64748b;--muted2:#94a3b8;
+  --border:#e2e8f0;--border2:#cbd5e1;--bg:#f0f4f8;--surface:#fff;
+  --danger:#e11d48;--danger-l:#fef2f2;--danger-m:#fecaca;
+  --success:#0d9488;--success-l:#f0fdfa;
+  --sh-s:0 1px 3px rgba(0,0,0,.07);
+  --sh-m:0 4px 16px rgba(0,0,0,.1);
+  --sh-l:0 12px 40px rgba(0,0,0,.14);
+}
+html,body{height:100%;overflow:hidden;font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+
+/* ── NAV ── */
+nav{
+  height:56px;background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 28px;display:flex;align-items:center;justify-content:space-between;
+  position:relative;z-index:100;flex-shrink:0;
+  box-shadow:var(--sh-s);
+}
+.nav-left{display:flex;align-items:center;gap:12px}
+.logo-box{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--brand-g);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:900;color:#fff;
+  box-shadow:0 3px 10px rgba(13,148,136,.35);
+}
+.nav-title{font-size:15px;font-weight:800;color:var(--dark);letter-spacing:-.2px}
+.admin-badge{
+  font-size:9px;font-weight:800;padding:3px 9px;border-radius:20px;
+  background:var(--brand-g);color:#fff;letter-spacing:.8px;text-transform:uppercase;
+}
+.nav-right{display:flex;gap:8px;align-items:center}
+.btn-nav{
+  height:32px;padding:0 14px;border-radius:8px;
+  font-size:12px;font-weight:700;cursor:pointer;
+  font-family:'Sora',sans-serif;transition:.15s;
+}
+.btn-portal{background:var(--bg);border:1.5px solid var(--border);color:var(--muted)}
+.btn-portal:hover{border-color:var(--brand);color:var(--brand)}
+.btn-signout{background:var(--danger-l);border:1.5px solid var(--danger-m);color:var(--danger)}
+.btn-signout:hover{background:var(--danger);color:#fff}
+
+/* ── LAYOUT ── */
+.page{display:flex;flex-direction:column;height:calc(100vh - 56px);overflow:hidden}
+
+/* ── STATS ROW ── */
+.stats-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  padding:16px 28px 0;flex-shrink:0;
+}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 18px;display:flex;align-items:center;gap:14px;
+  box-shadow:var(--sh-s);
+}
+.stat-icon{
+  width:40px;height:40px;border-radius:10px;
+  background:linear-gradient(135deg,#f0fdfa,#ecfeff);
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.stat-val{font-size:22px;font-weight:800;color:var(--dark);line-height:1}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px;font-weight:500}
+
+/* ── MAIN PANELS ── */
+.panels{
+  display:grid;grid-template-columns:360px 1fr;gap:16px;
+  padding:16px 28px 16px;flex:1;overflow:hidden;min-height:0;
+}
+.panel{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:var(--sh-s);
+}
+.panel-hdr{
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,#fafbff,var(--surface));flex-shrink:0;
+}
+.panel-title{font-size:13px;font-weight:800;color:var(--dark)}
+.panel-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* ── CREATE FORM ── */
+.form-body{padding:18px 20px;overflow-y:auto;flex:1}
+.field{margin-bottom:14px}
+.field label{
+  display:block;font-size:11px;font-weight:700;color:var(--text);
+  margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;
+}
+.field input,.field select{
+  width:100%;border:1.5px solid var(--border);border-radius:9px;
+  padding:9px 13px;font-size:13px;color:var(--text);outline:none;
+  background:#fafafa;font-family:'Sora',sans-serif;transition:.2s;
+}
+.field input:focus,.field select:focus{
+  border-color:var(--brand);background:#fff;
+  box-shadow:0 0 0 3px rgba(13,148,136,.1);
+}
+.btn-create{
+  width:100%;height:40px;border:none;border-radius:9px;
+  background:var(--brand-g);color:#fff;
+  font-size:13px;font-weight:700;cursor:pointer;
+  font-family:'Sora',sans-serif;
+  box-shadow:0 4px 14px rgba(13,148,136,.35);
+  transition:.2s;letter-spacing:.2px;margin-top:2px;
+}
+.btn-create:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(13,148,136,.4)}
+.btn-create:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+/* ── USER LIST ── */
+.user-list-body{overflow-y:auto;flex:1;padding:4px 0}
+.user-row{
+  padding:13px 20px;border-bottom:1px solid #f1f5f9;
+  display:flex;align-items:center;gap:12px;transition:.15s;
+}
+.user-row:last-child{border-bottom:none}
+.user-row:hover{background:#fafbff}
+.avatar{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:var(--brand-g);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;letter-spacing:.5px;
+}
+.avatar.av-muted{background:linear-gradient(135deg,#64748b,#475569)}
+.user-info{flex:1;min-width:0}
+.user-name-row{display:flex;align-items:center;gap:7px;margin-bottom:2px}
+.u-name{font-size:13px;font-weight:700;color:var(--dark)}
+.role-chip{
+  font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.chip-admin{background:#ccfbf1;color:#0f766e}
+.chip-user{background:#eff6ff;color:#1d4ed8}
+.u-email{font-size:11px;color:var(--muted)}
+.u-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.perm-pill{
+  font-size:10px;font-weight:600;padding:2px 8px;
+  border-radius:20px;background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4;
+}
+.u-full{font-size:11px;color:var(--brand);font-weight:600;margin-top:3px}
+.user-acts{display:flex;gap:6px;flex-shrink:0}
+.act-btn{
+  width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);
+  background:var(--surface);cursor:pointer;font-size:13px;
+  display:flex;align-items:center;justify-content:center;transition:.15s;
+}
+.act-btn:hover{background:var(--bg);border-color:var(--border2)}
+.act-btn.del:hover{background:var(--danger-l);border-color:var(--danger-m)}
+.refresh-btn{
+  height:28px;padding:0 12px;border-radius:7px;
+  border:1.5px solid var(--border);background:var(--bg);
+  font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;
+  font-family:'Sora',sans-serif;transition:.15s;
+}
+.refresh-btn:hover{border-color:var(--brand);color:var(--brand)}
+.empty-msg{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px}
+
+/* ── MODAL ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(8,16,30,.55);
+  backdrop-filter:blur(6px);z-index:500;
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.overlay.show{display:flex}
+.modal{
+  background:var(--surface);border-radius:16px;
+  width:100%;max-width:500px;
+  box-shadow:var(--sh-l);border:1px solid var(--border);
+  overflow:hidden;animation:rise .2s ease;
+}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{
+  padding:18px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,#f0fdfa,var(--surface));
+}
+.modal-htitle{font-size:14px;font-weight:800;color:var(--dark)}
+.modal-xbtn{
+  width:28px;height:28px;border:1.5px solid var(--border);
+  border-radius:7px;background:var(--bg);cursor:pointer;
+  font-size:14px;display:flex;align-items:center;justify-content:center;
+  transition:.15s;
+}
+.modal-xbtn:hover{background:var(--danger-l);border-color:var(--danger-m)}
+.modal-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 22px}
+.modal-tab{
+  padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;transition:.15s;
+}
+.modal-tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+.modal-body{padding:20px 22px;max-height:420px;overflow-y:auto}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-field{margin-bottom:13px}
+.modal-field label{
+  display:block;font-size:10px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;
+}
+.modal-field input,.modal-field select{
+  width:100%;border:1.5px solid var(--border);border-radius:8px;
+  padding:9px 12px;font-size:13px;color:var(--text);outline:none;
+  background:#fafafa;font-family:'Sora',sans-serif;transition:.2s;
+}
+.modal-field input:focus,.modal-field select:focus{
+  border-color:var(--brand);background:#fff;
+  box-shadow:0 0 0 3px rgba(13,148,136,.1);
+}
+.pass-hint{font-size:11px;color:var(--muted);margin-top:4px}
+.dash-opt{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:10px 13px;border:1.5px solid var(--border);
+  border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.15s;
+}
+.dash-opt.sel{border-color:var(--brand);background:var(--success-l)}
+.dash-opt input[type=checkbox]{margin-top:2px;accent-color:var(--brand);width:15px;height:15px;flex-shrink:0}
+.dash-opt-title{font-size:12px;font-weight:700;color:var(--dark)}
+.dash-opt-desc{font-size:10px;color:var(--muted);margin-top:1px;line-height:1.4}
+.modal-ftr{
+  padding:14px 22px;border-top:1px solid var(--border);
+  display:flex;gap:10px;justify-content:flex-end;background:#fafbff;
+}
+.btn-cancel{
+  height:36px;padding:0 18px;border:1.5px solid var(--border);
+  border-radius:8px;background:var(--surface);font-size:12px;
+  font-weight:700;cursor:pointer;color:var(--muted);
+  font-family:'Sora',sans-serif;transition:.15s;
+}
+.btn-cancel:hover{border-color:var(--border2);color:var(--text)}
+.btn-save{
+  height:36px;padding:0 18px;border:none;border-radius:8px;
+  background:var(--brand-g);color:#fff;font-size:12px;font-weight:700;
+  cursor:pointer;font-family:'Sora',sans-serif;
+  box-shadow:0 3px 10px rgba(13,148,136,.3);transition:.15s;
+}
+.btn-save:hover{opacity:.9;transform:translateY(-1px)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:22px;right:22px;
+  padding:12px 20px;border-radius:10px;
+  font-size:12px;font-weight:700;color:#fff;z-index:999;
+  transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none;
+  font-family:'Sora',sans-serif;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:#0d9488;box-shadow:0 4px 14px rgba(13,148,136,.4)}
+.toast.err{background:var(--danger);box-shadow:0 4px 14px rgba(225,29,72,.35)}
+
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
+
 <nav>
   <div class="nav-left">
-    <div class="logo-icon">MB</div>
+    <div class="logo-box">MB</div>
     <span class="nav-title">Margbooks Dashboard Portal</span>
-    <span class="badge">Admin Panel</span>
+    <span class="admin-badge">Admin Panel</span>
   </div>
-  <div style="display:flex;gap:10px">
-    <button class="btn-sm btn-back" onclick="window.location.href='portal.html'">← Portal</button>
-    <button class="btn-sm btn-danger" onclick="logout()">Sign Out</button>
+  <div class="nav-right">
+    <button class="btn-nav btn-portal" onclick="window.location.href='portal.html'">← Portal</button>
+    <button class="btn-nav btn-signout" onclick="logout()">Sign Out</button>
   </div>
 </nav>
 
-<main>
-  <div class="stats">
-    <div class="stat"><div class="stat-val" id="stTotal">—</div><div class="stat-label">Total Users</div></div>
-    <div class="stat"><div class="stat-val" id="stAdmins">—</div><div class="stat-label">Admins</div></div>
-    <div class="stat"><div class="stat-val" id="stUsers">—</div><div class="stat-label">Regular Users</div></div>
-    <div class="stat"><div class="stat-val" id="stDash">—</div><div class="stat-label">Dashboards</div></div>
+<div class="page">
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div><div class="stat-val" id="stTotal">—</div><div class="stat-lbl">Total Users</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🛡️</div>
+      <div><div class="stat-val" id="stAdmins">—</div><div class="stat-lbl">Admins</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👤</div>
+      <div><div class="stat-val" id="stUsers">—</div><div class="stat-lbl">Regular Users</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div><div class="stat-val" id="stDash">—</div><div class="stat-lbl">Dashboards</div></div>
+    </div>
   </div>
+
+  <!-- PANELS -->
   <div class="panels">
+    <!-- CREATE USER -->
     <div class="panel">
-      <div class="panel-header">
-        <div><div class="panel-title">➕ Create New User</div><div class="panel-sub">Add team member</div></div>
+      <div class="panel-hdr">
+        <div>
+          <div class="panel-title">✦ Create New User</div>
+          <div class="panel-sub">Add a new team member</div>
+        </div>
       </div>
-      <div class="form">
-        <label>Full Name</label>
-        <input id="nName" type="text" placeholder="Type User Name"/>
-        <label>Email</label>
-        <input id="nEmail" type="email" placeholder="Type Email Id"/>
-        <label>Password</label>
-        <input id="nPass" type="password" placeholder="Min 8 characters" autocomplete="new-password"/>
-        <label>Role</label>
-        <select id="nRole">
-          <option value="user">User (limited access)</option>
-          <option value="admin">Admin (full access)</option>
-        </select>
-        <button class="btn-primary" id="createBtn" onclick="createUser()">Create User</button>
+      <div class="form-body">
+        <div class="field"><label>Full Name</label><input id="nName" type="text" placeholder="Enter full name"/></div>
+        <div class="field"><label>Email</label><input id="nEmail" type="email" placeholder="email@company.com"/></div>
+        <div class="field"><label>Password</label><input id="nPass" type="password" placeholder="Min 8 characters" autocomplete="new-password"/></div>
+        <div class="field">
+          <label>Role</label>
+          <select id="nRole">
+            <option value="user">User (limited access)</option>
+            <option value="admin">Admin (full access)</option>
+          </select>
+        </div>
+        <button class="btn-create" id="createBtn" onclick="createUser()">Create User</button>
       </div>
     </div>
 
+    <!-- USER LIST -->
     <div class="panel">
-      <div class="panel-header">
-        <div><div class="panel-title">👥 All Users</div><div class="panel-sub">✏️ Edit ya 🔑 Permissions do</div></div>
-        <button onclick="loadUsers()" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--muted)">↻ Refresh</button>
+      <div class="panel-hdr">
+        <div>
+          <div class="panel-title">👥 All Users</div>
+          <div class="panel-sub">Edit details or manage permissions</div>
+        </div>
+        <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
       </div>
-      <div class="user-list" id="userList"><div class="empty-msg">Loading...</div></div>
+      <div class="user-list-body" id="userList"><div class="empty-msg">Loading...</div></div>
     </div>
   </div>
-</main>
+</div>
 
-<!-- EDIT/PERMISSIONS MODAL -->
+<!-- EDIT MODAL -->
 <div class="overlay" id="editOverlay">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-title" id="editTitle">Edit User</div>
-      <button class="modal-close" onclick="closeEditModal()">✕</button>
+      <div class="modal-htitle" id="editTitle">Edit User</div>
+      <button class="modal-xbtn" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="tab-details" onclick="switchTab('details')">👤 Details</div>
+      <div class="modal-tab" id="tab-perms" onclick="switchTab('perms')">🔑 Permissions</div>
+      <div class="modal-tab" id="tab-pass" onclick="switchTab('pass')">🔒 Password</div>
     </div>
     <div class="modal-body">
-      <!-- Tabs -->
-      <div class="modal-tabs">
-        <div class="modal-tab active" id="tab-details" onclick="switchTab('details')">👤 Details</div>
-        <div class="modal-tab" id="tab-perms" onclick="switchTab('perms')">🔑 Permissions</div>
-        <div class="modal-tab" id="tab-pass" onclick="switchTab('pass')">🔒 Password</div>
-      </div>
-
-      <!-- Tab: Details -->
       <div id="tabContent-details">
         <div class="modal-row">
-          <div class="modal-field">
-            <label>Full Name</label>
-            <input id="eName" type="text" placeholder="Full name" autocomplete="off"/>
-          </div>
+          <div class="modal-field"><label>Full Name</label><input id="eName" type="text" placeholder="Full name" autocomplete="off"/></div>
           <div class="modal-field">
             <label>Role</label>
-            <select id="eRole">
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
+            <select id="eRole"><option value="user">User</option><option value="admin">Admin</option></select>
           </div>
         </div>
-        <div class="modal-field">
-          <label>Email</label>
-          <input id="eEmail" type="email" placeholder="email@company.com" autocomplete="off"/>
-        </div>
+        <div class="modal-field"><label>Email</label><input id="eEmail" type="email" placeholder="email@company.com" autocomplete="off"/></div>
       </div>
-
-      <!-- Tab: Permissions -->
-      <div id="tabContent-perms" style="display:none">
-        <div id="permBody"></div>
-      </div>
-
-      <!-- Tab: Password -->
+      <div id="tabContent-perms" style="display:none"><div id="permBody"></div></div>
       <div id="tabContent-pass" style="display:none">
         <div class="modal-field">
           <label>New Password</label>
           <input id="ePass" type="password" placeholder="Min 6 characters" autocomplete="new-password"/>
-          <div class="pass-hint">⚠️ Blank chhodo agar password nahi badalna</div>
+          <div class="pass-hint">⚠️ Leave blank to keep existing password</div>
         </div>
-        <div class="modal-field">
-          <label>Confirm Password</label>
-          <input id="ePass2" type="password" placeholder="Confirm new password" autocomplete="new-password"/>
-        </div>
+        <div class="modal-field"><label>Confirm Password</label><input id="ePass2" type="password" placeholder="Confirm new password" autocomplete="new-password"/></div>
       </div>
     </div>
     <div class="modal-ftr">
@@ -207,8 +380,8 @@ const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
 const SUPA_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQxMzM1MCwiZXhwIjoyMDk2OTg5MzUwfQ._f17cCzbnJVtsKSjyTWOwRIt68kOiRiA6ydHhF76_ZE';
 
-const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, { auth:{ persistSession:true, storage:window.sessionStorage }});
-const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, { auth:{ persistSession:false, storageKey:'sb-admin-token' }});
+const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
+const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, {auth:{persistSession:false,storageKey:'sb-admin-token'}});
 
 const ALL_DASHBOARDS = [
   {id:'it-dashboard',       title:'Marg IT Dashboard',       desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
@@ -217,13 +390,9 @@ const ALL_DASHBOARDS = [
   {id:'excel-dashboard',    title:'Excel Dashboard',         desc:'Excel-based data analysis and reporting',  icon:'📈', tag:'Analytics'},
 ];
 
-let allUsers = [];
-let currentUID = null;
-let currentTab = 'details';
-
+let allUsers=[], currentUID=null, currentTab='details';
 document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
 
-// Auth guard
 (async()=>{
   const {data:{session}} = await sb.auth.getSession();
   if(!session){window.location.href='index.html';return;}
@@ -232,67 +401,57 @@ document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
   loadUsers();
 })();
 
-// ── LOAD USERS ──────────────────────────────────────────────────────────────
 window.loadUsers = async function(){
   document.getElementById('userList').innerHTML='<div class="empty-msg">Loading...</div>';
   const {data,error} = await sb.from('users').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:#e11d48">${error.message}</div>`;return;}
-  allUsers = data||[];
-  const admins = allUsers.filter(u=>u.role==='admin').length;
-  document.getElementById('stTotal').textContent  = allUsers.length;
-  document.getElementById('stAdmins').textContent = admins;
-  document.getElementById('stUsers').textContent  = allUsers.length-admins;
-
+  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:var(--danger)">${error.message}</div>`;return;}
+  allUsers=data||[];
+  const admins=allUsers.filter(u=>u.role==='admin').length;
+  document.getElementById('stTotal').textContent=allUsers.length;
+  document.getElementById('stAdmins').textContent=admins;
+  document.getElementById('stUsers').textContent=allUsers.length-admins;
   if(!allUsers.length){document.getElementById('userList').innerHTML='<div class="empty-msg">No users yet.</div>';return;}
-
-  document.getElementById('userList').innerHTML = allUsers.map(u=>{
-    const init = (u.name||u.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    const perms = (u.dashboards||[]).map(id=>{
-      const d=ALL_DASHBOARDS.find(x=>x.id===id);
-      return d?`<span class="perm-chip">${d.icon} ${d.title}</span>`:'';
-    }).join('');
-    return `<div class="user-item">
-      <div class="avatar ${u.role==='admin'?'admin-av':''}">${init}</div>
+  document.getElementById('userList').innerHTML=allUsers.map(u=>{
+    const init=(u.name||u.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const isAdm=u.role==='admin';
+    const perms=(u.dashboards||[]).map(id=>{const d=ALL_DASHBOARDS.find(x=>x.id===id);return d?`<span class="perm-pill">${d.icon} ${d.title}</span>`:''}).join('');
+    return `<div class="user-row">
+      <div class="avatar ${isAdm?'':'av-muted'}">${init}</div>
       <div class="user-info">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="user-name">${u.name||'—'}</span>
-          <span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role||'user'}</span>
+        <div class="user-name-row">
+          <span class="u-name">${u.name||'—'}</span>
+          <span class="role-chip ${isAdm?'chip-admin':'chip-user'}">${u.role||'user'}</span>
         </div>
-        <div class="user-email">${u.email||''}</div>
-        ${u.role!=='admin'
-          ? `<div class="user-perms">${perms||'<span style="font-size:11px;color:var(--muted)">No dashboards assigned</span>'}</div>`
-          : '<div style="font-size:11px;color:#0d9488;margin-top:4px">✓ Full access</div>'}
+        <div class="u-email">${u.email||''}</div>
+        ${isAdm
+          ?'<div class="u-full">✓ Full access to all dashboards</div>'
+          :`<div class="u-perms">${perms||'<span style="font-size:10px;color:var(--muted2)">No dashboards assigned</span>'}</div>`}
       </div>
-      <div class="user-actions">
-        <button class="icon-btn" title="Edit User" onclick="openEditModal('${u.id}')">✏️</button>
-        <button class="icon-btn del" title="Delete" onclick="deleteUser('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🗑️</button>
+      <div class="user-acts">
+        <button class="act-btn" title="Edit" onclick="openEditModal('${u.id}')">✏️</button>
+        <button class="act-btn del" title="Delete" onclick="deleteUser('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🗑️</button>
       </div>
     </div>`;
   }).join('');
 };
 
-// ── CREATE USER ─────────────────────────────────────────────────────────────
 window.createUser = async function(){
-  const name  = document.getElementById('nName').value.trim();
-  const email = document.getElementById('nEmail').value.trim();
-  const pass  = document.getElementById('nPass').value;
-  const role  = document.getElementById('nRole').value;
-  const btn   = document.getElementById('createBtn');
-  if(!name||!email||!pass){toast('Sabhi fields zaroori hain','err');return;}
+  const name=document.getElementById('nName').value.trim();
+  const email=document.getElementById('nEmail').value.trim();
+  const pass=document.getElementById('nPass').value;
+  const role=document.getElementById('nRole').value;
+  const btn=document.getElementById('createBtn');
+  if(!name||!email||!pass){toast('All fields are required','err');return;}
   if(pass.length<6){toast('Password min 6 characters','err');return;}
   btn.disabled=true;btn.innerHTML='<span class="spin"></span>Creating...';
   try{
-    const {data:authData,error:authErr} = await sbAdmin.auth.admin.createUser({
-      email, password:pass, user_metadata:{name}, email_confirm:true,
-    });
+    const {data:authData,error:authErr}=await sbAdmin.auth.admin.createUser({email,password:pass,user_metadata:{name},email_confirm:true});
     if(authErr) throw authErr;
-    const {error:dbErr} = await sb.from('users').insert({
-      id:authData.user.id, name, email, role, dashboards:[], created_at:new Date().toISOString(),
-    });
+    const {error:dbErr}=await sb.from('users').insert({id:authData.user.id,name,email,role,dashboards:[],created_at:new Date().toISOString()});
     if(dbErr) throw dbErr;
     ['nName','nEmail','nPass'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('nRole').value='user';
-    toast(`✅ ${name} created!`,'ok');
+    toast(`✅ ${name} created successfully!`,'ok');
     loadUsers();
   }catch(e){
     let msg=e.message;
@@ -301,121 +460,74 @@ window.createUser = async function(){
   }finally{btn.disabled=false;btn.innerHTML='Create User';}
 };
 
-// ── DELETE USER ─────────────────────────────────────────────────────────────
 window.deleteUser = async function(id,name){
-  if(!confirm(`"${name}" ko delete karna chahte hain?`)) return;
+  if(!confirm(`Delete "${name}"?`)) return;
   await sb.from('users').delete().eq('id',id);
   await sbAdmin.auth.admin.deleteUser(id);
   toast(`${name} deleted`,'ok');
   loadUsers();
 };
 
-// ── EDIT MODAL ───────────────────────────────────────────────────────────────
 window.openEditModal = function(uid){
-  currentUID = uid;
-  const user = allUsers.find(u=>u.id===uid);
+  currentUID=uid;
+  const user=allUsers.find(u=>u.id===uid);
   if(!user) return;
-
-  document.getElementById('editTitle').textContent = `✏️ Edit — ${user.name||user.email}`;
-  document.getElementById('eName').value  = user.name||'';
-  document.getElementById('eEmail').value = user.email||'';
-  document.getElementById('eRole').value  = user.role||'user';
-  document.getElementById('ePass').value  = '';
-  document.getElementById('ePass2').value = '';
-
-  // Permissions tab — admin ke liye sab checked, user ke liye assigned
-  const assigned = user.dashboards||[];
-  const isAdminUser = user.role === 'admin';
-  document.getElementById('permBody').innerHTML = ALL_DASHBOARDS.map(d=>{
-    const chk = isAdminUser || assigned.includes(d.id); // admin = all ticked
-    return `<div class="dash-opt ${chk?'sel':''}" onclick="${isAdminUser?'':' toggleDash(this)'}">
-      <input type="checkbox" data-id="${d.id}" ${chk?'checked':''} ${isAdminUser?'disabled':''} onclick="event.stopPropagation()"/>
+  document.getElementById('editTitle').textContent=`Edit — ${user.name||user.email}`;
+  document.getElementById('eName').value=user.name||'';
+  document.getElementById('eEmail').value=user.email||'';
+  document.getElementById('eRole').value=user.role||'user';
+  document.getElementById('ePass').value='';
+  document.getElementById('ePass2').value='';
+  const assigned=user.dashboards||[];
+  const isAdmU=user.role==='admin';
+  document.getElementById('permBody').innerHTML=ALL_DASHBOARDS.map(d=>{
+    const chk=isAdmU||assigned.includes(d.id);
+    return `<div class="dash-opt ${chk?'sel':''}" onclick="${isAdmU?'':'toggleDash(this)'}">
+      <input type="checkbox" data-id="${d.id}" ${chk?'checked':''} ${isAdmU?'disabled':''} onclick="event.stopPropagation()"/>
       <div><div class="dash-opt-title">${d.icon} ${d.title}</div><div class="dash-opt-desc">${d.desc}</div></div>
     </div>`;
-  }).join('') + (isAdminUser ? '<p style="font-size:12px;color:#0d9488;margin-top:12px;text-align:center">✓ Admin ko sab dashboards automatically milte hain</p>' : '');
-
+  }).join('')+(isAdmU?'<p style="font-size:11px;color:var(--brand);margin-top:12px;text-align:center">✓ Admin gets access to all dashboards automatically</p>':'');
   switchTab('details');
   document.getElementById('editOverlay').classList.add('show');
 };
 
-window.switchTab = function(tab){
-  currentTab = tab;
+window.switchTab=function(tab){
+  currentTab=tab;
   ['details','perms','pass'].forEach(t=>{
-    document.getElementById(`tabContent-${t}`).style.display = t===tab ? 'block' : 'none';
-    document.getElementById(`tab-${t}`).classList.toggle('active', t===tab);
+    document.getElementById(`tabContent-${t}`).style.display=t===tab?'block':'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active',t===tab);
   });
 };
+window.toggleDash=function(el){el.classList.toggle('sel');el.querySelector('input').checked=el.classList.contains('sel');};
+window.closeEditModal=function(){document.getElementById('editOverlay').classList.remove('show');currentUID=null;};
 
-window.toggleDash = function(el){
-  el.classList.toggle('sel');
-  el.querySelector('input').checked = el.classList.contains('sel');
-};
-
-window.closeEditModal = function(){
-  document.getElementById('editOverlay').classList.remove('show');
-  currentUID = null;
-};
-
-window.saveUser = async function(){
+window.saveUser=async function(){
   if(!currentUID) return;
-
-  const name  = document.getElementById('eName').value.trim();
-  const email = document.getElementById('eEmail').value.trim();
-  const role  = document.getElementById('eRole').value;
-  const pass  = document.getElementById('ePass').value;
-  const pass2 = document.getElementById('ePass2').value;
-
-  if(!name||!email){toast('Name aur email zaroori hain','err');return;}
-
-  // Password validation
-  if(pass && pass !== pass2){toast('Passwords match nahi kar rahe!','err');return;}
-  if(pass && pass.length<6){toast('Password min 6 characters','err');return;}
-
-  // Permissions — sirf tab=perms par update karo, warna existing rakho
-  const checks = document.querySelectorAll('#permBody input[type=checkbox]');
+  const name=document.getElementById('eName').value.trim();
+  const email=document.getElementById('eEmail').value.trim();
+  const role=document.getElementById('eRole').value;
+  const pass=document.getElementById('ePass').value;
+  const pass2=document.getElementById('ePass2').value;
+  if(!name||!email){toast('Name and email are required','err');return;}
+  if(pass&&pass!==pass2){toast('Passwords do not match!','err');return;}
+  if(pass&&pass.length<6){toast('Password min 6 characters','err');return;}
+  const checks=document.querySelectorAll('#permBody input[type=checkbox]');
   let dashboards;
-  if(checks.length > 0){
-    // Permissions tab visited hai — checkboxes available hain
-    dashboards = [...checks].filter(c=>c.checked).map(c=>c.dataset.id);
-  } else {
-    // Permissions tab nahi khola — existing dashboards DB se lo
-    const existingUser = allUsers.find(u=>u.id===currentUID);
-    dashboards = existingUser?.dashboards || [];
-  }
-
+  if(checks.length>0){dashboards=[...checks].filter(c=>c.checked).map(c=>c.dataset.id);}
+  else{const eu=allUsers.find(u=>u.id===currentUID);dashboards=eu?.dashboards||[];}
   try{
-    // Update users table
-    const {error:dbErr} = await sb.from('users').update({name,email,role,dashboards}).eq('id',currentUID);
+    const {error:dbErr}=await sb.from('users').update({name,email,role,dashboards}).eq('id',currentUID);
     if(dbErr) throw dbErr;
-
-    // Update auth email if changed
-    const user = allUsers.find(u=>u.id===currentUID);
-    if(user?.email !== email){
-      const {error:emailErr} = await sbAdmin.auth.admin.updateUserById(currentUID,{email});
-      if(emailErr) throw emailErr;
-    }
-
-    // Update password if provided
-    if(pass){
-      const {error:passErr} = await sbAdmin.auth.admin.updateUserById(currentUID,{password:pass});
-      if(passErr) throw passErr;
-    }
-
+    const user=allUsers.find(u=>u.id===currentUID);
+    if(user?.email!==email){const {error:eE}=await sbAdmin.auth.admin.updateUserById(currentUID,{email});if(eE) throw eE;}
+    if(pass){const {error:pE}=await sbAdmin.auth.admin.updateUserById(currentUID,{password:pass});if(pE) throw pE;}
     toast('✅ User updated successfully!','ok');
-    closeEditModal();
-    loadUsers();
-  }catch(e){
-    toast(e.message,'err');
-  }
+    closeEditModal();loadUsers();
+  }catch(e){toast(e.message,'err');}
 };
 
-// ── LOGOUT ──────────────────────────────────────────────────────────────────
-window.logout = async function(){
-  await sb.auth.signOut();
-  window.location.href='index.html';
-};
+window.logout=async function(){await sb.auth.signOut();window.location.href='index.html';};
 
-// ── TOAST ────────────────────────────────────────────────────────────────────
 function toast(msg,type='ok'){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className=`toast ${type} show`;

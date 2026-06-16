@@ -4,175 +4,244 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Margbooks Dashboard Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--brand:#0d9488;--brand2:#0891b2;--dark:#0f172a;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--bg:#f1f5f9;}
-html,body{height:100%;overflow:hidden}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+:root{
+  --brand:#0d9488;--brand2:#0891b2;--brand-g:linear-gradient(135deg,#0d9488,#0891b2);
+  --dark:#08101e;--text:#1e293b;--muted:#64748b;--muted2:#94a3b8;
+  --border:#e2e8f0;--bg:#f0f4f8;--surface:#fff;
+  --danger:#e11d48;--danger-l:#fef2f2;--danger-m:#fecaca;
+  --sh-s:0 1px 3px rgba(0,0,0,.07);--sh-m:0 4px 16px rgba(0,0,0,.1);
+}
+html,body{height:100%;overflow:hidden;font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text)}
 
-/* NAV */
+/* ── NAV ── */
 nav{
-  background:#fff;border-bottom:1px solid var(--border);
-  padding:0 28px;height:52px;display:flex;align-items:center;
-  justify-content:space-between;flex-shrink:0;
-  box-shadow:0 1px 3px rgba(0,0,0,.06);
+  height:56px;background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 32px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;box-shadow:var(--sh-s);position:relative;z-index:10;
 }
-.nav-left{display:flex;align-items:center;gap:10px}
-.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff}
-.nav-brand{font-size:14px;font-weight:800;color:var(--dark)}
-.nav-right{display:flex;align-items:center;gap:8px}
-.user-chip{display:flex;align-items:center;gap:7px;padding:4px 10px;background:var(--bg);border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text)}
-.avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#0d9488,#0891b2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
-.btn-nav{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;border:none}
-.btn-admin{background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff}
-.btn-out{background:#fef2f2;color:#e11d48;border:1px solid #fecaca}
+.nav-left{display:flex;align-items:center;gap:12px}
+.logo-box{
+  width:34px;height:34px;border-radius:9px;background:var(--brand-g);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:900;color:#fff;
+  box-shadow:0 3px 10px rgba(13,148,136,.35);
+}
+.nav-title{font-size:15px;font-weight:800;color:var(--dark);letter-spacing:-.2px}
+.nav-right{display:flex;align-items:center;gap:10px}
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 14px 5px 6px;
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:20px;cursor:default;
+}
+.avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--brand-g);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;color:#fff;letter-spacing:.3px;
+}
+.chip-name{font-size:12px;font-weight:700;color:var(--text)}
+.btn-nav{
+  height:32px;padding:0 14px;border-radius:8px;
+  font-size:12px;font-weight:700;cursor:pointer;
+  font-family:'Sora',sans-serif;transition:.15s;
+}
+.btn-admin{background:var(--brand-g);color:#fff;border:none;box-shadow:0 2px 8px rgba(13,148,136,.3)}
+.btn-admin:hover{opacity:.9;transform:translateY(-1px)}
+.btn-out{background:var(--danger-l);border:1.5px solid var(--danger-m);color:var(--danger)}
+.btn-out:hover{background:var(--danger);color:#fff}
 
-/* MAIN - fills remaining height, no scroll */
-main{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:16px 28px;gap:14px}
-
-/* TOP BAR */
-.top-bar{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.page-title{font-size:18px;font-weight:800;color:var(--dark)}
-.page-sub{font-size:12px;color:var(--muted);margin-top:2px}
-.welcome-badge{display:flex;align-items:center;gap:6px;padding:6px 12px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1px solid #99f6e4;border-radius:20px;font-size:12px;color:#0f766e;font-weight:600}
-
-/* STATS */
-
-
-/* CARDS AREA - fills remaining space */
-.cards-area{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px}
-.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);display:flex;align-items:center;gap:5px;flex-shrink:0}
-
-/* GRID - horizontal */
-.grid{display:flex;gap:14px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}
-.grid::-webkit-scrollbar{height:4px}
-.grid::-webkit-scrollbar-track{background:#f1f5f9}
-.grid::-webkit-scrollbar-thumb{background:#99f6e4;border-radius:4px}
-
-/* CARD */
-.dash-card{
-  background:#fff;border-radius:14px;border:1px solid var(--border);
-  min-width:240px;max-width:280px;flex-shrink:0;
-  cursor:pointer;transition:.2s;
-  box-shadow:0 1px 3px rgba(0,0,0,.04);
+/* ── PAGE LAYOUT ── */
+.page{
   display:flex;flex-direction:column;
+  height:calc(100vh - 56px);overflow:hidden;
+  padding:24px 32px;gap:20px;
 }
-.dash-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(13,148,136,.12);border-color:#5eead4}
 
-.card-top{padding:18px 18px 14px;display:flex;align-items:flex-start;gap:12px;flex:1}
-.card-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#f0fdfa,#ecfeff);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.card-info{flex:1}
-.card-tag{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:2px 7px;border-radius:20px;margin-bottom:5px;color:#0f766e;background:#f0fdfa}
-.card-title{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:3px}
-.card-desc{font-size:11px;color:var(--muted);line-height:1.5}
+/* ── PAGE HEADER ── */
+.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.page-hdr-left{}
+.page-title{font-size:22px;font-weight:800;color:var(--dark);letter-spacing:-.3px}
+.page-sub{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500}
+.welcome-pill{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 16px;
+  background:linear-gradient(135deg,#f0fdfa,#ecfeff);
+  border:1px solid #99f6e4;border-radius:20px;
+  font-size:12px;font-weight:700;color:#0f766e;
+}
 
-.card-foot{padding:10px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fafbfc;border-radius:0 0 14px 14px}
-.open-btn{padding:5px 12px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#0d9488,#0891b2);transition:.15s}
+/* ── CATEGORIES & CARDS ── */
+.content{flex:1;overflow-y:auto;overflow-x:hidden}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:#c7d2e0;border-radius:4px}
+
+.category-block{margin-bottom:22px}
+.cat-label{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:12px;
+}
+.cat-dot{width:3px;height:16px;border-radius:2px;background:var(--brand-g)}
+.cat-name{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+
+.cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+
+.dash-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:16px;cursor:pointer;transition:.2s;
+  box-shadow:var(--sh-s);display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.dash-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 10px 28px rgba(13,148,136,.14);
+  border-color:#5eead4;
+}
+
+.card-top{padding:20px 20px 16px;display:flex;align-items:flex-start;gap:14px;flex:1}
+.card-icon-wrap{
+  width:48px;height:48px;border-radius:13px;flex-shrink:0;
+  background:linear-gradient(135deg,#f0fdfa,#ecfeff);
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  border:1px solid #d0fdf4;
+}
+.card-info{flex:1;min-width:0}
+.card-tag{
+  display:inline-block;font-size:9px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.8px;
+  padding:3px 8px;border-radius:20px;margin-bottom:6px;
+  color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;
+}
+.card-title{font-size:13px;font-weight:800;color:var(--dark);margin-bottom:4px;line-height:1.3}
+.card-desc{font-size:11px;color:var(--muted);line-height:1.6}
+
+.card-foot{
+  padding:11px 20px;border-top:1px solid #f1f5f9;
+  display:flex;align-items:center;justify-content:space-between;
+  background:#fafcfe;
+}
+.open-btn{
+  height:28px;padding:0 14px;border:none;border-radius:7px;
+  font-size:11px;font-weight:700;cursor:pointer;color:#fff;
+  background:var(--brand-g);font-family:'Sora',sans-serif;
+  transition:.15s;
+}
 .open-btn:hover{opacity:.9}
-.card-hint{font-size:10px;color:var(--muted)}
+.card-arrow{font-size:11px;color:var(--muted2);font-weight:500}
 
-/* LOADING / EMPTY */
-.loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:20px}
-.spin{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:sp .7s linear infinite}
+/* ── EMPTY ── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:200px;color:var(--muted);gap:10px;
+}
+.empty-icon{font-size:40px;opacity:.5}
+.empty-text{font-size:14px;font-weight:700;color:var(--muted)}
+.empty-sub{font-size:12px;color:var(--muted2)}
+
+/* ── LOADING ── */
+.loading-row{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:20px 0}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:14px;border:1px solid var(--border)}
 </style>
 </head>
 <body>
+
 <nav>
   <div class="nav-left">
-    <div class="logo-icon">MB</div>
-    <span class="nav-brand">Margbooks Dashboard Portal</span>
+    <div class="logo-box">MB</div>
+    <span class="nav-title">Margbooks Dashboard Portal</span>
   </div>
   <div class="nav-right">
     <div class="user-chip">
       <div class="avatar" id="avatarEl">?</div>
-      <span id="userNameEl">Loading...</span>
+      <span class="chip-name" id="userNameEl">Loading...</span>
     </div>
-    <button class="btn-nav btn-admin" id="adminBtn" onclick="window.location.href='admin.html'" style="display:none">⚙️ Admin</button>
+    <button class="btn-nav btn-admin" id="adminBtn" onclick="window.location.href='admin.html'" style="display:none">⚙ Admin</button>
     <button class="btn-nav btn-out" onclick="logout()">Sign Out</button>
   </div>
 </nav>
 
-<main>
-  <div class="top-bar">
-    <div>
+<div class="page">
+  <div class="page-hdr">
+    <div class="page-hdr-left">
       <div class="page-title">My Dashboards</div>
       <div class="page-sub" id="subtitleEl">Loading...</div>
     </div>
-    <div class="welcome-badge" id="welcomeBadge" style="display:none">
-      🌟 Welcome, <span id="welcomeName" style="margin-left:3px"></span>!
+    <div class="welcome-pill" id="welcomePill" style="display:none">
+      🌟 Welcome, <span id="welcomeName" style="margin-left:2px"></span>!
     </div>
   </div>
 
-
-
-  <div class="cards-area" id="cardsArea">
-    <div class="loading"><div class="spin"></div>Loading dashboards...</div>
+  <div class="content" id="contentArea">
+    <div class="loading-row"><div class="spin"></div> Loading dashboards...</div>
   </div>
-</main>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {
-  auth:{ persistSession:true, storage:window.sessionStorage }
-});
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
 
 const ALL_DASHBOARDS = [
-  {id:'it-dashboard',       title:'Marg IT Dashboard',       desc:'Stage-wise ticket tracking with Tester & RM breakdown, TAT analysis and live counts.',    icon:'🎫', tag:'Operations', url:'ticket_dashboard_api.html',  category:'Operations'},
-  {id:'tat-dashboard',      title:'Marg TAT Dashboard',      desc:'TAT analysis with InTAT/OutTAT breakdown and stage-wise pending tickets summary.',         icon:'📊', tag:'Analytics',  url:'marg_ticket_dashboard.html', category:'Analytics'},
-  {id:'upcoming-dashboard', title:'Marg Upcoming Deadlines', desc:'Track tickets with deadlines in 1-7, 8-15, 16-30, 31-60 days with Dev & Bug categories.', icon:'📅', tag:'Planning',   url:'upcoming_timeline.html',     category:'Planning'},
+  {id:'it-dashboard',       title:'Marg IT Dashboard',       desc:'Stage-wise ticket tracking with Tester & RM breakdown, TAT analysis and live counts.',    icon:'🎫', tag:'Operations', url:'ticket_dashboard_api.html',   category:'Operations'},
+  {id:'tat-dashboard',      title:'Marg TAT Dashboard',      desc:'TAT analysis with InTAT/OutTAT breakdown and stage-wise pending tickets summary.',         icon:'📊', tag:'Analytics',  url:'marg_ticket_dashboard.html',  category:'Analytics'},
+  {id:'upcoming-dashboard', title:'Marg Upcoming Deadlines', desc:'Track tickets with deadlines in 1-7, 8-15, 16-30, 31-60 days with Dev & Bug categories.', icon:'📅', tag:'Planning',   url:'upcoming_timeline.html',      category:'Planning'},
   {id:'excel-dashboard',    title:'Excel Dashboard',         desc:'Excel-based data analysis and reporting dashboard with advanced charts and filters.',       icon:'📈', tag:'Analytics',  url:'ticket_dashboard_excel.html', category:'Analytics'},
 ];
 
 (async()=>{
   const {data:{session}} = await sb.auth.getSession();
-  if(!session){ window.location.href='index.html'; return; }
-
+  if(!session){window.location.href='index.html';return;}
   const user = session.user;
-
-  // ✅ NAME FIX: pehle users table se name lo, phir metadata, phir email
   const {data:profile} = await sb.from('users').select('*').eq('id',user.id).single();
   const name = profile?.name || user.user_metadata?.name || user.user_metadata?.full_name || user.email.split('@')[0];
-
   const initials = name.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   document.getElementById('avatarEl').textContent   = initials;
   document.getElementById('userNameEl').textContent  = name;
   document.getElementById('welcomeName').textContent = name;
-  document.getElementById('welcomeBadge').style.display = 'flex';
+  document.getElementById('welcomePill').style.display = 'flex';
 
   const isAdmin = profile?.role === 'admin';
   const perms   = profile?.dashboards || [];
 
   if(isAdmin){
-    document.getElementById('adminBtn').style.display = 'block';
-    document.getElementById('subtitleEl').textContent  = 'Admin access — all dashboards visible';
-
+    document.getElementById('adminBtn').style.display='block';
+    document.getElementById('subtitleEl').textContent='Admin access — all dashboards visible';
     renderDashboards(ALL_DASHBOARDS);
   } else if(perms.length){
     const allowed = ALL_DASHBOARDS.filter(d=>perms.includes(d.id));
-    document.getElementById('subtitleEl').textContent = `${allowed.length} dashboard${allowed.length!==1?'s':''} available`;
+    document.getElementById('subtitleEl').textContent=`${allowed.length} dashboard${allowed.length!==1?'s':''} available`;
     renderDashboards(allowed);
   } else {
-    document.getElementById('subtitleEl').textContent = 'No dashboards assigned yet';
-    document.getElementById('cardsArea').innerHTML = `<div class="empty">🔒<br><br><b>No dashboards yet</b><br><small>Contact your administrator</small></div>`;
+    document.getElementById('subtitleEl').textContent='No dashboards assigned yet';
+    document.getElementById('contentArea').innerHTML=`
+      <div class="empty-state">
+        <div class="empty-icon">🔒</div>
+        <div class="empty-text">No dashboards yet</div>
+        <div class="empty-sub">Contact your administrator to get access</div>
+      </div>`;
   }
 })();
 
 function renderDashboards(list){
   const groups = {};
-  list.forEach(d=>{ if(!groups[d.category]) groups[d.category]=[]; groups[d.category].push(d); });
-
+  list.forEach(d=>{if(!groups[d.category]) groups[d.category]=[];groups[d.category].push(d);});
   let html = '';
   for(const [cat, items] of Object.entries(groups)){
-    html += `<div class="section-label">📁 ${cat}</div>
-    <div class="grid">`;
+    html += `<div class="category-block">
+      <div class="cat-label">
+        <div class="cat-dot"></div>
+        <span class="cat-name">${cat}</span>
+      </div>
+      <div class="cards-row">`;
     items.forEach(d=>{
       html += `<div class="dash-card" onclick="window.location.href='${d.url}'">
         <div class="card-top">
-          <div class="card-icon">${d.icon}</div>
+          <div class="card-icon-wrap">${d.icon}</div>
           <div class="card-info">
             <span class="card-tag">${d.tag}</span>
             <div class="card-title">${d.title}</div>
@@ -181,19 +250,16 @@ function renderDashboards(list){
         </div>
         <div class="card-foot">
           <button class="open-btn" onclick="event.stopPropagation();window.location.href='${d.url}'">Open →</button>
-          <span class="card-hint">Click to open</span>
+          <span class="card-arrow">Click to open ↗</span>
         </div>
       </div>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
   }
-  document.getElementById('cardsArea').innerHTML = html;
+  document.getElementById('contentArea').innerHTML = html;
 }
 
-async function logout(){
-  await sb.auth.signOut();
-  window.location.href='index.html';
-}
+async function logout(){await sb.auth.signOut();window.location.href='index.html';}
 </script>
 </body>
 </html>
