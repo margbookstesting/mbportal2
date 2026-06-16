@@ -592,15 +592,15 @@ tbody td.r { text-align:right; }
   background:rgba(8,16,30,.6);
   backdrop-filter:blur(6px);
   z-index:1000;
-  align-items:center;justify-content:center;padding:20px;
+  align-items:center;justify-content:center;padding:6px;
 }
 .overlay.open { display:flex; }
 
 .modal {
   background:var(--surface);
   border-radius:16px;
-  width:100%;max-width:940px;
-  max-height:88vh;
+  width:95vw;max-width:1300px;
+  max-height:92vh;
   display:flex;flex-direction:column;
   box-shadow:0 24px 80px rgba(8,16,30,.25);
   border:1.5px solid var(--border);
@@ -659,7 +659,7 @@ tbody td.r { text-align:right; }
 .ms-out   { background:var(--sup-l);color:var(--sup);border:1px solid var(--sup-m); }
 .ms-na    { background:#f8fafc;color:var(--muted);border:1px solid var(--border); }
 
-.modal-body { overflow-y:auto;flex:1; }
+.modal-body { overflow-y:auto;flex:1;overflow-x:auto; }
 
 /* ── LOADER ── */
 .loader-overlay {
@@ -808,7 +808,7 @@ td.grp-l { border-left:1px solid var(--border); }
 .ticket-detail-overlay.open { display:flex; }
 .ticket-detail-modal {
   background:#fff; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.28);
-  width:100%; max-width:720px; max-height:82vh; overflow:hidden;
+  width:100%; max-width:900px; max-height:88vh; overflow:hidden;
   display:flex; flex-direction:column;
   border:1.5px solid var(--border);
 }
@@ -856,6 +856,12 @@ td.grp-l { border-left:1px solid var(--border); }
 
 /* clickable row in modal table */
 #modalTable tbody tr { cursor:pointer; }
+#modalTable th, #modalTable td { font-size:11px; padding:6px 8px; white-space:nowrap; vertical-align:top; }
+#modalTable thead th { position:sticky; top:0; z-index:10; background:var(--s2); }
+/* CLIENT, TESTER, RM — wrap allow karo */
+#modalTable td.col-client, #modalTable td.col-tester, #modalTable td.col-rm { white-space:normal; min-width:120px; max-width:200px; word-break:break-word; line-height:1.4; }
+#modalTable th.col-client { min-width:120px; }
+#modalTable th.col-tester, #modalTable th.col-rm { min-width:100px; }
 #modalTable tbody tr:hover { background:#e8f0fe !important; }
 
 /* ── TICKET TIMELINE ── */
@@ -1094,6 +1100,22 @@ td.grp-l { border-left:1px solid var(--border); }
     </div>
   </div>
 
+  <!-- ACKNOWLEDGE BY AGENT -->
+  <div class="grid-1" id="ackBySection">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:var(--ack-g, linear-gradient(135deg,#d97706,#b45309))"></div>
+          <div>
+            <div class="sec-title">Acknowledge By — Agent Wise</div>
+            <div class="sec-sub">Tickets acknowledged by each agent in selected date range</div>
+          </div>
+        </div>
+      </div>
+      <div id="ackByGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:14px 16px 16px;"></div>
+    </div>
+  </div>
+
   <!-- TESTER -->
   <div class="grid-1">
     <div class="section">
@@ -1275,14 +1297,14 @@ td.grp-l { border-left:1px solid var(--border); }
       </div>
     </div>
     <div class="modal-stats" id="modalStats"></div>
-    <div class="modal-body tbl-wrap">
+    <div class="modal-body">
       <table id="modalTable">
         <thead>
           <tr>
-            <th>Ticket No</th><th>Created</th><th>Client</th>
+            <th>Ticket No</th><th>Created</th><th class="col-client">Client</th>
             <th>Plan</th><th>Stage Date</th><th>Status</th>
             <th>SLA</th><th>Duration</th><th>TAT</th>
-            <th>Disposition</th><th>Tester</th><th>RM</th>
+            <th>Disposition</th><th class="col-tester">Tester</th><th class="col-rm">RM</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -1842,6 +1864,7 @@ function renderKPIs(){
   const stages = [
     { label:'Transfer to IT',   data:fIT,   tatKey:'at', cls:'c-it',   key:'IT',   pendingFn: () => RAW.filter(r=>r.sc==='IT').length   },
     { label:'Acknowledge',      data:fAck,  tatKey:'bt', cls:'c-ack',  key:'ACK',  pendingFn: () => RAW.filter(r=>r.sc==='AK').length  },
+    // Acknowledge By — moved to Tester section (rendered separately)
     { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => RAW.filter(r=>r.sc==='IP').length   },
     { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => RAW.filter(r=>r.sc==='SP').length  },
   ];
@@ -1855,6 +1878,42 @@ function renderKPIs(){
   ];
 
   const dateFilteredCards = stages.map(s=>{
+    if(s.agentMode){
+      const agentMap = {};
+      s.data.forEach(r=>{
+        const agent = r.ta || '—';
+        agentMap[agent] = (agentMap[agent]||0) + 1;
+      });
+      const agentRows = Object.entries(agentMap)
+        .filter(([k])=>k!=='—')
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5);
+      const blankCount = agentMap['—']||0;
+      const agentHtml = agentRows.length
+        ? agentRows.map(([name,cnt])=>`
+            <div class="tat-row">
+              <span class="tat-label" style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</span>
+              <div class="tat-track"><div class="tat-fill in" style="width:${Math.round(cnt/s.data.length*100)}%"></div></div>
+              <span class="tat-val">${fmt(cnt)}</span>
+            </div>`).join('')
+        : `<div style="font-size:10px;color:var(--muted2)">No agent data</div>`;
+      return `<div class="kpi-card ${s.cls}">
+        <div class="kpi-top"></div>
+        <div class="kpi-body">
+          <div class="kpi-stage">Acknowledge By</div>
+          <div class="kpi-row1">
+            <div class="kpi-num">${fmt(s.data.length)}</div>
+            <div class="pend-badge" title="Tickets acknowledged — agent wise">Agents: ${agentRows.length}</div>
+          </div>
+          <div class="kpi-tat-wrap">${agentHtml}</div>
+          ${blankCount?`<div style="font-size:9px;color:var(--muted2);margin-top:3px">Unassigned: ${blankCount}</div>`:''}
+        </div>
+        <div class="kpi-footer">
+          <span class="kpi-link" onclick="openModal('ACK')">🔍 View Details</span>
+          <button class="kpi-xls" onclick="exportStage('ACK')">↓ Excel</button>
+        </div>
+      </div>`;
+    }
     const tot     = s.data.length;
     const intat   = s.data.filter(r=>r[s.tatKey]==='I').length;
     const outtat  = s.data.filter(r=>r[s.tatKey]==='O').length;
@@ -2026,6 +2085,86 @@ function renderKeyLic(){
 // ===== TESTER TABLE =====
 // IT/ACK/IP/SUP → TransferTo(t) | LIVE → ReadyToGoLiveBy(eb)
 // (Blank) row added so Total always matches KPI count
+
+
+// ===== OPEN ACK BY AGENT MODAL =====
+function openAckByAgent(agentName){
+  // Sirf us agent ke ACK tickets filter karo
+  const agentData = fAck.filter(r=> (r.ta && r.ta.trim()) === agentName);
+  const tatKey = 'bt';
+  const pendingSc = 'AK';
+
+  _modalKey     = 'ACK';
+  _modalData    = agentData;
+  _modalTatKey  = tatKey;
+  _modalDateKey = 'b';
+  _modalDurKey  = 'bd';
+  _modalActKey  = 'bv';
+  _modalPendSc  = pendingSc;
+  _modalFilter  = 'all';
+
+  document.getElementById('modalTitle').textContent = 'Acknowledge — ' + agentName + ' (Ticket Details)';
+
+  const intat   = agentData.filter(r=>r[tatKey]==='I').length;
+  const outtat  = agentData.filter(r=>r[tatKey]==='O').length;
+  const notat   = agentData.length - intat - outtat;
+  const pending = agentData.filter(r=>r.sc===pendingSc).length;
+
+  document.getElementById('modalStats').innerHTML = `
+    <span class="ms ms-total ms-btn" data-f="all"   onclick="setModalFilter('all')"   style="cursor:pointer">Total: ${fmt(agentData.length)}</span>
+    <span class="ms ms-pend  ms-btn" data-f="pend"  onclick="setModalFilter('pend')"  style="cursor:pointer">⏳ Pending: ${fmt(pending)}</span>
+    <span class="ms ms-in    ms-btn" data-f="in"    onclick="setModalFilter('in')"    style="cursor:pointer">✔ InTAT: ${fmt(intat)}</span>
+    <span class="ms ms-out   ms-btn" data-f="out"   onclick="setModalFilter('out')"   style="cursor:pointer">✘ OutTAT: ${fmt(outtat)}</span>
+    <span class="ms ms-na    ms-btn" data-f="notat" onclick="setModalFilter('notat')" style="cursor:pointer">No TAT: ${fmt(notat)}</span>
+    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+
+  renderModalTable(agentData);
+  setTimeout(()=>setModalFilter('all'), 0);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+// ===== ACKNOWLEDGE BY AGENT =====
+function renderAckBy(){
+  const agentMap = {};
+  fAck.forEach(r=>{
+    const agent = (r.ta && r.ta.trim()) ? r.ta.trim() : null;
+    if(!agent) return;
+    if(!agentMap[agent]) agentMap[agent] = { total:0, intat:0, outtat:0 };
+    agentMap[agent].total++;
+    if(r.bt==='I') agentMap[agent].intat++;
+    else if(r.bt==='O') agentMap[agent].outtat++;
+  });
+  const entries = Object.entries(agentMap).sort((a,b)=>b[1].total-a[1].total);
+  const grid = document.getElementById('ackByGrid');
+  if(!grid) return;
+  if(!entries.length){
+    grid.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px">No acknowledge agent data in selected range</div>';
+    return;
+  }
+  const maxVal = entries[0][1].total || 1;
+  grid.innerHTML = entries.map(([name, d])=>{
+    const inPct  = d.total ? Math.round(d.intat/d.total*100)  : 0;
+    const outPct = d.total ? Math.round(d.outtat/d.total*100) : 0;
+    const barW   = Math.round(d.total/maxVal*100);
+    return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:.15s;" 
+      onclick="openAckByAgent('${name}')"
+      onmouseenter="this.style.borderColor='var(--ack,#d97706)';this.style.transform='translateY(-2px)'"
+      onmouseleave="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${name}">${name}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${barW}%;background:var(--ack,#d97706);border-radius:3px;"></div>
+        </div>
+        <span style="font-size:13px;font-weight:800;color:var(--text);min-width:28px;text-align:right">${d.total}</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 7px;">✓ InTAT: ${d.intat} (${inPct}%)</span>
+        <span style="font-size:10px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:1px 7px;">✗ OutTAT: ${d.outtat} (${outPct}%)</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderTester(){
   // Date-range filtered stages only: ACK / IP / Ready-to-Go-Live carry TAT,
   // Close by IT (SUP) shows count only. Each stage array already has unique tickets.
@@ -2070,7 +2209,7 @@ function renderTester(){
   const rows = names
     .map(name=>buildRow(name, r=>r.t===name, r=>r.eb===name, r=>r.ts===name))
     .filter(r=>r.ack||r.ip||r.live||r.sup)
-    .sort((a,b)=>(b.ack+b.ip+b.live+b.sup)-(a.ack+a.ip+a.live+a.sup));
+    .sort((a,b)=> b.sup !== a.sup ? b.sup - a.sup : (b.ack+b.ip+b.live)-(a.ack+a.ip+a.live));
 
   // (Blank) row for unassigned tickets — Total KPI se match rahe
   if(!selT.size){
@@ -2620,6 +2759,7 @@ function renderAll(){
   renderCharts();
   renderDisp();
   renderKeyLic();
+  renderAckBy();
   renderTester();
   renderRM();
   renderClients();
@@ -2654,7 +2794,7 @@ function renderModalTable(rows){
     return `<tr onclick="openTicketDetail(_filteredRows[${ri}], _stageCfgSnap)" title="Click to view ticket details">
       <td style="font-size:11px;color:var(--it);font-family:'JetBrains Mono',monospace;font-weight:700">${r.n||'—'}</td>
       <td style="font-size:11px;color:var(--muted)">${r.tc||'—'}</td>
-      <td style="font-weight:500">${r.u||'—'}</td>
+      <td class="col-client" style="font-weight:500">${r.u||'—'}</td>
       <td>${planTag(r.p)}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${r[dateKey]||'—'}</td>
       <td>${pendHtml}</td>
@@ -2662,8 +2802,8 @@ function renderModalTable(rows){
       <td style="font-size:11px;color:var(--muted)">${r[actKey]||'—'}</td>
       <td>${tatHtml}</td>
       <td style="font-size:11px">${r.q||'—'}</td>
-      <td style="font-size:11px">${r.t||r.eb||'—'}</td>
-      <td style="font-size:11px">${r.r||'—'}</td>
+      <td class="col-tester" style="font-size:11px">${r.t||r.eb||'—'}</td>
+      <td class="col-rm" style="font-size:11px">${r.r||'—'}</td>
     </tr>`;
   }).join('');
   // Store rendered slice for click access
