@@ -118,7 +118,7 @@
         <label>Email</label>
         <input id="nEmail" type="email" placeholder="Type Email Id"/>
         <label>Password</label>
-        <input id="nPass" type="password" placeholder="Min 8 characters"/>
+        <input id="nPass" type="password" placeholder="Min 8 characters" autocomplete="new-password"/>
         <label>Role</label>
         <select id="nRole">
           <option value="user">User (limited access)</option>
@@ -158,7 +158,7 @@
         <div class="modal-row">
           <div class="modal-field">
             <label>Full Name</label>
-            <input id="eName" type="text" placeholder="Full name"/>
+            <input id="eName" type="text" placeholder="Full name" autocomplete="off"/>
           </div>
           <div class="modal-field">
             <label>Role</label>
@@ -170,7 +170,7 @@
         </div>
         <div class="modal-field">
           <label>Email</label>
-          <input id="eEmail" type="email" placeholder="email@company.com"/>
+          <input id="eEmail" type="email" placeholder="email@company.com" autocomplete="off"/>
         </div>
       </div>
 
@@ -183,12 +183,12 @@
       <div id="tabContent-pass" style="display:none">
         <div class="modal-field">
           <label>New Password</label>
-          <input id="ePass" type="password" placeholder="Min 6 characters"/>
+          <input id="ePass" type="password" placeholder="Min 6 characters" autocomplete="new-password"/>
           <div class="pass-hint">⚠️ Blank chhodo agar password nahi badalna</div>
         </div>
         <div class="modal-field">
           <label>Confirm Password</label>
-          <input id="ePass2" type="password" placeholder="Confirm new password"/>
+          <input id="ePass2" type="password" placeholder="Confirm new password" autocomplete="new-password"/>
         </div>
       </div>
     </div>
@@ -371,9 +371,17 @@ window.saveUser = async function(){
   if(pass && pass !== pass2){toast('Passwords match nahi kar rahe!','err');return;}
   if(pass && pass.length<6){toast('Password min 6 characters','err');return;}
 
-  // Permissions
+  // Permissions — sirf tab=perms par update karo, warna existing rakho
   const checks = document.querySelectorAll('#permBody input[type=checkbox]');
-  const dashboards = [...checks].filter(c=>c.checked).map(c=>c.dataset.id);
+  let dashboards;
+  if(checks.length > 0){
+    // Permissions tab visited hai — checkboxes available hain
+    dashboards = [...checks].filter(c=>c.checked).map(c=>c.dataset.id);
+  } else {
+    // Permissions tab nahi khola — existing dashboards DB se lo
+    const existingUser = allUsers.find(u=>u.id===currentUID);
+    dashboards = existingUser?.dashboards || [];
+  }
 
   try{
     // Update users table
