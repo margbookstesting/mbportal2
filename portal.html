@@ -76,18 +76,19 @@ nav{
 
 /* ── CATEGORIES & CARDS ── */
 .content{flex:1;min-height:0;overflow:hidden;position:relative}
-.content-inner{transform-origin:top left}
+.content-inner{transform-origin:top left;display:flex;flex-direction:row;gap:20px;align-items:flex-start}
 
-.category-block{margin-bottom:16px}
-.category-block:last-child{margin-bottom:0}
+.category-block{flex:1;min-width:0}
 .cat-label{
   display:flex;align-items:center;gap:8px;
-  margin-bottom:10px;
+  margin-bottom:12px;
+  padding-bottom:8px;
+  border-bottom:2px solid var(--border);
 }
 .cat-dot{width:3px;height:15px;border-radius:2px;background:var(--brand-g)}
-.cat-name{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+.cat-name{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
 
-.cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.cards-row{display:flex;flex-direction:column;gap:14px}
 
 .dash-card{
   background:var(--surface);border:1.5px solid var(--border);
@@ -101,7 +102,7 @@ nav{
   border-color:#5eead4;
 }
 
-.card-top{padding:18px 18px 14px;display:flex;align-items:flex-start;gap:13px}
+.card-top{padding:12px 14px 10px;display:flex;align-items:flex-start;gap:13px}
 .card-icon-wrap{
   width:44px;height:44px;border-radius:12px;flex-shrink:0;
   background:linear-gradient(135deg,#f0fdfa,#ecfeff);
@@ -119,7 +120,7 @@ nav{
 .card-desc{font-size:11px;color:var(--muted);line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
 .card-foot{
-  padding:10px 18px;border-top:1px solid #f1f5f9;
+  padding:8px 14px;border-top:1px solid #f1f5f9;
   display:flex;align-items:center;justify-content:space-between;
   background:#fafcfe;
 }
