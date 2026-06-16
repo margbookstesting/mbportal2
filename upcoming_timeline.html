@@ -232,6 +232,68 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 }
 .spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── TICKET DETAIL MODAL ── */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(8,16,30,.55);
+  z-index:1000;display:flex;align-items:center;justify-content:center;
+  padding:20px;animation:fadeIn .18s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-box{
+  background:#fff;border-radius:18px;width:100%;max-width:640px;
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 24px 60px rgba(0,0,0,.25);
+  animation:slideUp .2s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{
+  padding:20px 24px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  position:sticky;top:0;background:#fff;border-radius:18px 18px 0 0;z-index:2;
+}
+.modal-ticket-no{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--teal)}
+.modal-close{
+  width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);
+  background:#f7f8fd;cursor:pointer;font-size:16px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;transition:.15s;
+}
+.modal-close:hover{background:var(--red-l);border-color:var(--red-m);color:var(--red)}
+.modal-body{padding:20px 24px}
+.modal-section{margin-bottom:18px}
+.modal-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:500px){.modal-grid{grid-template-columns:1fr}}
+.modal-field{background:var(--s2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)}
+.modal-field-label{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.modal-field-val{font-size:13px;font-weight:600;color:var(--text);word-break:break-word}
+.modal-field.full{grid-column:1/-1}
+.modal-deadline-banner{
+  background:linear-gradient(135deg,#fffbeb,#fef3c7);
+  border:1.5px solid #fde68a;border-radius:12px;
+  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.modal-stage-badge{
+  display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+  background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m);
+}
+.modal-cat-badge{
+  display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+}
+.modal-footer{
+  padding:14px 24px;border-top:1px solid var(--border);
+  display:flex;gap:10px;justify-content:flex-end;
+  background:#fafbfc;border-radius:0 0 18px 18px;
+}
+.modal-btn{
+  padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;
+  cursor:pointer;border:none;transition:.15s;font-family:'Sora',sans-serif;
+}
+.modal-btn-primary{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff}
+.modal-btn-secondary{background:var(--s2);color:var(--text);border:1.5px solid var(--border)}
+.modal-btn:hover{opacity:.88;transform:translateY(-1px)}
 </style>
 </head>
 <body>
@@ -353,6 +415,122 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
   <!-- Sections -->
   <div id="sectionsContainer"></div>
 
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div id="ticketModal" class="modal-backdrop" style="display:none" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-ticket-no" id="mdTicketNo">—</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:3px" id="mdClient">—</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('ticketModal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-deadline-banner">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#92400e;margin-bottom:3px">Timeline Deadline</div>
+          <div style="font-size:16px;font-weight:800;color:#78350f" id="mdDeadline">—</div>
+        </div>
+        <div style="text-align:right">
+          <div id="mdDaysBadge" style="font-size:20px;font-weight:800"></div>
+          <div id="mdDaysLabel" style="font-size:11px;color:#92400e;font-weight:600"></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📌 Status & Category</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="modal-stage-badge" id="mdStage">—</span>
+          <span class="modal-cat-badge" id="mdCat">—</span>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📋 Description & Remarks</div>
+        <div class="modal-grid">
+          <div class="modal-field full">
+            <div class="modal-field-label">Description</div>
+            <div class="modal-field-val" id="mdDesc" style="font-weight:400;line-height:1.6;font-size:12px">—</div>
+          </div>
+          <div class="modal-field full" id="mdRemarksWrap">
+            <div class="modal-field-label">Remarks</div>
+            <div class="modal-field-val" id="mdRemarks" style="font-weight:400;line-height:1.6;font-size:12px">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">👥 Team & Assignment</div>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <div class="modal-field-label">Tester / Agent</div>
+            <div class="modal-field-val" id="mdTester">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">RM</div>
+            <div class="modal-field-val" id="mdRM">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Developer</div>
+            <div class="modal-field-val" id="mdDev">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Assigned To</div>
+            <div class="modal-field-val" id="mdAssignto">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">🏢 Customer Info</div>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <div class="modal-field-label">Licence No</div>
+            <div class="modal-field-val" id="mdLic">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Subscription Plan</div>
+            <div class="modal-field-val" id="mdPlan">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Mobile</div>
+            <div class="modal-field-val" id="mdMobile">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Email</div>
+            <div class="modal-field-val" id="mdEmail" style="font-size:12px;word-break:break-all">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📅 Dates</div>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <div class="modal-field-label">Ticket Created</div>
+            <div class="modal-field-val" id="mdCreated">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Transfer to IT</div>
+            <div class="modal-field-val" id="mdIT">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Acknowledge</div>
+            <div class="modal-field-val" id="mdAck">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">In Progress</div>
+            <div class="modal-field-val" id="mdIP">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-secondary" onclick="document.getElementById('ticketModal').style.display='none'">Close</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -478,8 +656,8 @@ async function loadData(){
   try{
     const { data, error } = await sb.from('ticket_cache')
       .select('data, fetched_at, date_from, date_to');
-    if(error) throw error;
-    if(!data || !data.length) throw new Error('No data in Supabase');
+    if(error) throw new Error(error.message || error.details || error.hint || JSON.stringify(error));
+    if(!data || !data.length) throw new Error('No data in Supabase — please run the GitHub Action first');
 
     let allTickets = [];
     data.forEach(row=>{
@@ -511,13 +689,14 @@ async function loadData(){
     applyFilters();
 
   }catch(e){
-    console.error(e);
+    console.error('loadData error:', e);
+    const errMsg = e.message || String(e);
     document.getElementById('sectionsContainer').innerHTML = `
       <div class="no-data">
         <div class="no-data-icon">❌</div>
         <div style="font-weight:700;color:var(--red);font-size:14px">Failed to load data</div>
-        <div style="font-size:12px;margin-top:8px">${e.message}</div>
-        <div style="font-size:11px;margin-top:6px;color:var(--muted)">Please refresh from main dashboard first</div>
+        <div style="font-size:12px;margin-top:8px;color:var(--text)">${errMsg}</div>
+        <div style="font-size:11px;margin-top:6px;color:var(--muted)">Check browser console (F12) for details</div>
       </div>`;
   }finally{
     document.getElementById('loadingOverlay').style.display = 'none';
@@ -716,9 +895,72 @@ function applyFilters(){
 }
 
 function openTicketDetail(n){
-  // Main dashboard mein ticket search karke open karo
-  window.location.href = `ticket_dashboard_api.html#search=${encodeURIComponent(n)}`;
+  const rec = RAW.find(r => r.n === n);
+  if(!rec){ alert('Ticket data not found'); return; }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dateObj = new Date(rec.tld+'T00:00:00');
+  const days = Math.round((dateObj - today) / 86400000);
+  const tldFmt = dateObj.toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const cat = detectCategory(rec);
+
+  // Header
+  document.getElementById('mdTicketNo').textContent = rec.n || '—';
+  document.getElementById('mdClient').textContent   = rec.u || '—';
+
+  // Deadline banner
+  document.getElementById('mdDeadline').textContent   = tldFmt;
+  document.getElementById('mdDaysBadge').textContent  = days + ' days';
+  document.getElementById('mdDaysLabel').textContent  = days === 1 ? 'Due Tomorrow!' : days <= 7 ? 'Due Very Soon!' : days <= 15 ? 'Due Soon' : 'Upcoming';
+
+  // Stage & Category
+  document.getElementById('mdStage').textContent = STAGE_LABELS[rec.sc] || rec.sc || '—';
+  const catEl = document.getElementById('mdCat');
+  if(cat === 'dev'){
+    catEl.textContent = 'Development';
+    catEl.style.cssText = 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe';
+  } else if(cat === 'bug'){
+    catEl.textContent = 'Bug';
+    catEl.style.cssText = 'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+  } else {
+    catEl.textContent = 'Other';
+    catEl.style.cssText = 'background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db';
+  }
+
+  // Description & Remarks
+  document.getElementById('mdDesc').textContent    = rec.desc    || 'No description available';
+  document.getElementById('mdRemarks').textContent = rec.remarks || '—';
+  document.getElementById('mdRemarksWrap').style.display = rec.remarks ? '' : 'none';
+
+  // Team
+  document.getElementById('mdTester').textContent  = rec.eb||rec.t||rec.ti||rec.ta||rec.ts||'—';
+  document.getElementById('mdRM').textContent       = rec.r    || '—';
+  document.getElementById('mdDev').textContent      = rec.dev  || '—';
+  document.getElementById('mdAssignto').textContent = rec.assignto || '—';
+
+  // Customer
+  document.getElementById('mdLic').textContent    = rec.l      || '—';
+  document.getElementById('mdPlan').textContent   = rec.p      || '—';
+  document.getElementById('mdMobile').textContent = rec.mobile || '—';
+  document.getElementById('mdEmail').textContent  = rec.email  || '—';
+
+  // Dates
+  document.getElementById('mdCreated').textContent = rec.tc || '—';
+  document.getElementById('mdIT').textContent      = rec.a  || '—';
+  document.getElementById('mdAck').textContent     = rec.b  || '—';
+  document.getElementById('mdIP').textContent      = rec.c  || '—';
+
+  document.getElementById('ticketModal').style.display = 'flex';
+  document.querySelector('.modal-box').scrollTop = 0;
 }
+
+function closeModal(e){
+  if(e.target.id === 'ticketModal') document.getElementById('ticketModal').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') document.getElementById('ticketModal').style.display = 'none';
+});
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 loadData();
