@@ -1497,9 +1497,10 @@ function matchAny(values, fields){
   if(!values.length) return true;
   return values.some(v=>fields.some(f=>String(f||'').trim()===v));
 }
-function getGlobalFilteredRows(){
+// Filters that apply the same way to every stage: ticket search, RM, Developer, Status.
+// (Tester filter is intentionally NOT applied here — see testerRowsFor() below.)
+function getBaseFilteredRows(){
   const ticket = (document.getElementById('ticketSearch')?.value || '').trim();
-  const testers  = [...(CF_STATE.tester  || new Set())];
   const rms      = [...(CF_STATE.rm      || new Set())];
   const devs     = [...(CF_STATE.dev     || new Set())];
   const statuses = [...(CF_STATE.status  || new Set())];
@@ -1510,11 +1511,30 @@ function getGlobalFilteredRows(){
       const q = normalize(ticket);
       if(!normalize(r.n).includes(q)) return false;
     }
-    return matchAny(testers,[r.t,r.ta,r.ti,r.ts,r.eb])
-        && matchAny(rms,[r.r])
+    return matchAny(rms,[r.r])
         && matchAny(devs,[r.dev])
         && (!statuses.length||statuses.includes(r.sc));
   });
+}
+// Broad tester match (ANY role field) — used only for views that aren't tied to one
+// specific stage (e.g. the "current status" KPIs). Stage-specific arrays (fIT/fAck/fIP/
+// fSup/fLive) use testerRowsFor() instead, so every KPI ties out exactly with the
+// Tester-wise table (which always matches on the one field responsible for that stage).
+function getGlobalFilteredRows(){
+  const rows    = getBaseFilteredRows();
+  const testers = [...(CF_STATE.tester || new Set())];
+  if(!testers.length) return rows;
+  return rows.filter(r=> matchAny(testers,[r.t,r.ta,r.ti,r.ts,r.eb]) );
+}
+// Stage-aware tester filter — keeps only rows where the ONE field responsible for that
+// stage equals a selected tester. Same field convention as the Tester-wise table:
+//   Transfer to IT / Acknowledge / In Progress → TransferTo (t)
+//   Close by IT (Transfer to Support)          → TransferTosupportBy (ts)
+//   Ready to Go Live                           → ReadyToGoLiveBy (eb)
+function testerRowsFor(rows, field){
+  const testers = [...(CF_STATE.tester || new Set())];
+  if(!testers.length) return rows;
+  return rows.filter(r=> testers.includes(String(r[field]||'').trim()));
 }
 function activeFilterSummary(){
   const parts=[];
@@ -1703,22 +1723,33 @@ function monthCompareHtml(data, cls){
 }
 function buildFiltered(from, to){
   VIEW = getGlobalFilteredRows();
+  // Common filters (ticket/RM/Dev/Status) first, THEN the tester filter applied per-stage
+  // using the exact field that stage's KPI card and the Tester-wise table both key off —
+  // this is what makes "Close by IT" (and every other stage) match the Tester-wise total
+  // exactly whenever a tester filter is active.
+  const baseRows = getBaseFilteredRows();
+  const baseIT   = testerRowsFor(baseRows, 't');
+  const baseAck  = testerRowsFor(baseRows, 't');
+  const baseIP   = testerRowsFor(baseRows, 't');
+  const baseSup  = testerRowsFor(baseRows, 'ts');
+  const baseLive = testerRowsFor(baseRows, 'eb');
+
   const hasTicketSearch = !!(document.getElementById('ticketSearch')?.value || '').trim();
   if(hasTicketSearch){
     // Ticket search: sirf woh stage dikhao jisme ticket actually gaya ho (date exist ho)
-    fIT   = VIEW.filter(r => !!r.a);
-    fAck  = VIEW.filter(r => !!r.b);
-    fIP   = VIEW.filter(r => !!r.c);
-    fSup  = VIEW.filter(r => !!r.d);
-    fLive = VIEW.filter(r => !!r.e);
+    fIT   = baseIT.filter(r => !!r.a);
+    fAck  = baseAck.filter(r => !!r.b);
+    fIP   = baseIP.filter(r => !!r.c);
+    fSup  = baseSup.filter(r => !!r.d);
+    fLive = baseLive.filter(r => !!r.e);
   } else {
     // Normal: date range filter
     const dateOk = d => inRange(d, from, to);
-    fIT   = VIEW.filter(r => dateOk(r.a));
-    fAck  = VIEW.filter(r => dateOk(r.b));
-    fIP   = VIEW.filter(r => dateOk(r.c));
-    fSup  = VIEW.filter(r => dateOk(r.d));
-    fLive = VIEW.filter(r => dateOk(r.e));
+    fIT   = baseIT.filter(r => dateOk(r.a));
+    fAck  = baseAck.filter(r => dateOk(r.b));
+    fIP   = baseIP.filter(r => dateOk(r.c));
+    fSup  = baseSup.filter(r => dateOk(r.d));
+    fLive = baseLive.filter(r => dateOk(r.e));
   }
   currentFrom = from; currentTo = to;
 }
@@ -1918,8 +1949,11 @@ function renderKPIs(){
     const intat   = s.data.filter(r=>r[s.tatKey]==='I').length;
     const outtat  = s.data.filter(r=>r[s.tatKey]==='O').length;
     const pending = s.pendingFn(); // always from RAW — shows actual current status count
-    const inPct   = tot ? Math.round(intat/tot*100)  : 0;
-    const outPct  = tot ? Math.round(outtat/tot*100) : 0;
+    // % is of tickets that actually have a TAT flag (in+out), not of all tickets —
+    // otherwise tickets with no TAT data yet make InTAT%+OutTAT% fall short of 100%.
+    const tatTot  = intat + outtat;
+    const inPct   = tatTot ? Math.round(intat/tatTot*100)   : 0;
+    const outPct  = tatTot ? 100 - inPct                    : 0;
     return `<div class="kpi-card ${s.cls}">
       <div class="kpi-top"></div>
       <div class="kpi-body">
@@ -2143,8 +2177,9 @@ function renderAckBy(){
   }
   const maxVal = entries[0][1].total || 1;
   grid.innerHTML = entries.map(([name, d])=>{
-    const inPct  = d.total ? Math.round(d.intat/d.total*100)  : 0;
-    const outPct = d.total ? Math.round(d.outtat/d.total*100) : 0;
+    const tatTot = d.intat + d.outtat;
+    const inPct  = tatTot ? Math.round(d.intat/tatTot*100) : 0;
+    const outPct = tatTot ? 100 - inPct                    : 0;
     const barW   = Math.round(d.total/maxVal*100);
     return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:.15s;" 
       onclick="openAckByAgent('${name}')"
