@@ -1,74 +1,49 @@
-# MB Portal — Security Changes & Deploy Guide
+# MB Portal — Admin Fix (Vercel serverless function)
 
-## ⚠️ Sabse pehle: PURANI SERVICE KEY ROTATE KARO (urgent)
+## Kya badla (Edge Function ki zaroorat khatam)
 
-`admin.html` ke purane version mein `service_role` key publicly exposed thi.
-Jisne bhi woh file / GitHub repo / browser source dekha, uske paas abhi bhi
-woh key hai aur woh poore database ka full admin control le sakta hai.
+Pehle admin operations Supabase Edge Function par the (jise CLI/Docker se
+deploy karna padta). Ab woh ek **Vercel serverless function** par hain:
+`api/admin-actions.js`. Tum already Vercel par ho, isliye ye file repo mein
+hone par tumhare **normal Vercel deploy ke saath hi** live ho jaati hai —
+alag se kuch deploy nahi karna. Service key sirf Vercel env var mein rehti hai.
 
-**Code change kaafi nahi hai — key ko invalidate karna zaroori hai:**
+## Sirf 3 step (5 min)
 
-1. Supabase Dashboard → Project Settings → **API Keys** (ya **Data API**)
-2. `service_role` key ke saamne **Reveal / Roll / Reset** karo → nayi key generate karo.
-3. Purani key turant band ho jaayegi.
-4. Nayi service key ko **sirf** GitHub Actions secret `SUPABASE_SERVICE_KEY`
-   mein update karo (fetch_tickets.py use karta hai). Browser mein kabhi mat daalo.
+### 1. File repo mein daalo
+`api/admin-actions.js` ko apne repo ke **`api/`** folder mein rakho
+(root par `api` folder banao agar nahi hai). Path bilkul: `api/admin-actions.js`.
+`admin.html` ko bhi replace karo (naya wala).
 
-> Note: Edge Function ko service key manually dene ki zaroorat nahi —
-> Supabase khud `SUPABASE_SERVICE_ROLE_KEY` inject karta hai (rotate karne par
-> woh bhi automatically updated rehti hai).
+### 2. Vercel mein service key set karo  ⚠️ zaroori
+Vercel Dashboard → apna project → **Settings → Environment Variables** → Add:
 
----
+| Name                   | Value                                  |
+|------------------------|----------------------------------------|
+| `SUPABASE_SERVICE_KEY` | tumhari **nayi** Supabase service_role key |
 
-## Kya-kya badla
+(Environments mein Production + Preview dono tick kar dena.)
 
-### 1. `admin.html` — service key hata di
-- `SUPA_SERVICE` aur `sbAdmin` client poori tarah remove.
-- Create / Update / Delete / List ab **Edge Function** `admin-actions` ke through
-  hote hain. Function har request par caller ka JWT verify karta hai aur check
-  karta hai ki woh `role = admin` hai — tabhi operation chalega.
+> Purani service key expose ho chuki thi — Supabase → Settings → API Keys mein
+> service_role key **roll/reset** karke nayi banao, aur wahi yahan daalo.
+> Purani key turant invalid ho jaayegi.
 
-### 2. `supabase/functions/admin-actions/index.ts` — naya
-- Service key sirf yahan (server-side) use hoti hai.
-- Actions: `list`, `create`, `update`, `delete`.
+### 3. Redeploy
+Git push karo (ya Vercel mein "Redeploy"). Function `/api/admin-actions` par
+live ho jaayega. Admin page refresh karo — list aur create dono chalenge.
 
-### 3. Chaaron dashboards — Auth Guard add
-`ticket_dashboard_api.html`, `marg_ticket_dashboard.html`,
-`upcoming_timeline.html`, `ticket_dashboard_excel.html` —
-ab page load par check hota hai:
-- Logged in nahi? → `index.html` par redirect.
-- Logged in hai par us dashboard ka permission nahi (aur admin bhi nahi)?
-  → `portal.html` par redirect.
+## Confirm: function live hai ya nahi
+Browser mein kholo: `https://<tumhari-site>/api/admin-actions`
+- **405 (Method not allowed)** aaye → function live hai ✅ (GET allowed nahi, sirf POST)
+- **404** → file galat jagah hai, `api/admin-actions.js` path check karo
 
-(Pehle koi bhi seedha `/dashboard`, `/tat` URL kholkar bina login data dekh sakta tha.)
-
----
-
-## Edge Function deploy karne ke steps
-
-```bash
-# 1. Supabase CLI install (agar nahi hai)
-npm i -g supabase
-
-# 2. Login + project link
-supabase login
-supabase link --project-ref xsxchyqhhyfvuxbofxna
-
-# 3. Deploy
-supabase functions deploy admin-actions
+## Agar list par 403 aaye
+Function chal rahi hai par tumhara apna user admin nahi hai. Supabase SQL Editor:
+```sql
+update public.users set role = 'admin' where email = 'tumhara@email.com';
 ```
 
-Deploy ke baad function yahan available hoga:
-`https://xsxchyqhhyfvuxbofxna.supabase.co/functions/v1/admin-actions`
-(admin.html mein ye URL already set hai.)
-
----
-
-## Optional cleanup (recommended)
-
-`setup.sql` ki **"Admin full access"** policy `public.users` ke andar hi
-`public.users` ko query karti hai — ye RLS **infinite recursion** error de
-sakti hai. Ab admin reads function (service key) ke through hote hain, isliye
-ye policy zaroori nahi rahi. Chaaho toh isse hata sakte ho; baaki ke liye
-"Users can read own" policy kaafi hai (portal/dashboard profile read uske
-through chalte hain).
+## Note
+- `supabase/functions/admin-actions/index.ts` ab use nahi hota — chaaho toh
+  rakho ya hata do, Vercel waala hi kaafi hai.
+- `vercel.json` mein koi change ki zaroorat nahi — `/api/*` automatically chalta hai.
