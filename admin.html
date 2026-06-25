@@ -378,10 +378,32 @@ nav{
 <script>
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const SUPA_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQxMzM1MCwiZXhwIjoyMDk2OTg5MzUwfQ._f17cCzbnJVtsKSjyTWOwRIt68kOiRiA6ydHhF76_ZE';
 
-const sb      = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
-const sbAdmin = supabase.createClient(SUPA_URL, SUPA_SERVICE, {auth:{persistSession:false,storageKey:'sb-admin-token'}});
+// NOTE: service_role key ab client mein NAHI hai. Saari admin operations
+// (create / update / delete / list) Edge Function ke through hoti hain,
+// jahan caller ko admin verify kiya jaata hai.
+const FN_URL = SUPA_URL + '/functions/v1/admin-actions';
+
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
+
+// Edge Function ko caller ke session token ke saath call karta hai
+async function adminCall(action, payload){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session) throw new Error('Session expired — please sign in again');
+  const res = await fetch(FN_URL, {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':`Bearer ${session.access_token}`,
+      'apikey': SUPA_KEY
+    },
+    body: JSON.stringify({action, payload})
+  });
+  let out;
+  try{ out = await res.json(); }catch{ out = {error:'Server error ('+res.status+')'}; }
+  if(!res.ok || out.error) throw new Error(out.error || ('HTTP '+res.status));
+  return out;
+}
 
 const ALL_DASHBOARDS = [
   {id:'it-dashboard',       title:'Marg IT Dashboard',       desc:'Stage-wise ticket tracking, TAT analysis', icon:'🎫', tag:'Operations'},
@@ -403,8 +425,13 @@ document.getElementById('stDash').textContent = ALL_DASHBOARDS.length;
 
 window.loadUsers = async function(){
   document.getElementById('userList').innerHTML='<div class="empty-msg">Loading...</div>';
-  const {data,error} = await sb.from('users').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:var(--danger)">${error.message}</div>`;return;}
+  let data;
+  try{
+    const out = await adminCall('list');
+    data = out.users || [];
+  }catch(error){
+    document.getElementById('userList').innerHTML=`<div class="empty-msg" style="color:var(--danger)">${error.message}</div>`;return;
+  }
   allUsers=data||[];
   const admins=allUsers.filter(u=>u.role==='admin').length;
   document.getElementById('stTotal').textContent=allUsers.length;
@@ -445,27 +472,25 @@ window.createUser = async function(){
   if(pass.length<6){toast('Password min 6 characters','err');return;}
   btn.disabled=true;btn.innerHTML='<span class="spin"></span>Creating...';
   try{
-    const {data:authData,error:authErr}=await sbAdmin.auth.admin.createUser({email,password:pass,user_metadata:{name},email_confirm:true});
-    if(authErr) throw authErr;
-    const {error:dbErr}=await sb.from('users').insert({id:authData.user.id,name,email,role,dashboards:[],created_at:new Date().toISOString()});
-    if(dbErr) throw dbErr;
+    await adminCall('create', {name, email, password:pass, role});
     ['nName','nEmail','nPass'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('nRole').value='user';
     toast(`✅ ${name} created successfully!`,'ok');
     loadUsers();
   }catch(e){
     let msg=e.message;
-    if(msg.includes('already registered')) msg='Email already exists';
+    if(msg.includes('already registered')||msg.includes('already exists')) msg='Email already exists';
     toast(msg,'err');
   }finally{btn.disabled=false;btn.innerHTML='Create User';}
 };
 
 window.deleteUser = async function(id,name){
   if(!confirm(`Delete "${name}"?`)) return;
-  await sb.from('users').delete().eq('id',id);
-  await sbAdmin.auth.admin.deleteUser(id);
-  toast(`${name} deleted`,'ok');
-  loadUsers();
+  try{
+    await adminCall('delete',{id});
+    toast(`${name} deleted`,'ok');
+    loadUsers();
+  }catch(e){ toast(e.message,'err'); }
 };
 
 window.openEditModal = function(uid){
@@ -516,11 +541,7 @@ window.saveUser=async function(){
   if(checks.length>0){dashboards=[...checks].filter(c=>c.checked).map(c=>c.dataset.id);}
   else{const eu=allUsers.find(u=>u.id===currentUID);dashboards=eu?.dashboards||[];}
   try{
-    const {error:dbErr}=await sb.from('users').update({name,email,role,dashboards}).eq('id',currentUID);
-    if(dbErr) throw dbErr;
-    const user=allUsers.find(u=>u.id===currentUID);
-    if(user?.email!==email){const {error:eE}=await sbAdmin.auth.admin.updateUserById(currentUID,{email});if(eE) throw eE;}
-    if(pass){const {error:pE}=await sbAdmin.auth.admin.updateUserById(currentUID,{password:pass});if(pE) throw pE;}
+    await adminCall('update',{id:currentUID, name, email, role, dashboards, password: pass || undefined});
     toast('✅ User updated successfully!','ok');
     closeEditModal();loadUsers();
   }catch(e){toast(e.message,'err');}

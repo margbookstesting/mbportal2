@@ -9,6 +9,25 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- AUTH GUARD: login + per-dashboard permission check -->
+<script>
+(async function(){
+  const _SU='https://xsxchyqhhyfvuxbofxna.supabase.co';
+  const _SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+  const _DASH='tat-dashboard';
+  for(let i=0;i<60 && !(window.supabase&&window.supabase.createClient);i++){await new Promise(r=>setTimeout(r,50));}
+  if(!(window.supabase&&window.supabase.createClient)){location.replace('index.html');return;}
+  const _g=window.supabase.createClient(_SU,_SK,{auth:{persistSession:true,storage:window.sessionStorage}});
+  const {data:{session}}=await _g.auth.getSession();
+  if(!session){location.replace('index.html');return;}
+  try{
+    const {data:_p}=await _g.from('users').select('role,dashboards').eq('id',session.user.id).single();
+    const _ok=_p&&(_p.role==='admin'||(_p.dashboards||[]).includes(_DASH));
+    if(!_ok){location.replace('portal.html');return;}
+  }catch(e){/* profile read fail -> logged-in user allowed */}
+})();
+</script>
+
 <style>
 :root {
   --bg:       #f0f2f9;
