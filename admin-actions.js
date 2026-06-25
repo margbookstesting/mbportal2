@@ -33,7 +33,7 @@ async function sb(path, { method = 'GET', token = SERVICE_KEY, key = SERVICE_KEY
 const errMsg = (d, fallback) =>
   (d && (d.msg || d.message || d.error_description || d.error)) || fallback;
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!SERVICE_KEY) return res.status(500).json({ error: 'Server not configured: SUPABASE_SERVICE_KEY missing in Vercel env' });
 
