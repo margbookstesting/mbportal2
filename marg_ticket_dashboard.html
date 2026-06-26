@@ -963,12 +963,17 @@ td.grp-l { border-left:1px solid var(--border); }
 }
 </style>
 <style>
-.tabbar{display:flex;gap:10px;padding:12px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4;align-items:center}
-.tabbar::before{content:'VIEWS';font-size:10px;font-weight:800;letter-spacing:1.5px;color:#94a3b8;margin-right:4px}
-.tabbtn{appearance:none;font-family:inherit;font-size:13.5px;font-weight:700;color:#475569;padding:10px 22px;cursor:pointer;border-radius:11px;border:1.5px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;gap:8px;transition:.18s;line-height:1}
-.tabbtn:hover{border-color:#5eead4;color:#0f766e;background:#f0fdfa;transform:translateY(-1px)}
-.tabbtn.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 5px 16px rgba(13,148,136,.38)}
-.tabbtn.active:hover{transform:translateY(-1px);color:#fff}
+.viewtabs{display:flex;gap:12px;padding:12px 26px 10px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4;flex-wrap:wrap}
+.vtab{display:flex;align-items:center;gap:12px;padding:9px 18px 9px 10px;border-radius:14px;border:2px solid #e2e8f0;background:#fff;cursor:pointer;font-family:inherit;transition:.18s;text-align:left}
+.vtab:hover{border-color:#5eead4;transform:translateY(-2px);box-shadow:0 8px 20px rgba(13,148,136,.12)}
+.vtab-ic{font-size:20px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:#f1f5f9;flex-shrink:0;transition:.18s}
+.vtab-txt{display:flex;flex-direction:column;gap:3px}
+.vtab-title{font-size:14px;font-weight:800;color:#0f172a;line-height:1}
+.vtab-sub{font-size:10.5px;color:#64748b;font-weight:600;line-height:1}
+.vtab.active{border-color:#0d9488;background:linear-gradient(135deg,#f0fdfa,#ecfeff);box-shadow:0 6px 22px rgba(13,148,136,.20)}
+.vtab.active .vtab-ic{background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 4px 12px rgba(13,148,136,.4)}
+.vtab.active .vtab-title{color:#0f766e}
+.vtab.active .vtab-sub{color:#0d9488}
 .sd-table{width:100%;border-collapse:collapse;font-size:13px}
 .sd-table th{background:#f8fafc;padding:11px 14px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#475569;border-bottom:2px solid #e2e8f0;position:sticky;top:0}
 .sd-table td{padding:10px 14px;text-align:center;border-bottom:1px solid #f1f5f9}
@@ -1006,6 +1011,18 @@ td.grp-l { border-left:1px solid var(--border); }
     </div>
   </div>
 </header>
+
+<!-- ████ VIEW TABS (above filters) ████ -->
+<div class="viewtabs">
+  <button class="vtab active" id="tabBtn1" onclick="switchTab(1)">
+    <span class="vtab-ic">📊</span>
+    <span class="vtab-txt"><span class="vtab-title">Dashboard</span><span class="vtab-sub">Stage-wise TAT & live counts</span></span>
+  </button>
+  <button class="vtab" id="tabBtn2" onclick="switchTab(2)">
+    <span class="vtab-ic">🧩</span>
+    <span class="vtab-txt"><span class="vtab-title">Disposition Wise</span><span class="vtab-sub">By disposition · ticket drilldown</span></span>
+  </button>
+</div>
 
 <!-- ████ FILTER BAR ████ -->
 <div class="filter-bar">
@@ -1052,12 +1069,6 @@ td.grp-l { border-left:1px solid var(--border); }
 <select id="rmFilter" multiple style="display:none"></select>
 <select id="developerFilter" multiple style="display:none"></select>
 <select id="statusFilter" multiple style="display:none"></select>
-
-<!-- ████ TABS ████ -->
-<div class="tabbar">
-  <button class="tabbtn active" id="tabBtn1" onclick="switchTab(1)">📊 Dashboard</button>
-  <button class="tabbtn" id="tabBtn2" onclick="switchTab(2)">🧩 Disposition Wise</button>
-</div>
 
 <!-- ████ MAIN ████ -->
 <main class="main" id="tab1">
