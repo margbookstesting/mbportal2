@@ -800,22 +800,22 @@ tbody td.r { text-align:right; }
 }
 .kpi-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px; }
 .kpi-head-l { display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
-.kpi-overall {
-  display:flex; flex-direction:column; gap:3px; flex-shrink:0;
-  background:#fff; border:1.5px solid var(--border); border-radius:9px; padding:5px 9px;
-  box-shadow:0 1px 3px rgba(0,0,0,.05);
-}
-.ov-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.ov-lbl { font-size:8.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
-.ov-pct { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:800; min-width:34px; text-align:right; }
-.ov-pct.in  { color:#059669; }
-.ov-pct.out { color:#dc2626; }
+.kpi-overall { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
+.ov-pill { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:5px 11px; border-radius:9px; border:1.5px solid; }
+.ov-pill.in  { background:#f0fdf4; border-color:#bbf7d0; }
+.ov-pill.out { background:#fef2f2; border-color:#fecaca; }
+.ov-lbl { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+.ov-pill.in  .ov-lbl { color:#166534; }
+.ov-pill.out .ov-lbl { color:#991b1b; }
+.ov-pct { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:800; min-width:42px; text-align:right; }
+.ov-pill.in  .ov-pct { color:#059669; }
+.ov-pill.out .ov-pct { color:#dc2626; }
 .kpi-m-tat {
   display:flex; justify-content:center; gap:4px; margin-top:3px;
-  font-size:9px; font-weight:800; white-space:nowrap; line-height:1.3;
+  font-size:9.5px; font-weight:800; white-space:nowrap; line-height:1.3;
 }
 .kpi-m-tat span {
-  background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:5px; padding:1px 5px;
+  background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:5px; padding:1px 6px;
 }
 /* Current month — blue */
 .kpi-m-cur  { background:#ccfbf1; color:#0f766e; border:1.5px solid #5eead4; }
@@ -1847,7 +1847,7 @@ function monthCompareHtml(data, cls, tatKey){
     const t = inC + outC;
     const ip = t ? Math.round(inC/t*100) : 0;
     const op = t ? 100 - ip : 0;
-    return `<span class="kpi-m-tat"><span style="color:#059669">I ${ip}%</span><span style="color:#dc2626">O ${op}%</span></span>`;
+    return `<span class="kpi-m-tat"><span style="color:#059669">${ip}%</span><span style="color:#dc2626">${op}%</span></span>`;
   }
   return `
     <div class="kpi-month-row">
@@ -2248,8 +2248,8 @@ function renderKPIs(){
             <div class="pend-badge" title="Currently at this stage (from all data, not date-filtered)">Now: ${fmt(pending)}</div>
           </div>
           <div class="kpi-overall" title="Overall InTAT / OutTAT">
-            <div class="ov-row"><span class="ov-lbl">InTAT</span><span class="ov-pct in">${inPct}%</span></div>
-            <div class="ov-row"><span class="ov-lbl">OutTAT</span><span class="ov-pct out">${outPct}%</span></div>
+            <div class="ov-pill in"><span class="ov-lbl">InTAT</span><span class="ov-pct">${inPct}%</span></div>
+            <div class="ov-pill out"><span class="ov-lbl">OutTAT</span><span class="ov-pct">${outPct}%</span></div>
           </div>
         </div>
         ${monthCompareHtml(s.data, s.cls, s.tatKey)}
