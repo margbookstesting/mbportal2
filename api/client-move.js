@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
     iscrv: Number(iscrv) || 0,
     istesting: Number(istesting),
     countrykey: String(countrykey),
-    Useremailid: MARG_USER_EMAIL || (p && p.email) || '',
+    Useremailid: (p && p.email) || MARG_USER_EMAIL || '',
   };
 
   // 4) Token lao -> move call -> 401/403 par ek baar re-login + retry
