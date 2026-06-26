@@ -963,10 +963,12 @@ td.grp-l { border-left:1px solid var(--border); }
 }
 </style>
 <style>
-.tabbar{display:flex;gap:2px;padding:0 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
-.tabbtn{appearance:none;border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:#64748b;padding:13px 20px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:.15s;display:flex;align-items:center;gap:7px}
-.tabbtn:hover{color:#0f766e;background:#f8fafc}
-.tabbtn.active{color:#0d9488;border-bottom-color:#0d9488}
+.tabbar{display:flex;gap:10px;padding:12px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4;align-items:center}
+.tabbar::before{content:'VIEWS';font-size:10px;font-weight:800;letter-spacing:1.5px;color:#94a3b8;margin-right:4px}
+.tabbtn{appearance:none;font-family:inherit;font-size:13.5px;font-weight:700;color:#475569;padding:10px 22px;cursor:pointer;border-radius:11px;border:1.5px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;gap:8px;transition:.18s;line-height:1}
+.tabbtn:hover{border-color:#5eead4;color:#0f766e;background:#f0fdfa;transform:translateY(-1px)}
+.tabbtn.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,#0d9488,#0891b2);box-shadow:0 5px 16px rgba(13,148,136,.38)}
+.tabbtn.active:hover{transform:translateY(-1px);color:#fff}
 .sd-table{width:100%;border-collapse:collapse;font-size:13px}
 .sd-table th{background:#f8fafc;padding:11px 14px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#475569;border-bottom:2px solid #e2e8f0;position:sticky;top:0}
 .sd-table td{padding:10px 14px;text-align:center;border-bottom:1px solid #f1f5f9}
