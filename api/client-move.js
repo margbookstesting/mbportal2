@@ -61,7 +61,7 @@ async function margLogin() {
   let data; try { data = JSON.parse(text); } catch { data = text; }
   if (!r.ok) throw new Error('Marg login failed (HTTP ' + r.status + ')');
   const tok = findJwt(data);
-  if (!tok) throw new Error('Login response me token nahi mila. Structure: ' +
+  if (!tok) throw new Error('Token not found in login response. Structure: ' +
     (typeof data === 'string' ? data.slice(0, 200) : JSON.stringify(data).slice(0, 300)));
   return tok;
 }
@@ -75,7 +75,7 @@ async function getMargToken(force) {
     return tok;
   }
   if (STATIC_TOKEN) return STATIC_TOKEN;
-  throw new Error('Server not configured: MARG_LOGIN_EMAIL/PASSWORD (ya MARG_TOKEN) set karo');
+  throw new Error('Server not configured: set MARG_LOGIN_EMAIL/PASSWORD (or MARG_TOKEN)');
 }
 
 async function callMove(token, payload) {
@@ -112,10 +112,10 @@ module.exports = async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   const { countrykey, key, version, istesting, iscrv, moveBy, emailid, dbinfolinkidstr } = body || {};
 
-  if (!countrykey) return res.status(400).json({ error: 'Country select karo' });
-  if (version === undefined || istesting === undefined) return res.status(400).json({ error: 'Domain select karo' });
-  if (moveBy === 'email' && !String(emailid || '').trim()) return res.status(400).json({ error: 'Email ID daalo' });
-  if (moveBy === 'dblink' && !String(dbinfolinkidstr || '').trim()) return res.status(400).json({ error: 'DB InfoLinkID daalo' });
+  if (!countrykey) return res.status(400).json({ error: 'Please select a Country' });
+  if (version === undefined || istesting === undefined) return res.status(400).json({ error: 'Please select a Domain' });
+  if (moveBy === 'email' && !String(emailid || '').trim()) return res.status(400).json({ error: 'Please enter an Email ID' });
+  if (moveBy === 'dblink' && !String(dbinfolinkidstr || '').trim()) return res.status(400).json({ error: 'Please enter a DB InfoLinkID' });
 
   const payload = {
     key: String(process.env.MARG_MOVE_KEY || key || ''),
@@ -135,15 +135,15 @@ module.exports = async function handler(req, res) {
 
   let r;
   try { r = await callMove(mtok, payload); }
-  catch (e) { return res.status(502).json({ error: 'Marg API reach nahi hui: ' + (e.message || String(e)) }); }
+  catch (e) { return res.status(502).json({ error: 'Could not reach Marg API: ' + (e.message || String(e)) }); }
 
   if (r.status === 401 || r.status === 403) {
     try { mtok = await getMargToken(true); r = await callMove(mtok, payload); }
-    catch (e) { return res.status(502).json({ error: 'Re-login fail: ' + (e.message || String(e)) }); }
+    catch (e) { return res.status(502).json({ error: 'Re-login failed: ' + (e.message || String(e)) }); }
   }
 
   if (r.status === 401 || r.status === 403)
-    return res.status(502).json({ error: 'Marg auth fail (re-login ke baad bhi)', upstreamStatus: r.status });
+    return res.status(502).json({ error: 'Marg auth failed (even after re-login)', upstreamStatus: r.status });
   if (!r.ok)
     return res.status(502).json({ error: 'Marg API error', upstreamStatus: r.status, upstream: r.data });
 
