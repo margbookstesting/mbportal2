@@ -157,14 +157,14 @@ const DOMAINS = [
   {label:'books.margbooks.com  (v4.2)',           istesting:1,  version:'4.2'},
   {label:'books1.margbooks.com  (v4.2)',          istesting:0,  version:'4.2'},
   {label:'books3.margbooks.com  (v3.2)',          istesting:2,  version:'3.2'},
-  {label:'enterprise2.margbooks.com:7033 (v3.1)', istesting:3,  version:'3.1'},
   {label:'books4.margbooks.com  (v4.2)',          istesting:4,  version:'4.2'},
   {label:'books5.margbooks.com  (v4.2)',          istesting:5,  version:'4.2'},
   {label:'books6.margbooks.com  (v4.2)',          istesting:6,  version:'4.2'},
+  {label:'books10.margbooks.com  (v4.2)',         istesting:11, version:'4.2'},
+  {label:'enterprise2.margbooks.com:7033 (v3.1)', istesting:3,  version:'3.1'},
   {label:'app.dynamics360.co  (v3.3)',            istesting:8,  version:'3.3'},
   {label:'app1.dynamics360.co  (v3.3)',           istesting:9,  version:'3.3'},
   {label:'app5.dynamics360.co  (v3.3)',           istesting:10, version:'3.3'},
-  {label:'books10.margbooks.com  (v4.2)',         istesting:11, version:'4.2'},
 ];
 
 const SETTINGS = [
@@ -176,6 +176,7 @@ const SETTINGS = [
 /* ================================================== */
 
 let CALLER = null;
+let OPERATOR_EMAIL = '';
 
 // ── Auth guard ──
 (async()=>{
@@ -184,6 +185,7 @@ let CALLER = null;
   CALLER = session.user;
   let prof=null;
   try{ const {data}=await sb.from('users').select('role,dashboards,email').eq('id',CALLER.id).single(); prof=data; }catch(e){}
+  OPERATOR_EMAIL = (prof && prof.email) || CALLER.email || '';
   const allowed = prof && (prof.role==='admin' || (prof.dashboards||[]).includes('admin-activity'));
   if(!allowed){ location.replace('portal.html'); return; }
   renderClientMove();
@@ -278,8 +280,8 @@ window.askConfirm = function(){
     <div class="sum-row"><span class="sum-k">Country</span><span class="sum-v">${g.country.label}</span></div>
     <div class="sum-row"><span class="sum-k">Domain</span><span class="sum-v">${g.domain.label.trim()}</span></div>
     <div class="sum-row"><span class="sum-k">Setting</span><span class="sum-v">${g.setting.label}</span></div>
-    <div class="sum-row"><span class="sum-k">Moved by</span><span class="sum-v">${g.by==='email'?'Email ID':'DB Info Link ID'}</span></div>
-    <div class="sum-row"><span class="sum-k">${g.by==='email'?'Email':'Link IDs'}</span><span class="sum-v">${g.by==='email'?g.email:(linkCount+' id'+(linkCount!==1?'s':''))}</span></div>
+    <div class="sum-row"><span class="sum-k">${g.by==='email'?'Customer Email':'Customer Link IDs'}</span><span class="sum-v">${g.by==='email'?g.email:(linkCount+' id'+(linkCount!==1?'s':''))}</span></div>
+    <div class="sum-row"><span class="sum-k">Moved by</span><span class="sum-v">${OPERATOR_EMAIL||'—'}</span></div>
   `;
   document.getElementById('confirmOverlay').classList.add('show');
 };
@@ -288,16 +290,14 @@ window.closeConfirm = function(){ document.getElementById('confirmOverlay').clas
 
 function formatResult(out){
   const r = out && out.result;
-  const lines = [];
   if (r && Array.isArray(r.data) && r.data.length){
-    r.data.forEach(it=>{
-      const msg = it.remark || it.message || 'OK';
-      lines.push('• ' + msg + (it.emailid ? ('  ('+it.emailid+')') : (it.dbinfolinkid ? ('  (LinkID '+it.dbinfolinkid+')') : '')));
-    });
-  } else if (r && r.message){
-    lines.push(r.message);
+    return r.data.map(it=>{
+      const id = it.emailid || ((it.dbinfolinkid!=null && it.dbinfolinkid!==0) ? ('LinkID '+it.dbinfolinkid) : 'Record');
+      const moved = Number(it.status)===200;
+      return (moved?'✅ ':'❌ ') + id + ' — ' + (moved ? 'Moved' : ('Not moved'+(it.remark?(': '+it.remark):'')));
+    }).join('\n');
   }
-  return lines.length ? lines.join('\n') : 'Request completed.';
+  return (out && out.ok) ? '✅ Done' : '❌ Fail';
 }
 
 window.doSubmit = async function(){
@@ -326,7 +326,9 @@ window.doSubmit = async function(){
     if(!res.ok || out.error){
       showResult('❌ Fail', false);
     }else{
-      showResult('✅ Done', true);
+      const items = (out.result && Array.isArray(out.result.data)) ? out.result.data : [];
+      const allMoved = items.length===0 || items.every(it=>Number(it.status)===200);
+      showResult(formatResult(out), allMoved);
     }
   }catch(e){
     closeConfirm();
