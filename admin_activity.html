@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGQ5NDg4Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDg5MWIyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1CPC90ZXh0Pjwvc3ZnPg=="/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Admin Activity — Margbooks</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -296,17 +297,25 @@ const ACTION_MSG = {
 };
 let LAST_ISCRV = 0;
 
+function itemOk(it){
+  const remark = String(it.remark||'').toLowerCase();
+  const bad = /fail|error|invalid|not found|wrong|denied|unable|exception/.test(remark);
+  if (bad) return false;
+  if (LAST_ISCRV===0) return Number(it.status)===200; // Move: sirf 200 hi success
+  return true; // Reset / Caching / Repair: error word na ho to success
+}
+
 function formatResult(out){
+  const a = ACTION_MSG[LAST_ISCRV] || {ok:'Done', fail:'Failed'};
   const r = out && out.result;
   if (r && Array.isArray(r.data) && r.data.length){
     return r.data.map(it=>{
       const id = it.emailid || ((it.dbinfolinkid!=null && it.dbinfolinkid!==0) ? ('LinkID '+it.dbinfolinkid) : 'Record');
-      const a = ACTION_MSG[Number(it.iscrv!=null?it.iscrv:LAST_ISCRV)] || {ok:'Done', fail:'Failed'};
-      const ok = Number(it.status)===200;
+      const ok = itemOk(it);
       return (ok?'✅ ':'❌ ') + id + ' — ' + (ok ? a.ok : (a.fail+(it.remark?(': '+it.remark):'')));
     }).join('\n');
   }
-  return (out && out.ok) ? '✅ Done' : '❌ Fail';
+  return (out && out.ok) ? ('✅ '+a.ok) : ('❌ '+a.fail);
 }
 
 window.doSubmit = async function(){
@@ -337,8 +346,8 @@ window.doSubmit = async function(){
       showResult('❌ Fail', false);
     }else{
       const items = (out.result && Array.isArray(out.result.data)) ? out.result.data : [];
-      const allMoved = items.length===0 || items.every(it=>Number(it.status)===200);
-      showResult(formatResult(out), allMoved);
+      const allOk = items.length===0 ? true : items.every(itemOk);
+      showResult(formatResult(out), allOk);
     }
   }catch(e){
     closeConfirm();
