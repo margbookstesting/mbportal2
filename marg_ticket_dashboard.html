@@ -2707,17 +2707,18 @@ function renderRM(){
 // ===== CLIENTS TABLE =====
 function renderClients(){
   const licMap = {};
-  fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{
+  function seed(r){
     if(!licMap[r.l]) licMap[r.l]={lic:r.l,name:r.u||'—',plan:r.p||'',it:0,ack:0,ip:0,live:0,sup:0};
-    licMap[r.l].it++;
-    if(r.u&&String(r.u).length>String(licMap[r.l].name).length) licMap[r.l].name=r.u;
-  });
-  fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].ack++; });
-  fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].ip++; });
-  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].live++; });
-  fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].sup++; });
+    if(r.u && String(r.u).length>String(licMap[r.l].name).length) licMap[r.l].name=r.u;
+    if(r.p && !licMap[r.l].plan) licMap[r.l].plan=r.p;
+  }
+  fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].it++; });
+  fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].ack++; });
+  fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].ip++; });
+  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].live++; });
+  fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].sup++; });
 
-  const top10 = Object.values(licMap).sort((a,b)=>b.it-a.it).slice(0,10);
+  const top10 = Object.values(licMap).sort((a,b)=> b.it!==a.it ? b.it-a.it : (b.ip+b.live+b.sup+b.ack)-(a.ip+a.live+a.sup+a.ack)).slice(0,10);
   // Bug/Dev per client — unique tickets across all stages for that licence
   top10.forEach(c=>{
     const supRows = fSup.filter(r=>String(r.l)===String(c.lic));
