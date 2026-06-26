@@ -168,7 +168,7 @@ const DOMAINS = [
 ];
 
 const SETTINGS = [
-  {label:'No Required',                iscrv:0},
+  {label:'Move Client',                iscrv:0},
   {label:'Control room setting reset', iscrv:1},
   {label:'Remove caching',             iscrv:2},
   {label:'Only Repair DB',             iscrv:3},
@@ -288,13 +288,22 @@ window.askConfirm = function(){
 
 window.closeConfirm = function(){ document.getElementById('confirmOverlay').classList.remove('show'); };
 
+const ACTION_MSG = {
+  0:{ok:'Moved',                  fail:'Not moved'},
+  1:{ok:'Control room reset done',fail:'Control room reset failed'},
+  2:{ok:'Caching removed',        fail:'Caching removal failed'},
+  3:{ok:'DB repaired',            fail:'DB repair failed'},
+};
+let LAST_ISCRV = 0;
+
 function formatResult(out){
   const r = out && out.result;
   if (r && Array.isArray(r.data) && r.data.length){
     return r.data.map(it=>{
       const id = it.emailid || ((it.dbinfolinkid!=null && it.dbinfolinkid!==0) ? ('LinkID '+it.dbinfolinkid) : 'Record');
-      const moved = Number(it.status)===200;
-      return (moved?'✅ ':'❌ ') + id + ' — ' + (moved ? 'Moved' : ('Not moved'+(it.remark?(': '+it.remark):'')));
+      const a = ACTION_MSG[Number(it.iscrv!=null?it.iscrv:LAST_ISCRV)] || {ok:'Done', fail:'Failed'};
+      const ok = Number(it.status)===200;
+      return (ok?'✅ ':'❌ ') + id + ' — ' + (ok ? a.ok : (a.fail+(it.remark?(': '+it.remark):'')));
     }).join('\n');
   }
   return (out && out.ok) ? '✅ Done' : '❌ Fail';
@@ -304,6 +313,7 @@ window.doSubmit = async function(){
   const g = gather();
   const btn = document.getElementById('confirmBtn');
   btn.disabled=true; btn.textContent='Submitting…';
+  LAST_ISCRV = g.setting.iscrv;
   try{
     const {data:{session}} = await sb.auth.getSession();
     if(!session) throw new Error('Session expired — please sign in again');
