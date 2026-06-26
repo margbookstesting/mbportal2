@@ -286,6 +286,20 @@ window.askConfirm = function(){
 
 window.closeConfirm = function(){ document.getElementById('confirmOverlay').classList.remove('show'); };
 
+function formatResult(out){
+  const r = out && out.result;
+  const lines = [];
+  if (r && Array.isArray(r.data) && r.data.length){
+    r.data.forEach(it=>{
+      const msg = it.remark || it.message || 'OK';
+      lines.push('• ' + msg + (it.emailid ? ('  ('+it.emailid+')') : (it.dbinfolinkid ? ('  (LinkID '+it.dbinfolinkid+')') : '')));
+    });
+  } else if (r && r.message){
+    lines.push(r.message);
+  }
+  return lines.length ? lines.join('\n') : 'Request completed.';
+}
+
 window.doSubmit = async function(){
   const g = gather();
   const btn = document.getElementById('confirmBtn');
@@ -310,9 +324,9 @@ window.doSubmit = async function(){
     let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
     closeConfirm();
     if(!res.ok || out.error){
-      showResult('❌ ' + (out.error || ('HTTP '+res.status)) + (out.upstream?('\n'+JSON.stringify(out.upstream)):''), false);
+      showResult('❌ ' + (out.error || ('HTTP '+res.status)) + (out.upstream && out.upstream.message ? ('\n'+out.upstream.message) : ''), false);
     }else{
-      showResult('✅ Done!\n' + JSON.stringify(out.result, null, 2), true);
+      showResult('✅ Done\n' + formatResult(out), true);
     }
   }catch(e){
     closeConfirm();
