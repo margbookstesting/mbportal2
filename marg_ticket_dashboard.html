@@ -798,6 +798,10 @@ tbody td.r { text-align:right; }
 .kpi-m-sublabel {
   font-size:8px; font-weight:700; margin-top:1px; white-space:nowrap; letter-spacing:.2px;
 }
+.kpi-m-tat {
+  display:block; font-size:8px; font-weight:800; margin-top:2px; white-space:nowrap;
+  padding-top:2px; border-top:1px dashed rgba(0,0,0,.12);
+}
 /* Current month — blue */
 .kpi-m-cur  { background:#ccfbf1; color:#0f766e; border:1.5px solid #5eead4; }
 .kpi-m-cur::before  { background:#0d9488; }
@@ -969,7 +973,7 @@ td.grp-l { border-left:1px solid var(--border); }
       </div>
     </div>
     <div class="topbar-actions">
-      <button onclick="location.href='portal.html'" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(13,148,136,.3);">← Portal</button>
+      <button onclick="location.href='portal.html'" style="height:32px;padding:0 16px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);">← Portal</button>
       <button onclick="mbSignOut()" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:#e11d48;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(225,29,72,.3);">Sign Out</button>
       <div id="fetchTimeBadge" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,.18);
         border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:11px;
@@ -1805,12 +1809,13 @@ function countByMonth(arr, prefix){
 }
 
 // Build month-comparison mini HTML for KPI card
-function monthCompareHtml(data, cls){
+function monthCompareHtml(data, cls, tatKey){
   const { thisPrefix, prevPrefix } = getMonthLabels(currentFrom, currentTo);
   if(!thisPrefix) return '';
-  const thisCnt  = countByMonth(data, thisPrefix);
-  const prevCnt  = countByMonth(data, prevPrefix);
-  const olderCnt = data.filter(r => r.tc && !r.tc.startsWith(thisPrefix) && !r.tc.startsWith(prevPrefix)).length;
+  const thisData = data.filter(r => r.tc && r.tc.startsWith(thisPrefix));
+  const prevData = data.filter(r => r.tc && r.tc.startsWith(prevPrefix));
+  const olderData= data.filter(r => r.tc && !r.tc.startsWith(thisPrefix) && !r.tc.startsWith(prevPrefix));
+  const thisCnt = thisData.length, prevCnt = prevData.length, olderCnt = olderData.length;
   const [ty,tm] = thisPrefix.split('-');
   const [py,pm] = prevPrefix.split('-');
   const thisLabel = new Date(parseInt(ty), parseInt(tm)-1, 1).toLocaleString('en-IN',{month:'long'});
@@ -1819,22 +1824,35 @@ function monthCompareHtml(data, cls){
   const thisPct  = Math.round(thisCnt/tot*100);
   const prevPct  = Math.round(prevCnt/tot*100);
   const olderPct = Math.round(olderCnt/tot*100);
+  // per-bucket InTAT / OutTAT % (of tickets that carry a TAT flag in that bucket)
+  function tatLine(bucket){
+    if(!tatKey) return '';
+    const inC  = bucket.filter(r=>r[tatKey]==='I').length;
+    const outC = bucket.filter(r=>r[tatKey]==='O').length;
+    const t = inC + outC;
+    const ip = t ? Math.round(inC/t*100) : 0;
+    const op = t ? 100 - ip : 0;
+    return `<span class="kpi-m-tat"><span style="color:#059669">I ${ip}%</span> · <span style="color:#dc2626">O ${op}%</span></span>`;
+  }
   return `
     <div class="kpi-month-row">
       <div class="kpi-m-badge kpi-m-cur">
         <span class="kpi-m-label">${thisLabel}</span>
         <span class="kpi-m-num">${fmt(thisCnt)}</span>
         <span class="kpi-m-sublabel">${thisPct}% of total</span>
+        ${tatLine(thisData)}
       </div>
       <div class="kpi-m-badge kpi-m-prev">
         <span class="kpi-m-label">${prevLabel}</span>
         <span class="kpi-m-num">${fmt(prevCnt)}</span>
         <span class="kpi-m-sublabel">${prevPct}% of total</span>
+        ${tatLine(prevData)}
       </div>
       <div class="kpi-m-badge kpi-m-old">
         <span class="kpi-m-label">Older</span>
         <span class="kpi-m-num">${fmt(olderCnt)}</span>
         <span class="kpi-m-sublabel">${olderPct}% of total</span>
+        ${tatLine(olderData)}
       </div>
     </div>`;
 }
@@ -2225,7 +2243,7 @@ function renderKPIs(){
             <span class="tat-val">${outPct}%</span>
           </div>
         </div>
-        ${monthCompareHtml(s.data, s.cls)}
+        ${monthCompareHtml(s.data, s.cls, s.tatKey)}
       </div>
       <div class="kpi-footer">
         <span class="kpi-link" onclick="openModal('${s.key}')">🔍 View Details</span>
