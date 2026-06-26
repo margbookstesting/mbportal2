@@ -943,6 +943,18 @@ td.grp-l { border-left:1px solid var(--border); }
   font-size:13px; display:flex; flex-direction:column; align-items:center; gap:10px;
 }
 </style>
+<style>
+.tabbar{display:flex;gap:2px;padding:0 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
+.tabbtn{appearance:none;border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:#64748b;padding:13px 20px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:.15s;display:flex;align-items:center;gap:7px}
+.tabbtn:hover{color:#0f766e;background:#f8fafc}
+.tabbtn.active{color:#0d9488;border-bottom-color:#0d9488}
+.sd-table{width:100%;border-collapse:collapse;font-size:13px}
+.sd-table th{background:#f8fafc;padding:11px 14px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#475569;border-bottom:2px solid #e2e8f0;position:sticky;top:0}
+.sd-table td{padding:10px 14px;text-align:center;border-bottom:1px solid #f1f5f9}
+.sd-table tbody tr:hover{background:#f8fafc}
+.sd-pct{font-size:11px;color:#94a3b8}
+.sd-total td{font-weight:800;background:#f0fdfa;border-top:2px solid #99f6e4;color:#0f172a}
+</style>
 </head>
 <body>
 
@@ -1020,8 +1032,14 @@ td.grp-l { border-left:1px solid var(--border); }
 <select id="developerFilter" multiple style="display:none"></select>
 <select id="statusFilter" multiple style="display:none"></select>
 
+<!-- ████ TABS ████ -->
+<div class="tabbar">
+  <button class="tabbtn active" id="tabBtn1" onclick="switchTab(1)">📊 Dashboard</button>
+  <button class="tabbtn" id="tabBtn2" onclick="switchTab(2)">🧩 Subdisposition</button>
+</div>
+
 <!-- ████ MAIN ████ -->
-<main class="main">
+<main class="main" id="tab1">
 
   <!-- KPI STRIP -->
   <div class="kpi-strip" id="kpiRow"></div>
@@ -1306,6 +1324,21 @@ td.grp-l { border-left:1px solid var(--border); }
     </div>
   </div>
 
+</main>
+
+<!-- ████ TAB 2: SUBDISPOSITION ████ -->
+<main class="main" id="tab2" style="display:none">
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px">
+      <div style="width:4px;height:30px;border-radius:3px;background:linear-gradient(180deg,#0d9488,#0891b2)"></div>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#0f172a">Subdisposition-wise Acknowledge</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px">Tickets that have an Acknowledge date · filtered by Acknowledge date (uses the Date filter above)</div>
+      </div>
+      <div id="sdInfo" style="margin-left:auto;font-size:11px;color:#94a3b8"></div>
+    </div>
+    <div id="subdispWrap" style="overflow:auto;max-height:calc(100vh - 230px)"></div>
+  </div>
 </main>
 
 <!-- ████ MODAL ████ -->
@@ -1904,6 +1937,65 @@ function applyFilter(){
   document.getElementById('fInfo').textContent =
     `${from} → ${to}  ·  IT:${fmt(fIT.length)} ACK:${fmt(fAck.length)} IP:${fmt(fIP.length)} Sup:${fmt(fSup.length)} Live:${fmt(fLive.length)}  (${fmt(VIEW.length)}/${fmt(RAW.length)})${activeFilterSummary()}`;
   renderAll();
+  renderSubdisp();
+}
+
+// ===== TABS =====
+function switchTab(n){
+  document.getElementById('tab1').style.display = n===1 ? '' : 'none';
+  document.getElementById('tab2').style.display = n===2 ? '' : 'none';
+  document.getElementById('tabBtn1').classList.toggle('active', n===1);
+  document.getElementById('tabBtn2').classList.toggle('active', n===2);
+  if(n===2) renderSubdisp();
+}
+
+function sdEsc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderSubdisp(){
+  const wrap = document.getElementById('subdispWrap');
+  if(!wrap) return;
+  const rows = fAck || [];                 // acknowledge tickets, date-filtered on r.b + common/tester filters
+  const groups = {};
+  rows.forEach(r=>{
+    const k = (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No SubDisposition)';
+    if(!groups[k]) groups[k] = {total:0, intat:0, outtat:0};
+    groups[k].total++;
+    if(r.bt==='I') groups[k].intat++;
+    else if(r.bt==='O') groups[k].outtat++;
+  });
+  const list = Object.entries(groups).sort((a,b)=>b[1].total-a[1].total);
+  const pct = (n,d)=> d ? Math.round(n/d*100) : 0;
+  let tTot=0, tIn=0, tOut=0;
+  list.forEach(([,v])=>{ tTot+=v.total; tIn+=v.intat; tOut+=v.outtat; });
+
+  const info = document.getElementById('sdInfo');
+  if(info) info.textContent = `${list.length} subdisposition${list.length!==1?'s':''} · ${fmt(tTot)} acknowledged`;
+
+  if(!list.length){
+    wrap.innerHTML = '<div style="padding:46px;text-align:center;color:#94a3b8;font-size:13px">No acknowledged tickets in this date range.</div>';
+    return;
+  }
+  let html = `<table class="sd-table"><thead><tr>
+      <th style="text-align:left">SubDisposition</th>
+      <th>Acknowledge Total</th>
+      <th style="color:#059669">InTAT</th>
+      <th style="color:#dc2626">OutTAT</th>
+    </tr></thead><tbody>`;
+  list.forEach(([k,v])=>{
+    html += `<tr>
+      <td style="text-align:left;font-weight:600">${sdEsc(k)}</td>
+      <td><b>${fmt(v.total)}</b></td>
+      <td style="color:#059669">${fmt(v.intat)} <span class="sd-pct">(${pct(v.intat,v.total)}%)</span></td>
+      <td style="color:#dc2626">${fmt(v.outtat)} <span class="sd-pct">(${pct(v.outtat,v.total)}%)</span></td>
+    </tr>`;
+  });
+  html += `<tr class="sd-total">
+      <td style="text-align:left">TOTAL</td>
+      <td>${fmt(tTot)}</td>
+      <td style="color:#059669">${fmt(tIn)} (${pct(tIn,tTot)}%)</td>
+      <td style="color:#dc2626">${fmt(tOut)} (${pct(tOut,tTot)}%)</td>
+    </tr></tbody></table>`;
+  wrap.innerHTML = html;
 }
 function resetAll(){
   const [from,to] = getCurrentMonthRange();
