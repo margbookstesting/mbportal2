@@ -105,7 +105,7 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
   </div>
   <div class="sb-section">Support Areas</div>
   <div class="sb-item active" data-tool="client-move"><span class="ic">🔁</span> Client Move Activity</div>
-  <!-- aage aur menu items yahan add honge -->
+  <!-- more menu items can be added here -->
   <div class="sb-foot">
     <button class="sb-portal" onclick="location.href='portal.html'">← Portal</button>
     <button class="sb-out" onclick="mbSignOut()">Sign Out</button>
@@ -115,7 +115,7 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
 <div class="main">
   <div class="topbar">
     <h1 id="toolTitle">Client Move To Other Server</h1>
-    <p id="toolSub">Customer ko doosre server par move karo (Email ID ya DB Info Link ID se)</p>
+    <p id="toolSub">Move a customer to another server (by Email ID or DB Info Link ID)</p>
   </div>
   <div class="content">
     <div class="card" id="toolArea"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
@@ -127,7 +127,7 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
   <div class="modal">
     <div class="modal-h">
       <h3>⚠️ Confirm Client Move</h3>
-      <p>Submit karne se pehle details check kar lo — ye action server par apply hoga.</p>
+      <p>Please review the details before submitting — this action will be applied on the server.</p>
     </div>
     <div class="modal-b" id="confirmBody"></div>
     <div class="modal-f">
@@ -200,7 +200,7 @@ function renderClientMove(){
 
   document.getElementById('toolArea').innerHTML = `
     <div class="card-title">Client Move To Other Server</div>
-    <div class="card-desc">Country + Domain + Setting choose karo, phir Email ID ya DB Info Link ID se move karo.</div>
+    <div class="card-desc">Choose Country, Domain and Setting, then move by Email ID or DB Info Link ID.</div>
     <div class="grid">
       <div class="fg">
         <label>Country Server</label>
@@ -231,8 +231,8 @@ function renderClientMove(){
 
     <div class="row-full fg" id="cmDbWrap" style="display:none">
       <label>DB InfoLinkID</label>
-      <textarea id="cmDb" placeholder="LinkID daalo. Multiple ho to comma se alag karo, e.g. 7093352202982, 7093352202983"></textarea>
-      <div class="hint">Multiple linkid comma (,) se separate karo — koi length limit nahi.</div>
+      <textarea id="cmDb" placeholder="Enter Link IDs. For multiple, separate with commas, e.g. 7093352202982, 7093352202983"></textarea>
+      <div class="hint">Separate multiple Link IDs with commas (,). No length limit.</div>
     </div>
 
     <div class="actions">
@@ -269,9 +269,9 @@ function showResult(msg, ok){
 
 window.askConfirm = function(){
   const g = gather();
-  if(!g.domain){ showResult('Domain select karo.', false); return; }
-  if(g.by==='email' && !g.email){ showResult('Email ID daalo.', false); return; }
-  if(g.by==='dblink' && !g.dblink){ showResult('DB InfoLinkID daalo.', false); return; }
+  if(!g.domain){ showResult('Please select a Domain.', false); return; }
+  if(g.by==='email' && !g.email){ showResult('Please enter an Email ID.', false); return; }
+  if(g.by==='dblink' && !g.dblink){ showResult('Please enter a DB InfoLinkID.', false); return; }
 
   const linkCount = g.by==='dblink' ? g.dblink.split(',').map(s=>s.trim()).filter(Boolean).length : 0;
   document.getElementById('confirmBody').innerHTML = `
@@ -292,7 +292,7 @@ window.doSubmit = async function(){
   btn.disabled=true; btn.textContent='Submitting…';
   try{
     const {data:{session}} = await sb.auth.getSession();
-    if(!session) throw new Error('Session expire — dobara login karo');
+    if(!session) throw new Error('Session expired — please sign in again');
     const res = await fetch('/api/client-move', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
