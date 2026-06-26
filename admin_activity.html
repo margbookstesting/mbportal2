@@ -324,13 +324,13 @@ window.doSubmit = async function(){
     let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
     closeConfirm();
     if(!res.ok || out.error){
-      showResult('❌ ' + (out.error || ('HTTP '+res.status)) + (out.upstream && out.upstream.message ? ('\n'+out.upstream.message) : ''), false);
+      showResult('❌ Fail', false);
     }else{
-      showResult('✅ Done\n' + formatResult(out), true);
+      showResult('✅ Done', true);
     }
   }catch(e){
     closeConfirm();
-    showResult('❌ '+(e.message||e), false);
+    showResult('❌ Fail', false);
   }finally{
     btn.disabled=false; btn.textContent='Yes, Submit';
   }
