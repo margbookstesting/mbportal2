@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin Activity — Margbooks</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#0d9488;--brand2:#0891b2;--brand-g:linear-gradient(135deg,#0d9488,#0891b2);
+  --dark:#0b1220;--sidebar:#0f172a;--text:#1e293b;--muted:#64748b;--muted2:#94a3b8;
+  --border:#e2e8f0;--bg:#f0f4f8;--surface:#fff;--danger:#e11d48;
+  --sh-s:0 1px 3px rgba(0,0,0,.07);--sh-m:0 8px 30px rgba(0,0,0,.12);
+}
+html,body{height:100%;font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+body{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:250px;flex-shrink:0;background:var(--sidebar);color:#fff;
+  display:flex;flex-direction:column;height:100vh;position:sticky;top:0;
+}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo{width:38px;height:38px;border-radius:10px;background:var(--brand-g);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;box-shadow:0 4px 14px rgba(13,148,136,.4)}
+.sb-title{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.sb-sub{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1.2px;margin-top:1px}
+.sb-section{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;padding:18px 22px 8px}
+.sb-item{
+  display:flex;align-items:center;gap:11px;padding:11px 22px;cursor:pointer;
+  font-size:13px;font-weight:600;color:rgba(255,255,255,.78);border-left:3px solid transparent;transition:.15s;
+}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#fff}
+.sb-item.active{background:rgba(13,148,136,.18);color:#fff;border-left-color:var(--brand)}
+.sb-item .ic{font-size:15px}
+.sb-foot{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px}
+.sb-foot button{flex:1;height:34px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:#fff}
+.sb-portal{background:var(--brand-g)}
+.sb-out{background:var(--danger)}
+
+/* ── MAIN ── */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:auto}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 30px;box-shadow:var(--sh-s);position:sticky;top:0;z-index:5}
+.topbar h1{font-size:18px;font-weight:800;color:var(--dark)}
+.topbar p{font-size:12px;color:var(--muted);margin-top:2px}
+.content{padding:26px 30px;max-width:1100px}
+
+/* ── FORM CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-s);padding:26px 28px}
+.card-title{font-size:15px;font-weight:800;color:var(--dark);margin-bottom:3px}
+.card-desc{font-size:12px;color:var(--muted);margin-bottom:22px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column;gap:7px}
+.fg label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text)}
+select,input[type=text],textarea{
+  width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;
+  font-size:13px;font-family:inherit;color:var(--text);background:#f8fafc;outline:none;transition:.15s;
+}
+select:focus,input:focus,textarea:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+textarea{resize:vertical;min-height:130px;line-height:1.6}
+.radio-row{display:flex;gap:24px;margin-top:4px}
+.radio-row label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--text);cursor:pointer}
+.radio-row input{accent-color:var(--brand);width:16px;height:16px;cursor:pointer}
+.hint{font-size:11px;color:var(--muted2);margin-top:4px}
+.warn{font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:7px 10px;margin-top:6px;display:none}
+.warn.show{display:block}
+.row-full{margin-top:18px}
+.actions{margin-top:24px;display:flex;gap:12px;align-items:center}
+.btn{height:42px;padding:0 26px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:#fff;background:var(--brand-g);box-shadow:0 4px 14px rgba(13,148,136,.3);transition:.15s}
+.btn:hover:not(:disabled){transform:translateY(-1px)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:7px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── RESULT ── */
+.result{margin-top:18px;border-radius:10px;padding:14px 16px;font-size:13px;display:none;white-space:pre-wrap;word-break:break-word}
+.result.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;display:block}
+.result.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;display:block}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:460px;width:100%;box-shadow:var(--sh-m);overflow:hidden;animation:pop .2s ease}
+@keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.modal-h{padding:20px 22px 14px;border-bottom:1px solid var(--border)}
+.modal-h h3{font-size:16px;font-weight:800;color:var(--dark)}
+.modal-h p{font-size:12px;color:var(--muted);margin-top:3px}
+.modal-b{padding:18px 22px;font-size:13px;color:var(--text)}
+.sum-row{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px dashed var(--border)}
+.sum-row:last-child{border-bottom:none}
+.sum-k{color:var(--muted);font-weight:600}
+.sum-v{font-weight:700;text-align:right;word-break:break-word}
+.modal-f{padding:14px 22px 20px;display:flex;gap:10px;justify-content:flex-end}
+.btn-ghost{height:40px;padding:0 18px;border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-danger{height:40px;padding:0 22px;border:none;background:var(--danger);color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">MB</div>
+    <div><div class="sb-title">Margbooks Admin</div><div class="sb-sub">Activity</div></div>
+  </div>
+  <div class="sb-section">Support Areas</div>
+  <div class="sb-item active" data-tool="client-move"><span class="ic">🔁</span> Client Move Activity</div>
+  <!-- aage aur menu items yahan add honge -->
+  <div class="sb-foot">
+    <button class="sb-portal" onclick="location.href='portal.html'">← Portal</button>
+    <button class="sb-out" onclick="mbSignOut()">Sign Out</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <h1 id="toolTitle">Client Move To Other Server</h1>
+    <p id="toolSub">Customer ko doosre server par move karo (Email ID ya DB Info Link ID se)</p>
+  </div>
+  <div class="content">
+    <div class="card" id="toolArea"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Confirmation popup -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal">
+    <div class="modal-h">
+      <h3>⚠️ Confirm Client Move</h3>
+      <p>Submit karne se pehle details check kar lo — ye action server par apply hoga.</p>
+    </div>
+    <div class="modal-b" id="confirmBody"></div>
+    <div class="modal-f">
+      <button class="btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-danger" id="confirmBtn" onclick="doSubmit()">Yes, Submit</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
+
+/* ===================== CONFIG ===================== */
+const COUNTRIES = [
+  {label:'India', key:'107574564'},
+  {label:'UAE',   key:'472608846'},
+  {label:'Nepal', key:'132182423'},
+];
+
+// 'key' har case me same rehti hai (account key). Domain select karne par
+// 'istesting' (domain ki value) aur 'version' change hote hain.
+const MOVE_KEY = '74287673';   // constant — zaroorat ho to badal dena
+const DOMAINS = [
+  {label:'books.margbooks.com  (v4.2)',           istesting:1,  version:'4.2'},
+  {label:'books1.margbooks.com  (v4.2)',          istesting:0,  version:'4.2'},
+  {label:'books3.margbooks.com  (v3.2)',          istesting:2,  version:'3.2'},
+  {label:'enterprise2.margbooks.com:7033 (v3.1)', istesting:3,  version:'3.1'},
+  {label:'books4.margbooks.com  (v4.2)',          istesting:4,  version:'4.2'},
+  {label:'books5.margbooks.com  (v4.2)',          istesting:5,  version:'4.2'},
+  {label:'books6.margbooks.com  (v4.2)',          istesting:6,  version:'4.2'},
+  {label:'app.dynamics360.co  (v3.3)',            istesting:8,  version:'3.3'},
+  {label:'app1.dynamics360.co  (v3.3)',           istesting:9,  version:'3.3'},
+  {label:'app5.dynamics360.co  (v3.3)',           istesting:10, version:'3.3'},
+  {label:'books10.margbooks.com  (v4.2)',         istesting:11, version:'4.2'},
+];
+
+const SETTINGS = [
+  {label:'No Required',                iscrv:0},
+  {label:'Control room setting reset', iscrv:1},
+  {label:'Remove caching',             iscrv:2},
+  {label:'Only Repair DB',             iscrv:3},
+];
+/* ================================================== */
+
+let CALLER = null;
+
+// ── Auth guard ──
+(async()=>{
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ location.replace('index.html'); return; }
+  CALLER = session.user;
+  let prof=null;
+  try{ const {data}=await sb.from('users').select('role,dashboards,email').eq('id',CALLER.id).single(); prof=data; }catch(e){}
+  const allowed = prof && (prof.role==='admin' || (prof.dashboards||[]).includes('admin-activity'));
+  if(!allowed){ location.replace('portal.html'); return; }
+  renderClientMove();
+})();
+
+// ── Sign out helper ──
+window.mbSignOut = async function(){ try{ await sb.auth.signOut(); }catch(e){} location.replace('index.html'); };
+
+// ── Render Client Move form ──
+function renderClientMove(){
+  const c = COUNTRIES.map((x,i)=>`<option value="${i}">${x.label}</option>`).join('');
+  const d = DOMAINS.map((x,i)=>`<option value="${i}">${x.label}</option>`).join('');
+  const s = SETTINGS.map((x,i)=>`<option value="${i}">${x.label}</option>`).join('');
+
+  document.getElementById('toolArea').innerHTML = `
+    <div class="card-title">Client Move To Other Server</div>
+    <div class="card-desc">Country + Domain + Setting choose karo, phir Email ID ya DB Info Link ID se move karo.</div>
+    <div class="grid">
+      <div class="fg">
+        <label>Country Server</label>
+        <select id="cmCountry">${c}</select>
+      </div>
+      <div class="fg">
+        <label>Domain Name</label>
+        <select id="cmDomain"><option value="">Select Domain Name</option>${d}</select>
+      </div>
+      <div class="fg">
+        <label>Setting</label>
+        <select id="cmSetting">${s}</select>
+      </div>
+    </div>
+
+    <div class="row-full fg">
+      <label>Customer moved by</label>
+      <div class="radio-row">
+        <label><input type="radio" name="cmBy" value="email" checked onchange="toggleBy()"> Email ID</label>
+        <label><input type="radio" name="cmBy" value="dblink" onchange="toggleBy()"> DB Info Link ID</label>
+      </div>
+    </div>
+
+    <div class="row-full fg" id="cmEmailWrap">
+      <label>Email ID</label>
+      <input type="text" id="cmEmail" placeholder="Enter Email ID"/>
+    </div>
+
+    <div class="row-full fg" id="cmDbWrap" style="display:none">
+      <label>DB InfoLinkID</label>
+      <textarea id="cmDb" placeholder="LinkID daalo. Multiple ho to comma se alag karo, e.g. 7093352202982, 7093352202983"></textarea>
+      <div class="hint">Multiple linkid comma (,) se separate karo — koi length limit nahi.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="cmSubmit" onclick="askConfirm()">Submit</button>
+    </div>
+    <div class="result" id="cmResult"></div>
+  `;
+}
+
+window.toggleBy = function(){
+  const by = document.querySelector('input[name="cmBy"]:checked').value;
+  document.getElementById('cmEmailWrap').style.display = by==='email' ? 'flex' : 'none';
+  document.getElementById('cmDbWrap').style.display    = by==='dblink' ? 'flex' : 'none';
+};
+
+function gather(){
+  const ci = document.getElementById('cmCountry').value;
+  const di = document.getElementById('cmDomain').value;
+  const si = document.getElementById('cmSetting').value;
+  const by = document.querySelector('input[name="cmBy"]:checked').value;
+  const country = COUNTRIES[+ci];
+  const domain  = di==='' ? null : DOMAINS[+di];
+  const setting = SETTINGS[+si];
+  const email   = document.getElementById('cmEmail').value.trim();
+  const dblink  = document.getElementById('cmDb').value.trim();
+  return {country, domain, setting, by, email, dblink};
+}
+
+function showResult(msg, ok){
+  const el=document.getElementById('cmResult');
+  el.className='result '+(ok?'ok':'err');
+  el.textContent=msg;
+}
+
+window.askConfirm = function(){
+  const g = gather();
+  if(!g.domain){ showResult('Domain select karo.', false); return; }
+  if(g.by==='email' && !g.email){ showResult('Email ID daalo.', false); return; }
+  if(g.by==='dblink' && !g.dblink){ showResult('DB InfoLinkID daalo.', false); return; }
+
+  const linkCount = g.by==='dblink' ? g.dblink.split(',').map(s=>s.trim()).filter(Boolean).length : 0;
+  document.getElementById('confirmBody').innerHTML = `
+    <div class="sum-row"><span class="sum-k">Country</span><span class="sum-v">${g.country.label}</span></div>
+    <div class="sum-row"><span class="sum-k">Domain</span><span class="sum-v">${g.domain.label.trim()}</span></div>
+    <div class="sum-row"><span class="sum-k">Setting</span><span class="sum-v">${g.setting.label}</span></div>
+    <div class="sum-row"><span class="sum-k">Moved by</span><span class="sum-v">${g.by==='email'?'Email ID':'DB Info Link ID'}</span></div>
+    <div class="sum-row"><span class="sum-k">${g.by==='email'?'Email':'Link IDs'}</span><span class="sum-v">${g.by==='email'?g.email:(linkCount+' id'+(linkCount!==1?'s':''))}</span></div>
+  `;
+  document.getElementById('confirmOverlay').classList.add('show');
+};
+
+window.closeConfirm = function(){ document.getElementById('confirmOverlay').classList.remove('show'); };
+
+window.doSubmit = async function(){
+  const g = gather();
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled=true; btn.textContent='Submitting…';
+  try{
+    const {data:{session}} = await sb.auth.getSession();
+    if(!session) throw new Error('Session expire — dobara login karo');
+    const res = await fetch('/api/client-move', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
+      body: JSON.stringify({
+        countrykey: g.country.key,
+        key: MOVE_KEY,
+        version: g.domain.version,
+        istesting: g.domain.istesting,
+        iscrv: g.setting.iscrv,
+        moveBy: g.by,
+        emailid: g.email,
+        dbinfolinkidstr: g.dblink,
+      })
+    });
+    let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
+    closeConfirm();
+    if(!res.ok || out.error){
+      showResult('❌ ' + (out.error || ('HTTP '+res.status)) + (out.upstream?('\n'+JSON.stringify(out.upstream)):''), false);
+    }else{
+      showResult('✅ Done!\n' + JSON.stringify(out.result, null, 2), true);
+    }
+  }catch(e){
+    closeConfirm();
+    showResult('❌ '+(e.message||e), false);
+  }finally{
+    btn.disabled=false; btn.textContent='Yes, Submit';
+  }
+};
+</script>
+</body>
+</html>
