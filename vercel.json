@@ -21,6 +21,10 @@
       "destination": "/marg_ticket_dashboard.html"
     },
     {
+      "source": "/support",
+      "destination": "/support_dashboard.html"
+    },
+    {
       "source": "/upcoming",
       "destination": "/upcoming_timeline.html"
     },
