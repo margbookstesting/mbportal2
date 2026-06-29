@@ -101,8 +101,16 @@ def parse_record(r):
         ev=compact_tat(r.get('ReadyToGoLive_TATDetails'))
         if ev: rec['ev']=ev
 
+    # Raw status string (exact label from Marg) — used by Support Dashboard for
+    # status-wise KPIs (Pending, Reopen, Code Review, Merging, Future Dev, Rejected, etc.)
+    st = str(r.get('Status', '') or '').strip()
+    if st:
+        rec['st'] = st
+
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
-    return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU']) else None
+    # Keep a record if it reached any stage, OR is in a status-only stage, OR simply
+    # carries a status label (so Pending / Reopen / Rejected / Future Dev etc. are not dropped).
+    return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU'] or st) else None
 
 def make_chunks(start_str, end_date, months=3):
     chunks = []
