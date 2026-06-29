@@ -1503,7 +1503,35 @@ let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
 const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
-function statusLabelOf(r){ return (r.st && String(r.st).trim()) ? String(r.st).trim() : (STATUS_LABELS[r.sc] || r.sc || '—'); }
+function _normSt(s){ return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim(); }
+const SUP_STATUSES = [
+  {key:'pending',    label:'Pending',               m:['pending'], col:'pend'},
+  {key:'reopen',     label:'Reopen',                m:['reopen','re open']},
+  {key:'it',         label:'Transferred To IT',     m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
+  {key:'ack',        label:'Acknowledged',          m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
+  {key:'ip',         label:'In Progress',           m:['in progress','inprogress'], sc:'IP', col:'ip'},
+  {key:'rft',        label:'Ready For Testing',     m:['ready for testing'], sc:'RT', col:'rft'},
+  {key:'reopentest', label:'Reopend from Testing',  m:['reopend from testing','reopen from testing','reopened from testing']},
+  {key:'rfcr',       label:'Ready For Code Review', m:['ready for code review']},
+  {key:'rfm',        label:'Ready For Merging',     m:['ready for merging','ready for merge']},
+  {key:'rfu',        label:'Ready For UAT',         m:['ready for uat'], sc:'RU'},
+  {key:'rgl',        label:'Ready to go Live',      m:['ready to go live'], sc:'LV'},
+  {key:'rts',        label:'Return to Support',     m:['return to support'], sc:'RS'},
+  {key:'sp',         label:'Transferred To Support',m:['transfer to support','transferred to support'], sc:'SP', col:'sup'},
+  {key:'future',     label:'Future Development',    m:['future development']},
+  {key:'rejected',   label:'Rejected',              m:['rejected','reject']},
+  {key:'closed',     label:'Closed',                m:['closed','close'], sc:'CL', col:'closed'},
+];
+function statusKeyOf(r){
+  const raw=_normSt(r.st);
+  if(raw){
+    for(const d of SUP_STATUSES){ if(d.m.includes(raw)) return d.key; }
+    for(const d of SUP_STATUSES){ if(d.m.some(x=>raw.includes(x))) return d.key; }
+  }
+  if(r.sc){ const d=SUP_STATUSES.find(x=>x.sc===r.sc); if(d) return d.key; }
+  return 'other';
+}
+function statusLabelOf(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return d?d.label:(r.st||'Other'); }
 function stageDateOf(r){ return r.e || r.d || r.c || r.b || r.a || '—'; }
 
 // ===== UTILS =====
@@ -2132,40 +2160,56 @@ function openSubdispTickets(i){
   const row=_subdispRows[i]; if(!row) return;
   const name=row.name;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
-  const data=fAck.filter(r=>keyOf(r)===name);
-  _modalKey='ACK'; _modalData=data; _modalTatKey='bt'; _modalDateKey='b'; _modalDurKey='bd'; _modalActKey='bv'; _modalPendSc='AK'; _modalFilter='all';
-  document.getElementById('modalTitle').textContent='Disposition: '+name+' — Acknowledge (Ticket Details)';
-  document.getElementById('modalStats').innerHTML=_modalStatsHtml(data,'AK');
-  renderModalTable(data);
-  setTimeout(()=>setModalFilter('all'),0);
-  document.getElementById('modalOverlay').classList.add('open');
+  _openSecModal(_allRows().filter(r=>keyOf(r)===name), 'Disposition: '+name+' — Ticket Details');
 }
 
 // ===== Generic section-row modal (Bug/Dev/Others filter) =====
 let _secDispRows=[], _secLicRows=[], _secCliRows=[], _secPlanRows=[], _secTesterRows=[], _secRMRows=[];
+function _smfTesterVal(r){ return (r.t||r.eb||'').trim(); }
+let _secFilter='all', _smfTester='', _smfRM='', _smfDev='';
+function onSecDrop(type,val){ if(type==='tester')_smfTester=val; else if(type==='rm')_smfRM=val; else if(type==='dev')_smfDev=val; applySecFilters(); }
+function applySecFilters(){
+  let rows=_modalData.slice();
+  const f=_secFilter;
+  if(f==='bug') rows=rows.filter(isBug);
+  else if(f==='dev') rows=rows.filter(isDev);
+  else if(f==='others') rows=rows.filter(r=>!isBug(r)&&!isDev(r));
+  else if(f && f.indexOf('st:')===0){ const key=f.slice(3); rows=rows.filter(r=>statusKeyOf(r)===key); }
+  if(_smfTester) rows=rows.filter(r=>_smfTesterVal(r)===_smfTester);
+  if(_smfRM)     rows=rows.filter(r=>(r.r||'').trim()===_smfRM);
+  if(_smfDev)    rows=rows.filter(r=>(r.dev||'').trim()===_smfDev);
+  window._modalShown=rows;
+  const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
+  renderModalTable(rows);
+}
+function setSecFilter(f){
+  _secFilter=f;
+  document.querySelectorAll('.ms-btn').forEach(el=>{const a=el.dataset.f===f;el.style.opacity=a?'1':'.45';el.style.transform=a?'scale(1.05)':'scale(1)';el.style.boxShadow=a?'0 2px 8px rgba(0,0,0,.12)':'none';el.style.cursor='pointer';});
+  applySecFilters();
+}
 function _openSecModal(data, title){
-  _modalKey=null; _modalData=data; _modalFilter='all'; window._modalShown=data;
+  _modalKey=null; _modalData=data; _secFilter='all'; _smfTester=''; _smfRM=''; _smfDev=''; window._modalShown=data;
   document.getElementById('modalTitle').textContent=title;
   const bug=data.filter(isBug).length, dev=data.filter(isDev).length, oth=data.length-bug-dev;
+  const stCount={}; data.forEach(r=>{ const k=statusKeyOf(r); stCount[k]=(stCount[k]||0)+1; });
+  const stChips=SUP_STATUSES.filter(d=>stCount[d.key]).map(d=>
+    `<span class="ms ms-btn" data-f="st:${d.key}" onclick="setSecFilter('st:${d.key}')" style="cursor:pointer;border:1px solid var(--border)">${d.label}: ${fmt(stCount[d.key])}</span>`).join('');
+  const uniq=(arr)=>[...new Set(arr.filter(v=>v&&String(v).trim()).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
+  const testers=uniq(data.map(r=>_smfTesterVal(r))), rms=uniq(data.map(r=>r.r)), devs=uniq(data.map(r=>r.dev));
+  const drop=(type,label,vals)=>`<select onchange="onSecDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:150px">
+    <option value="">${label} (all)</option>${vals.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('')}</select>`;
   document.getElementById('modalStats').innerHTML=`
     <span class="ms ms-total ms-btn" data-f="all" onclick="setSecFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
     <span class="ms ms-btn" data-f="bug" onclick="setSecFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
     <span class="ms ms-btn" data-f="dev" onclick="setSecFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
     <span class="ms ms-btn" data-f="others" onclick="setSecFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
-    <span id="modalFilterLabel" style="margin-left:auto;font-size:11px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+    ${stChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+stChips : ''}
+    <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
+    ${drop('tester','Tester',testers)} ${drop('rm','RM',rms)} ${drop('dev','Developer',devs)}
+    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
   renderModalTable(data);
   setTimeout(()=>setSecFilter('all'),0);
   document.getElementById('modalOverlay').classList.add('open');
-}
-function setSecFilter(f){
-  _modalFilter=f;
-  document.querySelectorAll('.ms-btn').forEach(el=>{const a=el.dataset.f===f;el.style.opacity=a?'1':'.45';el.style.transform=a?'scale(1.05)':'scale(1)';el.style.boxShadow=a?'0 2px 8px rgba(0,0,0,.12)':'none';el.style.cursor='pointer';});
-  let rows=_modalData;
-  if(f==='bug')rows=_modalData.filter(isBug);
-  else if(f==='dev')rows=_modalData.filter(isDev);
-  else if(f==='others')rows=_modalData.filter(r=>!isBug(r)&&!isDev(r));
-  const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
-  renderModalTable(rows);
 }
 // ALL tickets in current view (union across stage arrays) for an entity predicate
 function _allRows(){ return (typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]); }
@@ -2233,15 +2277,9 @@ function renderDeveloper(){
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
   const name=row.name;
-  const keyOf=r=>(r.dev&&String(r.dev).trim())?String(r.dev).trim():null;
-  const data=fIP.filter(r=>keyOf(r)===name);
-  _modalKey='IP'; _modalData=data; _modalTatKey='ct'; _modalDateKey='c'; _modalDurKey='cd'; _modalActKey='cv'; _modalPendSc='IP'; _modalFilter='all';
-  document.getElementById('modalTitle').textContent='Developer: '+name+' — In Progress (Ticket Details)';
-  document.getElementById('modalStats').innerHTML=_modalStatsHtml(data,'IP');
-  renderModalTable(data);
-  setTimeout(()=>setModalFilter('all'),0);
-  document.getElementById('modalOverlay').classList.add('open');
+  _openSecModal(_allRows().filter(r=>((r.dev&&String(r.dev).trim())||null)===name), 'Developer: '+name+' — Ticket Details');
 }
+
 function resetAll(){
   const [from,to] = getCurrentMonthRange();
   document.getElementById('dateFrom').value = from;
@@ -2478,41 +2516,9 @@ function renderKeyLic(){
 
 // ===== OPEN ACK BY AGENT MODAL =====
 function openAckByAgent(agentName){
-  // Sirf us agent ke ACK tickets filter karo
-  const agentData = fAck.filter(r=> (r.ta && r.ta.trim()) === agentName);
-  const tatKey = 'bt';
-  const pendingSc = 'AK';
-
-  _modalKey     = 'ACK';
-  _modalData    = agentData;
-  _modalTatKey  = tatKey;
-  _modalDateKey = 'b';
-  _modalDurKey  = 'bd';
-  _modalActKey  = 'bv';
-  _modalPendSc  = pendingSc;
-  _modalFilter  = 'all';
-
-  document.getElementById('modalTitle').textContent = 'Acknowledge — ' + agentName + ' (Ticket Details)';
-
-  const intat   = agentData.filter(r=>r[tatKey]==='I').length;
-  const outtat  = agentData.filter(r=>r[tatKey]==='O').length;
-  const notat   = agentData.length - intat - outtat;
-  const pending = agentData.filter(r=>r.sc===pendingSc).length;
-
-  document.getElementById('modalStats').innerHTML = `
-    <span class="ms ms-total ms-btn" data-f="all"   onclick="setModalFilter('all')"   style="cursor:pointer">Total: ${fmt(agentData.length)}</span>
-    <span class="ms ms-pend  ms-btn" data-f="pend"  onclick="setModalFilter('pend')"  style="cursor:pointer">⏳ Pending: ${fmt(pending)}</span>
-    <span class="ms ms-in    ms-btn" data-f="in"    onclick="setModalFilter('in')"    style="cursor:pointer">✔ InTAT: ${fmt(intat)}</span>
-    <span class="ms ms-out   ms-btn" data-f="out"   onclick="setModalFilter('out')"   style="cursor:pointer">✘ OutTAT: ${fmt(outtat)}</span>
-    <span class="ms ms-na    ms-btn" data-f="notat" onclick="setModalFilter('notat')" style="cursor:pointer">No TAT: ${fmt(notat)}</span>
-    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
-
-  renderModalTable(agentData);
-  setTimeout(()=>setModalFilter('all'), 0);
-  document.getElementById('modalOverlay').classList.add('open');
+  _openSecModal(_allRows().filter(r=> (r.ta && r.ta.trim()) === agentName), 'Ack Agent: '+agentName+' — Ticket Details');
 }
 
-// ===== ACKNOWLEDGE BY AGENT =====
 function renderAckBy(){
   const agentMap = {};
   fAck.forEach(r=>{
