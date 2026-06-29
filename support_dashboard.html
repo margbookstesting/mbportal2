@@ -1604,7 +1604,7 @@ function isDev(r){ return r.q && /^development/i.test(String(r.q)); }
 // ===== SUPPORT DASHBOARD — current status handling =====
 function _normSt(s){ return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim(); }
 const SUP_STATUSES = [
-  {key:'pending',    label:'Pending',               cls:'c-oth', m:['pending']},
+  {key:'pending',    label:'Pending',               cls:'c-oth', m:['pending'], col:'pend'},
   {key:'reopen',     label:'Reopen',                cls:'c-ret', m:['reopen','re open']},
   {key:'it',         label:'Transferred To IT',     cls:'c-it',  m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
   {key:'ack',        label:'Acknowledged',          cls:'c-ack', m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
@@ -1632,7 +1632,7 @@ function statusKeyOf(r){
 }
 function statusLabelOf(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return d?d.label:(r.st||'Other'); }
 // 6-column bucket for tables: it/ack/ip/sup/closed else pend (catch-all)
-function stage6(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return (d&&d.col)?d.col:'pend'; }
+function stage6(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return (d&&d.col)?d.col:null; }  // null = not one of the 6 stage columns
 function stageDateOf(r){ return r.e||r.d||r.c||r.b||r.a||''; }
 function bugDevCell(r){ return isBug(r)?'<span style="color:#b91c1c;font-weight:700;font-size:11px">🐞 Bug</span>':isDev(r)?'<span style="color:#1d4ed8;font-weight:700;font-size:11px">⚙️ Dev</span>':'<span style="color:#6b7280;font-size:11px">📋 Other</span>'; }
 
@@ -1943,20 +1943,22 @@ function renderSubdisp(){
   const tbody = document.querySelector('#tSubdisp tbody');
   if(!tbody) return;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
-  // Current-status counts per disposition. "Pending" = any status not in the named set
-  // (i.e. Ready-to-Go-Live, Return-to-Support, Ready-for-Testing/UAT, Other, etc.)
+  // Current-status counts per disposition (exact). Columns: Pending, Transfer to IT,
+  // Acknowledge, In Progress, Transfer to Support, Closed. Tickets in other statuses
+  // (Reopen, Future Development, Rejected, Testing, etc.) are not shown in these columns.
   const map = {};
   VIEW.forEach(r=>{
+    const col = stage6(r);
+    if(!col) return;
     const k = keyOf(r);
     if(!map[k]) map[k] = {name:k, pend:0, it:0, ack:0, ip:0, sup:0, cl:0, tot:0};
     const m = map[k]; m.tot++;
-    const col = stage6(r);
     if(col==='it')        m.it++;
     else if(col==='ack')  m.ack++;
     else if(col==='ip')   m.ip++;
     else if(col==='sup')  m.sup++;
     else if(col==='closed') m.cl++;
-    else                  m.pend++;
+    else if(col==='pend') m.pend++;
   });
   const rows = Object.values(map).sort((a,b)=> b.tot - a.tot);
   _subdispRows = rows;
@@ -2088,7 +2090,7 @@ function renderDisp(){
   const tbody=document.querySelector('#tDisp tbody'); if(!tbody) return;
   const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
   const map={}; DISPS.forEach(d=>map[d]={...blank});
-  VIEW.forEach(r=>{ const t=typeOf(r); map[t][stage6(r)]++; map[t].tot++; });
+  VIEW.forEach(r=>{ const c=stage6(r); if(!c) return; const t=typeOf(r); map[t][c]++; map[t].tot++; });
   const rows=DISPS.map(d=>({d,...map[d]})).filter(r=>r.tot>0);
   const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
@@ -2115,7 +2117,7 @@ function renderKeyLic(){
   const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
   const rows = KEY_LICENCES.map(k=>{
     const o={...k,...blank};
-    VIEW.filter(r=>String(r.l)===k.lic).forEach(r=>{ o[stage6(r)]++; o.tot++; });
+    VIEW.filter(r=>String(r.l)===k.lic).forEach(r=>{ const c=stage6(r); if(c){ o[c]++; o.tot++; } });
     return o;
   });
   const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
@@ -2423,7 +2425,7 @@ function renderClients(){
     const m=licMap[r.l];
     if(r.u && String(r.u).length>String(m.name).length) m.name=r.u;
     if(r.p && !m.plan) m.plan=r.p;
-    m[stage6(r)]++; m.tot++;
+    const _c=stage6(r); if(_c){ m[_c]++; m.tot++; }
   });
   const top10 = Object.values(licMap).sort((a,b)=> b.tot-a.tot).slice(0,10);
   const tbody = document.querySelector('#tClients tbody');
@@ -2451,7 +2453,7 @@ function renderPlan(){
   VIEW.forEach(r=>{
     const p=(r.p && String(r.p).trim()) ? String(r.p).trim() : '(Blank)';
     if(!map[p]) map[p]={p,...blank};
-    map[p][stage6(r)]++; map[p].tot++;
+    const c=stage6(r); if(c){ map[p][c]++; map[p].tot++; }
   });
   let rows=Object.values(map).sort((a,b)=>b.tot-a.tot);
   const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
