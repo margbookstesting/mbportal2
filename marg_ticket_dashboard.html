@@ -1438,7 +1438,7 @@ td.grp-l { border-left:1px solid var(--border); }
     <div class="modal-hdr">
       <div class="modal-title" id="modalTitle">Ticket Details</div>
       <div class="modal-hdr-btns">
-        <button class="btn-mxls" onclick="exportModalExcel()">↓ Export Excel</button>
+        <button class="btn-mxls" onclick="exportCurrentModal()">↓ Export Excel</button>
         <button class="btn-mclose" onclick="closeModalDirect()">✕ Close</button>
       </div>
     </div>
@@ -1447,10 +1447,10 @@ td.grp-l { border-left:1px solid var(--border); }
       <table id="modalTable">
         <thead>
           <tr>
-            <th>Ticket No</th><th>Created</th><th class="col-client">Client</th>
-            <th>Plan</th><th>Stage Date</th><th>Status</th>
-            <th>SLA</th><th>Duration</th><th>TAT</th>
-            <th>Disposition</th><th class="col-tester">Tester</th><th class="col-rm">RM</th>
+            <th>Ticket No</th><th>Created</th><th>Stage Date</th>
+            <th>Current Status</th><th>Timeline</th><th class="col-client">Client</th>
+            <th>Plan</th><th class="col-tester">Tester</th><th class="col-rm">RM</th>
+            <th>Developer</th><th>Bug / Dev</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -1503,6 +1503,8 @@ let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
 const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+function statusLabelOf(r){ return (r.st && String(r.st).trim()) ? String(r.st).trim() : (STATUS_LABELS[r.sc] || r.sc || '—'); }
+function stageDateOf(r){ return r.e || r.d || r.c || r.b || r.a || '—'; }
 
 // ===== UTILS =====
 const fmt = n => n.toLocaleString('en-IN');
@@ -2139,6 +2141,51 @@ function openSubdispTickets(i){
   document.getElementById('modalOverlay').classList.add('open');
 }
 
+// ===== Generic section-row modal (Bug/Dev/Others filter) =====
+let _secDispRows=[], _secLicRows=[], _secCliRows=[], _secPlanRows=[], _secTesterRows=[], _secRMRows=[];
+function _openSecModal(data, title){
+  _modalKey=null; _modalData=data; _modalFilter='all'; window._modalShown=data;
+  document.getElementById('modalTitle').textContent=title;
+  const bug=data.filter(isBug).length, dev=data.filter(isDev).length, oth=data.length-bug-dev;
+  document.getElementById('modalStats').innerHTML=`
+    <span class="ms ms-total ms-btn" data-f="all" onclick="setSecFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
+    <span class="ms ms-btn" data-f="bug" onclick="setSecFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
+    <span class="ms ms-btn" data-f="dev" onclick="setSecFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
+    <span class="ms ms-btn" data-f="others" onclick="setSecFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
+    <span id="modalFilterLabel" style="margin-left:auto;font-size:11px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+  renderModalTable(data);
+  setTimeout(()=>setSecFilter('all'),0);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function setSecFilter(f){
+  _modalFilter=f;
+  document.querySelectorAll('.ms-btn').forEach(el=>{const a=el.dataset.f===f;el.style.opacity=a?'1':'.45';el.style.transform=a?'scale(1.05)':'scale(1)';el.style.boxShadow=a?'0 2px 8px rgba(0,0,0,.12)':'none';el.style.cursor='pointer';});
+  let rows=_modalData;
+  if(f==='bug')rows=_modalData.filter(isBug);
+  else if(f==='dev')rows=_modalData.filter(isDev);
+  else if(f==='others')rows=_modalData.filter(r=>!isBug(r)&&!isDev(r));
+  const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
+  renderModalTable(rows);
+}
+// ALL tickets in current view (union across stage arrays) for an entity predicate
+function _allRows(){ return (typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]); }
+function openDispTickets2(i){ const r=_secDispRows[i]; if(!r) return; const nm=r.d||r.name;
+  const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
+  const grp=x=>{ if(!x.q) return 'Others'; return DISPS.slice(0,-1).includes(x.q)?x.q:'Others'; };
+  _openSecModal(_allRows().filter(x=>grp(x)===nm), 'Type: '+nm+' — Ticket Details'); }
+function openLicTickets2(i){ const r=_secLicRows[i]; if(!r) return;
+  _openSecModal(_allRows().filter(x=>String(x.l)===String(r.lic)), r.name+' ('+r.lic+') — Ticket Details'); }
+function openCliTickets2(i){ const r=_secCliRows[i]; if(!r) return;
+  _openSecModal(_allRows().filter(x=>String(x.l)===String(r.lic)), r.name+' — Ticket Details'); }
+function openPlanTickets2(i){ const r=_secPlanRows[i]; if(!r) return;
+  if(r.isBlank){ _openSecModal(_allRows().filter(x=>!x.p||!String(x.p).trim()), 'Plan: (Blank) — Ticket Details'); return; }
+  const nm=String(r.p||'').trim();
+  _openSecModal(_allRows().filter(x=>String(x.p||'').trim()===nm), 'Plan: '+nm+' — Ticket Details'); }
+function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
+  _openSecModal(_allRows().filter(x=>(x.t||x.eb||'').trim()===r.name), 'Tester: '+r.name+' — Ticket Details'); }
+function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
+  _openSecModal(_allRows().filter(x=>(x.r||'').trim()===r.name), 'RM: '+r.name+' — Ticket Details'); }
+
 // ===== DEVELOPER WISE (no Acknowledge column) =====
 function renderDeveloper(){
   const tbody=document.querySelector('#tDeveloper tbody');
@@ -2353,7 +2400,8 @@ function renderDisp(){
   const tot = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
   const grandTotal = tot.it+tot.ack+tot.ip+tot.live+tot.sup;
 
-  tbody.innerHTML = rows.map(r=>`<tr>
+  _secDispRows = rows;
+  tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openDispTickets2(${i})" style="cursor:pointer" title="Click for tickets">
     <td><strong>${r.d}</strong></td>
     <td class="r dc"><span class="n-it">${fmt(r.it)}</span></td>
     <td class="r dc"><span class="n-ack">${fmt(r.ack)}</span></td>
@@ -2395,7 +2443,8 @@ function renderKeyLic(){
     };
   });
   const tot = ['bug','dev','it','ack','ip','live','sup'].reduce((o,key)=>{o[key]=rows.reduce((s,r)=>s+r[key],0);return o;},{});
-  tbody.innerHTML = rows.map(r=>`<tr>
+  _secLicRows = rows;
+  tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openLicTickets2(${i})" style="cursor:pointer" title="Click for tickets">
     <td>
       <strong>${r.name}</strong>
       <div style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.lic} · ${r.email}</div>
@@ -2574,11 +2623,12 @@ function renderTester(){
   const namedRows = rows.filter(r=>!r.isBlank);
 
   const tbody = document.querySelector('#tTester tbody');
+  _secTesterRows = rows;
   tbody.innerHTML = rows.length ? rows.map((r,i)=>{
     const idx = r.isBlank ? -1 : namedRows.indexOf(r);
     const rk = r.isBlank ? `<span style="color:var(--muted);font-size:10px">—</span>` : rkHtml(idx);
     const bd = (v,c) => v ? `<span style="color:${c};font-weight:700;font-size:11px">${v}</span>` : '—';
-    return `<tr ${r.isBlank ? 'class="blank-row"' : ''}>
+    return `<tr onclick="openTesterTickets2(${i})" style="cursor:pointer" title="Click for tickets" ${r.isBlank ? 'class="blank-row"' : ''}>
       <td>${rk}</td>
       <td>${r.name}</td>
       <td class="r grp-l"><span class="n-ack">${r.ack||'—'}</span></td>
@@ -2664,7 +2714,8 @@ function renderRM(){
 
   const bd = (v,c) => v ? `<span style="color:${c};font-weight:700;font-size:11px">${v}</span>` : '—';
   const tbody = document.querySelector('#tRM tbody');
-  tbody.innerHTML = rows.length ? rows.map((r,i)=>`<tr>
+  _secRMRows = rows;
+  tbody.innerHTML = rows.length ? rows.map((r,i)=>`<tr onclick="openRMTickets2(${i})" style="cursor:pointer" title="Click for tickets">
       <td>${rkHtml(i)}</td>
       <td>${r.name}</td>
       <td class="r grp-l"><span class="n-ack">${r.ack||'—'}</span></td>
@@ -2728,7 +2779,8 @@ function renderClients(){
   const tbody = document.querySelector('#tClients tbody');
   // Top 10 subtotal (not full KPI — by design for Top 10 table)
   const cTotals = ['it','ack','ip','live','sup','bug','dev'].reduce((o,k)=>{o[k]=top10.reduce((s,r)=>s+(r[k]||0),0);return o;},{});
-  tbody.innerHTML = top10.length ? top10.map((r,i)=>`<tr>
+  _secCliRows = top10;
+  tbody.innerHTML = top10.length ? top10.map((r,i)=>`<tr onclick="openCliTickets2(${i})" style="cursor:pointer" title="Click for tickets">
     <td>${rkHtml(i)}</td>
     <td><strong>${r.name}</strong></td>
     <td>${planTag(r.plan)}</td>
@@ -2791,10 +2843,11 @@ function renderPlan(){
   const namedRows = rows.filter(r=>!r.isBlank);
   const tbody = document.querySelector('#tPlan tbody');
 
+  _secPlanRows = rows;
   tbody.innerHTML = rows.length ? rows.map((r,i)=>{
     const idx = r.isBlank ? -1 : namedRows.indexOf(r);
     const rk  = r.isBlank ? `<span style="color:var(--muted);font-size:10px">—</span>` : rkHtml(idx);
-    return `<tr ${r.isBlank ? 'class="blank-row"' : ''}>
+    return `<tr onclick="openPlanTickets2(${i})" style="cursor:pointer" title="Click for tickets" ${r.isBlank ? 'class="blank-row"' : ''}>
       <td>${rk}</td>
       <td>${r.isBlank ? '<span style="color:var(--muted)">(Blank)</span>' : planTag(r.p)}</td>
       <td class="r"><span class="n-it">${r.it||'—'}</span></td>
@@ -3117,47 +3170,33 @@ let _modalData = [], _modalTatKey = '', _modalDateKey = '', _modalDurKey = '',
     _modalActKey = '', _modalPendSc = '', _modalFilter = 'all';
 
 function renderModalTable(rows){
-  const {tatKey, dateKey, durKey, actKey, pendingSc} = {
-    tatKey:_modalTatKey, dateKey:_modalDateKey, durKey:_modalDurKey,
-    actKey:_modalActKey, pendingSc:_modalPendSc
-  };
   const slice = rows.slice(0,500);
   const stageCfg = _modalKey ? getStageConfig(_modalKey) : null;
+  window._modalShown = rows;
   const tbody = document.querySelector('#modalTable tbody');
+  const bd=r=>isBug(r)?'<span style="color:#b91c1c;font-weight:700;font-size:11px">🐞 Bug</span>':isDev(r)?'<span style="color:#1d4ed8;font-weight:700;font-size:11px">⚙️ Dev</span>':'<span style="color:var(--muted2);font-size:11px">Other</span>';
   tbody.innerHTML = slice.map((r,ri)=>{
-    const tatHtml = r[tatKey]==='I'
-      ? `<span style="color:var(--ip);font-weight:700;font-size:11px">✔ InTAT</span>`
-      : r[tatKey]==='O'
-      ? `<span style="color:var(--sup);font-weight:700;font-size:11px">✘ OutTAT</span>`
-      : `<span style="color:var(--muted2);font-size:11px">—</span>`;
-    const isPend = r.sc === pendingSc;
-    const pendHtml = isPend
-      ? `<span class="pend-badge" style="font-size:9px;padding:2px 7px">⏳ Pending</span>`
-      : `<span style="color:var(--ip);font-size:10px;font-weight:700">✔ Moved</span>`;
     return `<tr onclick="openTicketDetail(_filteredRows[${ri}], _stageCfgSnap)" title="Click to view ticket details">
       <td style="font-size:11px;color:var(--it);font-family:'JetBrains Mono',monospace;font-weight:700">${r.n||'—'}</td>
       <td style="font-size:11px;color:var(--muted)">${r.tc||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${stageDateOf(r)}</td>
+      <td style="font-size:11px;font-weight:600">${statusLabelOf(r)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${r.tld||'—'}</td>
       <td class="col-client" style="font-weight:500">${r.u||'—'}</td>
       <td>${planTag(r.p)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${r[dateKey]||'—'}</td>
-      <td>${pendHtml}</td>
-      <td style="font-size:11px;color:var(--muted2)">${durKey?r[durKey]||'—':'—'}</td>
-      <td style="font-size:11px;color:var(--muted)">${r[actKey]||'—'}</td>
-      <td>${tatHtml}</td>
-      <td style="font-size:11px">${r.q||'—'}</td>
       <td class="col-tester" style="font-size:11px">${r.t||r.eb||'—'}</td>
       <td class="col-rm" style="font-size:11px">${r.r||'—'}</td>
+      <td style="font-size:11px">${r.dev||'—'}</td>
+      <td>${bd(r)}</td>
     </tr>`;
   }).join('');
-  // Store rendered slice for click access
   window._filteredRows = slice;
   window._stageCfgSnap = stageCfg;
   if(rows.length > 500) tbody.innerHTML +=
-    `<tr><td colspan="12" style="text-align:center;color:var(--muted2);padding:12px;font-size:11px">
+    `<tr><td colspan="11" style="text-align:center;color:var(--muted2);padding:12px;font-size:11px">
       Showing first 500 of ${fmt(rows.length)} rows — export Excel for full data
     </td></tr>`;
 }
-
 function setModalFilter(f){
   _modalFilter = f;
   const data = _modalData;
@@ -3273,6 +3312,20 @@ function exportModalExcel(){
 }
 
 // ===== TICKET TIMELINE BUILDER =====
+function exportCurrentModal(){
+  const data=(window._modalShown&&window._modalShown.length!==undefined)?window._modalShown:_modalData;
+  if(!data||!data.length){ if(typeof showToast==='function')showToast('No rows to export'); return; }
+  const wb=XLSX.utils.book_new();
+  const header=['Ticket No','Created Date','Stage Date','Current Status','Timeline','Client','Plan','Tester','RM','Developer','Bug/Development','LicNo'];
+  const out=[header];
+  data.forEach(r=>out.push([r.n||'',r.tc||'',stageDateOf(r),statusLabelOf(r),r.tld||'',r.u||'',r.p||'',r.t||r.eb||'',r.r||'',r.dev||'',isBug(r)?'Bug':isDev(r)?'Development':'Others',r.l||'']));
+  const ws=XLSX.utils.aoa_to_sheet(out);
+  ws['!cols']=[{wch:14},{wch:12},{wch:12},{wch:20},{wch:12},{wch:30},{wch:14},{wch:18},{wch:16},{wch:16},{wch:14},{wch:10}];
+  const title=(document.getElementById('modalTitle').textContent||'Tickets').replace(/[^a-z0-9]/gi,'_').slice(0,40);
+  XLSX.utils.book_append_sheet(wb,ws,'Tickets');
+  XLSX.writeFile(wb, title+'.xlsx');
+}
+
 function buildTicketTimeline(rec, stageCfg) {
   const stages = [
     { key:'a',  tatKey:'at', durKey:'ad', actKey:'av', label:'Transfer to IT',   pendingSc:'IT', color:'#0d9488',
@@ -3287,48 +3340,40 @@ function buildTicketTimeline(rec, stageCfg) {
       agent: rec.ts, agentLabel:'Support Agent' },
   ];
 
-  const presentStages = stages.filter(s => rec[s.key]);
-  if(!presentStages.length) return '<div style="padding:12px;color:var(--muted2);font-size:11px;font-style:italic">No stage dates available for this ticket.</div>';
-
-  // Sort by date
-  presentStages.sort((a,b) => (rec[a.key]||'').localeCompare(rec[b.key]||''));
-
   const activeSc = rec.sc;
   let html = '<div class="tdm-timeline"><div class="tdm-timeline-track"></div>';
 
-  presentStages.forEach(s => {
+  stages.forEach((s, idx) => {
     const date = rec[s.key];
+    const reached = !!date;
     const tatVal = rec[s.tatKey];
     const durVal = s.durKey ? rec[s.durKey] : null;
     const actVal = s.actKey ? rec[s.actKey] : null;
     const isPendingHere = rec.sc === s.pendingSc;
-    const isActive = isPendingHere || (rec.sc === s.pendingSc);
-
-    const stageNum = presentStages.indexOf(s) + 1;
+    const stageNum = idx + 1;
     const tatBadge = tatVal === 'I'
-      ? '<span class="tdm-tl-tat-badge in">✔ InTAT</span>'
+      ? '<span class="tdm-tl-tat-badge in">\u2714 InTAT</span>'
       : tatVal === 'O'
-      ? '<span class="tdm-tl-tat-badge out">✘ OutTAT</span>'
+      ? '<span class="tdm-tl-tat-badge out">\u2718 OutTAT</span>'
       : '';
     const pendChip = isPendingHere
-      ? '<span class="tdm-tl-pending-chip">⏳ Currently Pending</span>'
+      ? '<span class="tdm-tl-pending-chip">\u23f3 Currently Pending</span>'
       : '';
-
-    html += `<div class="tdm-tl-item">
-      <div class="tdm-tl-dot${isPendingHere?' active':''}" style="background:${s.color}">
+    html += `<div class="tdm-tl-item" style="${reached?'':'opacity:.5'}">
+      <div class="tdm-tl-dot${isPendingHere?' active':''}" style="background:${reached?s.color:'#cbd5e1'}">
         <span style="color:#fff">${stageNum}</span>
       </div>
       <div class="tdm-tl-content${isPendingHere?' active-stage':''}">
-        <div class="tdm-tl-stage" style="color:${s.color}">${s.label}</div>
+        <div class="tdm-tl-stage" style="color:${reached?s.color:'#94a3b8'}">${s.label}</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-          <div class="tdm-tl-date">📅 ${date}</div>
-          ${tatBadge}
+          <div class="tdm-tl-date">${reached ? ('\ud83d\udcc5 '+date) : '<span style=\'color:#94a3b8;font-style:italic\'>Not reached yet</span>'}</div>
+          ${reached?tatBadge:''}
           ${pendChip}
         </div>
         <div class="tdm-tl-meta">
-          ${durVal ? `<span>⏱ SLA: ${durVal}</span>` : ''}
-          ${actVal ? `<span>🕐 Actual: ${actVal}</span>` : ''}
-          ${s.agent ? `<span>👤 ${s.agentLabel}: <strong>${s.agent}</strong></span>` : ''}
+          ${reached&&durVal ? `<span>\u23f1 SLA: ${durVal}</span>` : ''}
+          ${reached&&actVal ? `<span>\ud83d\udd50 Actual: ${actVal}</span>` : ''}
+          ${s.agent ? `<span>\ud83d\udc64 ${s.agentLabel}: <strong>${s.agent}</strong></span>` : ''}
         </div>
       </div>
     </div>`;

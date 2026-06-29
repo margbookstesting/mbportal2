@@ -971,6 +971,23 @@ td.grp-l { border-left:1px solid var(--border); }
   text-align:center; padding:32px; color:var(--muted);
   font-size:13px; display:flex; flex-direction:column; align-items:center; gap:10px;
 }
+
+/* === Support Dashboard — compact KPIs (fit all 16 on one screen) === */
+.kpi-row{ grid-template-columns:repeat(6,1fr) !important; gap:8px !important; }
+.kpi-body{ padding:7px 10px 5px !important; }
+.kpi-stage{ font-size:8px !important; margin-bottom:3px !important; letter-spacing:.7px !important; }
+.kpi-num{ font-size:21px !important; }
+.kpi-head{ margin-bottom:3px !important; }
+.kpi-top{ height:4px !important; }
+.kpi-month-row{ gap:3px !important; margin-top:4px !important; }
+.kpi-m-badge{ padding:3px 2px !important; border-radius:5px !important; }
+.kpi-m-label{ font-size:7px !important; letter-spacing:.3px !important; }
+.kpi-m-num{ font-size:11px !important; }
+.kpi-footer{ padding:4px 10px !important; }
+.kpi-link{ font-size:10px !important; }
+.kpi-xls{ font-size:10px !important; padding:2px 8px !important; }
+@media(max-width:1200px){ .kpi-row{ grid-template-columns:repeat(4,1fr) !important; } }
+@media(max-width:760px){ .kpi-row{ grid-template-columns:repeat(2,1fr) !important; } }
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1103,6 +1120,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r" style="color:#0d9488">Transfer to IT</th>
               <th class="r" style="color:#d97706">Acknowledge</th>
               <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#0284c7">Ready For Testing</th>
               <th class="r" style="color:#7c3aed">Transfer to Support</th>
               <th class="r" style="color:#475569">Closed</th>
               <th class="r">Total</th>
@@ -1135,6 +1153,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r" style="color:#0d9488">Transfer to IT</th>
               <th class="r" style="color:#d97706">Acknowledge</th>
               <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#0284c7">Ready For Testing</th>
               <th class="r" style="color:#7c3aed">Transfer to Support</th>
               <th class="r" style="color:#475569">Closed</th>
               <th class="r">Total</th>
@@ -1174,6 +1193,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r" style="color:#0d9488">Transfer to IT</th>
               <th class="r" style="color:#d97706">Acknowledge</th>
               <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#0284c7">Ready For Testing</th>
               <th class="r" style="color:#7c3aed">Transfer to Support</th>
               <th class="r" style="color:#475569">Closed</th>
               <th class="r">Total</th>
@@ -1211,6 +1231,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r" style="color:#0d9488">Transfer to IT</th>
               <th class="r" style="color:#d97706">Acknowledge</th>
               <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#0284c7">Ready For Testing</th>
               <th class="r" style="color:#7c3aed">Transfer to Support</th>
               <th class="r" style="color:#475569">Closed</th>
               <th class="r">Total</th>
@@ -1248,6 +1269,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r" style="color:#0d9488">Transfer to IT</th>
               <th class="r" style="color:#d97706">Acknowledge</th>
               <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#0284c7">Ready For Testing</th>
               <th class="r" style="color:#7c3aed">Transfer to Support</th>
               <th class="r" style="color:#475569">Closed</th>
               <th class="r">Total</th>
@@ -1266,7 +1288,7 @@ td.grp-l { border-left:1px solid var(--border); }
     <div class="modal-hdr">
       <div class="modal-title" id="modalTitle">Ticket Details</div>
       <div class="modal-hdr-btns">
-        <button class="btn-mxls" onclick="exportModalExcel()">↓ Export Excel</button>
+        <button class="btn-mxls" onclick="exportCurrentModal()">↓ Export Excel</button>
         <button class="btn-mclose" onclick="closeModalDirect()">✕ Close</button>
       </div>
     </div>
@@ -1609,7 +1631,7 @@ const SUP_STATUSES = [
   {key:'it',         label:'Transferred To IT',     cls:'c-it',  m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
   {key:'ack',        label:'Acknowledged',          cls:'c-ack', m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
   {key:'ip',         label:'In Progress',           cls:'c-ip',  m:['in progress','inprogress'], sc:'IP', col:'ip'},
-  {key:'rft',        label:'Ready For Testing',     cls:'c-tst', m:['ready for testing'], sc:'RT'},
+  {key:'rft',        label:'Ready For Testing',     cls:'c-tst', m:['ready for testing'], sc:'RT', col:'rft'},
   {key:'reopentest', label:'Reopend from Testing',  cls:'c-ret', m:['reopend from testing','reopen from testing','reopened from testing']},
   {key:'rfcr',       label:'Ready For Code Review', cls:'c-uat', m:['ready for code review']},
   {key:'rfm',        label:'Ready For Merging',     cls:'c-uat', m:['ready for merging','ready for merge']},
@@ -1923,7 +1945,7 @@ function switchTab(n){
   if(n===2) renderSubdisp();
 }
 
-let _subdispRows = [], _devRows = [];
+let _subdispRows = [], _devRows = [], _dispRows = [], _licRows = [], _cliRows = [], _planRows = [];
 function sdEsc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function _stTat(arr, pred, key){ let inC=0,outC=0; arr.forEach(r=>{ if(!pred(r))return; if(r[key]==='I')inC++; else if(r[key]==='O')outC++; }); return {inC,outC}; }
 function _modalStatsHtml(data, pendSc){
@@ -1943,59 +1965,37 @@ function renderSubdisp(){
   const tbody = document.querySelector('#tSubdisp tbody');
   if(!tbody) return;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
-  // Current-status counts per disposition (exact). Columns: Pending, Transfer to IT,
-  // Acknowledge, In Progress, Transfer to Support, Closed. Tickets in other statuses
-  // (Reopen, Future Development, Rejected, Testing, etc.) are not shown in these columns.
+  const blank={pend:0,it:0,ack:0,ip:0,rft:0,sup:0,closed:0,tot:0};
   const map = {};
   VIEW.forEach(r=>{
-    const col = stage6(r);
-    if(!col) return;
+    const cc = stage6(r); if(!cc) return;
     const k = keyOf(r);
-    if(!map[k]) map[k] = {name:k, pend:0, it:0, ack:0, ip:0, sup:0, cl:0, tot:0};
-    const m = map[k]; m.tot++;
-    if(col==='it')        m.it++;
-    else if(col==='ack')  m.ack++;
-    else if(col==='ip')   m.ip++;
-    else if(col==='sup')  m.sup++;
-    else if(col==='closed') m.cl++;
-    else if(col==='pend') m.pend++;
+    if(!map[k]) map[k] = {name:k,...blank};
+    map[k][cc]++; map[k].tot++;
   });
-  const rows = Object.values(map).sort((a,b)=> b.tot - a.tot);
+  const rank=r=>r.pend+r.it+r.ack+r.ip+r.rft;
+  const rows = Object.values(map).sort((a,b)=> rank(b)-rank(a));
   _subdispRows = rows;
   const info=document.getElementById('sdInfo');
   if(info) info.textContent = `${rows.length} disposition${rows.length!==1?'s':''} · ${fmt(VIEW.length)} tickets`;
-  if(!rows.length){ tbody.innerHTML = `<tr><td colspan="9" style="padding:40px;text-align:center;color:var(--muted)">No tickets in current view.</td></tr>`; return; }
-  const cell=(v,c)=> v ? `<span style="color:${c};font-weight:700">${fmt(v)}</span>` : '<span style="color:#cbd5e1">—</span>';
-  let html = rows.map((r,i)=>`
+  if(!rows.length){ tbody.innerHTML = `<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--muted)">No tickets in current view.</td></tr>`; return; }
+  const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','rft','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  tbody.innerHTML = rows.map((r,i)=>`
     <tr onclick="openSubdispTickets(${i})" title="Click for ticket details" style="cursor:pointer">
       <td>${rkHtml(i)}</td>
-      <td style="text-align:left;font-weight:600">${sdEsc(r.name)}</td>
-      <td class="r">${cell(r.pend,'#b45309')}</td>
-      <td class="r">${cell(r.it,'#0d9488')}</td>
-      <td class="r">${cell(r.ack,'#d97706')}</td>
-      <td class="r">${cell(r.ip,'#0891b2')}</td>
-      <td class="r">${cell(r.sup,'#7c3aed')}</td>
-      <td class="r">${cell(r.cl,'#475569')}</td>
+      <td style="text-align:left;font-weight:600">${sdEsc(r.name)}</td><td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td><td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.rft,'#0284c7')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
       <td class="r"><strong>${fmt(r.tot)}</strong></td>
-    </tr>`).join('');
-  const T=rows.reduce((a,r)=>{a.pend+=r.pend;a.it+=r.it;a.ack+=r.ack;a.ip+=r.ip;a.sup+=r.sup;a.cl+=r.cl;a.tot+=r.tot;return a;},{pend:0,it:0,ack:0,ip:0,sup:0,cl:0,tot:0});
-  html += `<tr class="total-row"><td colspan="2"><strong>Total</strong></td>
-    <td class="r"><strong>${fmt(T.pend)}</strong></td>
-    <td class="r"><strong>${fmt(T.it)}</strong></td>
-    <td class="r"><strong>${fmt(T.ack)}</strong></td>
-    <td class="r"><strong>${fmt(T.ip)}</strong></td>
-    <td class="r"><strong>${fmt(T.sup)}</strong></td>
-    <td class="r"><strong>${fmt(T.cl)}</strong></td>
-    <td class="r"><strong>${fmt(T.tot)}</strong></td>
-  </tr>`;
-  tbody.innerHTML = html;
+    </tr>`).join('')
+  + `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td><td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.rft)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
+    <td class="r"><strong>${fmt(T.tot)}</strong></td></tr>`;
 }
 
 function openSubdispTickets(i){
   const row=_subdispRows[i]; if(!row) return;
   const name=row.name;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
-  const data=VIEW.filter(r=>keyOf(r)===name);
+  const data=VIEW.filter(r=>keyOf(r)===name && stage6(r));
   _openSupModal(data, 'Disposition: '+name+' — Ticket Details');
 }
 
@@ -2088,22 +2088,26 @@ function renderDisp(){
   const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
   const typeOf=r=>{ if(!r.q) return 'Others'; return DISPS.slice(0,-1).includes(r.q)?r.q:'Others'; };
   const tbody=document.querySelector('#tDisp tbody'); if(!tbody) return;
-  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
+  const blank={pend:0,it:0,ack:0,ip:0,rft:0,sup:0,closed:0,tot:0};
   const map={}; DISPS.forEach(d=>map[d]={...blank});
-  VIEW.forEach(r=>{ const c=stage6(r); if(!c) return; const t=typeOf(r); map[t][c]++; map[t].tot++; });
+  VIEW.forEach(r=>{ const cc=stage6(r); if(!cc) return; const t=typeOf(r); map[t][cc]++; map[t].tot++; });
   const rows=DISPS.map(d=>({d,...map[d]})).filter(r=>r.tot>0);
-  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  _dispRows=rows;
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','rft','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
-  tbody.innerHTML = rows.map(r=>`<tr>
-    <td><strong>${r.d}</strong></td>
-    <td class="r dc">${c(r.pend,'#b45309')}</td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td>
-    <td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td><td class="r dc">${c(r.closed,'#475569')}</td>
+  tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openDispTickets(${i})" style="cursor:pointer" title="Click for tickets">
+    <td><strong>${r.d}</strong></td><td class="r dc">${c(r.pend,'#b45309')}</td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td><td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.rft,'#0284c7')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td><td class="r dc">${c(r.closed,'#475569')}</td>
     <td class="r dc"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row"><td><strong>Grand Total</strong></td>
-    <td class="r dc"><strong>${fmt(T.pend)}</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td>
-    <td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td><td class="r dc"><strong>${fmt(T.closed)}</strong></td>
+  + `<tr class="total-row"><td><strong>Grand Total</strong></td><td class="r dc"><strong>${fmt(T.pend)}</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td><td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.rft)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td><td class="r dc"><strong>${fmt(T.closed)}</strong></td>
     <td class="r dc"><strong>${fmt(T.tot)}</strong></td></tr>`;
+}
+function openDispTickets(i){
+  const row=_dispRows[i]; if(!row) return;
+  const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
+  const typeOf=r=>{ if(!r.q) return 'Others'; return DISPS.slice(0,-1).includes(r.q)?r.q:'Others'; };
+  const data=VIEW.filter(r=>typeOf(r)===row.d && stage6(r));
+  _openSupModal(data, 'Type: '+row.d+' — Ticket Details');
 }
 
 // ===== KEY LICENCES TABLE =====
@@ -2113,25 +2117,23 @@ const KEY_LICENCES = [
   { lic:'8011596', name:'Margbooks Sales', email:'margbookssales@gmail.com'   },
 ];
 function renderKeyLic(){
-  const tbody = document.querySelector('#tLic tbody'); if(!tbody) return;
-  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
-  const rows = KEY_LICENCES.map(k=>{
-    const o={...k,...blank};
-    VIEW.filter(r=>String(r.l)===k.lic).forEach(r=>{ const c=stage6(r); if(c){ o[c]++; o.tot++; } });
-    return o;
-  });
-  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const tbody=document.querySelector('#tLic tbody'); if(!tbody) return;
+  const blank={pend:0,it:0,ack:0,ip:0,rft:0,sup:0,closed:0,tot:0};
+  const rows=KEY_LICENCES.map(k=>{ const o={...k,...blank}; VIEW.filter(r=>String(r.l)===k.lic).forEach(r=>{const cc=stage6(r); if(cc){o[cc]++;o.tot++;}}); return o; });
+  _licRows=rows;
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','rft','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
-  tbody.innerHTML = rows.map(r=>`<tr>
-    <td><strong>${r.name}</strong><div style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.lic} · ${r.email}</div></td>
-    <td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td>
-    <td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
+  tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openLicTickets(${i})" style="cursor:pointer" title="Click for tickets">
+    <td><strong>${r.name}</strong><div style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.lic} · ${r.email}</div></td><td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td><td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.rft,'#0284c7')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
     <td class="r"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row"><td><strong>Grand Total</strong></td>
-    <td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td>
-    <td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
+  + `<tr class="total-row"><td><strong>Grand Total</strong></td><td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td><td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.rft)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
     <td class="r"><strong>${fmt(T.tot)}</strong></td></tr>`;
+}
+function openLicTickets(i){
+  const row=_licRows[i]; if(!row) return;
+  const data=VIEW.filter(r=>String(r.l)===row.lic && stage6(r));
+  _openSupModal(data, row.name+' ('+row.lic+') — Ticket Details');
 }
 
 // ===== TESTER TABLE =====
@@ -2418,63 +2420,70 @@ function renderRM(){
 
 // ===== CLIENTS TABLE =====
 function renderClients(){
-  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
-  const licMap = {};
+  const blank={pend:0,it:0,ack:0,ip:0,rft:0,sup:0,closed:0,tot:0};
+  const licMap={};
   VIEW.filter(r=>r.l&&r.l!==0).forEach(r=>{
     if(!licMap[r.l]) licMap[r.l]={lic:r.l,name:r.u||'—',plan:r.p||'',...blank};
     const m=licMap[r.l];
     if(r.u && String(r.u).length>String(m.name).length) m.name=r.u;
     if(r.p && !m.plan) m.plan=r.p;
-    const _c=stage6(r); if(_c){ m[_c]++; m.tot++; }
+    const cc=stage6(r); if(cc){m[cc]++;m.tot++;}
   });
-  const top10 = Object.values(licMap).sort((a,b)=> b.tot-a.tot).slice(0,10);
-  const tbody = document.querySelector('#tClients tbody');
-  const cT = ['pend','it','ack','ip','sup','closed','tot'].reduce((o,k)=>{o[k]=top10.reduce((s,r)=>s+(r[k]||0),0);return o;},{});
+  const rank=r=>r.pend+r.it+r.ack+r.ip+r.rft;
+  const top10=Object.values(licMap).sort((a,b)=>rank(b)-rank(a)).slice(0,10);
+  _cliRows=top10;
+  const tbody=document.querySelector('#tClients tbody');
+  const cT=['pend','it','ack','ip','rft','sup','closed','tot'].reduce((o,k)=>{o[k]=top10.reduce((s,r)=>s+(r[k]||0),0);return o;},{});
+  const T=cT;
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
-  tbody.innerHTML = top10.length ? top10.map((r,i)=>`<tr>
+  tbody.innerHTML = top10.length ? top10.map((r,i)=>`<tr onclick="openCliTickets(${i})" style="cursor:pointer" title="Click for tickets">
     <td>${rkHtml(i)}</td>
     <td><strong>${r.name}</strong></td>
-    <td>${planTag(r.plan)}</td>
-    <td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td>
-    <td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
+    <td>${planTag(r.plan)}</td><td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td><td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.rft,'#0284c7')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
     <td class="r"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row"><td colspan="3"><strong>Top 10 Total</strong></td>
-    <td class="r"><strong>${fmt(cT.pend)}</strong></td><td class="r"><strong>${fmt(cT.it)}</strong></td><td class="r"><strong>${fmt(cT.ack)}</strong></td>
-    <td class="r"><strong>${fmt(cT.ip)}</strong></td><td class="r"><strong>${fmt(cT.sup)}</strong></td><td class="r"><strong>${fmt(cT.closed)}</strong></td>
+  + `<tr class="total-row"><td colspan="3"><strong>Top 10 Total</strong></td><td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td><td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.rft)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
     <td class="r"><strong>${fmt(cT.tot)}</strong></td></tr>`
-  : `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+  : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+}
+function openCliTickets(i){
+  const row=_cliRows[i]; if(!row) return;
+  const data=VIEW.filter(r=>String(r.l)===String(row.lic) && stage6(r));
+  _openSupModal(data, row.name+' — Ticket Details');
 }
 
 // ===== PLAN TABLE =====
 function renderPlan(){
-  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
+  const blank={pend:0,it:0,ack:0,ip:0,rft:0,sup:0,closed:0,tot:0};
   const map={};
   VIEW.forEach(r=>{
     const p=(r.p && String(r.p).trim()) ? String(r.p).trim() : '(Blank)';
     if(!map[p]) map[p]={p,...blank};
-    const c=stage6(r); if(c){ map[p][c]++; map[p].tot++; }
+    const cc=stage6(r); if(cc){map[p][cc]++;map[p].tot++;}
   });
-  let rows=Object.values(map).sort((a,b)=>b.tot-a.tot);
-  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const rank=r=>r.pend+r.it+r.ack+r.ip+r.rft;
+  let rows=Object.values(map).sort((a,b)=>rank(b)-rank(a));
+  _planRows=rows;
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','rft','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
   const grand=T.tot||1;
   const tbody=document.querySelector('#tPlan tbody');
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
   tbody.innerHTML = rows.map((r,i)=>{
     const pctv=(r.tot/grand*100);
-    return `<tr>
+    return `<tr onclick="openPlanTickets(${i})" style="cursor:pointer" title="Click for tickets">
       <td>${r.p==='(Blank)'?'<span style=\'color:var(--muted2)\'>—</span>':rkHtml(i)}</td>
-      <td>${r.p==='(Blank)'?'<em style=\'color:var(--muted)\'>(Blank)</em>':planTag(r.p)}</td>
-      <td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td>
-      <td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
+      <td>${r.p==='(Blank)'?'<em style=\'color:var(--muted)\'>(Blank)</em>':planTag(r.p)}</td><td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td><td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.rft,'#0284c7')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
       <td class="r"><strong>${fmt(r.tot)}</strong></td>
       <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:7px;background:#eef2f7;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pctv.toFixed(1)}%;background:linear-gradient(90deg,#0d9488,#0891b2)"></div></div><span style="font-size:10px;color:var(--muted);min-width:34px;text-align:right">${pctv.toFixed(1)}%</span></div></td>
     </tr>`;
   }).join('')
-  + `<tr class="total-row"><td colspan="2"><strong>Grand Total</strong></td>
-    <td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td>
-    <td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
+  + `<tr class="total-row"><td colspan="2"><strong>Grand Total</strong></td><td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td><td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.rft)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
     <td class="r"><strong>${fmt(T.tot)}</strong></td><td></td></tr>`;
+}
+function openPlanTickets(i){
+  const row=_planRows[i]; if(!row) return;
+  const data=VIEW.filter(r=>{ const p=(r.p && String(r.p).trim())?String(r.p).trim():'(Blank)'; return p===row.p && stage6(r); });
+  _openSupModal(data, 'Plan: '+row.p+' — Ticket Details');
 }
 
 let _charts = {};
@@ -2573,9 +2582,26 @@ function renderModalTable(rows){
     `<tr><td colspan="11" style="text-align:center;color:var(--muted2);padding:12px;font-size:11px">Showing first 500 of ${fmt(rows.length)} rows — export Excel for full data</td></tr>`;
 }
 
+function _mfTesterVal(r){ return (r.t||r.eb||'').trim(); }
+let _mfTester='', _mfRM='', _mfDev='';
+function onModalDrop(type,val){ if(type==='tester')_mfTester=val; else if(type==='rm')_mfRM=val; else if(type==='dev')_mfDev=val; applyModalFilters(); }
+function applyModalFilters(){
+  let rows=_modalData.slice();
+  const f=_modalFilter;
+  if(f==='bug') rows=rows.filter(isBug);
+  else if(f==='dev') rows=rows.filter(isDev);
+  else if(f==='others') rows=rows.filter(r=>!isBug(r)&&!isDev(r));
+  else if(f && f.indexOf('st:')===0){ const key=f.slice(3); rows=rows.filter(r=>statusKeyOf(r)===key); }
+  if(_mfTester) rows=rows.filter(r=>_mfTesterVal(r)===_mfTester);
+  if(_mfRM)     rows=rows.filter(r=>(r.r||'').trim()===_mfRM);
+  if(_mfDev)    rows=rows.filter(r=>(r.dev||'').trim()===_mfDev);
+  window._modalShown=rows;
+  const lbl=document.getElementById('modalFilterLabel');
+  if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
+  renderModalTable(rows);
+}
 function setModalFilter(f){
   _modalFilter = f;
-  const data = _modalData;
   document.querySelectorAll('.ms-btn').forEach(el=>{
     const a = el.dataset.f === f;
     el.style.opacity = a ? '1' : '.45';
@@ -2583,18 +2609,7 @@ function setModalFilter(f){
     el.style.boxShadow = a ? '0 2px 8px rgba(0,0,0,.12)' : 'none';
     el.style.cursor = 'pointer';
   });
-  let filtered, label;
-  if(f==='bug')         { filtered=data.filter(isBug);                  label=`Bug: ${fmt(filtered.length)}`; }
-  else if(f==='dev')    { filtered=data.filter(isDev);                  label=`Development: ${fmt(filtered.length)}`; }
-  else if(f==='others') { filtered=data.filter(r=>!isBug(r)&&!isDev(r)); label=`Others: ${fmt(filtered.length)}`; }
-  else if(f && f.indexOf('st:')===0){
-    const key=f.slice(3); const d=SUP_STATUSES.find(x=>x.key===key);
-    filtered=data.filter(r=>statusKeyOf(r)===key);
-    label=`${d?d.label:key}: ${fmt(filtered.length)}`;
-  }
-  else                  { filtered=data;                                label=`Showing all ${fmt(filtered.length)}`; }
-  const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent = label;
-  renderModalTable(filtered);
+  applyModalFilters();
 }
 
 function supModalStats(data){
@@ -2602,20 +2617,41 @@ function supModalStats(data){
   const stCount={}; data.forEach(r=>{ const k=statusKeyOf(r); stCount[k]=(stCount[k]||0)+1; });
   const stChips=SUP_STATUSES.filter(d=>stCount[d.key]).map(d=>
     `<span class="ms ms-btn" data-f="st:${d.key}" onclick="setModalFilter('st:${d.key}')" style="cursor:pointer;border:1px solid var(--border)">${d.label}: ${fmt(stCount[d.key])}</span>`).join('');
+  const uniq=(arr)=>[...new Set(arr.filter(v=>v&&String(v).trim()).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
+  const testers=uniq(data.map(r=>_mfTesterVal(r)));
+  const rms=uniq(data.map(r=>r.r));
+  const devs=uniq(data.map(r=>r.dev));
+  const drop=(type,label,vals)=>`<select onchange="onModalDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:140px">
+    <option value="">${label} (all)</option>${vals.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('')}</select>`;
   return `<span class="ms ms-total ms-btn" data-f="all" onclick="setModalFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
     <span class="ms ms-btn" data-f="bug" onclick="setModalFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
     <span class="ms ms-btn" data-f="dev" onclick="setModalFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
     <span class="ms ms-btn" data-f="others" onclick="setModalFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
     ${stChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+stChips : ''}
+    <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
+    ${drop('tester','Tester',testers)} ${drop('rm','RM',rms)} ${drop('dev','Developer',devs)}
     <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
 }
 function _openSupModal(data, title){
-  _modalKey=null; _modalData=data; _modalFilter='all';
+  _modalKey=null; _modalData=data; _modalFilter='all'; _mfTester=''; _mfRM=''; _mfDev=''; window._modalShown=data;
   document.getElementById('modalTitle').textContent=title;
   document.getElementById('modalStats').innerHTML=supModalStats(data);
   renderModalTable(data);
   setTimeout(()=>setModalFilter('all'),0);
   document.getElementById('modalOverlay').classList.add('open');
+}
+function exportCurrentModal(){
+  const data=(window._modalShown&&window._modalShown.length!==undefined)?window._modalShown:_modalData;
+  if(!data||!data.length){ showToast('No rows to export'); return; }
+  const wb=XLSX.utils.book_new();
+  const header=['Ticket No','Created Date','Stage Date','Current Status','Timeline','Client','Plan','Tester','RM','Developer','Bug/Development','LicNo'];
+  const out=[header];
+  data.forEach(r=>out.push([r.n||'',r.tc||'',stageDateOf(r),statusLabelOf(r),r.tld||'',r.u||'',r.p||'',r.t||r.eb||'',r.r||'',r.dev||'',isBug(r)?'Bug':isDev(r)?'Development':'Others',r.l||'']));
+  const ws=XLSX.utils.aoa_to_sheet(out);
+  ws['!cols']=[{wch:14},{wch:12},{wch:12},{wch:20},{wch:12},{wch:30},{wch:14},{wch:18},{wch:16},{wch:16},{wch:14},{wch:10}];
+  const title=(document.getElementById('modalTitle').textContent||'Tickets').replace(/[^a-z0-9]/gi,'_').slice(0,40);
+  XLSX.utils.book_append_sheet(wb,ws,'Tickets');
+  XLSX.writeFile(wb, title+'.xlsx');
 }
 function openStatusModal(key){
   const d=SUP_STATUSES.find(x=>x.key===key);
@@ -2739,48 +2775,40 @@ function buildTicketTimeline(rec, stageCfg) {
       agent: rec.ts, agentLabel:'Support Agent' },
   ];
 
-  const presentStages = stages.filter(s => rec[s.key]);
-  if(!presentStages.length) return '<div style="padding:12px;color:var(--muted2);font-size:11px;font-style:italic">No stage dates available for this ticket.</div>';
-
-  // Sort by date
-  presentStages.sort((a,b) => (rec[a.key]||'').localeCompare(rec[b.key]||''));
-
   const activeSc = rec.sc;
   let html = '<div class="tdm-timeline"><div class="tdm-timeline-track"></div>';
 
-  presentStages.forEach(s => {
+  stages.forEach((s, idx) => {
     const date = rec[s.key];
+    const reached = !!date;
     const tatVal = rec[s.tatKey];
     const durVal = s.durKey ? rec[s.durKey] : null;
     const actVal = s.actKey ? rec[s.actKey] : null;
     const isPendingHere = rec.sc === s.pendingSc;
-    const isActive = isPendingHere || (rec.sc === s.pendingSc);
-
-    const stageNum = presentStages.indexOf(s) + 1;
+    const stageNum = idx + 1;
     const tatBadge = tatVal === 'I'
-      ? '<span class="tdm-tl-tat-badge in">✔ InTAT</span>'
+      ? '<span class="tdm-tl-tat-badge in">\u2714 InTAT</span>'
       : tatVal === 'O'
-      ? '<span class="tdm-tl-tat-badge out">✘ OutTAT</span>'
+      ? '<span class="tdm-tl-tat-badge out">\u2718 OutTAT</span>'
       : '';
     const pendChip = isPendingHere
-      ? '<span class="tdm-tl-pending-chip">⏳ Currently Pending</span>'
+      ? '<span class="tdm-tl-pending-chip">\u23f3 Currently Pending</span>'
       : '';
-
-    html += `<div class="tdm-tl-item">
-      <div class="tdm-tl-dot${isPendingHere?' active':''}" style="background:${s.color}">
+    html += `<div class="tdm-tl-item" style="${reached?'':'opacity:.5'}">
+      <div class="tdm-tl-dot${isPendingHere?' active':''}" style="background:${reached?s.color:'#cbd5e1'}">
         <span style="color:#fff">${stageNum}</span>
       </div>
       <div class="tdm-tl-content${isPendingHere?' active-stage':''}">
-        <div class="tdm-tl-stage" style="color:${s.color}">${s.label}</div>
+        <div class="tdm-tl-stage" style="color:${reached?s.color:'#94a3b8'}">${s.label}</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-          <div class="tdm-tl-date">📅 ${date}</div>
-          ${tatBadge}
+          <div class="tdm-tl-date">${reached ? ('\ud83d\udcc5 '+date) : '<span style=\'color:#94a3b8;font-style:italic\'>Not reached yet</span>'}</div>
+          ${reached?tatBadge:''}
           ${pendChip}
         </div>
         <div class="tdm-tl-meta">
-          ${durVal ? `<span>⏱ SLA: ${durVal}</span>` : ''}
-          ${actVal ? `<span>🕐 Actual: ${actVal}</span>` : ''}
-          ${s.agent ? `<span>👤 ${s.agentLabel}: <strong>${s.agent}</strong></span>` : ''}
+          ${reached&&durVal ? `<span>\u23f1 SLA: ${durVal}</span>` : ''}
+          ${reached&&actVal ? `<span>\ud83d\udd50 Actual: ${actVal}</span>` : ''}
+          ${s.agent ? `<span>\ud83d\udc64 ${s.agentLabel}: <strong>${s.agent}</strong></span>` : ''}
         </div>
       </div>
     </div>`;
