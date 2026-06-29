@@ -1922,7 +1922,7 @@ function applyFilter(){
     document.getElementById('searchBanner').classList.remove('vis');
   }
   document.getElementById('fInfo').textContent =
-    `${from} → ${to}  ·  IT:${fmt(fIT.length)} ACK:${fmt(fAck.length)} IP:${fmt(fIP.length)} Sup:${fmt(fSup.length)} Live:${fmt(fLive.length)}  (${fmt(VIEW.length)}/${fmt(RAW.length)})${activeFilterSummary()}`;
+    `${fmt(VIEW.length)} / ${fmt(RAW.length)} tickets${activeFilterSummary()}`;
   renderAll();
   renderSubdisp();
 }
