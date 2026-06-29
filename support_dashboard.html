@@ -2096,7 +2096,7 @@ function renderDisp(){
   const T=rows.reduce((a,r)=>{['pend','it','ack','ip','rft','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
   tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openDispTickets(${i})" style="cursor:pointer" title="Click for tickets">
-    <td><strong>${r.d}</strong></td><td class="r dc">${c(r.pend,'#b45309')}</td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td><td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.rft,'#0284c7')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td><td class="r dc">${c(r.closed,'#475569')}</td>
+    <td><strong>${r.d==='Others'?'TBD':r.d}</strong></td><td class="r dc">${c(r.pend,'#b45309')}</td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td><td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.rft,'#0284c7')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td><td class="r dc">${c(r.closed,'#475569')}</td>
     <td class="r dc"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
   + `<tr class="total-row"><td><strong>Grand Total</strong></td><td class="r dc"><strong>${fmt(T.pend)}</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td><td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.rft)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td><td class="r dc"><strong>${fmt(T.closed)}</strong></td>
@@ -2107,7 +2107,7 @@ function openDispTickets(i){
   const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
   const typeOf=r=>{ if(!r.q) return 'Others'; return DISPS.slice(0,-1).includes(r.q)?r.q:'Others'; };
   const data=VIEW.filter(r=>typeOf(r)===row.d && stage6(r));
-  _openSupModal(data, 'Type: '+row.d+' — Ticket Details');
+  _openSupModal(data, 'Type: '+(row.d==='Others'?'TBD':row.d)+' — Ticket Details');
 }
 
 // ===== KEY LICENCES TABLE =====

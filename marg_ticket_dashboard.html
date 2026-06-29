@@ -2216,7 +2216,7 @@ function _allRows(){ return (typeof getGlobalFilteredRows==='function')?getGloba
 function openDispTickets2(i){ const r=_secDispRows[i]; if(!r) return; const nm=r.d||r.name;
   const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
   const grp=x=>{ if(!x.q) return 'Others'; return DISPS.slice(0,-1).includes(x.q)?x.q:'Others'; };
-  _openSecModal(_allRows().filter(x=>grp(x)===nm), 'Type: '+nm+' — Ticket Details'); }
+  _openSecModal(_allRows().filter(x=>grp(x)===nm), 'Type: '+(nm==='Others'?'TBD':nm)+' — Ticket Details'); }
 function openLicTickets2(i){ const r=_secLicRows[i]; if(!r) return;
   _openSecModal(_allRows().filter(x=>String(x.l)===String(r.lic)), r.name+' ('+r.lic+') — Ticket Details'); }
 function openCliTickets2(i){ const r=_secCliRows[i]; if(!r) return;
@@ -2440,7 +2440,7 @@ function renderDisp(){
 
   _secDispRows = rows;
   tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openDispTickets2(${i})" style="cursor:pointer" title="Click for tickets">
-    <td><strong>${r.d}</strong></td>
+    <td><strong>${r.d==='Others'?'TBD':r.d}</strong></td>
     <td class="r dc"><span class="n-it">${fmt(r.it)}</span></td>
     <td class="r dc"><span class="n-ack">${fmt(r.ack)}</span></td>
     <td class="r dc"><span class="n-ip">${fmt(r.ip)}</span></td>
@@ -3230,38 +3230,11 @@ function setModalFilter(f){
 }
 
 function openModal(key){
-  _modalKey = key;
   const cfg = getStageConfig(key);
-  const {data, tatKey, dateKey, durKey, actKey, pendingSc, label} = cfg;
-
-  _modalData    = data;
-  _modalTatKey  = tatKey;
-  _modalDateKey = dateKey;
-  _modalDurKey  = durKey  || '';
-  _modalActKey  = actKey  || '';
-  _modalPendSc  = pendingSc;
-  _modalFilter  = 'all';
-
-  document.getElementById('modalTitle').textContent = label + ' — Ticket Details';
-
-  const intat   = data.filter(r=>r[tatKey]==='I').length;
-  const outtat  = data.filter(r=>r[tatKey]==='O').length;
-  const notat   = data.length - intat - outtat;
-  const pending = data.filter(r=>r.sc===pendingSc).length;
-
-  document.getElementById('modalStats').innerHTML = `
-    <span class="ms ms-total ms-btn" data-f="all"    onclick="setModalFilter('all')"   style="cursor:pointer">Total: ${fmt(data.length)}</span>
-    <span class="ms ms-pend  ms-btn" data-f="pend"   onclick="setModalFilter('pend')"  style="cursor:pointer">⏳ Pending: ${fmt(pending)}</span>
-    <span class="ms ms-in    ms-btn" data-f="in"     onclick="setModalFilter('in')"    style="cursor:pointer">✔ InTAT: ${fmt(intat)}</span>
-    <span class="ms ms-out   ms-btn" data-f="out"    onclick="setModalFilter('out')"   style="cursor:pointer">✘ OutTAT: ${fmt(outtat)}</span>
-    <span class="ms ms-na    ms-btn" data-f="notat"  onclick="setModalFilter('notat')" style="cursor:pointer">No TAT: ${fmt(notat)}</span>
-    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
-
-  renderModalTable(data);
-  setTimeout(()=>setModalFilter('all'), 0); // apply active state
-  document.getElementById('modalOverlay').classList.add('open');
+  if(!cfg){ return; }
+  _openSecModal(cfg.data || [], (cfg.label || 'Tickets') + ' — Ticket Details');
 }
-// ===== MODAL EXCEL EXPORT =====
+
 function exportModalExcel(){
   if(!_modalKey) return;
   const cfg = getStageConfig(_modalKey);
