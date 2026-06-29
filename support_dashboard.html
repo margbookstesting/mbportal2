@@ -1039,20 +1039,11 @@ td.grp-l { border-left:1px solid var(--border); }
         oninput="onLicenseInput(this.value)" onkeydown="if(event.key==='Enter')applyFilter()">
       <button class="srch-clear" id="licClear" onclick="clearLicense()" title="Clear">&#10005;</button>
     </div>
-    <span class="filter-label" style="margin-left:4px">Date</span>
-    <div class="date-pill">
-      <input type="date" id="dateFrom">
-      <span class="date-arrow">&#8594;</span>
-      <input type="date" id="dateTo">
-    </div>
-    <button class="btn-apply" id="btnApply" onclick="applyFilter()">Apply</button>
-    </div>
-    </div>
-    </div>
     <div class="cf-wrap">
       <div class="cf-btn" id="cfBtn_status" onclick="toggleCF('status')">&#128278; Status <span class="cf-badge" id="cfBadge_status" style="display:none"></span><span class="cf-arrow">&#9660;</span></div>
       <div class="cf-panel" id="cfPanel_status"><div class="cf-search-wrap">&#128269; <input type="text" placeholder="Search&#8230;" oninput="filterCFOpts('status',this.value)"></div><div class="cf-options" id="cfOpts_status"></div><div class="cf-footer"><span class="cf-count" id="cfCount_status">0 selected</span><button class="cf-clear" onclick="clearCF('status')">Clear all</button></div></div>
     </div>
+    <button class="btn-apply" id="btnApply" onclick="applyFilter()">Apply</button>
     <button class="btn-showall" id="btnClearAll" onclick="clearExtraFilters()" style="display:none">&#10005; Clear All</button>
     <span class="filter-info" id="fInfo">Initialising&#8230;</span>
   </div>
@@ -1122,11 +1113,13 @@ td.grp-l { border-left:1px solid var(--border); }
           <thead>
             <tr>
               <th>Disposition Type</th>
-              <th class="r it-h">Transfer to IT</th>
-              <th class="r ack-h">Acknowledge</th>
-              <th class="r ip-h">In Progress</th>
-              <th class="r live-h">Go Live</th>
-              <th class="r sup-h">Close by IT</th>
+              <th class="r" style="color:#b45309">Pending</th>
+              <th class="r" style="color:#0d9488">Transfer to IT</th>
+              <th class="r" style="color:#d97706">Acknowledge</th>
+              <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#7c3aed">Transfer to Support</th>
+              <th class="r" style="color:#475569">Closed</th>
+              <th class="r">Total</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1151,16 +1144,14 @@ td.grp-l { border-left:1px solid var(--border); }
         <table id="tLic">
           <thead>
             <tr>
-              <th rowspan="2">Licence</th>
-              <th class="r it-h" rowspan="2">Transfer to IT</th>
-              <th class="r ack-h" rowspan="2">Acknowledge</th>
-              <th class="r ip-h" rowspan="2">In Progress</th>
-              <th class="r live-h" rowspan="2">Ready to Go Live</th>
-              <th class="r sup-h" rowspan="2">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
-            </tr>
-            <tr>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
+              <th>Licence</th>
+              <th class="r" style="color:#b45309">Pending</th>
+              <th class="r" style="color:#0d9488">Transfer to IT</th>
+              <th class="r" style="color:#d97706">Acknowledge</th>
+              <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#7c3aed">Transfer to Support</th>
+              <th class="r" style="color:#475569">Closed</th>
+              <th class="r">Total</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1190,19 +1181,16 @@ td.grp-l { border-left:1px solid var(--border); }
       <table id="tClients">
           <thead>
             <tr>
-              <th style="width:30px" rowspan="2">#</th>
-              <th rowspan="2">Client Name</th>
-              <th rowspan="2">Plan</th>
-              <th class="r it-h" rowspan="2">Transfer to IT</th>
-              <th class="r ack-h" rowspan="2">Acknowledge</th>
-              <th class="r ip-h" rowspan="2">In Progress</th>
-              <th class="r live-h" rowspan="2">Go Live</th>
-              <th class="r sup-h" rowspan="2">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
-            </tr>
-            <tr>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
-            </tr>
+              <th style="width:30px">#</th>
+              <th style="text-align:left">Client Name</th>
+              <th>Plan</th>
+              <th class="r" style="color:#b45309">Pending</th>
+              <th class="r" style="color:#0d9488">Transfer to IT</th>
+              <th class="r" style="color:#d97706">Acknowledge</th>
+              <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#7c3aed">Transfer to Support</th>
+              <th class="r" style="color:#475569">Closed</th>
+              <th class="r">Total</th>
           </thead>
           <tbody></tbody>
         </table>
@@ -1231,19 +1219,16 @@ td.grp-l { border-left:1px solid var(--border); }
       <table id="tPlan">
           <thead>
             <tr>
-              <th style="width:30px" rowspan="2">#</th>
-              <th rowspan="2">Subscription Plan</th>
-              <th class="r it-h" rowspan="2">Transfer to IT</th>
-              <th class="r ack-h" rowspan="2">Acknowledge</th>
-              <th class="r ip-h" rowspan="2">In Progress</th>
-              <th class="r live-h" rowspan="2">Go Live</th>
-              <th class="r sup-h" rowspan="2">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
-              <th rowspan="2">Distribution</th>
-            </tr>
-            <tr>
-              <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
-            </tr>
+              <th style="width:30px">#</th>
+              <th style="text-align:left">Subscription Plan</th>
+              <th class="r" style="color:#b45309">Pending</th>
+              <th class="r" style="color:#0d9488">Transfer to IT</th>
+              <th class="r" style="color:#d97706">Acknowledge</th>
+              <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#7c3aed">Transfer to Support</th>
+              <th class="r" style="color:#475569">Closed</th>
+              <th class="r">Total</th>
+              <th>Distribution</th>
           </thead>
           <tbody></tbody>
         </table>
@@ -1304,10 +1289,9 @@ td.grp-l { border-left:1px solid var(--border); }
       <table id="modalTable">
         <thead>
           <tr>
-            <th>Ticket No</th><th>Created</th><th class="col-client">Client</th>
-            <th>Plan</th><th>Stage Date</th><th>Status</th>
-            <th>SLA</th><th>Duration</th><th>TAT</th>
-            <th>Disposition</th><th class="col-tester">Tester</th><th class="col-rm">RM</th>
+            <th>Ticket No</th><th>Created</th><th>Stage Date</th><th>Current Status</th><th>Timeline</th>
+            <th class="col-client">Client</th><th>Plan</th><th class="col-tester">Tester</th><th class="col-rm">RM</th>
+            <th>Developer</th><th>Bug / Dev</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -1631,6 +1615,41 @@ function barHtml(val, max, col){
 function isBug(r){ return r.q && /^bug/i.test(String(r.q)); }
 function isDev(r){ return r.q && /^development/i.test(String(r.q)); }
 
+// ===== SUPPORT DASHBOARD — current status handling =====
+function _normSt(s){ return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim(); }
+const SUP_STATUSES = [
+  {key:'pending',    label:'Pending',               cls:'c-oth', m:['pending']},
+  {key:'reopen',     label:'Reopen',                cls:'c-ret', m:['reopen','re open']},
+  {key:'it',         label:'Transferred To IT',     cls:'c-it',  m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
+  {key:'ack',        label:'Acknowledged',          cls:'c-ack', m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
+  {key:'ip',         label:'In Progress',           cls:'c-ip',  m:['in progress','inprogress'], sc:'IP', col:'ip'},
+  {key:'rft',        label:'Ready For Testing',     cls:'c-tst', m:['ready for testing'], sc:'RT'},
+  {key:'reopentest', label:'Reopend from Testing',  cls:'c-ret', m:['reopend from testing','reopen from testing','reopened from testing']},
+  {key:'rfcr',       label:'Ready For Code Review', cls:'c-uat', m:['ready for code review']},
+  {key:'rfm',        label:'Ready For Merging',     cls:'c-uat', m:['ready for merging','ready for merge']},
+  {key:'rfu',        label:'Ready For UAT',         cls:'c-uat', m:['ready for uat'], sc:'RU'},
+  {key:'rgl',        label:'Ready to go Live',      cls:'c-glv', m:['ready to go live'], sc:'LV'},
+  {key:'rts',        label:'Return to Support',     cls:'c-ret', m:['return to support'], sc:'RS'},
+  {key:'sp',         label:'Transferred To Support',cls:'c-sup', m:['transfer to support','transferred to support'], sc:'SP', col:'sup'},
+  {key:'future',     label:'Future Development',    cls:'c-oth', m:['future development']},
+  {key:'rejected',   label:'Rejected',              cls:'c-sup', m:['rejected','reject']},
+  {key:'closed',     label:'Closed',                cls:'c-cl',  m:['closed','close'], sc:'CL', col:'closed'},
+];
+function statusKeyOf(r){
+  const raw=_normSt(r.st);
+  if(raw){
+    for(const d of SUP_STATUSES){ if(d.m.includes(raw)) return d.key; }
+    for(const d of SUP_STATUSES){ if(d.m.some(x=>raw.includes(x))) return d.key; }
+  }
+  if(r.sc){ const d=SUP_STATUSES.find(x=>x.sc===r.sc); if(d) return d.key; }
+  return 'other';
+}
+function statusLabelOf(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return d?d.label:(r.st||'Other'); }
+// 6-column bucket for tables: it/ack/ip/sup/closed else pend (catch-all)
+function stage6(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return (d&&d.col)?d.col:'pend'; }
+function stageDateOf(r){ return r.e||r.d||r.c||r.b||r.a||''; }
+function bugDevCell(r){ return isBug(r)?'<span style="color:#b91c1c;font-weight:700;font-size:11px">🐞 Bug</span>':isDev(r)?'<span style="color:#1d4ed8;font-weight:700;font-size:11px">⚙️ Dev</span>':'<span style="color:#6b7280;font-size:11px">📋 Other</span>'; }
+
 // Unique tickets (dedup by TicketNo) across multiple [array, predicate] pairs
 function uniqTickets(pairs){
   const m = new Map();
@@ -1706,7 +1725,8 @@ function countByMonth(arr, prefix){
 
 // Build month-comparison mini HTML for KPI card
 function monthCompareHtml(data, cls, tatKey){
-  const { thisPrefix, prevPrefix } = getMonthLabels(currentFrom, currentTo);
+  const _ref = currentFrom || new Date().toISOString().slice(0,10);
+  const { thisPrefix, prevPrefix } = getMonthLabels(_ref, currentTo);
   if(!thisPrefix) return '';
   const thisData = data.filter(r => r.tc && r.tc.startsWith(thisPrefix));
   const prevData = data.filter(r => r.tc && r.tc.startsWith(prevPrefix));
@@ -1735,20 +1755,14 @@ function monthCompareHtml(data, cls, tatKey){
       <div class="kpi-m-badge kpi-m-cur">
         <span class="kpi-m-label">${thisLabel}</span>
         <span class="kpi-m-num">${fmt(thisCnt)}</span>
-        <span class="kpi-m-sublabel">${thisPct}% of total</span>
-        ${tatLine(thisData)}
       </div>
       <div class="kpi-m-badge kpi-m-prev">
         <span class="kpi-m-label">${prevLabel}</span>
         <span class="kpi-m-num">${fmt(prevCnt)}</span>
-        <span class="kpi-m-sublabel">${prevPct}% of total</span>
-        ${tatLine(prevData)}
       </div>
       <div class="kpi-m-badge kpi-m-old">
         <span class="kpi-m-label">Older</span>
         <span class="kpi-m-num">${fmt(olderCnt)}</span>
-        <span class="kpi-m-sublabel">${olderPct}% of total</span>
-        ${tatLine(olderData)}
       </div>
     </div>`;
 }
@@ -1898,11 +1912,8 @@ async function fetchData(from, to){
 
 // Applies HTML date filter on already-loaded RAW data (no new API call)
 function applyFilter(){
-  const from = document.getElementById('dateFrom').value;
-  const to   = document.getElementById('dateTo').value;
-  if(!from || !to){ showToast('Please select both From and To dates'); return; }
   if(RAW.length === 0){ showToast('⏳ Data is still loading, please wait…'); return; }
-  buildFiltered(from, to);
+  buildFiltered('', '');
   const ticketQ=(document.getElementById('ticketSearch')?.value||'').trim();
   if(ticketQ){
     document.getElementById('bannerTicket').textContent=ticketQ;
@@ -1952,12 +1963,13 @@ function renderSubdisp(){
     const k = keyOf(r);
     if(!map[k]) map[k] = {name:k, pend:0, it:0, ack:0, ip:0, sup:0, cl:0, tot:0};
     const m = map[k]; m.tot++;
-    if(r.sc==='IT')      m.it++;
-    else if(r.sc==='AK') m.ack++;
-    else if(r.sc==='IP') m.ip++;
-    else if(r.sc==='SP') m.sup++;
-    else if(r.sc==='CL') m.cl++;
-    else                 m.pend++;
+    const col = stage6(r);
+    if(col==='it')        m.it++;
+    else if(col==='ack')  m.ack++;
+    else if(col==='ip')   m.ip++;
+    else if(col==='sup')  m.sup++;
+    else if(col==='closed') m.cl++;
+    else                  m.pend++;
   });
   const rows = Object.values(map).sort((a,b)=> b.tot - a.tot);
   _subdispRows = rows;
@@ -1995,11 +2007,7 @@ function openSubdispTickets(i){
   const name=row.name;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
   const data=VIEW.filter(r=>keyOf(r)===name);
-  _modalKey=null; _modalData=data; _modalTatKey=''; _modalDateKey='tc'; _modalDurKey=''; _modalActKey=''; _modalPendSc=''; _modalFilter='all';
-  document.getElementById('modalTitle').textContent='Disposition: '+name+' — Ticket Details';
-  document.getElementById('modalStats').innerHTML='<span class="ms ms-total">Total: '+fmt(data.length)+'</span>';
-  renderModalTable(data);
-  document.getElementById('modalOverlay').classList.add('open');
+  _openSupModal(data, 'Disposition: '+name+' — Ticket Details');
 }
 
 // ===== DEVELOPER WISE (no Acknowledge column) =====
@@ -2059,102 +2067,54 @@ function openDevTickets(i){
   document.getElementById('modalOverlay').classList.add('open');
 }
 function resetAll(){
-  const [from,to] = getCurrentMonthRange();
-  document.getElementById('dateFrom').value = from;
-  document.getElementById('dateTo').value   = to;
   applyFilter();
 }
 
 // ===== KPI CARDS =====
 function renderKPIs(){
-  // Support Dashboard: KPIs = current status counts (all statuses). Month buckets = count only.
-  const STATUSES = [
-    {sc:'IT', label:'Transfer to IT',      cls:'c-it',  key:'S_IT'},
-    {sc:'AK', label:'Acknowledge',         cls:'c-ack', key:'S_AK'},
-    {sc:'IP', label:'In Progress',         cls:'c-ip',  key:'S_IP'},
-    {sc:'LV', label:'Ready to Go Live',    cls:'c-glv', key:'S_LV'},
-    {sc:'SP', label:'Transfer to Support', cls:'c-sup', key:'S_SP'},
-    {sc:'CL', label:'Closed',              cls:'c-cl',  key:'S_CL'},
-    {sc:'RS', label:'Return to Support',   cls:'c-ret', key:'S_RS'},
-    {sc:'RT', label:'Ready for Testing',   cls:'c-tst', key:'S_RT'},
-    {sc:'RU', label:'Ready for UAT',       cls:'c-uat', key:'S_RU'},
-    {sc:'OT', label:'Other / Pending',     cls:'c-oth', key:'S_OT'},
-  ];
-  const total = VIEW.length || 1;
-  const cards = STATUSES.map(s=>{
-    const data = VIEW.filter(r=>r.sc===s.sc);
-    const cnt  = data.length;
-    const pct  = Math.round(cnt/total*100);
-    return `<div class="kpi-card ${s.cls}">
+  const counts={}; SUP_STATUSES.forEach(d=>counts[d.key]=0);
+  VIEW.forEach(r=>{ const k=statusKeyOf(r); if(counts[k]!==undefined) counts[k]++; });
+  const cards=SUP_STATUSES.map(d=>{
+    const data=VIEW.filter(r=>statusKeyOf(r)===d.key);
+    return `<div class="kpi-card ${d.cls}">
       <div class="kpi-top"></div>
       <div class="kpi-body">
-        <div class="kpi-stage">${s.label}</div>
-        <div class="kpi-head">
-          <div class="kpi-head-l">
-            <div class="kpi-num">${fmt(cnt)}</div>
-            <div class="pend-badge" title="Share of all tickets in current view">${pct}% of total</div>
-          </div>
-        </div>
-        ${monthCompareHtml(data, s.cls)}
+        <div class="kpi-stage">${d.label}</div>
+        <div class="kpi-head"><div class="kpi-head-l"><div class="kpi-num">${fmt(counts[d.key]||0)}</div></div></div>
+        ${monthCompareHtml(data, d.cls)}
       </div>
       <div class="kpi-footer">
-        <span class="kpi-link" onclick="openModal('${s.key}')">🔍 View Details</span>
-        <button class="kpi-xls" onclick="exportStage('${s.key}')">↓ Excel</button>
+        <span class="kpi-link" onclick="openStatusModal('${d.key}')">🔍 View Details</span>
+        <button class="kpi-xls" onclick="exportStatusExcel('${d.key}')">↓ Excel</button>
       </div>
     </div>`;
   });
   document.getElementById('kpiRow').innerHTML =
-    `<div class="kpi-row-label">
-       <span class="kpi-row-label-text">🔖 Current Status — Ticket Count</span>
-       <span class="kpi-row-label-line"></span>
-     </div>
+    `<div class="kpi-row-label"><span class="kpi-row-label-text">🔖 Current Status — Ticket Count</span><span class="kpi-row-label-line"></span></div>
      <div class="kpi-row">${cards.join('')}</div>`;
 }
 
 
 function renderDisp(){
-  const DISPS = ['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
-  function dispGroup(disp, q){
-    if(!q) return 'Others';
-    if(q===disp) return disp;
-    return null;
-  }
-  function countForDisp(arr, dispName){
-    return arr.filter(r=>{
-      if(!r.q) return dispName==='Others';
-      if(dispName==='Others') return !DISPS.slice(0,-1).includes(r.q);
-      return r.q===dispName;
-    }).length;
-  }
-  const tbody = document.querySelector('#tDisp tbody');
-  let rows = DISPS.map(d=>{
-    const it   = countForDisp(fIT,   d);
-    const ack  = countForDisp(fAck,  d);
-    const ip   = countForDisp(fIP,   d);
-    const live = countForDisp(fLive, d);
-    const sup  = countForDisp(fSup,  d);
-    return {d, it, ack, ip, live, sup, total: it+ack+ip+live+sup};
-  }).filter(r=>r.total>0);
-
-  const tot = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
-  const grandTotal = tot.it+tot.ack+tot.ip+tot.live+tot.sup;
-
+  const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
+  const typeOf=r=>{ if(!r.q) return 'Others'; return DISPS.slice(0,-1).includes(r.q)?r.q:'Others'; };
+  const tbody=document.querySelector('#tDisp tbody'); if(!tbody) return;
+  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
+  const map={}; DISPS.forEach(d=>map[d]={...blank});
+  VIEW.forEach(r=>{ const t=typeOf(r); map[t][stage6(r)]++; map[t].tot++; });
+  const rows=DISPS.map(d=>({d,...map[d]})).filter(r=>r.tot>0);
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
   tbody.innerHTML = rows.map(r=>`<tr>
     <td><strong>${r.d}</strong></td>
-    <td class="r dc"><span class="n-it">${fmt(r.it)}</span></td>
-    <td class="r dc"><span class="n-ack">${fmt(r.ack)}</span></td>
-    <td class="r dc"><span class="n-ip">${fmt(r.ip)}</span></td>
-    <td class="r dc"><span class="n-live">${fmt(r.live)}</span></td>
-    <td class="r dc"><span class="n-sup">${fmt(r.sup)}</span></td>
+    <td class="r dc">${c(r.pend,'#b45309')}</td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td>
+    <td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td><td class="r dc">${c(r.closed,'#475569')}</td>
+    <td class="r dc"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row">
-    <td><strong>Grand Total</strong></td>
-    <td class="r dc"><strong class="n-it">${fmt(tot.it)}</strong></td>
-    <td class="r dc"><strong class="n-ack">${fmt(tot.ack)}</strong></td>
-    <td class="r dc"><strong class="n-ip">${fmt(tot.ip)}</strong></td>
-    <td class="r dc"><strong class="n-live">${fmt(tot.live)}</strong></td>
-    <td class="r dc"><strong class="n-sup">${fmt(tot.sup)}</strong></td>
-  </tr>`;
+  + `<tr class="total-row"><td><strong>Grand Total</strong></td>
+    <td class="r dc"><strong>${fmt(T.pend)}</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td>
+    <td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td><td class="r dc"><strong>${fmt(T.closed)}</strong></td>
+    <td class="r dc"><strong>${fmt(T.tot)}</strong></td></tr>`;
 }
 
 // ===== KEY LICENCES TABLE =====
@@ -2164,48 +2124,25 @@ const KEY_LICENCES = [
   { lic:'8011596', name:'Margbooks Sales', email:'margbookssales@gmail.com'   },
 ];
 function renderKeyLic(){
-  const tbody = document.querySelector('#tLic tbody');
-  if(!tbody) return;
+  const tbody = document.querySelector('#tLic tbody'); if(!tbody) return;
+  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
   const rows = KEY_LICENCES.map(k=>{
-    const pred = r=>String(r.l)===k.lic;
-    const supRows = fSup.filter(pred);
-    return {
-      ...k,
-      bug:  supRows.filter(isBug).length,
-      dev:  supRows.filter(isDev).length,
-      it:   fIT.filter(pred).length,
-      ack:  fAck.filter(pred).length,
-      ip:   fIP.filter(pred).length,
-      live: fLive.filter(pred).length,
-      sup:  fSup.filter(pred).length,
-    };
+    const o={...k,...blank};
+    VIEW.filter(r=>String(r.l)===k.lic).forEach(r=>{ o[stage6(r)]++; o.tot++; });
+    return o;
   });
-  const tot = ['bug','dev','it','ack','ip','live','sup'].reduce((o,key)=>{o[key]=rows.reduce((s,r)=>s+r[key],0);return o;},{});
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
   tbody.innerHTML = rows.map(r=>`<tr>
-    <td>
-      <strong>${r.name}</strong>
-      <div style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.lic} · ${r.email}</div>
-    </td>
-    <td class="r"><span class="n-it">${r.it||'—'}</span></td>
-    <td class="r"><span class="n-ack">${r.ack||'—'}</span></td>
-    <td class="r"><span class="n-ip">${r.ip||'—'}</span></td>
-    <td class="r"><span class="n-live">${r.live||'—'}</span></td>
-    <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
-    <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:800;font-size:13px">${r.bug||'—'}</span></td>
-    <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:800;font-size:13px">${r.dev||'—'}</span></td>
-    <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:800;font-size:13px">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
+    <td><strong>${r.name}</strong><div style="font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.lic} · ${r.email}</div></td>
+    <td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td>
+    <td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
+    <td class="r"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row">
-    <td><strong>Grand Total</strong></td>
-    <td class="r"><strong class="n-it">${fmt(tot.it)}</strong></td>
-    <td class="r"><strong class="n-ack">${fmt(tot.ack)}</strong></td>
-    <td class="r"><strong class="n-ip">${fmt(tot.ip)}</strong></td>
-    <td class="r"><strong class="n-live">${fmt(tot.live)}</strong></td>
-    <td class="r"><strong class="n-sup">${fmt(tot.sup)}</strong></td>
-    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(tot.bug)}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(tot.dev)}</strong></td>
-    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,(tot.sup||0)-(tot.bug||0)-(tot.dev||0)))}</strong></td>
-  </tr>`;
+  + `<tr class="total-row"><td><strong>Grand Total</strong></td>
+    <td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td>
+    <td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
+    <td class="r"><strong>${fmt(T.tot)}</strong></td></tr>`;
 }
 
 // ===== TESTER TABLE =====
@@ -2492,125 +2429,64 @@ function renderRM(){
 
 // ===== CLIENTS TABLE =====
 function renderClients(){
+  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
   const licMap = {};
-  function seed(r){
-    if(!licMap[r.l]) licMap[r.l]={lic:r.l,name:r.u||'—',plan:r.p||'',it:0,ack:0,ip:0,live:0,sup:0};
-    if(r.u && String(r.u).length>String(licMap[r.l].name).length) licMap[r.l].name=r.u;
-    if(r.p && !licMap[r.l].plan) licMap[r.l].plan=r.p;
-  }
-  fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].it++; });
-  fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].ack++; });
-  fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].ip++; });
-  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].live++; });
-  fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].sup++; });
-
-  const top10 = Object.values(licMap).sort((a,b)=> b.it!==a.it ? b.it-a.it : (b.ip+b.live+b.sup+b.ack)-(a.ip+a.live+a.sup+a.ack)).slice(0,10);
-  // Bug/Dev per client — unique tickets across all stages for that licence
-  top10.forEach(c=>{
-    const supRows = fSup.filter(r=>String(r.l)===String(c.lic));
-    c.bug = supRows.filter(isBug).length;
-    c.dev = supRows.filter(isDev).length;
+  VIEW.filter(r=>r.l&&r.l!==0).forEach(r=>{
+    if(!licMap[r.l]) licMap[r.l]={lic:r.l,name:r.u||'—',plan:r.p||'',...blank};
+    const m=licMap[r.l];
+    if(r.u && String(r.u).length>String(m.name).length) m.name=r.u;
+    if(r.p && !m.plan) m.plan=r.p;
+    m[stage6(r)]++; m.tot++;
   });
+  const top10 = Object.values(licMap).sort((a,b)=> b.tot-a.tot).slice(0,10);
   const tbody = document.querySelector('#tClients tbody');
-  // Top 10 subtotal (not full KPI — by design for Top 10 table)
-  const cTotals = ['it','ack','ip','live','sup','bug','dev'].reduce((o,k)=>{o[k]=top10.reduce((s,r)=>s+(r[k]||0),0);return o;},{});
+  const cT = ['pend','it','ack','ip','sup','closed','tot'].reduce((o,k)=>{o[k]=top10.reduce((s,r)=>s+(r[k]||0),0);return o;},{});
+  const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
   tbody.innerHTML = top10.length ? top10.map((r,i)=>`<tr>
     <td>${rkHtml(i)}</td>
     <td><strong>${r.name}</strong></td>
     <td>${planTag(r.plan)}</td>
-    <td class="r"><span class="n-it">${r.it||'—'}</span></td>
-    <td class="r"><span class="n-ack">${r.ack||'—'}</span></td>
-    <td class="r"><span class="n-ip">${r.ip||'—'}</span></td>
-    <td class="r"><span class="n-live">${r.live||'—'}</span></td>
-    <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
-    <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:700">${r.bug||'—'}</span></td>
-    <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:700">${r.dev||'—'}</span></td>
-    <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:700">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
+    <td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td>
+    <td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
+    <td class="r"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row">
-    <td colspan="3"><strong>Top 10 Total</strong></td>
-    <td class="r"><strong class="n-it">${fmt(cTotals.it)}</strong></td>
-    <td class="r"><strong class="n-ack">${fmt(cTotals.ack)}</strong></td>
-    <td class="r"><strong class="n-ip">${fmt(cTotals.ip)}</strong></td>
-    <td class="r"><strong class="n-live">${fmt(cTotals.live)}</strong></td>
-    <td class="r"><strong class="n-sup">${fmt(cTotals.sup)}</strong></td>
-    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(cTotals.bug)}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(cTotals.dev)}</strong></td>
-    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,(cTotals.sup||0)-(cTotals.bug||0)-(cTotals.dev||0)))}</strong></td>
-  </tr>`
-  : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+  + `<tr class="total-row"><td colspan="3"><strong>Top 10 Total</strong></td>
+    <td class="r"><strong>${fmt(cT.pend)}</strong></td><td class="r"><strong>${fmt(cT.it)}</strong></td><td class="r"><strong>${fmt(cT.ack)}</strong></td>
+    <td class="r"><strong>${fmt(cT.ip)}</strong></td><td class="r"><strong>${fmt(cT.sup)}</strong></td><td class="r"><strong>${fmt(cT.closed)}</strong></td>
+    <td class="r"><strong>${fmt(cT.tot)}</strong></td></tr>`
+  : `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
 }
 
 // ===== PLAN TABLE =====
 function renderPlan(){
-  // Get all unique named plans
-  const namedPlans = [...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
-    .filter(r=>r.p && String(r.p).trim()).map(r=>r.p))];
-
-  function planStats(pred){
-    const supRows = fSup.filter(pred);
-    return { bug: supRows.filter(isBug).length, dev: supRows.filter(isDev).length };
-  }
-  const rows = namedPlans.map(p=>({
-    p,
-    it:   fIT.filter(r=>r.p===p).length,
-    ack:  fAck.filter(r=>r.p===p).length,
-    ip:   fIP.filter(r=>r.p===p).length,
-    live: fLive.filter(r=>r.p===p).length,
-    sup:  fSup.filter(r=>r.p===p).length,
-    ...planStats(r=>r.p===p),
-  })).sort((a,b)=>b.it-a.it);
-
-  // Add (Blank) row for tickets with no plan
-  const blankIT   = fIT.filter(r=>!r.p||!String(r.p).trim()).length;
-  const blankAck  = fAck.filter(r=>!r.p||!String(r.p).trim()).length;
-  const blankIP   = fIP.filter(r=>!r.p||!String(r.p).trim()).length;
-  const blankLive = fLive.filter(r=>!r.p||!String(r.p).trim()).length;
-  const blankSup  = fSup.filter(r=>!r.p||!String(r.p).trim()).length;
-  if(blankIT||blankAck||blankIP||blankLive||blankSup)
-    rows.push({p:'(Blank)', it:blankIT, ack:blankAck, ip:blankIP, live:blankLive, sup:blankSup,
-      ...planStats(r=>!r.p||!String(r.p).trim()), isBlank:true});
-
-  // Grand Total must match KPI counts exactly
-  const pTotals = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
-  const totalIT = fIT.length||1;
-  const namedRows = rows.filter(r=>!r.isBlank);
-  const tbody = document.querySelector('#tPlan tbody');
-
-  tbody.innerHTML = rows.length ? rows.map((r,i)=>{
-    const idx = r.isBlank ? -1 : namedRows.indexOf(r);
-    const rk  = r.isBlank ? `<span style="color:var(--muted);font-size:10px">—</span>` : rkHtml(idx);
-    return `<tr ${r.isBlank ? 'class="blank-row"' : ''}>
-      <td>${rk}</td>
-      <td>${r.isBlank ? '<span style="color:var(--muted)">(Blank)</span>' : planTag(r.p)}</td>
-      <td class="r"><span class="n-it">${r.it||'—'}</span></td>
-      <td class="r"><span class="n-ack">${r.ack||'—'}</span></td>
-      <td class="r"><span class="n-ip">${r.ip||'—'}</span></td>
-      <td class="r"><span class="n-live">${r.live||'—'}</span></td>
-      <td class="r"><span class="n-sup">${r.sup||'—'}</span></td>
-      <td class="r grp-l" style="background:#fff8f8"><span style="color:#b91c1c;font-weight:700">${r.bug||'—'}</span></td>
-      <td class="r" style="background:#eff6ff"><span style="color:#1d4ed8;font-weight:700">${r.dev||'—'}</span></td>
-      <td class="r" style="background:#f8fafc"><span style="color:#6b7280;font-weight:700">${Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0))||'—'}</span></td>
-      <td>${r.isBlank ? '' : barHtml(r.it,totalIT,'#0d9488')}</td>
+  const blank={pend:0,it:0,ack:0,ip:0,sup:0,closed:0,tot:0};
+  const map={};
+  VIEW.forEach(r=>{
+    const p=(r.p && String(r.p).trim()) ? String(r.p).trim() : '(Blank)';
+    if(!map[p]) map[p]={p,...blank};
+    map[p][stage6(r)]++; map[p].tot++;
+  });
+  let rows=Object.values(map).sort((a,b)=>b.tot-a.tot);
+  const T=rows.reduce((a,r)=>{['pend','it','ack','ip','sup','closed','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const grand=T.tot||1;
+  const tbody=document.querySelector('#tPlan tbody');
+  const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
+  tbody.innerHTML = rows.map((r,i)=>{
+    const pctv=(r.tot/grand*100);
+    return `<tr>
+      <td>${r.p==='(Blank)'?'<span style=\'color:var(--muted2)\'>—</span>':rkHtml(i)}</td>
+      <td>${r.p==='(Blank)'?'<em style=\'color:var(--muted)\'>(Blank)</em>':planTag(r.p)}</td>
+      <td class="r">${c(r.pend,'#b45309')}</td><td class="r">${c(r.it,'#0d9488')}</td><td class="r">${c(r.ack,'#d97706')}</td>
+      <td class="r">${c(r.ip,'#0891b2')}</td><td class="r">${c(r.sup,'#7c3aed')}</td><td class="r">${c(r.closed,'#475569')}</td>
+      <td class="r"><strong>${fmt(r.tot)}</strong></td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:7px;background:#eef2f7;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pctv.toFixed(1)}%;background:linear-gradient(90deg,#0d9488,#0891b2)"></div></div><span style="font-size:10px;color:var(--muted);min-width:34px;text-align:right">${pctv.toFixed(1)}%</span></div></td>
     </tr>`;
   }).join('')
-  + `<tr class="total-row">
-    <td colspan="2"><strong>Grand Total</strong></td>
-    <td class="r"><strong class="n-it">${fmt(pTotals.it)}</strong></td>
-    <td class="r"><strong class="n-ack">${fmt(pTotals.ack)}</strong></td>
-    <td class="r"><strong class="n-ip">${fmt(pTotals.ip)}</strong></td>
-    <td class="r"><strong class="n-live">${fmt(pTotals.live)}</strong></td>
-    <td class="r"><strong class="n-sup">${fmt(pTotals.sup)}</strong></td>
-    <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(rows.reduce((s,r)=>s+(r.bug||0),0))}</strong></td>
-    <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.dev||0),0))}</strong></td>
-    <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.bug||0)-(r.dev||0)),0))}</strong></td>
-    <td></td>
-  </tr>`
-  : `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+  + `<tr class="total-row"><td colspan="2"><strong>Grand Total</strong></td>
+    <td class="r"><strong>${fmt(T.pend)}</strong></td><td class="r"><strong>${fmt(T.it)}</strong></td><td class="r"><strong>${fmt(T.ack)}</strong></td>
+    <td class="r"><strong>${fmt(T.ip)}</strong></td><td class="r"><strong>${fmt(T.sup)}</strong></td><td class="r"><strong>${fmt(T.closed)}</strong></td>
+    <td class="r"><strong>${fmt(T.tot)}</strong></td><td></td></tr>`;
 }
-
-// ===== RENDER ALL =====
-let _charts = {};
 
 function renderCharts(){
   if(typeof Chart==='undefined') return;
@@ -2899,71 +2775,78 @@ let _modalData = [], _modalTatKey = '', _modalDateKey = '', _modalDurKey = '',
     _modalActKey = '', _modalPendSc = '', _modalFilter = 'all';
 
 function renderModalTable(rows){
-  const {tatKey, dateKey, durKey, actKey, pendingSc} = {
-    tatKey:_modalTatKey, dateKey:_modalDateKey, durKey:_modalDurKey,
-    actKey:_modalActKey, pendingSc:_modalPendSc
-  };
   const slice = rows.slice(0,500);
-  const stageCfg = _modalKey ? getStageConfig(_modalKey) : null;
   const tbody = document.querySelector('#modalTable tbody');
-  tbody.innerHTML = slice.map((r,ri)=>{
-    const tatHtml = r[tatKey]==='I'
-      ? `<span style="color:var(--ip);font-weight:700;font-size:11px">✔ InTAT</span>`
-      : r[tatKey]==='O'
-      ? `<span style="color:var(--sup);font-weight:700;font-size:11px">✘ OutTAT</span>`
-      : `<span style="color:var(--muted2);font-size:11px">—</span>`;
-    const isPend = r.sc === pendingSc;
-    const pendHtml = isPend
-      ? `<span class="pend-badge" style="font-size:9px;padding:2px 7px">⏳ Pending</span>`
-      : `<span style="color:var(--ip);font-size:10px;font-weight:700">✔ Moved</span>`;
-    return `<tr onclick="openTicketDetail(_filteredRows[${ri}], _stageCfgSnap)" title="Click to view ticket details">
+  tbody.innerHTML = slice.map((r,ri)=>`<tr onclick="openTicketDetail(_filteredRows[${ri}], null)" title="Click to view ticket details">
       <td style="font-size:11px;color:var(--it);font-family:'JetBrains Mono',monospace;font-weight:700">${r.n||'—'}</td>
       <td style="font-size:11px;color:var(--muted)">${r.tc||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${stageDateOf(r)||'—'}</td>
+      <td style="font-size:11px;font-weight:600">${statusLabelOf(r)}</td>
+      <td style="font-size:11px;color:var(--muted)">${r.tld||'—'}</td>
       <td class="col-client" style="font-weight:500">${r.u||'—'}</td>
       <td>${planTag(r.p)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${r[dateKey]||'—'}</td>
-      <td>${pendHtml}</td>
-      <td style="font-size:11px;color:var(--muted2)">${durKey?r[durKey]||'—':'—'}</td>
-      <td style="font-size:11px;color:var(--muted)">${r[actKey]||'—'}</td>
-      <td>${tatHtml}</td>
-      <td style="font-size:11px">${r.q||'—'}</td>
       <td class="col-tester" style="font-size:11px">${r.t||r.eb||'—'}</td>
       <td class="col-rm" style="font-size:11px">${r.r||'—'}</td>
-    </tr>`;
-  }).join('');
-  // Store rendered slice for click access
+      <td style="font-size:11px">${r.dev||'—'}</td>
+      <td>${bugDevCell(r)}</td>
+    </tr>`).join('');
   window._filteredRows = slice;
-  window._stageCfgSnap = stageCfg;
+  window._stageCfgSnap = null;
   if(rows.length > 500) tbody.innerHTML +=
-    `<tr><td colspan="12" style="text-align:center;color:var(--muted2);padding:12px;font-size:11px">
-      Showing first 500 of ${fmt(rows.length)} rows — export Excel for full data
-    </td></tr>`;
+    `<tr><td colspan="11" style="text-align:center;color:var(--muted2);padding:12px;font-size:11px">Showing first 500 of ${fmt(rows.length)} rows — export Excel for full data</td></tr>`;
 }
 
 function setModalFilter(f){
   _modalFilter = f;
   const data = _modalData;
-  const tk = _modalTatKey, ps = _modalPendSc;
-
-  // Update active badge styles
   document.querySelectorAll('.ms-btn').forEach(el=>{
-    const isActive = el.dataset.f === f;
-    el.style.opacity       = isActive ? '1' : '.45';
-    el.style.transform     = isActive ? 'scale(1.05)' : 'scale(1)';
-    el.style.boxShadow     = isActive ? '0 2px 8px rgba(0,0,0,.12)' : 'none';
-    el.style.cursor        = 'pointer';
+    const a = el.dataset.f === f;
+    el.style.opacity = a ? '1' : '.45';
+    el.style.transform = a ? 'scale(1.05)' : 'scale(1)';
+    el.style.boxShadow = a ? '0 2px 8px rgba(0,0,0,.12)' : 'none';
+    el.style.cursor = 'pointer';
   });
-
-  // Update count badge
   let filtered, label;
-  if(f==='all')    { filtered=data;                                label=`Showing all ${fmt(filtered.length)}`; }
-  else if(f==='pend')  { filtered=data.filter(r=>r.sc===ps);          label=`Pending: ${fmt(filtered.length)}`; }
-  else if(f==='in')    { filtered=data.filter(r=>r[tk]==='I');         label=`InTAT: ${fmt(filtered.length)}`; }
-  else if(f==='out')   { filtered=data.filter(r=>r[tk]==='O');         label=`OutTAT: ${fmt(filtered.length)}`; }
-  else if(f==='notat') { filtered=data.filter(r=>r[tk]!=='I'&&r[tk]!=='O'); label=`No TAT: ${fmt(filtered.length)}`; }
-
-  document.getElementById('modalFilterLabel').textContent = label;
+  if(f==='bug')        { filtered=data.filter(isBug);                 label=`Bug: ${fmt(filtered.length)}`; }
+  else if(f==='dev')   { filtered=data.filter(isDev);                 label=`Development: ${fmt(filtered.length)}`; }
+  else if(f==='others'){ filtered=data.filter(r=>!isBug(r)&&!isDev(r)); label=`Others: ${fmt(filtered.length)}`; }
+  else                 { filtered=data;                               label=`Showing all ${fmt(filtered.length)}`; }
+  const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent = label;
   renderModalTable(filtered);
+}
+
+function supModalStats(data){
+  const bug=data.filter(isBug).length, dev=data.filter(isDev).length, oth=data.length-bug-dev;
+  return `<span class="ms ms-total ms-btn" data-f="all" onclick="setModalFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
+    <span class="ms ms-btn" data-f="bug" onclick="setModalFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
+    <span class="ms ms-btn" data-f="dev" onclick="setModalFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
+    <span class="ms ms-btn" data-f="others" onclick="setModalFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
+    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+}
+function _openSupModal(data, title){
+  _modalKey=null; _modalData=data; _modalFilter='all';
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalStats').innerHTML=supModalStats(data);
+  renderModalTable(data);
+  setTimeout(()=>setModalFilter('all'),0);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function openStatusModal(key){
+  const d=SUP_STATUSES.find(x=>x.key===key);
+  const data=VIEW.filter(r=>statusKeyOf(r)===key);
+  _openSupModal(data, (d?d.label:'Status')+' — Ticket Details');
+}
+function exportStatusExcel(key){
+  const d=SUP_STATUSES.find(x=>x.key===key);
+  const data=VIEW.filter(r=>statusKeyOf(r)===key);
+  const wb=XLSX.utils.book_new();
+  const header=['Ticket No','Created Date','Stage Date','Current Status','Timeline','Client','Plan','Tester','RM','Developer','Bug/Development','LicNo'];
+  const out=[header];
+  data.forEach(r=>out.push([r.n||'',r.tc||'',stageDateOf(r),statusLabelOf(r),r.tld||'',r.u||'',r.p||'',r.t||r.eb||'',r.r||'',r.dev||'',isBug(r)?'Bug':isDev(r)?'Development':'Others',r.l||'']));
+  const ws=XLSX.utils.aoa_to_sheet(out);
+  ws['!cols']=[{wch:14},{wch:12},{wch:12},{wch:20},{wch:12},{wch:30},{wch:14},{wch:18},{wch:16},{wch:16},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,(d?d.label:'Status').slice(0,31));
+  XLSX.writeFile(wb,'Support_'+((d?d.label:'status').replace(/[^a-z0-9]/gi,'_'))+'.xlsx');
 }
 
 function openModal(key){
@@ -3126,7 +3009,7 @@ function openTicketDetail(rec, stageCfg){
 
   // Build status badge
   const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
-  const statusLabel = STATUS_LABELS[rec.sc] || rec.sc || '—';
+  const statusLabel = (typeof statusLabelOf==='function') ? statusLabelOf(rec) : (STATUS_LABELS[rec.sc] || rec.sc || '—');
   const tatKey = stageCfg ? stageCfg.tatKey : '';
   const dateKey = stageCfg ? stageCfg.dateKey : '';
   const durKey  = stageCfg ? stageCfg.durKey : '';
@@ -3619,9 +3502,6 @@ async function backgroundFetch(){
 }
 
 async function init(){
-  const [from, to] = getCurrentMonthRange();
-  document.getElementById('dateFrom').value = from;
-  document.getElementById('dateTo').value   = to;
 
   // Loader show karo with timer
   document.getElementById('loaderTitle').textContent = 'Loading Data…';
