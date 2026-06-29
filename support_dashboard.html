@@ -1066,32 +1066,18 @@ td.grp-l { border-left:1px solid var(--border); }
 
   <!-- CHARTS ROW -->
   <div class="charts-row" id="chartsRow">
-    <div class="chart-card">
+    <div class="chart-card" style="grid-column:1 / -1">
       <div class="sec-hdr">
         <div class="sec-title-wrap">
           <div class="sec-accent" style="background:linear-gradient(180deg,var(--it),var(--live))"></div>
           <div>
             <div class="sec-title">Stage Volume Distribution</div>
-            <div class="sec-sub">Ticket count across all 5 stages</div>
+            <div class="sec-sub">Ticket count by current status</div>
           </div>
         </div>
       </div>
-      <div style="padding:12px 20px 16px;height:290px;position:relative;">
+      <div style="padding:12px 20px 16px;height:360px;position:relative;">
         <canvas id="chartDonut"></canvas>
-      </div>
-    </div>
-    <div class="chart-card">
-      <div class="sec-hdr">
-        <div class="sec-title-wrap">
-          <div class="sec-accent" style="background:linear-gradient(180deg,var(--ip),var(--sup))"></div>
-          <div>
-            <div class="sec-title">InTAT vs OutTAT — Per Stage</div>
-            <div class="sec-sub">Performance against SLA targets</div>
-          </div>
-        </div>
-      </div>
-      <div style="padding:12px 20px 16px;height:290px;position:relative;">
-        <canvas id="chartBar"></canvas>
       </div>
     </div>
   </div>
@@ -2489,240 +2475,27 @@ function renderPlan(){
     <td class="r"><strong>${fmt(T.tot)}</strong></td><td></td></tr>`;
 }
 
+let _charts = {};
 function renderCharts(){
   if(typeof Chart==='undefined') return;
-
-  // Date-filtered stages use fIT/fAck/fIP/fLive/fSup
-  // Status-only stages use the current filtered dashboard view.
-  const rsCount  = VIEW.filter(r=>r.sc==='RS').length;
-  const rtCount  = VIEW.filter(r=>r.sc==='RT').length;
-  const ruCount  = VIEW.filter(r=>r.sc==='RU').length;
-  const rglCount = VIEW.filter(r=>r.sc==='LV').length;
-
-  const ST = [
-    {label:'Transfer to IT',    short:'IT',  n:fIT.length,   in:fIT.filter(r=>r.at==='I').length,   out:fIT.filter(r=>r.at==='O').length,   c:'#0d9488'},
-    {label:'Acknowledge',       short:'ACK', n:fAck.length,  in:fAck.filter(r=>r.bt==='I').length,  out:fAck.filter(r=>r.bt==='O').length,  c:'#d97706'},
-    {label:'In Progress',       short:'IP',  n:fIP.length,   in:fIP.filter(r=>r.ct==='I').length,   out:fIP.filter(r=>r.ct==='O').length,   c:'#059669'},
-    {label:'Go Live',           short:'Live',n:fLive.length, in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#7c3aed'},
-    {label:'Close by IT',       short:'SUP', n:fSup.length,  in:fSup.filter(r=>r.dt==='I').length,  out:fSup.filter(r=>r.dt==='O').length,  c:'#dc2626'},
-    {label:'Return to Support', short:'RTS', n:rsCount,      in:0,  out:0,  c:'#f97316', statusOnly:true},
-    {label:'Ready for Testing', short:'RFT', n:rtCount,      in:0,  out:0,  c:'#0891b2', statusOnly:true},
-    {label:'Ready for UAT',     short:'RFU', n:ruCount,      in:0,  out:0,  c:'#84cc16', statusOnly:true},
-    {label:'Ready for Go Live', short:'RGL', n:rglCount,     in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#a21caf'},
-  ];
-  const total = ST.reduce((s,x)=>s+x.n,0);
-  const totalDateFiltered = ST.filter(s=>!s.statusOnly).reduce((s,x)=>s+x.n,0);
-
-  const TT = { backgroundColor:'#0f172a', titleColor:'#fff', bodyColor:'#e2e8f0', padding:10, cornerRadius:8 };
-  const FONT = {family:"'Sora',sans-serif"};
-  const destroyMake = (key, canvas, cfg) => {
-    if(_charts[key]) _charts[key].destroy();
-    if(canvas) _charts[key] = new Chart(canvas, cfg);
-  };
-
-  /* ── 1. STAGE DONUT ── */
-  destroyMake('donut', document.getElementById('chartDonut'), {
-    type:'doughnut',
-    data:{
-      labels: ST.map(s=>s.label),
-      datasets:[{ data:ST.map(s=>s.n),
-        backgroundColor:ST.map(s=>s.statusOnly ? s.c+'99' : s.c),
-        borderWidth:3, borderColor:'#fff',
-        borderDash: ST.map(s=>s.statusOnly?[4,2]:[]),
-        hoverBorderWidth:0, hoverOffset:6 }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false, cutout:'70%',
-      layout:{padding:10},
-      plugins:{
-        legend:{ position:'bottom', labels:{ color:'#374151', font:{...FONT,size:11},
-          padding:14, boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:'circle',
-          generateLabels: (chart) => {
-            const ds = chart.data.datasets[0]; const tot2 = ds.data.reduce((a,b)=>a+b,0);
-            return chart.data.labels.map((lbl,i)=>({text: lbl+': '+(tot2?((ds.data[i]/tot2)*100).toFixed(1):0)+'%', fillStyle:ds.backgroundColor[i], strokeStyle:ds.backgroundColor[i], hidden:false, index:i}));
-          }
-        }},
-        tooltip:{ ...TT, callbacks:{ label:c=>`  ${c.label}: ${fmt(c.raw)}  (${total?((c.raw/total)*100).toFixed(1):0}%)`}}
-      },
-      animation:{ duration:700 }
+  try{
+    const COLORS={pending:'#b45309',reopen:'#f97316',it:'#0d9488',ack:'#d97706',ip:'#0891b2',rft:'#0284c7',reopentest:'#f59e0b',rfcr:'#7c3aed',rfm:'#9333ea',rfu:'#a21caf',rgl:'#22c55e',rts:'#ef4444',sp:'#6d28d9',future:'#64748b',rejected:'#dc2626',closed:'#475569'};
+    const rows=SUP_STATUSES.map(d=>({label:d.label,n:VIEW.filter(r=>statusKeyOf(r)===d.key).length,c:COLORS[d.key]||'#64748b'})).filter(x=>x.n>0);
+    const cv=document.getElementById('chartDonut');
+    if(_charts.donut){ _charts.donut.destroy(); _charts.donut=null; }
+    if(cv && rows.length){
+      _charts.donut=new Chart(cv,{
+        type:'bar',
+        data:{labels:rows.map(r=>r.label),datasets:[{data:rows.map(r=>r.n),backgroundColor:rows.map(r=>r.c),borderRadius:5,maxBarThickness:18}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:6},
+          plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f172a',titleColor:'#fff',bodyColor:'#e2e8f0',padding:10,cornerRadius:8,callbacks:{label:c=>`  ${fmt(c.raw)} tickets`}}},
+          scales:{x:{beginAtZero:true,grid:{color:'#eef2f7'},ticks:{color:'#64748b',font:{family:"'Sora',sans-serif",size:10}}},
+                  y:{grid:{display:false},ticks:{color:'#374151',font:{family:"'Sora',sans-serif",size:10}}}},
+          animation:{duration:600}}
+      });
     }
-  });
-
-  /* ── 2. InTAT vs OutTAT bar (%) ── */
-  destroyMake('bar', document.getElementById('chartBar'), {
-    type:'bar',
-    data:{
-      labels: ST.map(s=>s.short),
-      datasets:[
-        { label:'InTAT %',  data:ST.map(s=>s.n?parseFloat((s.in/s.n*100).toFixed(1)):0),  backgroundColor:'#10b98122', borderColor:'#059669', borderWidth:2, borderRadius:5, borderSkipped:false },
-        { label:'OutTAT %', data:ST.map(s=>s.n?parseFloat((s.out/s.n*100).toFixed(1)):0), backgroundColor:'#ef444422', borderColor:'#dc2626', borderWidth:2, borderRadius:5, borderSkipped:false },
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ labels:{ color:'#374151', font:{...FONT,size:11}, padding:14, usePointStyle:true, pointStyle:'circle' }},
-        tooltip:{ ...TT, callbacks:{ label: ctx => ' '+ctx.dataset.label+': '+ctx.raw+'%' } }},
-      scales:{
-        x:{ ticks:{color:'#6b7280',font:{...FONT,size:11}}, grid:{display:false} },
-        y:{ ticks:{color:'#6b7280',font:{...FONT,size:10}, callback: v=>v+'%'}, grid:{color:'rgba(0,0,0,.05)'}, beginAtZero:true, max:100 }
-      },
-      animation:{duration:600}
-    }
-  });
-
-  /* ── 3. TESTER horizontal bar ── */
-  const tData = buildTesterChartData();
-  destroyMake('tester', document.getElementById('chartTester'), buildHorizStackedCfg(
-    tData.labels, tData.datasets, 'Tickets per Tester / Agent'
-  ));
-
-  /* ── 4. RM horizontal bar ── */
-  const rmData = buildRMChartData();
-  destroyMake('rm', document.getElementById('chartRM'), buildHorizStackedCfg(
-    rmData.labels, rmData.datasets, 'Tickets per Reporting Manager'
-  ));
-
-  /* ── 5. PLAN bar ── */
-  const plData = buildPlanChartData();
-  destroyMake('plan', document.getElementById('chartPlan'), buildHorizStackedCfg(
-    plData.labels, plData.datasets, 'Tickets per Subscription Plan'
-  ));
-
-  /* ── 6. TOP 10 CLIENTS bar ── */
-  const clData = buildClientChartData();
-  destroyMake('clients', document.getElementById('chartClients'), buildHorizStackedCfg(
-    clData.labels, clData.datasets, 'Top 10 Clients — IT Ticket Volume'
-  ));
-}
-
-/* ── CHART DATA BUILDERS ── */
-function buildHorizStackedCfg(labels, datasets, title){
-  const TT = { backgroundColor:'#0f172a', titleColor:'#fff', bodyColor:'#e2e8f0', padding:10, cornerRadius:8 };
-  const FONT = {family:"'Sora',sans-serif"};
-  return {
-    type:'bar',
-    data:{ labels, datasets },
-    options:{
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{ position:'top', labels:{ color:'#374151', font:{...FONT,size:10},
-          padding:12, usePointStyle:true, pointStyle:'circle', boxWidth:8, boxHeight:8 }},
-        tooltip:{ ...TT }
-      },
-      scales:{
-        x:{ stacked:true, ticks:{color:'#6b7280',font:{...FONT,size:10}}, grid:{color:'rgba(0,0,0,.04)'}, beginAtZero:true },
-        y:{ stacked:true, ticks:{color:'#374151',font:{...FONT,size:11}}, grid:{display:false} }
-      },
-      animation:{duration:500}
-    }
-  };
-}
-
-function dsBar(label, data, color, alpha=0.65){
-  return { label, data, backgroundColor: color+Math.round(alpha*255).toString(16).padStart(2,'0'),
-    borderColor:color, borderWidth:1.5, borderRadius:3, borderSkipped:false };
-}
-
-function buildTesterChartData(){
-  const namedSet = new Set([...fIT.filter(r=>r.t).map(r=>r.t),
-    ...fAck.filter(r=>r.t).map(r=>r.t), ...fIP.filter(r=>r.t).map(r=>r.t),
-    ...fSup.filter(r=>r.ts).map(r=>r.ts), ...fLive.filter(r=>r.eb).map(r=>r.eb)]);
-  let rows = [...namedSet].map(n=>({n,
-    it:fIT.filter(r=>r.t===n).length, ack:fAck.filter(r=>r.t===n).length,
-    ip:fIP.filter(r=>r.t===n).length, live:fLive.filter(r=>r.eb===n).length,
-    sup:fSup.filter(r=>r.ts===n).length
-  })).sort((a,b)=>b.it-a.it).slice(0,12);
-  return {
-    labels: rows.map(r=>r.n),
-    datasets:[
-      dsBar('IT',  rows.map(r=>r.it),  '#0d9488'),
-      dsBar('ACK', rows.map(r=>r.ack), '#0891b2'),
-      dsBar('IP',  rows.map(r=>r.ip),  '#0f766e'),
-      dsBar('Live',rows.map(r=>r.live),'#0369a1'),
-      dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
-    ]
-  };
-}
-
-function buildRMChartData(){
-  const namedRMs = [...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
-    .filter(r=>r.r&&String(r.r).trim()).map(r=>r.r))];
-  let rows = namedRMs.map(n=>({n,
-    it:fIT.filter(r=>r.r===n).length, ack:fAck.filter(r=>r.r===n).length,
-    ip:fIP.filter(r=>r.r===n).length, live:fLive.filter(r=>r.r===n).length,
-    sup:fSup.filter(r=>r.r===n).length
-  })).sort((a,b)=>b.it-a.it);
-  return {
-    labels: rows.map(r=>r.n),
-    datasets:[
-      dsBar('IT',  rows.map(r=>r.it),  '#0d9488'),
-      dsBar('ACK', rows.map(r=>r.ack), '#0891b2'),
-      dsBar('IP',  rows.map(r=>r.ip),  '#0f766e'),
-      dsBar('Live',rows.map(r=>r.live),'#0369a1'),
-      dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
-    ]
-  };
-}
-
-function buildPlanChartData(){
-  const plans=[...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
-    .filter(r=>r.p&&String(r.p).trim()).map(r=>r.p))];
-  let rows = plans.map(p=>({p,
-    it:fIT.filter(r=>r.p===p).length, ack:fAck.filter(r=>r.p===p).length,
-    ip:fIP.filter(r=>r.p===p).length, live:fLive.filter(r=>r.p===p).length,
-    sup:fSup.filter(r=>r.p===p).length
-  })).sort((a,b)=>b.it-a.it);
-  return {
-    labels: rows.map(r=>r.p),
-    datasets:[
-      dsBar('IT',  rows.map(r=>r.it),  '#0d9488'),
-      dsBar('ACK', rows.map(r=>r.ack), '#0891b2'),
-      dsBar('IP',  rows.map(r=>r.ip),  '#0f766e'),
-      dsBar('Live',rows.map(r=>r.live),'#0369a1'),
-      dsBar('SUP', rows.map(r=>r.sup), '#dc2626'),
-    ]
-  };
-}
-
-function buildClientChartData(){
-  const licMap={};
-  fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{
-    if(!licMap[r.l]) licMap[r.l]={name:r.u||String(r.l),it:0,ack:0,ip:0,live:0,sup:0};
-    licMap[r.l].it++;
-    if(r.u&&String(r.u).length>String(licMap[r.l].name).length) licMap[r.l].name=r.u;
-  });
-  fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].ack++; });
-  fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{  if(licMap[r.l]) licMap[r.l].ip++;  });
-  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ if(licMap[r.l]) licMap[r.l].live++; });
-  fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{  if(licMap[r.l]) licMap[r.l].sup++;  });
-  const top10 = Object.values(licMap).sort((a,b)=>b.it-a.it).slice(0,10);
-  const labels = top10.map(r=>r.name.length>20?r.name.slice(0,18)+'…':r.name);
-  return {
-    labels,
-    datasets:[
-      dsBar('IT',  top10.map(r=>r.it),  '#0d9488'),
-      dsBar('ACK', top10.map(r=>r.ack), '#0891b2'),
-      dsBar('IP',  top10.map(r=>r.ip),  '#0f766e'),
-      dsBar('Live',top10.map(r=>r.live),'#0369a1'),
-      dsBar('SUP', top10.map(r=>r.sup), '#dc2626'),
-    ]
-  };
-}
-
-
-function toggleChart(id){
-  const wrap = document.getElementById('cw_'+id);
-  const btn  = document.getElementById('btn_'+id);
-  if(!wrap) return;
-  const visible = wrap.style.display !== 'none';
-  wrap.style.display = visible ? 'none' : 'block';
-  if(btn){
-    btn.style.background    = visible ? 'transparent' : 'var(--it-l)';
-    btn.style.color         = visible ? 'var(--muted)' : 'var(--it)';
-    btn.style.borderColor   = visible ? 'var(--border)' : 'var(--it-m)';
-    btn.textContent         = visible ? '📊 View Chart' : '📋 View Table';
-  }
-  if(!visible) renderCharts(); // render on first open
+    if(_charts.bar){ _charts.bar.destroy(); _charts.bar=null; }
+  }catch(e){ console.error('renderCharts error', e); }
 }
 
 function injectChartBtns(){
@@ -2760,13 +2533,14 @@ function injectChartBtns(){
 }
 
 function renderAll(){
-  renderKPIs();
-  renderCharts();
-  renderDisp();
-  renderKeyLic();
-  renderClients();
-  renderPlan();
-  injectChartBtns();
+  const safe=(fn,name)=>{ try{ fn(); }catch(e){ console.error('render '+name+' error', e); } };
+  safe(renderKPIs,'KPIs');
+  safe(renderCharts,'Charts');
+  safe(renderDisp,'Disp');
+  safe(renderKeyLic,'KeyLic');
+  safe(renderClients,'Clients');
+  safe(renderPlan,'Plan');
+  safe(injectChartBtns,'ChartBtns');
 }
 
 // ===== MODAL =====
@@ -2808,20 +2582,29 @@ function setModalFilter(f){
     el.style.cursor = 'pointer';
   });
   let filtered, label;
-  if(f==='bug')        { filtered=data.filter(isBug);                 label=`Bug: ${fmt(filtered.length)}`; }
-  else if(f==='dev')   { filtered=data.filter(isDev);                 label=`Development: ${fmt(filtered.length)}`; }
-  else if(f==='others'){ filtered=data.filter(r=>!isBug(r)&&!isDev(r)); label=`Others: ${fmt(filtered.length)}`; }
-  else                 { filtered=data;                               label=`Showing all ${fmt(filtered.length)}`; }
+  if(f==='bug')         { filtered=data.filter(isBug);                  label=`Bug: ${fmt(filtered.length)}`; }
+  else if(f==='dev')    { filtered=data.filter(isDev);                  label=`Development: ${fmt(filtered.length)}`; }
+  else if(f==='others') { filtered=data.filter(r=>!isBug(r)&&!isDev(r)); label=`Others: ${fmt(filtered.length)}`; }
+  else if(f && f.indexOf('st:')===0){
+    const key=f.slice(3); const d=SUP_STATUSES.find(x=>x.key===key);
+    filtered=data.filter(r=>statusKeyOf(r)===key);
+    label=`${d?d.label:key}: ${fmt(filtered.length)}`;
+  }
+  else                  { filtered=data;                                label=`Showing all ${fmt(filtered.length)}`; }
   const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent = label;
   renderModalTable(filtered);
 }
 
 function supModalStats(data){
   const bug=data.filter(isBug).length, dev=data.filter(isDev).length, oth=data.length-bug-dev;
+  const stCount={}; data.forEach(r=>{ const k=statusKeyOf(r); stCount[k]=(stCount[k]||0)+1; });
+  const stChips=SUP_STATUSES.filter(d=>stCount[d.key]).map(d=>
+    `<span class="ms ms-btn" data-f="st:${d.key}" onclick="setModalFilter('st:${d.key}')" style="cursor:pointer;border:1px solid var(--border)">${d.label}: ${fmt(stCount[d.key])}</span>`).join('');
   return `<span class="ms ms-total ms-btn" data-f="all" onclick="setModalFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
     <span class="ms ms-btn" data-f="bug" onclick="setModalFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
     <span class="ms ms-btn" data-f="dev" onclick="setModalFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
     <span class="ms ms-btn" data-f="others" onclick="setModalFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
+    ${stChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+stChips : ''}
     <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
 }
 function _openSupModal(data, title){
