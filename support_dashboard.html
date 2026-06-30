@@ -2900,12 +2900,7 @@ function openTicketDetail(rec, stageCfg){
     + field('Sub Disposition', rec.subDisp)
     + field('Problem Type', rec.probType)
     + field('Ack Disposition', rec.q)
-    + '</div></div>'
-
-    // ── Row 6: Timeline ──
-    + '<div class="tdm-section"><div class="tdm-section-title">📈 Stage Timeline</div>'
-    + buildTicketTimeline(rec, stageCfg)
-    + '</div>';
+    + '</div></div>';
 
   document.getElementById('ticketDetailOverlay').classList.add('open');
   // Scroll reset — naya ticket kholne par scroll top par aaye (stuck fix)
