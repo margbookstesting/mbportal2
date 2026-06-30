@@ -2035,9 +2035,10 @@ function parseAPIRecord(r){
     const et=getTATFlag(r.ReadyToGoLive_TATDetails);   if(et) rec.et=et;
     const ev=compactTATStr(r.ReadyToGoLive_TATDetails);if(ev) rec.ev=ev; }
 
+  if(r.Status && String(r.Status).trim()) rec.st = String(r.Status).trim();
   rec.sc = STATUS_MAP_API[r.Status] || 'OT';
   const statusOnlyOk = ['RS','RT','RU'].includes(rec.sc);
-  return (a||b||c||d||e||statusOnlyOk) ? rec : null;
+  return (a||b||c||d||e||statusOnlyOk||rec.st) ? rec : null;
 }
 
 async function fetchData(from, to){
@@ -3738,6 +3739,36 @@ function stopLoaderTimer(){
 }
 
 // ── Year-wise chunk fetch helper ────────────────────────────────────────────
+// Split a date range into 3-month sub-chunks (mirrors pipeline make_chunks months=3)
+// so each API request stays under Marg API's per-request record limit.
+function makeSubChunks(startStr, endStr, months){
+  const out=[];
+  let cur = new Date(startStr+'T00:00:00Z');
+  const end = new Date(endStr+'T00:00:00Z');
+  const iso = d => d.toISOString().split('T')[0];
+  while(cur <= end){
+    let ce = new Date(cur);
+    ce.setUTCMonth(ce.getUTCMonth()+months);
+    ce.setUTCDate(ce.getUTCDate()-1);
+    if(ce > end) ce = new Date(end);
+    out.push([iso(cur), iso(ce)]);
+    cur = new Date(ce);
+    cur.setUTCDate(cur.getUTCDate()+1);
+  }
+  return out;
+}
+// Fetch a year's range in 3-month sub-chunks and merge (dedup by ticket no)
+async function fetchYearChunked(yearStart, yearEnd, label, progressCb){
+  const subs = makeSubChunks(yearStart, yearEnd, 3);
+  const map = new Map();
+  for(let k=0;k<subs.length;k++){
+    const [fs,fe]=subs[k];
+    if(progressCb) progressCb(`${label}: ${fs} \u2192 ${fe} (part ${k+1}/${subs.length})`);
+    const part = await fetchYearChunk(fs, fe, label, ()=>{});
+    part.forEach(r=>{ if(r.n) map.set(r.n, r); });
+  }
+  return Array.from(map.values());
+}
 async function fetchYearChunk(yearStart, yearEnd, label, progressCb){
   const url = `${API_URL}?FDate=${yearStart}&ToDate=${yearEnd}&TicketNo=`;
   progressCb(`Fetching ${label}...`);
@@ -3786,7 +3817,7 @@ async function backgroundFetch(){
       document.getElementById('loaderBar').style.width  = pct + '%';
 
       try{
-        const yearData = await fetchYearChunk(start, end, label, msg=>{
+        const yearData = await fetchYearChunked(start, end, label, msg=>{
           document.getElementById('loaderMsg').textContent = msg;
         });
         yearData.forEach(r=>{ if(r.n) allTicketsMap.set(r.n, r); });
