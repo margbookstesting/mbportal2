@@ -168,6 +168,29 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
 .gci-quickbar .abtn{flex:0 0 auto;min-height:40px}
 .gci-sel-list{max-height:52vh;overflow:auto;padding-right:2px}
 .gci-tbl th.sno,.gci-tbl td.sno{width:38px;text-align:center;color:var(--muted2)}
+
+/* ===== GCI: compact header, sidebar, search, top quick bar ===== */
+/* topbar (header) compact */
+.topbar{padding:11px 26px}
+.topbar h1{font-size:16px}
+.topbar p{font-size:11px;margin-top:1px}
+/* sidebar compact + tidy */
+.sb-brand{padding:14px 18px;gap:11px}
+.sb-logo{width:34px;height:34px;font-size:13px}
+.sb-title{font-size:14px}
+.sb-section{padding:14px 20px 6px}
+.sb-item{padding:9px 20px;font-size:12.5px;gap:10px;line-height:1.2}
+.sb-item .ic{font-size:14px}
+/* search card compact */
+.gci-search-card{padding:14px 18px}
+.gci-search-card .fg label{margin-bottom:5px}
+.gci-search-card input[type=text]{padding:10px 13px}
+.gci-search-card .btn{height:38px;padding:0 20px}
+/* top quick bar buttons compact */
+.gci-quickbar{gap:8px;margin:2px 0 16px}
+.gci-quickbar .abtn{min-height:34px;padding:7px 12px;font-size:12px;box-shadow:none}
+.gci-quickbar .abtn .ic{font-size:14px}
+.gci-quickbar .abtn .lbl{flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -179,7 +202,7 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
   </div>
   <div class="sb-section">Support Areas</div>
   <div class="sb-item active" data-tool="get-info" onclick="switchTool('get-info')"><span class="ic">🔍</span> Get Client Info</div>
-  <div class="sb-item" data-tool="client-move" onclick="switchTool('client-move')"><span class="ic">🔁</span> Client Move To Other Server</div>
+  <div class="sb-item" data-tool="client-move" onclick="switchTool('client-move')"><span class="ic">🔁</span> Client Move Activity</div>
   <div class="sb-foot">
     <button class="sb-portal" onclick="location.href='portal.html'">← Portal</button>
     <button class="sb-out" onclick="mbSignOut()">Sign Out</button>
@@ -296,7 +319,7 @@ window.mbSignOut = async function(){ try{ await sb.auth.signOut(); }catch(e){} l
 let GCI_REC=null, GCI_RAW=null, GCI_RECORDS=[];
 
 const GET_INFO_HTML = `
-  <div class="card">
+  <div class="card gci-search-card">
     <div class="search-row">
       <div class="fg">
         <label>Email ID / Mobile Number</label>
@@ -494,19 +517,16 @@ const GCI_DBOPS=[
 ];
 const GCI_ALL=[...GCI_QUICK,...GCI_DBOPS];
 function gciDef(id){ return GCI_ALL.find(x=>x.id===id); }
+const GCI_TOPSET=new Set(['viewPwd','syncToBI','removeCaching','activate','deactivate']);
+function gciDbopsList(){ return GCI_DBOPS.filter(b=>!GCI_TOPSET.has(b.id)); }
 // dynamic Quick Actions list based on DB status
 function gciQuickList(){
-  const st=gciDbState(GCI_REC.status);
-  return GCI_QUICK.filter(b=>{
-    if(b.id==='activate')   return st!=='active';    // hide Activate when already Active
-    if(b.id==='deactivate') return st!=='inactive';  // hide Deactivate when already Inactive
-    return true;
-  });
+  return GCI_QUICK.filter(b=>!GCI_TOPSET.has(b.id));
 }
 
 function gciTopBarHtml(){
   const st=gciDbState(GCI_REC.status);
-  let acts=[gciDef('viewPwd'), gciDef('syncToBI')];
+  let acts=[gciDef('viewPwd'), gciDef('syncToBI'), gciDef('removeCaching')];
   if(st==='active') acts.push(gciDef('deactivate'));
   else if(st==='inactive') acts.push(gciDef('activate'));
   else { acts.push(gciDef('activate')); acts.push(gciDef('deactivate')); }
@@ -541,7 +561,7 @@ function gciRenderResults(){
     <div class="card">
       <div class="card-title">🛠️ Database Operations</div>
       <div class="card-desc">Repair, correction &amp; maintenance tasks. Destructive actions ask for confirmation.</div>
-      <div class="btn-grid">${btns(GCI_DBOPS)}</div>
+      <div class="btn-grid">${btns(gciDbopsList())}</div>
     </div>`;
 }
 
