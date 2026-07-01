@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGQ5NDg4Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDg5MWIyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1CPC90ZXh0Pjwvc3ZnPg=="/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Get Client Info — Margbooks Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --brand:#0d9488;--brand2:#0891b2;--brand-g:linear-gradient(135deg,#0d9488,#0891b2);
+  --dark:#0b1220;--sidebar:#0f172a;--text:#1e293b;--muted:#64748b;--muted2:#94a3b8;
+  --border:#e2e8f0;--bg:#f0f4f8;--surface:#fff;
+  --danger:#e11d48;--danger-g:linear-gradient(135deg,#e11d48,#be123c);
+  --success:#059669;--success-g:linear-gradient(135deg,#059669,#047857);
+  --warning:#d97706;--warning-g:linear-gradient(135deg,#d97706,#b45309);
+  --info:#0891b2;
+  --sh-s:0 1px 3px rgba(0,0,0,.07);--sh-m:0 8px 30px rgba(0,0,0,.12);
+}
+html,body{height:100%;font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+body{display:flex;min-height:100vh}
+
+/* ── SIDEBAR (same as admin_activity) ── */
+.sidebar{width:250px;flex-shrink:0;background:var(--sidebar);color:#fff;display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo{width:38px;height:38px;border-radius:10px;background:var(--brand-g);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;box-shadow:0 4px 14px rgba(13,148,136,.4)}
+.sb-title{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.sb-sub{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1.2px;margin-top:1px}
+.sb-section{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;padding:18px 22px 8px}
+.sb-item{display:flex;align-items:center;gap:11px;padding:11px 22px;cursor:pointer;font-size:13px;font-weight:600;color:rgba(255,255,255,.78);border-left:3px solid transparent;transition:.15s;text-decoration:none}
+.sb-item:hover{background:rgba(255,255,255,.05);color:#fff}
+.sb-item.active{background:rgba(13,148,136,.18);color:#fff;border-left-color:var(--brand)}
+.sb-item .ic{font-size:15px}
+.sb-foot{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px}
+.sb-foot button{flex:1;height:34px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;color:#fff}
+.sb-portal{background:var(--brand-g)}
+.sb-out{background:var(--danger)}
+
+/* ── MAIN ── */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:auto}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 30px;box-shadow:var(--sh-s);position:sticky;top:0;z-index:5}
+.topbar h1{font-size:18px;font-weight:800;color:var(--dark)}
+.topbar p{font-size:12px;color:var(--muted);margin-top:2px}
+.content{padding:26px 30px;max-width:1180px;width:100%}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--sh-s);padding:22px 24px;margin-bottom:22px}
+.card-title{font-size:15px;font-weight:800;color:var(--dark);margin-bottom:3px;display:flex;align-items:center;gap:9px}
+.card-title .badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4;text-transform:uppercase;letter-spacing:.4px}
+.card-desc{font-size:12px;color:var(--muted);margin-bottom:18px}
+
+/* ── SEARCH ── */
+.search-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.search-row .fg{flex:1;min-width:260px}
+.fg{display:flex;flex-direction:column;gap:7px}
+.fg label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text)}
+input[type=text]{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;color:var(--text);background:#f8fafc;outline:none;transition:.15s}
+input[type=text]:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+
+/* ── BUTTONS ── */
+.btn{height:42px;padding:0 24px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:#fff;background:var(--brand-g);box-shadow:0 4px 14px rgba(13,148,136,.3);transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.03)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* action button grid */
+.btn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.abtn{height:auto;min-height:46px;padding:11px 15px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid transparent;box-shadow:var(--sh-s);position:relative}
+.abtn .ic{font-size:16px;flex-shrink:0}
+.abtn .lbl{flex:1;line-height:1.25}
+.abtn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.abtn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.abtn .mini-spin{width:14px;height:14px;border:2px solid rgba(0,0,0,.15);border-top-color:currentColor;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+/* variants */
+.v-primary{background:#fff;color:#0f766e;border-color:#99f6e4}
+.v-primary:hover:not(:disabled){background:#f0fdfa}
+.v-secondary{background:#fff;color:#334155;border-color:var(--border)}
+.v-secondary:hover:not(:disabled){background:#f8fafc}
+.v-success{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+.v-success:hover:not(:disabled){background:#d1fae5}
+.v-danger{background:#fef2f2;color:#be123c;border-color:#fecaca}
+.v-danger:hover:not(:disabled){background:#fee2e2}
+.v-warning{background:#fffbeb;color:#b45309;border-color:#fde68a}
+.v-warning:hover:not(:disabled){background:#fef3c7}
+.v-info{background:#ecfeff;color:#0e7490;border-color:#a5f3fc}
+.v-info:hover:not(:disabled){background:#cffafe}
+
+/* ── INFO GRID ── */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.info-item{background:#f8fafc;border:1px solid var(--border);border-radius:11px;padding:11px 14px}
+.info-k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);margin-bottom:4px}
+.info-v{font-size:13.5px;font-weight:700;color:var(--dark);word-break:break-word}
+.info-v .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px}
+.pill-on{background:#dcfce7;color:#166534}
+.pill-off{background:#fee2e2;color:#b91c1c}
+.pwd-toggle{margin-left:8px;font-size:11px;color:var(--brand);cursor:pointer;font-weight:700;user-select:none}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;color:var(--muted);gap:8px;text-align:center}
+.empty .ei{font-size:38px;opacity:.5}
+.empty .et{font-size:14px;font-weight:700}
+.empty .es{font-size:12px;color:var(--muted2)}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:520px;width:100%;box-shadow:var(--sh-m);overflow:hidden;animation:pop .2s ease;max-height:88vh;display:flex;flex-direction:column}
+.modal.wide{max-width:760px}
+@keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.modal-h{padding:20px 22px 14px;border-bottom:1px solid var(--border)}
+.modal-h h3{font-size:16px;font-weight:800;color:var(--dark);display:flex;align-items:center;gap:8px}
+.modal-h p{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+.modal-b{padding:18px 22px;font-size:13px;color:var(--text);overflow:auto}
+.modal-f{padding:14px 22px 20px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border)}
+.btn-ghost{height:40px;padding:0 18px;border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-ghost:hover{background:#f8fafc}
+.btn-cta{height:40px;padding:0 22px;border:none;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--brand-g)}
+.btn-cta.danger{background:var(--danger-g)}
+.btn-cta.success{background:var(--success-g)}
+.btn-cta:disabled{opacity:.6;cursor:not-allowed}
+.modal-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;margin-top:10px;background:#f8fafc}
+.modal-input:focus{border-color:var(--brand);background:#fff;outline:none;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-size:12px;font-family:'JetBrains Mono',ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;max-height:52vh;overflow:auto;line-height:1.5}
+.sum-row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px dashed var(--border)}
+.sum-row:last-child{border-bottom:none}
+.sum-k{color:var(--muted);font-weight:600}
+.sum-v{font-weight:700;text-align:right;word-break:break-word}
+
+/* ── TOAST ── */
+#toasts{position:fixed;top:18px;right:18px;z-index:90;display:flex;flex-direction:column;gap:10px}
+.toast{min-width:260px;max-width:380px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:11px;box-shadow:var(--sh-m);padding:12px 15px;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:flex-start;gap:9px;animation:slideIn .25s ease}
+.toast.ok{border-left-color:var(--success)}
+.toast.err{border-left-color:var(--danger)}
+.toast .ti{font-size:16px}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+@media(max-width:640px){.content{padding:18px 16px}.topbar{padding:14px 16px}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">MB</div>
+    <div><div class="sb-title">Margbooks Admin</div><div class="sb-sub">Activity</div></div>
+  </div>
+  <div class="sb-section">Support Areas</div>
+  <a class="sb-item active" href="get_client_info.html"><span class="ic">🔍</span> Get Client Info</a>
+  <a class="sb-item" href="admin_activity.html"><span class="ic">🔁</span> Client Move To Other Server</a>
+  <div class="sb-foot">
+    <button class="sb-portal" onclick="location.href='portal.html'">← Portal</button>
+    <button class="sb-out" onclick="mbSignOut()">Sign Out</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <h1>Get Client Info</h1>
+    <p>Search a customer by Email ID / Mobile and manage their account &amp; database</p>
+  </div>
+  <div class="content">
+
+    <!-- Search -->
+    <div class="card">
+      <div class="search-row">
+        <div class="fg">
+          <label>Email ID / Mobile Number</label>
+          <input type="text" id="q" placeholder="e.g. customer@gmail.com  or  9876543210" autocomplete="off"/>
+        </div>
+        <button class="btn" id="getBtn" onclick="getDetails()">🔎 Get Details</button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results">
+      <div class="card">
+        <div class="empty">
+          <div class="ei">🗂️</div>
+          <div class="et">No customer loaded</div>
+          <div class="es">Enter an Email ID or Mobile number above and click “Get Details”.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal">
+    <div class="modal-h"><h3 id="cfTitle">⚠️ Confirm</h3><p id="cfDesc"></p></div>
+    <div class="modal-b" id="cfBody"></div>
+    <div class="modal-f">
+      <button class="btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-cta danger" id="cfBtn">Yes, Proceed</button>
+    </div>
+  </div>
+</div>
+
+<!-- Output modal -->
+<div class="overlay" id="outOverlay">
+  <div class="modal wide">
+    <div class="modal-h"><h3 id="outTitle">Result</h3><p id="outDesc"></p></div>
+    <div class="modal-b" id="outBody"></div>
+    <div class="modal-f">
+      <button class="btn-ghost" onclick="closeOut()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const SUPA_URL='https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,storage:window.sessionStorage}});
+
+let REC=null;           // loaded record (mapped)
+let RAW=null;           // raw getDetails response
+
+// ── Auth guard ──
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){ location.replace('index.html'); return; }
+  let prof=null;
+  try{ const {data}=await sb.from('users').select('role,dashboards').eq('id',session.user.id).single(); prof=data; }catch(e){}
+  const allowed = prof && (prof.role==='admin' || (prof.dashboards||[]).includes('admin-activity'));
+  if(!allowed){ location.replace('portal.html'); return; }
+})();
+window.mbSignOut=async function(){ try{ await sb.auth.signOut(); }catch(e){} location.replace('index.html'); };
+
+// ── helpers ──
+async function token(){ const {data:{session}}=await sb.auth.getSession(); if(!session) throw new Error('Session expired — sign in again'); return session.access_token; }
+async function api(payload){
+  const res=await fetch('/api/client-info',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${await token()}`},body:JSON.stringify(payload)});
+  let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
+  if(!res.ok||out.error) throw new Error(out.error||('HTTP '+res.status));
+  return out;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg,type){ const t=document.createElement('div'); t.className='toast '+(type||''); t.innerHTML=`<span class="ti">${type==='ok'?'✅':type==='err'?'⛔':'ℹ️'}</span><span>${esc(msg)}</span>`; document.getElementById('toasts').appendChild(t); setTimeout(()=>{ t.style.transition='opacity .3s'; t.style.opacity='0'; setTimeout(()=>t.remove(),300); },4200); }
+
+// deep search a value by normalized key candidates
+function pick(obj, cands){
+  const want=cands.map(c=>c.toLowerCase());
+  let found;
+  (function walk(o){
+    if(found!==undefined||!o||typeof o!=='object') return;
+    for(const k of Object.keys(o)){
+      const nk=k.toLowerCase().replace(/[^a-z0-9]/g,'');
+      if(want.includes(nk) && o[k]!==null && o[k]!=='' && typeof o[k]!=='object'){ found=o[k]; return; }
+    }
+    for(const k of Object.keys(o)){ if(o[k]&&typeof o[k]==='object'){ walk(o[k]); if(found!==undefined) return; } }
+  })(obj);
+  return found;
+}
+
+// ── Get Details ──
+async function getDetails(){
+  const q=document.getElementById('q').value.trim();
+  if(!q){ toast('Email ID / Mobile daalo','err'); return; }
+  const btn=document.getElementById('getBtn'); btn.disabled=true; const old=btn.innerHTML; btn.innerHTML='<span class="spin"></span> Loading…';
+  try{
+    const out=await api({action:'getDetails', emailid:q});
+    RAW=out.result;
+    REC={
+      email:        pick(RAW,['emailid','email']) ?? q,
+      mobile:       pick(RAW,['mobile','mobileno','mobilenumber']),
+      licenceno:    pick(RAW,['licenceno','licenseno','lince','licno','license']),
+      usertype:     pick(RAW,['usertype','utype']),
+      userlinkid:   pick(RAW,['userlinkid','userlinkidstr']),
+      dbinfolinkid: pick(RAW,['dbinfolinkid','dbinfolinkidstr']),
+      schema:       pick(RAW,['schema','schemaname']),
+      dbname:       pick(RAW,['dbname','databasename']),
+      dbserver:     pick(RAW,['dbserver','server','dbserverip']),
+      dbversion:    pick(RAW,['dbversion','webdbversion']),
+      mobdbversion: pick(RAW,['mobdbversion','mobiledbversion']),
+      apiversion:   pick(RAW,['apiversion','apiver']),
+      status:       pick(RAW,['dbstatus','status','isactive','active']),
+      url:          pick(RAW,['url','loginurl']),
+      pwd:          pick(RAW,['pwd','password']),
+    };
+    renderResults();
+    toast('Customer details loaded','ok');
+  }catch(e){ toast(e.message||'Failed','err'); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+
+// ── Action button definitions ──
+// kind: 'run' direct | 'confirm' | 'input' (needs new password) | 'reveal' (local pwd)
+const QUICK=[
+  {id:'viewPwd',   label:'View Password',     ic:'👁️', v:'v-primary',  kind:'reveal'},
+  {id:'viewPwd2',  label:'View Password 2',   ic:'🔑', v:'v-primary',  kind:'run'},
+  {id:'resetPwd',  label:'Reset Password',    ic:'♻️', v:'v-warning',  kind:'input', title:'Reset Password', desc:'Enter the new password for this customer.'},
+  {id:'viewTransaction', label:'View Transactions', ic:'📄', v:'v-secondary', kind:'run'},
+  {id:'viewCompanyList', label:'View Company List', ic:'🏢', v:'v-secondary', kind:'run'},
+  {id:'syncToBI',  label:'Sync To BI',        ic:'🔄', v:'v-info',     kind:'confirm', desc:'Sync all users of this license to BI.'},
+  {id:'viewDataBss', label:'View Data In BSS', ic:'🗄️', v:'v-secondary', kind:'run'},
+  {id:'activate',  label:'Activate',          ic:'✅', v:'v-success',  kind:'confirm', cta:'success', desc:'Activate this account.'},
+  {id:'deactivate',label:'Deactivate',        ic:'⛔', v:'v-danger',   kind:'confirm', cta:'danger',  desc:'Deactivate this account.'},
+];
+const DBOPS=[
+  {id:'repairMobileDb', label:'Repair Mobile Database', ic:'📱', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run mobile database repair.'},
+  {id:'repairWebDb',    label:'Repair Web Database',    ic:'🌐', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run web database repair.'},
+  {id:'alterIndex',     label:'Alter Index',            ic:'🧩', v:'v-warning', kind:'confirm', desc:'Rebuild / alter DB indexes.'},
+  {id:'healthProc',     label:'Health Proc',            ic:'🩺', v:'v-warning', kind:'confirm', desc:'Run health procedure.'},
+  {id:'itemDataCorrection', label:'Item Data Correction', ic:'📦', v:'v-warning', kind:'confirm', desc:'Item stock correction for all companies.'},
+  {id:'ledgerBalance',  label:'Ledger Balance Correction', ic:'⚖️', v:'v-warning', kind:'confirm', desc:'Ledger balance correction for all companies.'},
+  {id:'acctTxnMismatch',label:'Accounting Txn Mismatch', ic:'📊', v:'v-secondary', kind:'run'},
+  {id:'stockMismatch',  label:'Stock Mismatch',         ic:'📉', v:'v-secondary', kind:'run'},
+  {id:'itemTxnMismatch',label:'Item Txn Mismatch',      ic:'🧾', v:'v-secondary', kind:'run'},
+  {id:'mrpRevert',      label:'MRP Revert',             ic:'↩️', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Revert MRP changes.'},
+  {id:'dbLockRemove',   label:'DB Lock Remove',         ic:'🔓', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Remove DB lock.'},
+  {id:'referralHistory',label:'Referral History',       ic:'🔗', v:'v-secondary', kind:'run'},
+  {id:'removeCaching',  label:'Remove Caching',         ic:'🧹', v:'v-warning', kind:'confirm', desc:'Clear cached data.'},
+  {id:'migrationLogin', label:'Migration Login Issue',  ic:'🔐', v:'v-warning', kind:'confirm', desc:'Fix data migration login issue.'},
+  {id:'companyDelete',  label:'Company Delete',         ic:'🗑️', v:'v-danger',  kind:'confirm', cta:'danger', typeConfirm:true, desc:'Permanently delete company data if deleted. NO ROLLBACK.'},
+];
+
+function renderResults(){
+  const info=[
+    ['Email', REC.email],['Mobile', REC.mobile],['License No', REC.licenceno],['User Type', REC.usertype],
+    ['User Link ID', REC.userlinkid],['DB Info Link ID', REC.dbinfolinkid],['Schema', REC.schema],['Database Name', REC.dbname],
+    ['DB Server', REC.dbserver],['DB Version', REC.dbversion||REC.mobdbversion],['API Version', REC.apiversion],
+    ['Status', statusPill(REC.status)],
+  ];
+  const infoHtml=info.map(([k,v])=>`<div class="info-item"><div class="info-k">${esc(k)}</div><div class="info-v">${v==null||v===''?'<span style="color:#cbd5e1">—</span>':(k==='Status'?v:esc(v))}</div></div>`).join('');
+  const btns=arr=>arr.map(b=>`<button class="abtn ${b.v}" id="ab_${b.id}" onclick="onAction('${b.id}')"><span class="ic">${b.ic}</span><span class="lbl">${esc(b.label)}</span></button>`).join('');
+  const missing = (REC.dbinfolinkid==null||REC.dbinfolinkid==='');
+  document.getElementById('results').innerHTML=`
+    <div class="card">
+      <div class="card-title">Customer Information <span class="badge">Loaded</span></div>
+      <div class="card-desc">Details fetched from Marg for <strong>${esc(REC.email||'')}</strong>. <span class="pwd-toggle" onclick="showRaw()">View raw response</span></div>
+      <div class="info-grid">${infoHtml}</div>
+      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field mapping confirm karni pad sakti hai.</div>':''}
+    </div>
+    <div class="card">
+      <div class="card-title">⚡ Quick Actions</div>
+      <div class="card-desc">Account &amp; user operations.</div>
+      <div class="btn-grid">${btns(QUICK)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🛠️ Database Operations</div>
+      <div class="card-desc">Repair, correction &amp; maintenance tasks. Destructive actions ask for confirmation.</div>
+      <div class="btn-grid">${btns(DBOPS)}</div>
+    </div>`;
+}
+function statusPill(v){
+  if(v==null||v==='') return '<span style="color:#cbd5e1">—</span>';
+  const s=String(v).toLowerCase();
+  const on = s==='active'||s==='1'||s==='true'||s==='yes';
+  const off= s==='deactive'||s==='inactive'||s==='0'||s==='false'||s==='no';
+  if(on) return '<span class="pill pill-on">Active</span>';
+  if(off) return '<span class="pill pill-off">Inactive</span>';
+  return esc(v);
+}
+
+// ── Action dispatch ──
+const ALL=[...QUICK,...DBOPS];
+function def(id){ return ALL.find(x=>x.id===id); }
+function onAction(id){
+  const b=def(id); if(!b) return;
+  if(b.kind==='reveal'){ revealPwd(); return; }
+  if(b.kind==='input'){ openInput(b); return; }
+  if(b.kind==='confirm'){ openConfirm(b); return; }
+  runAction(b);   // direct run
+}
+function revealPwd(){
+  if(REC.pwd==null||REC.pwd===''){ toast('Password details me nahi mila','err'); return; }
+  openOut('👁️ Password', REC.email||'', `<div class="sum-row"><span class="sum-k">Password</span><span class="sum-v" style="font-family:monospace;font-size:15px">${esc(REC.pwd)}</span></div>`);
+}
+function baseParams(){ return { dbinfolinkid:REC.dbinfolinkid, userlinkid:REC.userlinkid, licenceno:REC.licenceno, emailid:REC.email }; }
+
+async function runAction(b, extra){
+  const el=document.getElementById('ab_'+b.id);
+  if(el){ el.disabled=true; el.dataset.h=el.innerHTML; el.innerHTML=`<span class="mini-spin"></span><span class="lbl">Running…</span>`; }
+  try{
+    const out=await api(Object.assign({action:b.id}, baseParams(), extra||{}));
+    toast(b.label+' — done','ok');
+    openOut('✅ '+b.label, REC.email||'', renderResult(out.result));
+  }catch(e){ toast(b.label+' — '+(e.message||'failed'),'err'); }
+  finally{ if(el){ el.disabled=false; el.innerHTML=el.dataset.h; } }
+}
+
+function renderResult(r){
+  // try to show a friendly message / url, plus raw
+  let head='';
+  if(r && typeof r==='object'){
+    const msg = pick(r,['message','msg','result','status']);
+    const url = pick(r,['url','link','downloadurl']);
+    if(msg!=null) head+=`<div class="sum-row"><span class="sum-k">Message</span><span class="sum-v">${esc(msg)}</span></div>`;
+    if(url!=null && /^https?:\/\//.test(String(url))) head+=`<div class="sum-row"><span class="sum-k">Link</span><span class="sum-v"><a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--brand)">Open ↗</a></span></div>`;
+  } else if(r!=null){ head+=`<div class="sum-row"><span class="sum-k">Result</span><span class="sum-v">${esc(r)}</span></div>`; }
+  return (head?`<div style="margin-bottom:12px">${head}</div>`:'')+`<pre class="raw">${esc(typeof r==='string'?r:JSON.stringify(r,null,2))}</pre>`;
+}
+
+// ── Confirm modal ──
+let _pending=null;
+function openConfirm(b){
+  _pending=b;
+  document.getElementById('cfTitle').innerHTML=(b.cta==='danger'?'⚠️ ':'')+esc(b.label);
+  document.getElementById('cfDesc').textContent=b.desc||'Please confirm this action.';
+  let body=`<div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${esc(REC.email||'')}</span></div>
+            <div class="sum-row"><span class="sum-k">License</span><span class="sum-v">${esc(REC.licenceno||'—')}</span></div>
+            <div class="sum-row"><span class="sum-k">Action</span><span class="sum-v">${esc(b.label)}</span></div>`;
+  if(b.typeConfirm){ body+=`<div style="margin-top:12px;font-size:12px;color:#b91c1c">Type <strong>DELETE</strong> to confirm:</div><input class="modal-input" id="cfType" placeholder="DELETE" autocomplete="off"/>`; }
+  document.getElementById('cfBody').innerHTML=body;
+  const btn=document.getElementById('cfBtn');
+  btn.className='btn-cta '+(b.cta||'');
+  btn.textContent = b.cta==='danger'?'Yes, Proceed':'Confirm';
+  btn.onclick=()=>{
+    if(b.typeConfirm){ const v=(document.getElementById('cfType').value||'').trim().toUpperCase(); if(v!=='DELETE'){ toast('Type DELETE to confirm','err'); return; } }
+    closeConfirm(); runAction(b);
+  };
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm(){ document.getElementById('confirmOverlay').classList.remove('show'); }
+
+// ── Input modal (reset password) ──
+function openInput(b){
+  document.getElementById('cfTitle').innerHTML='♻️ '+esc(b.title||b.label);
+  document.getElementById('cfDesc').textContent=b.desc||'';
+  document.getElementById('cfBody').innerHTML=`
+    <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${esc(REC.email||'')}</span></div>
+    <input class="modal-input" id="cfInput" type="text" placeholder="New password" autocomplete="off"/>`;
+  const btn=document.getElementById('cfBtn'); btn.className='btn-cta'; btn.textContent='Reset Password';
+  btn.onclick=()=>{ const v=(document.getElementById('cfInput').value||'').trim(); if(!v){ toast('New password daalo','err'); return; } closeConfirm(); runAction(b,{remark:v}); };
+  document.getElementById('confirmOverlay').classList.add('show');
+  setTimeout(()=>{ const i=document.getElementById('cfInput'); if(i) i.focus(); },50);
+}
+
+// ── Output modal ──
+function openOut(title,desc,html){ document.getElementById('outTitle').innerHTML=esc(title); document.getElementById('outDesc').textContent=desc||''; document.getElementById('outBody').innerHTML=html; document.getElementById('outOverlay').classList.add('show'); }
+function closeOut(){ document.getElementById('outOverlay').classList.remove('show'); }
+function showRaw(){ openOut('🧾 Raw getDetails response', REC.email||'', `<pre class="raw">${esc(JSON.stringify(RAW,null,2))}</pre>`); }
+
+// enter-to-search + overlay click close
+document.getElementById('q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); getDetails(); } });
+document.getElementById('confirmOverlay').addEventListener('click',e=>{ if(e.target.id==='confirmOverlay') closeConfirm(); });
+document.getElementById('outOverlay').addEventListener('click',e=>{ if(e.target.id==='outOverlay') closeOut(); });
+</script>
+</body>
+</html>

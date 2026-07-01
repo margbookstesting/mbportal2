@@ -31,6 +31,7 @@ body{display:flex;min-height:100vh}
   display:flex;align-items:center;gap:11px;padding:11px 22px;cursor:pointer;
   font-size:13px;font-weight:600;color:rgba(255,255,255,.78);border-left:3px solid transparent;transition:.15s;
 }
+.sb-item{text-decoration:none}
 .sb-item:hover{background:rgba(255,255,255,.05);color:#fff}
 .sb-item.active{background:rgba(13,148,136,.18);color:#fff;border-left-color:var(--brand)}
 .sb-item .ic{font-size:15px}
@@ -105,8 +106,8 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
     <div><div class="sb-title">Margbooks Admin</div><div class="sb-sub">Activity</div></div>
   </div>
   <div class="sb-section">Support Areas</div>
-  <div class="sb-item active" data-tool="client-move"><span class="ic">🔁</span> Client Move Activity</div>
-  <!-- more menu items can be added here -->
+  <a class="sb-item" href="get_client_info.html"><span class="ic">🔍</span> Get Client Info</a>
+  <a class="sb-item active" href="admin_activity.html"><span class="ic">🔁</span> Client Move To Other Server</a>
   <div class="sb-foot">
     <button class="sb-portal" onclick="location.href='portal.html'">← Portal</button>
     <button class="sb-out" onclick="mbSignOut()">Sign Out</button>
