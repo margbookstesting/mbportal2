@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Admin Activity — Margbooks</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -191,6 +192,63 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
 .gci-quickbar .abtn{min-height:34px;padding:7px 12px;font-size:12px;box-shadow:none}
 .gci-quickbar .abtn .ic{font-size:14px}
 .gci-quickbar .abtn .lbl{flex:0 0 auto}
+
+/* ===== PREMIUM GET CLIENT INFO — single screen + soft tinted pills ===== */
+body.gci-fixed .main{overflow:hidden}
+body.gci-fixed .content{flex:1;min-height:0;overflow:hidden;max-width:none;padding:16px 26px;display:flex;flex-direction:column}
+body.gci-fixed #toolRoot{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.gci-view{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.gci-search-card{flex-shrink:0}
+body.gci-fixed #gciResults{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin-top:14px}
+
+.gci-grplabel{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.gci-grplabel .ti{font-size:12px}
+.gci-grplabel .lite{font-weight:600;text-transform:none;letter-spacing:0;color:var(--danger);font-size:10px}
+
+.gci-pinned-wrap{flex-shrink:0;margin-bottom:14px}
+.gci-pinned-row{display:flex;flex-wrap:wrap;gap:9px}
+
+.gci-grid{display:grid;grid-template-columns:230px 1fr;gap:16px}
+body.gci-fixed .gci-grid{flex:1;min-height:0;overflow:hidden}
+.gci-detail{min-width:0;background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:13px 15px;overflow:auto;display:flex;flex-direction:column}
+.gci-dhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.gci-dhead span{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2)}
+.dp-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid #eef2f6;font-size:12px}
+.dp-row:last-child{border-bottom:none}
+.dp-k2{color:var(--muted2)}
+.dp-v2{font-weight:700;color:var(--dark);text-align:right;word-break:break-word}
+.gci-raw{margin-top:11px;font-size:11px;color:var(--brand);cursor:pointer;font-weight:700;user-select:none;display:inline-flex;align-items:center;gap:5px}
+.gci-warn{margin-top:11px;font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;line-height:1.45}
+.gci-actions{min-width:0;overflow:auto;padding-right:4px}
+.gci-pillgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:9px}
+
+/* pill layout override (soft, flat) */
+.gci-pillgrid .abtn,.gci-pinned-row .abtn{box-shadow:none;min-height:0;border-width:1px;padding:9px 12px;font-size:12.5px;font-weight:600}
+.gci-pillgrid .abtn:hover:not(:disabled),.gci-pinned-row .abtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.07)}
+.gci-pillgrid .abtn .ic,.gci-pinned-row .abtn .ic{font-size:15px}
+.gci-pinned-row .abtn.big{padding:11px 15px;font-size:13px}
+.gci-pinned-row .abtn.big .ic{font-size:17px}
+
+/* soft color families */
+.pl-teal{background:#f4fbf9;border-color:#dcf0ea;color:#2a9d8f}
+.pl-teal:hover:not(:disabled){background:#eaf7f3}
+.pl-blue{background:#f5f8fd;border-color:#e0e9f7;color:#5680cf}
+.pl-blue:hover:not(:disabled){background:#eef3fb}
+.pl-amber{background:#fdfaf3;border-color:#f2e6cf;color:#c08a3e}
+.pl-amber:hover:not(:disabled){background:#fbf5e9}
+.pl-red{background:#fdf6f6;border-color:#f6dede;color:#d97070}
+.pl-red:hover:not(:disabled){background:#fbeeee}
+.pl-green{background:#f5fbf7;border-color:#dcefe1;color:#4fa268}
+.pl-green:hover:not(:disabled){background:#edf7f0}
+.pl-purple{background:#f9f7fd;border-color:#e8def6;color:#9375c9}
+.pl-purple:hover:not(:disabled){background:#f3eefb}
+
+@media(max-width:860px){
+  body.gci-fixed .main{overflow:auto}
+  body.gci-fixed .content,body.gci-fixed #gciResults,.gci-view{overflow:visible}
+  .gci-grid{grid-template-columns:1fr}
+  body.gci-fixed .gci-grid{overflow:visible}
+}
 </style>
 </head>
 <body>
@@ -319,6 +377,7 @@ window.mbSignOut = async function(){ try{ await sb.auth.signOut(); }catch(e){} l
 let GCI_REC=null, GCI_RAW=null, GCI_RECORDS=[];
 
 const GET_INFO_HTML = `
+ <div class="gci-view">
   <div class="card gci-search-card">
     <div class="search-row">
       <div class="fg">
@@ -330,7 +389,8 @@ const GET_INFO_HTML = `
   </div>
   <div id="gciResults">
     <div class="card"><div class="empty"><div class="ei">🗂️</div><div class="et">No customer loaded</div><div class="es">Enter an Email ID or Mobile number above and click “Get Details”.</div></div></div>
-  </div>`;
+  </div>
+ </div>`;
 
 function gciEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function gciToast(msg,type){ const t=document.createElement('div'); t.className='toast '+(type||''); t.innerHTML=`<span class="ti">${type==='ok'?'✅':type==='err'?'⛔':'ℹ️'}</span><span>${gciEsc(msg)}</span>`; const c=document.getElementById('gciToasts'); c.appendChild(t); setTimeout(()=>{ t.style.transition='opacity .3s'; t.style.opacity='0'; setTimeout(()=>t.remove(),300); },4200); }
@@ -488,32 +548,32 @@ function gciDbBadge(v){
 
 // ── Action definitions ──
 const GCI_QUICK=[
-  {id:'viewPwd',   label:'View Password',     ic:'👁️', v:'v-primary',  kind:'reveal'},
-  {id:'viewPwd2',  label:'View Password 2',   ic:'🔑', v:'v-primary',  kind:'run'},
-  {id:'resetPwd',  label:'Reset Password',    ic:'♻️', v:'v-warning',  kind:'input', title:'Reset Password', desc:'Enter the new password for this customer.'},
-  {id:'viewTransaction', label:'View Transactions', ic:'📄', v:'v-secondary', kind:'run'},
-  {id:'viewCompanyList', label:'View Company List', ic:'🏢', v:'v-secondary', kind:'run'},
-  {id:'syncToBI',  label:'Sync To BI',        ic:'🔄', v:'v-info',     kind:'confirm', desc:'Sync all users of this license to BI.'},
-  {id:'viewDataBss', label:'View Data In BSS', ic:'🗄️', v:'v-secondary', kind:'run'},
-  {id:'activate',  label:'Activate',          ic:'✅', v:'v-success',  kind:'confirm', cta:'success', desc:'Activate this account.'},
-  {id:'deactivate',label:'Deactivate',        ic:'⛔', v:'v-danger',   kind:'confirm', cta:'danger',  desc:'Deactivate this account.'},
+  {id:'viewPwd',   label:'View Password',     ic:'👁️', icon:'ti-eye',              color:'teal',   v:'v-primary',  kind:'reveal'},
+  {id:'viewPwd2',  label:'View Password 2',   ic:'🔑', icon:'ti-key',              color:'teal',   v:'v-primary',  kind:'run'},
+  {id:'resetPwd',  label:'Reset Password',    ic:'♻️', icon:'ti-rotate-clockwise', color:'amber',  v:'v-warning',  kind:'input', title:'Reset Password', desc:'Enter the new password for this customer.'},
+  {id:'viewTransaction', label:'View Transactions', ic:'📄', icon:'ti-file-invoice', color:'blue',   v:'v-secondary', kind:'run'},
+  {id:'viewCompanyList', label:'View Company List', ic:'🏢', icon:'ti-building',     color:'purple', v:'v-secondary', kind:'run'},
+  {id:'syncToBI',  label:'Sync To BI',        ic:'🔄', icon:'ti-refresh',          color:'blue',   v:'v-info',     kind:'confirm', desc:'Sync all users of this license to BI.'},
+  {id:'viewDataBss', label:'View Data In BSS', ic:'🗄️', icon:'ti-database',         color:'purple', v:'v-secondary', kind:'run'},
+  {id:'activate',  label:'Activate',          ic:'✅', icon:'ti-circle-check',     color:'green',  v:'v-success',  kind:'confirm', cta:'success', desc:'Activate this account.'},
+  {id:'deactivate',label:'Deactivate',        ic:'⛔', icon:'ti-circle-minus',     color:'red',    v:'v-danger',   kind:'confirm', cta:'danger',  desc:'Deactivate this account.'},
 ];
 const GCI_DBOPS=[
-  {id:'repairMobileDb', label:'Repair Mobile Database', ic:'📱', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run mobile database repair.'},
-  {id:'repairWebDb',    label:'Repair Web Database',    ic:'🌐', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run web database repair.'},
-  {id:'alterIndex',     label:'Alter Index',            ic:'🧩', v:'v-warning', kind:'confirm', desc:'Rebuild / alter DB indexes.'},
-  {id:'healthProc',     label:'Health Proc',            ic:'🩺', v:'v-warning', kind:'confirm', desc:'Run health procedure.'},
-  {id:'itemDataCorrection', label:'Item Data Correction', ic:'📦', v:'v-warning', kind:'confirm', desc:'Item stock correction for all companies.'},
-  {id:'ledgerBalance',  label:'Ledger Balance Correction', ic:'⚖️', v:'v-warning', kind:'confirm', desc:'Ledger balance correction for all companies.'},
-  {id:'acctTxnMismatch',label:'Accounting Txn Mismatch', ic:'📊', v:'v-secondary', kind:'run'},
-  {id:'stockMismatch',  label:'Stock Mismatch',         ic:'📉', v:'v-secondary', kind:'run'},
-  {id:'itemTxnMismatch',label:'Item Txn Mismatch',      ic:'🧾', v:'v-secondary', kind:'run'},
-  {id:'mrpRevert',      label:'MRP Revert',             ic:'↩️', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Revert MRP changes.'},
-  {id:'dbLockRemove',   label:'DB Lock Remove',         ic:'🔓', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Remove DB lock.'},
-  {id:'referralHistory',label:'Referral History',       ic:'🔗', v:'v-secondary', kind:'run'},
-  {id:'removeCaching',  label:'Remove Caching',         ic:'🧹', v:'v-warning', kind:'confirm', desc:'Clear cached data.'},
-  {id:'migrationLogin', label:'Migration Login Issue',  ic:'🔐', v:'v-warning', kind:'confirm', desc:'Fix data migration login issue.'},
-  {id:'companyDelete',  label:'Company Delete',         ic:'🗑️', v:'v-danger',  kind:'confirm', cta:'danger', typeConfirm:true, desc:'Permanently delete company data if deleted. NO ROLLBACK.'},
+  {id:'repairMobileDb', label:'Repair Mobile Database', ic:'📱', icon:'ti-device-mobile', color:'red',    v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run mobile database repair.'},
+  {id:'repairWebDb',    label:'Repair Web Database',    ic:'🌐', icon:'ti-world',         color:'red',    v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run web database repair.'},
+  {id:'alterIndex',     label:'Alter Index',            ic:'🧩', icon:'ti-puzzle',        color:'amber',  v:'v-warning', kind:'confirm', desc:'Rebuild / alter DB indexes.'},
+  {id:'healthProc',     label:'Health Proc',            ic:'🩺', icon:'ti-activity',      color:'green',  v:'v-warning', kind:'confirm', desc:'Run health procedure.'},
+  {id:'itemDataCorrection', label:'Item Data Correction', ic:'📦', icon:'ti-package',     color:'amber',  v:'v-warning', kind:'confirm', desc:'Item stock correction for all companies.'},
+  {id:'ledgerBalance',  label:'Ledger Balance Correction', ic:'⚖️', icon:'ti-scale',      color:'amber',  v:'v-warning', kind:'confirm', desc:'Ledger balance correction for all companies.'},
+  {id:'acctTxnMismatch',label:'Accounting Txn Mismatch', ic:'📊', icon:'ti-chart-bar',    color:'blue',   v:'v-secondary', kind:'run'},
+  {id:'stockMismatch',  label:'Stock Mismatch',         ic:'📉', icon:'ti-trending-down', color:'blue',   v:'v-secondary', kind:'run'},
+  {id:'itemTxnMismatch',label:'Item Txn Mismatch',      ic:'🧾', icon:'ti-receipt',       color:'blue',   v:'v-secondary', kind:'run'},
+  {id:'mrpRevert',      label:'MRP Revert',             ic:'↩️', icon:'ti-arrow-back-up', color:'red',    v:'v-danger',  kind:'confirm', cta:'danger', desc:'Revert MRP changes.'},
+  {id:'dbLockRemove',   label:'DB Lock Remove',         ic:'🔓', icon:'ti-lock-open',     color:'red',    v:'v-danger',  kind:'confirm', cta:'danger', desc:'Remove DB lock.'},
+  {id:'referralHistory',label:'Referral History',       ic:'🔗', icon:'ti-link',          color:'purple', v:'v-secondary', kind:'run'},
+  {id:'removeCaching',  label:'Remove Caching',         ic:'🧹', icon:'ti-eraser',        color:'amber',  v:'v-warning', kind:'confirm', desc:'Clear cached data.'},
+  {id:'migrationLogin', label:'Migration Login Issue',  ic:'🔐', icon:'ti-login',         color:'amber',  v:'v-warning', kind:'confirm', desc:'Fix data migration login issue.'},
+  {id:'companyDelete',  label:'Company Delete',         ic:'🗑️', icon:'ti-trash-x',       color:'red',    v:'v-danger',  kind:'confirm', cta:'danger', typeConfirm:true, desc:'Permanently delete company data if deleted. NO ROLLBACK.'},
 ];
 const GCI_ALL=[...GCI_QUICK,...GCI_DBOPS];
 function gciDef(id){ return GCI_ALL.find(x=>x.id===id); }
@@ -530,8 +590,8 @@ function gciTopBarHtml(){
   if(st==='active') acts.push(gciDef('deactivate'));
   else if(st==='inactive') acts.push(gciDef('activate'));
   else { acts.push(gciDef('activate')); acts.push(gciDef('deactivate')); }
-  return `<div class="gci-quickbar">`+acts.map(b=>`<button class="abtn ${b.v}" id="gtop_${b.id}" onclick="gciOnAction('${b.id}')">
-    <span class="ic">${b.ic}</span><span class="lbl">${gciEsc(b.label)}</span></button>`).join('')+`</div>`;
+  return `<div class="gci-pinned-row">`+acts.map(b=>`<button class="abtn pl-${b.color} big" id="gtop_${b.id}" onclick="gciOnAction('${b.id}')">
+    <i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('')+`</div>`;
 }
 function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-style:italic">Not Available</span>':gciEsc(v); }
 function gciRenderResults(){
@@ -540,28 +600,28 @@ function gciRenderResults(){
     ['Email',R.email],['Mobile',R.mobile],['License No',R.licenceno],
     ['User Link ID',R.userlinkid],['DB Info Link ID',R.dbinfolinkid],['Schema',R.schema],['Database Name',R.dbname],
     ['DB Server',R.dbserver],['DB Version',R.dbversion||R.mobdbversion],['API Version',R.apiversion],
-    ['DB Status', gciDbBadge(R.status)],
   ];
-  const infoHtml=info.map(([k,v])=>`<div class="info-item"><div class="info-k">${gciEsc(k)}</div><div class="info-v">${k==='DB Status'?v:gciNA(v)}</div></div>`).join('');
-  const btns=arr=>arr.map(b=>`<button class="abtn ${b.v}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><span class="ic">${b.ic}</span><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
+  const infoHtml=info.map(([k,v])=>`<div class="dp-row"><span class="dp-k2">${gciEsc(k)}</span><span class="dp-v2">${gciNA(v)}</span></div>`).join('');
+  const btns=arr=>arr.map(b=>`<button class="abtn pl-${b.color}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
   const missing=(R.dbinfolinkid==null||R.dbinfolinkid==='');
   document.getElementById('gciResults').innerHTML=`
-    <div class="card">
-      <div class="card-title">Customer Information <span class="badge">Loaded</span></div>
-      <div class="card-desc">Details fetched from Marg for <strong>${gciEsc(R.email||'')}</strong>. <span class="pwd-toggle" onclick="gciShowRaw()">View raw response</span></div>
+    <div class="gci-pinned-wrap">
+      <div class="gci-grplabel"><i class="ti ti-pin"></i> Pinned</div>
       ${gciTopBarHtml()}
-      <div class="info-grid">${infoHtml}</div>
-      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
     </div>
-    <div class="card">
-      <div class="card-title">⚡ Quick Actions</div>
-      <div class="card-desc">Account &amp; user operations.</div>
-      <div class="btn-grid">${btns(gciQuickList())}</div>
-    </div>
-    <div class="card">
-      <div class="card-title">🛠️ Database Operations</div>
-      <div class="card-desc">Repair, correction &amp; maintenance tasks. Destructive actions ask for confirmation.</div>
-      <div class="btn-grid">${btns(gciDbopsList())}</div>
+    <div class="gci-grid">
+      <aside class="gci-detail">
+        <div class="gci-dhead"><span>Details</span> ${gciDbBadge(R.status)}</div>
+        <div>${infoHtml}</div>
+        <div class="gci-raw" onclick="gciShowRaw()"><i class="ti ti-code"></i> View raw response</div>
+        ${missing?'<div class="gci-warn">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
+      </aside>
+      <div class="gci-actions">
+        <div class="gci-grplabel">Quick Actions</div>
+        <div class="gci-pillgrid">${btns(gciQuickList())}</div>
+        <div class="gci-grplabel" style="margin-top:16px">Database Operations <span class="lite">· destructive ask confirm</span></div>
+        <div class="gci-pillgrid">${btns(gciDbopsList())}</div>
+      </div>
     </div>`;
 }
 
@@ -670,11 +730,13 @@ function switchTool(tool){
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.toggle('active', el.dataset.tool===tool));
   const root=document.getElementById('toolRoot');
   if(tool==='client-move'){
+    document.body.classList.remove('gci-fixed');
     document.getElementById('toolTitle').textContent='Client Move To Other Server';
     document.getElementById('toolSub').textContent='Move a customer to another server (by Email ID or DB Info Link ID)';
     root.innerHTML='<div class="card" id="toolArea"></div>';
     renderClientMove();
   } else {
+    document.body.classList.add('gci-fixed');
     document.getElementById('toolTitle').textContent='Get Client Info';
     document.getElementById('toolSub').textContent='Search a customer by Email ID / Mobile and manage their account & database';
     GCI_REC=null; GCI_RAW=null;
