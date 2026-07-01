@@ -211,16 +211,16 @@ body.gci-fixed #gciResults{flex:1;min-height:0;display:flex;flex-direction:colum
 .gci-pinned-wrap{flex-shrink:0;margin-bottom:11px}
 .gci-pinned-row{display:flex;flex-wrap:wrap;gap:9px}
 
-.gci-grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
-body.gci-fixed .gci-grid{flex:1;min-height:0;overflow:hidden}
+.gci-grid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+body.gci-fixed .gci-grid{min-height:0}
 .gci-detail{min-width:0;background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:11px 13px;overflow:auto;display:flex;flex-direction:column}
 .gci-dhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
 .gci-dhead span{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2)}
-.dp-list{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-.dp-row{padding:4px 0;border-bottom:1px solid #eef2f6}
-.dp-row.full{grid-column:1/-1}
-.dp-k2{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted2);margin-bottom:1px}
-.dp-v2{display:block;font-size:12px;font-weight:700;color:var(--dark);line-height:1.25;overflow-wrap:anywhere}
+.dp-list{display:flex;flex-direction:column}
+.dp-row{display:flex;justify-content:space-between;align-items:baseline;gap:6px 14px;flex-wrap:wrap;padding:8px 2px;border-bottom:1px solid #e6ebf1}
+.dp-row:last-child{border-bottom:none}
+.dp-k2{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted2);flex-shrink:0}
+.dp-v2{font-size:12.5px;font-weight:700;color:var(--dark);text-align:right;overflow-wrap:anywhere;margin-left:auto;max-width:100%}
 .gci-raw{margin-top:11px;font-size:11px;color:var(--brand);cursor:pointer;font-weight:700;user-select:none;display:inline-flex;align-items:center;gap:5px}
 .gci-warn{margin-top:11px;font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;line-height:1.45}
 .gci-actions{min-width:0;overflow:auto;padding-right:4px}
@@ -228,17 +228,22 @@ body.gci-fixed .gci-grid{flex:1;min-height:0;overflow:hidden}
 
 /* pill layout override (premium) */
 .gci-pillgrid{gap:8px}
-.gci-pillgrid .abtn,.gci-pinned-row .abtn{min-height:0;border-width:1.5px;padding:8px 12px;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.gci-pillgrid .abtn,.gci-pinned-row .abtn{min-height:0;border-width:1.5px;padding:7px 11px;font-size:12px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .gci-pillgrid .abtn:hover:not(:disabled),.gci-pinned-row .abtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 14px rgba(16,24,40,.10)}
 .gci-pillgrid .abtn:active:not(:disabled),.gci-pinned-row .abtn:active:not(:disabled){transform:translateY(0) scale(.985)}
-.gci-pillgrid .abtn .ic,.gci-pinned-row .abtn .ic{font-size:16px}
-.gci-pinned-row .abtn.big{padding:9px 15px;font-size:12.5px}
-.gci-pinned-row .abtn.big .ic{font-size:17px}
-/* premium loading state (shimmer sweep + spinner) */
-.abtn.is-loading{position:relative;overflow:hidden;pointer-events:none}
-.abtn.is-loading::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-100%);animation:shimmer 1.15s ease-in-out infinite}
-@keyframes shimmer{to{transform:translateX(100%)}}
-.btn-loader{width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .6s linear infinite;flex-shrink:0}
+.gci-pillgrid .abtn .ic,.gci-pinned-row .abtn .ic{font-size:15px}
+.gci-pinned-row .abtn.big{padding:8px 14px;font-size:12px}
+.gci-pinned-row .abtn.big .ic{font-size:16px}
+/* premium page loader (overlay) */
+.page-loader{position:fixed;inset:0;background:rgba(15,23,42,.34);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:80}
+.page-loader.show{display:flex}
+.pl-card{background:#fff;border-radius:18px;padding:28px 40px;box-shadow:0 24px 70px rgba(0,0,0,.24);display:flex;flex-direction:column;align-items:center;gap:15px;animation:pop .2s ease}
+.pl-spin{position:relative;width:48px;height:48px}
+.pl-spin::before,.pl-spin::after{content:'';position:absolute;border-radius:50%;border:4px solid transparent}
+.pl-spin::before{inset:0;border-top-color:var(--brand);border-right-color:var(--brand2);animation:sp .8s linear infinite}
+.pl-spin::after{inset:8px;border-bottom-color:var(--brand2);border-left-color:var(--brand);animation:sp 1.15s linear infinite reverse}
+.pl-text{font-size:13.5px;font-weight:800;color:var(--dark);letter-spacing:.2px}
+.pl-sub{font-size:11px;color:var(--muted);margin-top:-9px}
 
 /* color families — saturated, premium */
 .pl-teal{background:#d3efe6;border-color:#79cdb9;color:#0a7264}
@@ -326,6 +331,15 @@ body.gci-fixed .gci-grid{flex:1;min-height:0;overflow:hidden}
 </div>
 
 <div id="gciToasts"></div>
+
+<!-- Premium page loader -->
+<div class="page-loader" id="pageLoader">
+  <div class="pl-card">
+    <div class="pl-spin"></div>
+    <div class="pl-text" id="pageLoaderText">Working…</div>
+    <div class="pl-sub">Please wait</div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -472,7 +486,8 @@ function gciResultError(r){
 async function gciGetDetails(){
   const q=(document.getElementById('gciQ').value||'').trim();
   if(!q){ gciToast('Email ID / Mobile daalo','err'); return; }
-  const btn=document.getElementById('gciGetBtn'); btn.disabled=true; const old=btn.innerHTML; btn.innerHTML='<span class="spin"></span> Loading…';
+  const btn=document.getElementById('gciGetBtn'); btn.disabled=true;
+  gciShowLoader('Fetching details…');
   try{
     const out=await gciApi({action:'getDetails', emailid:q});
     GCI_RAW=out.result;
@@ -487,7 +502,7 @@ async function gciGetDetails(){
       gciMapRecord(r0); gciToast('Customer details loaded','ok');
     }
   }catch(e){ gciToast(e.message||'Failed','err'); }
-  finally{ btn.disabled=false; btn.innerHTML=old; }
+  finally{ btn.disabled=false; gciHideLoader(); }
 }
 function gciSelectDialog(recs){
   GCI_RECORDS=recs;
@@ -608,11 +623,11 @@ function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-sty
 function gciRenderResults(){
   const R=GCI_REC;
   const info=[
-    ['Email',R.email,1],['Mobile',R.mobile],['License No',R.licenceno],
-    ['User Link ID',R.userlinkid],['DB Info Link ID',R.dbinfolinkid],['Schema',R.schema,1],['Database Name',R.dbname,1],
+    ['Email',R.email],['Mobile',R.mobile],['License No',R.licenceno],
+    ['User Link ID',R.userlinkid],['DB Info Link ID',R.dbinfolinkid],['Schema',R.schema],['Database Name',R.dbname],
     ['DB Server',R.dbserver],['DB Version',R.dbversion||R.mobdbversion],['API Version',R.apiversion],
   ];
-  const infoHtml=info.map(([k,v,full])=>`<div class="dp-row${full?' full':''}"><span class="dp-k2">${gciEsc(k)}</span><span class="dp-v2">${gciNA(v)}</span></div>`).join('');
+  const infoHtml=info.map(([k,v])=>`<div class="dp-row"><span class="dp-k2">${gciEsc(k)}</span><span class="dp-v2">${gciNA(v)}</span></div>`).join('');
   const btns=arr=>arr.map(b=>`<button class="abtn pl-${b.color}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
   const missing=(R.dbinfolinkid==null||R.dbinfolinkid==='');
   document.getElementById('gciResults').innerHTML=`
@@ -646,9 +661,13 @@ function gciOnAction(id){
 function gciBaseParams(){ return { dbinfolinkid:GCI_REC.dbinfolinkid, userlinkid:GCI_REC.userlinkid, licenceno:GCI_REC.licenceno, emailid:GCI_REC.email }; }
 function gciSuccessMsg(b){ const m={activate:'Database Activated',deactivate:'Database Deactivated',resetPwd:'Password Reset Successfully',syncToBI:'Sync Completed',viewCompanyList:'Company List Loaded',healthProc:'Health Check Completed',viewTransaction:'Transactions Loaded',removeCaching:'Cache Cleared',companyDelete:'Company Deleted'}; return m[b.id]||(b.label+' Completed'); }
 
+function gciShowLoader(t){ const el=document.getElementById('pageLoader'); if(!el) return; const tx=document.getElementById('pageLoaderText'); if(tx) tx.textContent=t||'Working…'; el.classList.add('show'); }
+function gciHideLoader(){ const el=document.getElementById('pageLoader'); if(el) el.classList.remove('show'); }
+
 async function gciRunAction(b,extra){
   const el=document.getElementById('gab_'+b.id)||document.getElementById('gtop_'+b.id);
-  if(el){ el.disabled=true; el.classList.add('is-loading'); el.dataset.h=el.innerHTML; el.innerHTML=`<span class="btn-loader"></span><span class="lbl">Working…</span>`; }
+  if(el) el.disabled=true;
+  gciShowLoader(b.label+'…');
   try{
     const out=await gciApi(Object.assign({action:b.id}, gciBaseParams(), extra||{}));
     const rerr=gciResultError(out.result);
@@ -658,7 +677,7 @@ async function gciRunAction(b,extra){
     else if(b.id==='viewPwd2'){ gciPwdDialog(gciPick(out.result,['pwd2','password2','pwd','password'])); }
     else { gciShowResult(b, out.result); }
   }catch(e){ gciToast(b.label+' — '+(e.message||'failed'),'err'); }
-  finally{ if(el){ el.disabled=false; el.classList.remove('is-loading'); if(el.isConnected) el.innerHTML=el.dataset.h; } }
+  finally{ gciHideLoader(); const el2=document.getElementById('gab_'+b.id)||document.getElementById('gtop_'+b.id); if(el2) el2.disabled=false; }
 }
 
 // ── Result renderers (no raw JSON) ──
