@@ -183,10 +183,12 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
 .sb-item{padding:9px 20px;font-size:12.5px;gap:10px;line-height:1.2}
 .sb-item .ic{font-size:14px}
 /* search card compact */
-.gci-search-card{padding:14px 18px}
-.gci-search-card .fg label{margin-bottom:5px}
-.gci-search-card input[type=text]{padding:10px 13px}
-.gci-search-card .btn{height:38px;padding:0 20px}
+.gci-search-card{padding:9px 14px}
+.gci-search-card .search-row{align-items:center;gap:12px}
+.gci-search-card .fg{gap:3px}
+.gci-search-card .fg label{margin-bottom:0;font-size:10px}
+.gci-search-card input[type=text]{padding:8px 12px}
+.gci-search-card .btn{height:36px;padding:0 18px}
 /* top quick bar buttons compact */
 .gci-quickbar{gap:8px;margin:2px 0 16px}
 .gci-quickbar .abtn{min-height:34px;padding:7px 12px;font-size:12px;box-shadow:none}
@@ -194,18 +196,19 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
 .gci-quickbar .abtn .lbl{flex:0 0 auto}
 
 /* ===== PREMIUM GET CLIENT INFO — single screen + soft tinted pills ===== */
+body.gci-fixed .topbar{display:none}
 body.gci-fixed .main{overflow:hidden}
-body.gci-fixed .content{flex:1;min-height:0;overflow:hidden;max-width:none;padding:16px 26px;display:flex;flex-direction:column}
+body.gci-fixed .content{flex:1;min-height:0;overflow:hidden;max-width:none;padding:14px 26px;display:flex;flex-direction:column}
 body.gci-fixed #toolRoot{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .gci-view{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .gci-search-card{flex-shrink:0}
-body.gci-fixed #gciResults{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin-top:14px}
+body.gci-fixed #gciResults{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin-top:10px}
 
-.gci-grplabel{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.gci-grplabel{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:7px;display:flex;align-items:center;gap:6px}
 .gci-grplabel .ti{font-size:12px}
 .gci-grplabel .lite{font-weight:600;text-transform:none;letter-spacing:0;color:var(--danger);font-size:10px}
 
-.gci-pinned-wrap{flex-shrink:0;margin-bottom:14px}
+.gci-pinned-wrap{flex-shrink:0;margin-bottom:11px}
 .gci-pinned-row{display:flex;flex-wrap:wrap;gap:9px}
 
 .gci-grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
@@ -224,31 +227,32 @@ body.gci-fixed .gci-grid{flex:1;min-height:0;overflow:hidden}
 .gci-pillgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:9px}
 
 /* pill layout override (premium) */
-.gci-pillgrid .abtn,.gci-pinned-row .abtn{min-height:0;border-width:1.5px;padding:9px 13px;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.gci-pillgrid{gap:8px}
+.gci-pillgrid .abtn,.gci-pinned-row .abtn{min-height:0;border-width:1.5px;padding:8px 12px;font-size:12.5px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.05)}
 .gci-pillgrid .abtn:hover:not(:disabled),.gci-pinned-row .abtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 14px rgba(16,24,40,.10)}
 .gci-pillgrid .abtn:active:not(:disabled),.gci-pinned-row .abtn:active:not(:disabled){transform:translateY(0) scale(.985)}
 .gci-pillgrid .abtn .ic,.gci-pinned-row .abtn .ic{font-size:16px}
-.gci-pinned-row .abtn.big{padding:11px 16px;font-size:13px}
-.gci-pinned-row .abtn.big .ic{font-size:18px}
+.gci-pinned-row .abtn.big{padding:9px 15px;font-size:12.5px}
+.gci-pinned-row .abtn.big .ic{font-size:17px}
 /* premium loading state (shimmer sweep + spinner) */
 .abtn.is-loading{position:relative;overflow:hidden;pointer-events:none}
 .abtn.is-loading::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-100%);animation:shimmer 1.15s ease-in-out infinite}
 @keyframes shimmer{to{transform:translateX(100%)}}
 .btn-loader{width:15px;height:15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .6s linear infinite;flex-shrink:0}
 
-/* soft color families */
-.pl-teal{background:#ddf3ec;border-color:#8ed6c4;color:#0c8172}
-.pl-teal:hover:not(:disabled){background:#cdeee3}
-.pl-blue{background:#e2ecfb;border-color:#a4c6f4;color:#2b62cb}
-.pl-blue:hover:not(:disabled){background:#d3e2f9}
-.pl-amber{background:#fbecd0;border-color:#eabf76;color:#a66f18}
-.pl-amber:hover:not(:disabled){background:#f9e2ba}
-.pl-red{background:#fbe0e0;border-color:#eeaaaa;color:#cd403d}
-.pl-red:hover:not(:disabled){background:#f9cfcf}
-.pl-green{background:#e0f3e7;border-color:#a3d8b6;color:#2d9350}
-.pl-green:hover:not(:disabled){background:#cfeed9}
-.pl-purple{background:#ebe1f9;border-color:#c8afeb;color:#7a4fbf}
-.pl-purple:hover:not(:disabled){background:#e0d1f5}
+/* color families — saturated, premium */
+.pl-teal{background:#d3efe6;border-color:#79cdb9;color:#0a7264}
+.pl-teal:hover:not(:disabled){background:#c2e9db}
+.pl-blue{background:#dbe8fb;border-color:#8fbaf1;color:#245bc0}
+.pl-blue:hover:not(:disabled){background:#c9dcf8}
+.pl-amber{background:#f9e6c2;border-color:#e3b45f;color:#96631a}
+.pl-amber:hover:not(:disabled){background:#f5dcac}
+.pl-red{background:#fad6d6;border-color:#ea9a9a;color:#c23a37}
+.pl-red:hover:not(:disabled){background:#f7c4c4}
+.pl-green{background:#d6efdf;border-color:#8ccfa6;color:#268049}
+.pl-green:hover:not(:disabled){background:#c6e9d2}
+.pl-purple{background:#e4d7f6;border-color:#bd9fe6;color:#6f45b5}
+.pl-purple:hover:not(:disabled){background:#d9c7f2}
 
 @media(max-width:860px){
   body.gci-fixed .main{overflow:auto}
@@ -626,7 +630,7 @@ function gciRenderResults(){
       <div class="gci-actions">
         <div class="gci-grplabel">Quick Actions</div>
         <div class="gci-pillgrid">${btns(gciQuickList())}</div>
-        <div class="gci-grplabel" style="margin-top:16px">Database Operations <span class="lite">· destructive ask confirm</span></div>
+        <div class="gci-grplabel" style="margin-top:12px">Database Operations <span class="lite">· destructive ask confirm</span></div>
         <div class="gci-pillgrid">${btns(gciDbopsList())}</div>
       </div>
     </div>`;
