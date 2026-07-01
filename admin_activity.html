@@ -96,6 +96,57 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
 .modal-f{padding:14px 22px 20px;display:flex;gap:10px;justify-content:flex-end}
 .btn-ghost{height:40px;padding:0 18px;border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
 .btn-danger{height:40px;padding:0 22px;border:none;background:var(--danger);color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ===== Get Client Info (in-page tool) ===== */
+.search-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.search-row .fg{flex:1;min-width:260px}
+.card-title .badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4;text-transform:uppercase;letter-spacing:.4px}
+.pwd-toggle{margin-left:8px;font-size:11px;color:var(--brand);cursor:pointer;font-weight:700;user-select:none}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;color:var(--muted);gap:8px;text-align:center}
+.empty .ei{font-size:38px;opacity:.5}
+.empty .et{font-size:14px;font-weight:700}
+.empty .es{font-size:12px;color:var(--muted2)}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.info-item{background:#f8fafc;border:1px solid var(--border);border-radius:11px;padding:11px 14px}
+.info-k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);margin-bottom:4px}
+.info-v{font-size:13.5px;font-weight:700;color:var(--dark);word-break:break-word}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px}
+.pill-on{background:#dcfce7;color:#166534}
+.pill-off{background:#fee2e2;color:#b91c1c}
+.btn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.abtn{min-height:46px;padding:11px 15px;border-radius:11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid transparent;box-shadow:var(--sh-s)}
+.abtn .ic{font-size:16px;flex-shrink:0}
+.abtn .lbl{flex:1;line-height:1.25}
+.abtn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.1)}
+.abtn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.abtn .mini-spin{width:14px;height:14px;border:2px solid rgba(0,0,0,.15);border-top-color:currentColor;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+.v-primary{background:#fff;color:#0f766e;border-color:#99f6e4}
+.v-primary:hover:not(:disabled){background:#f0fdfa}
+.v-secondary{background:#fff;color:#334155;border-color:var(--border)}
+.v-secondary:hover:not(:disabled){background:#f8fafc}
+.v-success{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+.v-success:hover:not(:disabled){background:#d1fae5}
+.v-danger{background:#fef2f2;color:#be123c;border-color:#fecaca}
+.v-danger:hover:not(:disabled){background:#fee2e2}
+.v-warning{background:#fffbeb;color:#b45309;border-color:#fde68a}
+.v-warning:hover:not(:disabled){background:#fef3c7}
+.v-info{background:#ecfeff;color:#0e7490;border-color:#a5f3fc}
+.v-info:hover:not(:disabled){background:#cffafe}
+.modal.wide{max-width:760px}
+.btn-cta{height:40px;padding:0 22px;border:none;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--brand-g)}
+.btn-cta.danger{background:linear-gradient(135deg,#e11d48,#be123c)}
+.btn-cta.success{background:linear-gradient(135deg,#059669,#047857)}
+.btn-cta:disabled{opacity:.6;cursor:not-allowed}
+.modal-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;margin-top:10px;background:#f8fafc}
+.modal-input:focus{border-color:var(--brand);background:#fff;outline:none;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-size:12px;font-family:'JetBrains Mono',ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;max-height:52vh;overflow:auto;line-height:1.5}
+#gciToasts{position:fixed;top:18px;right:18px;z-index:90;display:flex;flex-direction:column;gap:10px}
+#gciToasts .toast{min-width:260px;max-width:380px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:11px;box-shadow:var(--sh-m);padding:12px 15px;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:flex-start;gap:9px;animation:slideIn .25s ease}
+#gciToasts .toast.ok{border-left-color:#059669}
+#gciToasts .toast.err{border-left-color:var(--danger)}
+#gciToasts .toast .ti{font-size:16px}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
 </style>
 </head>
 <body>
@@ -106,8 +157,8 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
     <div><div class="sb-title">Margbooks Admin</div><div class="sb-sub">Activity</div></div>
   </div>
   <div class="sb-section">Support Areas</div>
-  <a class="sb-item" href="get_client_info.html"><span class="ic">🔍</span> Get Client Info</a>
-  <a class="sb-item active" href="admin_activity.html"><span class="ic">🔁</span> Client Move To Other Server</a>
+  <div class="sb-item active" data-tool="get-info" onclick="switchTool('get-info')"><span class="ic">🔍</span> Get Client Info</div>
+  <div class="sb-item" data-tool="client-move" onclick="switchTool('client-move')"><span class="ic">🔁</span> Client Move To Other Server</div>
   <div class="sb-foot">
     <button class="sb-portal" onclick="location.href='portal.html'">← Portal</button>
     <button class="sb-out" onclick="mbSignOut()">Sign Out</button>
@@ -120,7 +171,7 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
     <p id="toolSub">Move a customer to another server (by Email ID or DB Info Link ID)</p>
   </div>
   <div class="content">
-    <div class="card" id="toolArea"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
+    <div id="toolRoot"><div class="card"><div style="color:var(--muted);font-size:13px">Loading…</div></div></div>
   </div>
 </div>
 
@@ -138,6 +189,30 @@ textarea{resize:vertical;min-height:130px;line-height:1.6}
     </div>
   </div>
 </div>
+
+
+<!-- Get Client Info: confirm modal -->
+<div class="overlay" id="gciConfirm">
+  <div class="modal">
+    <div class="modal-h"><h3 id="gciCfTitle">⚠️ Confirm</h3><p id="gciCfDesc"></p></div>
+    <div class="modal-b" id="gciCfBody"></div>
+    <div class="modal-f">
+      <button class="btn-ghost" onclick="gciCloseConfirm()">Cancel</button>
+      <button class="btn-cta danger" id="gciCfBtn">Yes, Proceed</button>
+    </div>
+  </div>
+</div>
+
+<!-- Get Client Info: output modal -->
+<div class="overlay" id="gciOut">
+  <div class="modal wide">
+    <div class="modal-h"><h3 id="gciOutTitle">Result</h3><p id="gciOutDesc"></p></div>
+    <div class="modal-b" id="gciOutBody"></div>
+    <div class="modal-f"><button class="btn-ghost" onclick="gciCloseOut()">Close</button></div>
+  </div>
+</div>
+
+<div id="gciToasts"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -190,11 +265,222 @@ let OPERATOR_EMAIL = '';
   OPERATOR_EMAIL = (prof && prof.email) || CALLER.email || '';
   const allowed = prof && (prof.role==='admin' || (prof.dashboards||[]).includes('admin-activity'));
   if(!allowed){ location.replace('portal.html'); return; }
-  renderClientMove();
+  switchTool('get-info');
 })();
 
 // ── Sign out helper ──
 window.mbSignOut = async function(){ try{ await sb.auth.signOut(); }catch(e){} location.replace('index.html'); };
+
+/* ============================ GET CLIENT INFO (in-page tool) ============================ */
+let GCI_REC=null, GCI_RAW=null;
+
+const GET_INFO_HTML = `
+  <div class="card">
+    <div class="search-row">
+      <div class="fg">
+        <label>Email ID / Mobile Number</label>
+        <input type="text" id="gciQ" placeholder="e.g. customer@gmail.com  or  9876543210" autocomplete="off"/>
+      </div>
+      <button class="btn" id="gciGetBtn" onclick="gciGetDetails()">🔎 Get Details</button>
+    </div>
+  </div>
+  <div id="gciResults">
+    <div class="card"><div class="empty"><div class="ei">🗂️</div><div class="et">No customer loaded</div><div class="es">Enter an Email ID or Mobile number above and click “Get Details”.</div></div></div>
+  </div>`;
+
+function gciEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function gciToast(msg,type){ const t=document.createElement('div'); t.className='toast '+(type||''); t.innerHTML=`<span class="ti">${type==='ok'?'✅':type==='err'?'⛔':'ℹ️'}</span><span>${gciEsc(msg)}</span>`; const c=document.getElementById('gciToasts'); c.appendChild(t); setTimeout(()=>{ t.style.transition='opacity .3s'; t.style.opacity='0'; setTimeout(()=>t.remove(),300); },4200); }
+async function gciToken(){ const {data:{session}}=await sb.auth.getSession(); if(!session) throw new Error('Session expired — sign in again'); return session.access_token; }
+async function gciApi(payload){
+  const res=await fetch('/api/client-info',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${await gciToken()}`},body:JSON.stringify(payload)});
+  let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
+  if(!res.ok||out.error) throw new Error(out.error||('HTTP '+res.status));
+  return out;
+}
+function gciPick(obj,cands){
+  const want=cands.map(c=>c.toLowerCase()); let found;
+  (function walk(o){
+    if(found!==undefined||!o||typeof o!=='object') return;
+    for(const k of Object.keys(o)){ const nk=k.toLowerCase().replace(/[^a-z0-9]/g,''); if(want.includes(nk)&&o[k]!==null&&o[k]!==''&&typeof o[k]!=='object'){ found=o[k]; return; } }
+    for(const k of Object.keys(o)){ if(o[k]&&typeof o[k]==='object'){ walk(o[k]); if(found!==undefined) return; } }
+  })(obj);
+  return found;
+}
+
+async function gciGetDetails(){
+  const q=(document.getElementById('gciQ').value||'').trim();
+  if(!q){ gciToast('Email ID / Mobile daalo','err'); return; }
+  const btn=document.getElementById('gciGetBtn'); btn.disabled=true; const old=btn.innerHTML; btn.innerHTML='<span class="spin"></span> Loading…';
+  try{
+    const out=await gciApi({action:'getDetails', emailid:q});
+    GCI_RAW=out.result;
+    GCI_REC={
+      email:        gciPick(GCI_RAW,['emailid','email']) ?? q,
+      mobile:       gciPick(GCI_RAW,['mobile','mobileno','mobilenumber']),
+      licenceno:    gciPick(GCI_RAW,['licenceno','licenseno','lince','licno','license']),
+      usertype:     gciPick(GCI_RAW,['usertype','utype']),
+      userlinkid:   gciPick(GCI_RAW,['userlinkid','userlinkidstr']),
+      dbinfolinkid: gciPick(GCI_RAW,['dbinfolinkid','dbinfolinkidstr']),
+      schema:       gciPick(GCI_RAW,['schema','schemaname']),
+      dbname:       gciPick(GCI_RAW,['dbname','databasename']),
+      dbserver:     gciPick(GCI_RAW,['dbserver','server','dbserverip']),
+      dbversion:    gciPick(GCI_RAW,['dbversion','webdbversion']),
+      mobdbversion: gciPick(GCI_RAW,['mobdbversion','mobiledbversion']),
+      apiversion:   gciPick(GCI_RAW,['apiversion','apiver']),
+      status:       gciPick(GCI_RAW,['dbstatus','status','isactive','active']),
+      url:          gciPick(GCI_RAW,['url','loginurl']),
+      pwd:          gciPick(GCI_RAW,['pwd','password']),
+    };
+    gciRenderResults();
+    gciToast('Customer details loaded','ok');
+  }catch(e){ gciToast(e.message||'Failed','err'); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+
+const GCI_QUICK=[
+  {id:'viewPwd',   label:'View Password',     ic:'👁️', v:'v-primary',  kind:'reveal'},
+  {id:'viewPwd2',  label:'View Password 2',   ic:'🔑', v:'v-primary',  kind:'run'},
+  {id:'resetPwd',  label:'Reset Password',    ic:'♻️', v:'v-warning',  kind:'input', title:'Reset Password', desc:'Enter the new password for this customer.'},
+  {id:'viewTransaction', label:'View Transactions', ic:'📄', v:'v-secondary', kind:'run'},
+  {id:'viewCompanyList', label:'View Company List', ic:'🏢', v:'v-secondary', kind:'run'},
+  {id:'syncToBI',  label:'Sync To BI',        ic:'🔄', v:'v-info',     kind:'confirm', desc:'Sync all users of this license to BI.'},
+  {id:'viewDataBss', label:'View Data In BSS', ic:'🗄️', v:'v-secondary', kind:'run'},
+  {id:'activate',  label:'Activate',          ic:'✅', v:'v-success',  kind:'confirm', cta:'success', desc:'Activate this account.'},
+  {id:'deactivate',label:'Deactivate',        ic:'⛔', v:'v-danger',   kind:'confirm', cta:'danger',  desc:'Deactivate this account.'},
+];
+const GCI_DBOPS=[
+  {id:'repairMobileDb', label:'Repair Mobile Database', ic:'📱', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run mobile database repair.'},
+  {id:'repairWebDb',    label:'Repair Web Database',    ic:'🌐', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run web database repair.'},
+  {id:'alterIndex',     label:'Alter Index',            ic:'🧩', v:'v-warning', kind:'confirm', desc:'Rebuild / alter DB indexes.'},
+  {id:'healthProc',     label:'Health Proc',            ic:'🩺', v:'v-warning', kind:'confirm', desc:'Run health procedure.'},
+  {id:'itemDataCorrection', label:'Item Data Correction', ic:'📦', v:'v-warning', kind:'confirm', desc:'Item stock correction for all companies.'},
+  {id:'ledgerBalance',  label:'Ledger Balance Correction', ic:'⚖️', v:'v-warning', kind:'confirm', desc:'Ledger balance correction for all companies.'},
+  {id:'acctTxnMismatch',label:'Accounting Txn Mismatch', ic:'📊', v:'v-secondary', kind:'run'},
+  {id:'stockMismatch',  label:'Stock Mismatch',         ic:'📉', v:'v-secondary', kind:'run'},
+  {id:'itemTxnMismatch',label:'Item Txn Mismatch',      ic:'🧾', v:'v-secondary', kind:'run'},
+  {id:'mrpRevert',      label:'MRP Revert',             ic:'↩️', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Revert MRP changes.'},
+  {id:'dbLockRemove',   label:'DB Lock Remove',         ic:'🔓', v:'v-danger',  kind:'confirm', cta:'danger', desc:'Remove DB lock.'},
+  {id:'referralHistory',label:'Referral History',       ic:'🔗', v:'v-secondary', kind:'run'},
+  {id:'removeCaching',  label:'Remove Caching',         ic:'🧹', v:'v-warning', kind:'confirm', desc:'Clear cached data.'},
+  {id:'migrationLogin', label:'Migration Login Issue',  ic:'🔐', v:'v-warning', kind:'confirm', desc:'Fix data migration login issue.'},
+  {id:'companyDelete',  label:'Company Delete',         ic:'🗑️', v:'v-danger',  kind:'confirm', cta:'danger', typeConfirm:true, desc:'Permanently delete company data if deleted. NO ROLLBACK.'},
+];
+const GCI_ALL=[...GCI_QUICK,...GCI_DBOPS];
+function gciDef(id){ return GCI_ALL.find(x=>x.id===id); }
+
+function gciStatusPill(v){
+  if(v==null||v==='') return '<span style="color:#cbd5e1">—</span>';
+  const s=String(v).toLowerCase();
+  if(s==='active'||s==='1'||s==='true'||s==='yes') return '<span class="pill pill-on">Active</span>';
+  if(s==='deactive'||s==='inactive'||s==='0'||s==='false'||s==='no') return '<span class="pill pill-off">Inactive</span>';
+  return gciEsc(v);
+}
+function gciRenderResults(){
+  const R=GCI_REC;
+  const info=[
+    ['Email',R.email],['Mobile',R.mobile],['License No',R.licenceno],['User Type',R.usertype],
+    ['User Link ID',R.userlinkid],['DB Info Link ID',R.dbinfolinkid],['Schema',R.schema],['Database Name',R.dbname],
+    ['DB Server',R.dbserver],['DB Version',R.dbversion||R.mobdbversion],['API Version',R.apiversion],['Status',gciStatusPill(R.status)],
+  ];
+  const infoHtml=info.map(([k,v])=>`<div class="info-item"><div class="info-k">${gciEsc(k)}</div><div class="info-v">${v==null||v===''?'<span style="color:#cbd5e1">—</span>':(k==='Status'?v:gciEsc(v))}</div></div>`).join('');
+  const btns=arr=>arr.map(b=>`<button class="abtn ${b.v}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><span class="ic">${b.ic}</span><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
+  const missing=(R.dbinfolinkid==null||R.dbinfolinkid==='');
+  document.getElementById('gciResults').innerHTML=`
+    <div class="card">
+      <div class="card-title">Customer Information <span class="badge">Loaded</span></div>
+      <div class="card-desc">Details fetched from Marg for <strong>${gciEsc(R.email||'')}</strong>. <span class="pwd-toggle" onclick="gciShowRaw()">View raw response</span></div>
+      <div class="info-grid">${infoHtml}</div>
+      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field mapping confirm karni pad sakti hai.</div>':''}
+    </div>
+    <div class="card">
+      <div class="card-title">⚡ Quick Actions</div>
+      <div class="card-desc">Account &amp; user operations.</div>
+      <div class="btn-grid">${btns(GCI_QUICK)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🛠️ Database Operations</div>
+      <div class="card-desc">Repair, correction &amp; maintenance tasks. Destructive actions ask for confirmation.</div>
+      <div class="btn-grid">${btns(GCI_DBOPS)}</div>
+    </div>`;
+}
+
+function gciOnAction(id){
+  const b=gciDef(id); if(!b) return;
+  if(b.kind==='reveal'){ gciRevealPwd(); return; }
+  if(b.kind==='input'){ gciOpenInput(b); return; }
+  if(b.kind==='confirm'){ gciOpenConfirm(b); return; }
+  gciRunAction(b);
+}
+function gciRevealPwd(){
+  if(GCI_REC.pwd==null||GCI_REC.pwd===''){ gciToast('Password details me nahi mila','err'); return; }
+  gciOpenOut('👁️ Password', GCI_REC.email||'', `<div class="sum-row"><span class="sum-k">Password</span><span class="sum-v" style="font-family:monospace;font-size:15px">${gciEsc(GCI_REC.pwd)}</span></div>`);
+}
+function gciBaseParams(){ return { dbinfolinkid:GCI_REC.dbinfolinkid, userlinkid:GCI_REC.userlinkid, licenceno:GCI_REC.licenceno, emailid:GCI_REC.email }; }
+async function gciRunAction(b,extra){
+  const el=document.getElementById('gab_'+b.id);
+  if(el){ el.disabled=true; el.dataset.h=el.innerHTML; el.innerHTML=`<span class="mini-spin"></span><span class="lbl">Running…</span>`; }
+  try{
+    const out=await gciApi(Object.assign({action:b.id}, gciBaseParams(), extra||{}));
+    gciToast(b.label+' — done','ok');
+    gciOpenOut('✅ '+b.label, GCI_REC.email||'', gciRenderResult(out.result));
+  }catch(e){ gciToast(b.label+' — '+(e.message||'failed'),'err'); }
+  finally{ if(el){ el.disabled=false; el.innerHTML=el.dataset.h; } }
+}
+function gciRenderResult(r){
+  let head='';
+  if(r&&typeof r==='object'){
+    const msg=gciPick(r,['message','msg','result','status']); const url=gciPick(r,['url','link','downloadurl']);
+    if(msg!=null) head+=`<div class="sum-row"><span class="sum-k">Message</span><span class="sum-v">${gciEsc(msg)}</span></div>`;
+    if(url!=null&&/^https?:\/\//.test(String(url))) head+=`<div class="sum-row"><span class="sum-k">Link</span><span class="sum-v"><a href="${gciEsc(url)}" target="_blank" rel="noopener" style="color:var(--brand)">Open ↗</a></span></div>`;
+  } else if(r!=null){ head+=`<div class="sum-row"><span class="sum-k">Result</span><span class="sum-v">${gciEsc(r)}</span></div>`; }
+  return (head?`<div style="margin-bottom:12px">${head}</div>`:'')+`<pre class="raw">${gciEsc(typeof r==='string'?r:JSON.stringify(r,null,2))}</pre>`;
+}
+
+function gciOpenConfirm(b){
+  document.getElementById('gciCfTitle').innerHTML=(b.cta==='danger'?'⚠️ ':'')+gciEsc(b.label);
+  document.getElementById('gciCfDesc').textContent=b.desc||'Please confirm this action.';
+  let body=`<div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'')}</span></div>
+            <div class="sum-row"><span class="sum-k">License</span><span class="sum-v">${gciEsc(GCI_REC.licenceno||'—')}</span></div>
+            <div class="sum-row"><span class="sum-k">Action</span><span class="sum-v">${gciEsc(b.label)}</span></div>`;
+  if(b.typeConfirm){ body+=`<div style="margin-top:12px;font-size:12px;color:#b91c1c">Type <strong>DELETE</strong> to confirm:</div><input class="modal-input" id="gciCfType" placeholder="DELETE" autocomplete="off"/>`; }
+  document.getElementById('gciCfBody').innerHTML=body;
+  const btn=document.getElementById('gciCfBtn'); btn.className='btn-cta '+(b.cta||''); btn.textContent=b.cta==='danger'?'Yes, Proceed':'Confirm';
+  btn.onclick=()=>{ if(b.typeConfirm){ const v=(document.getElementById('gciCfType').value||'').trim().toUpperCase(); if(v!=='DELETE'){ gciToast('Type DELETE to confirm','err'); return; } } gciCloseConfirm(); gciRunAction(b); };
+  document.getElementById('gciConfirm').classList.add('show');
+}
+function gciOpenInput(b){
+  document.getElementById('gciCfTitle').innerHTML='♻️ '+gciEsc(b.title||b.label);
+  document.getElementById('gciCfDesc').textContent=b.desc||'';
+  document.getElementById('gciCfBody').innerHTML=`<div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'')}</span></div><input class="modal-input" id="gciCfInput" type="text" placeholder="New password" autocomplete="off"/>`;
+  const btn=document.getElementById('gciCfBtn'); btn.className='btn-cta'; btn.textContent='Reset Password';
+  btn.onclick=()=>{ const v=(document.getElementById('gciCfInput').value||'').trim(); if(!v){ gciToast('New password daalo','err'); return; } gciCloseConfirm(); gciRunAction(b,{remark:v}); };
+  document.getElementById('gciConfirm').classList.add('show');
+  setTimeout(()=>{ const i=document.getElementById('gciCfInput'); if(i) i.focus(); },50);
+}
+function gciCloseConfirm(){ document.getElementById('gciConfirm').classList.remove('show'); }
+function gciOpenOut(title,desc,html){ document.getElementById('gciOutTitle').innerHTML=gciEsc(title); document.getElementById('gciOutDesc').textContent=desc||''; document.getElementById('gciOutBody').innerHTML=html; document.getElementById('gciOut').classList.add('show'); }
+function gciCloseOut(){ document.getElementById('gciOut').classList.remove('show'); }
+function gciShowRaw(){ gciOpenOut('🧾 Raw getDetails response', GCI_REC.email||'', `<pre class="raw">${gciEsc(JSON.stringify(GCI_RAW,null,2))}</pre>`); }
+
+/* ============================ TOOL SWITCHER ============================ */
+function switchTool(tool){
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.toggle('active', el.dataset.tool===tool));
+  const root=document.getElementById('toolRoot');
+  if(tool==='client-move'){
+    document.getElementById('toolTitle').textContent='Client Move To Other Server';
+    document.getElementById('toolSub').textContent='Move a customer to another server (by Email ID or DB Info Link ID)';
+    root.innerHTML='<div class="card" id="toolArea"></div>';
+    renderClientMove();
+  } else {
+    document.getElementById('toolTitle').textContent='Get Client Info';
+    document.getElementById('toolSub').textContent='Search a customer by Email ID / Mobile and manage their account & database';
+    GCI_REC=null; GCI_RAW=null;
+    root.innerHTML=GET_INFO_HTML;
+    const q=document.getElementById('gciQ');
+    if(q) q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); gciGetDetails(); } });
+  }
+}
+
 
 // ── Render Client Move form ──
 function renderClientMove(){
