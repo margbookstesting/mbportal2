@@ -147,6 +147,14 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
 #gciToasts .toast .ti{font-size:16px}
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
+
+.pill-other{background:#ffedd5;color:#9a3412}
+.gci-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.gci-tbl th,.gci-tbl td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;white-space:nowrap}
+.gci-tbl thead th{background:#f8fafc;font-weight:700;color:#475569;position:sticky;top:0;z-index:1}
+.gci-tbl tbody tr:hover{background:#f8fafc}
+.gci-copy{border:1px solid var(--border);background:#fff;border-radius:7px;padding:3px 11px;font-size:11px;font-weight:700;cursor:pointer;color:#0f766e;font-family:inherit}
+.gci-copy:hover{background:#f0fdfa}
 </style>
 </head>
 <body>
@@ -272,7 +280,7 @@ let OPERATOR_EMAIL = '';
 window.mbSignOut = async function(){ try{ await sb.auth.signOut(); }catch(e){} location.replace('index.html'); };
 
 /* ============================ GET CLIENT INFO (in-page tool) ============================ */
-let GCI_REC=null, GCI_RAW=null;
+let GCI_REC=null, GCI_RAW=null, GCI_RECORDS=[];
 
 const GET_INFO_HTML = `
   <div class="card">
@@ -297,14 +305,36 @@ async function gciApi(payload){
   if(!res.ok||out.error) throw new Error(out.error||('HTTP '+res.status));
   return out;
 }
+// candidate-PRIORITY deep pick: first candidate that exists anywhere wins
 function gciPick(obj,cands){
-  const want=cands.map(c=>c.toLowerCase()); let found;
+  for(const cand of cands){
+    const want=cand.toLowerCase().replace(/[^a-z0-9]/g,'');
+    let found;
+    (function walk(o){
+      if(found!==undefined||!o||typeof o!=='object') return;
+      for(const k of Object.keys(o)){ if(k.toLowerCase().replace(/[^a-z0-9]/g,'')===want && o[k]!==null && o[k]!=='' && typeof o[k]!=='object'){ found=o[k]; return; } }
+      for(const k of Object.keys(o)){ if(o[k]&&typeof o[k]==='object'){ walk(o[k]); if(found!==undefined) return; } }
+    })(obj);
+    if(found!==undefined) return found;
+  }
+  return undefined;
+}
+function gciHasKey(o,cands){ const w=cands.map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,'')); return o&&typeof o==='object'&&Object.keys(o).some(k=>w.includes(k.toLowerCase().replace(/[^a-z0-9]/g,''))); }
+// find array of customer-record objects (mobile search may return many)
+function gciFindRecords(resp){
+  let best=null;
   (function walk(o){
-    if(found!==undefined||!o||typeof o!=='object') return;
-    for(const k of Object.keys(o)){ const nk=k.toLowerCase().replace(/[^a-z0-9]/g,''); if(want.includes(nk)&&o[k]!==null&&o[k]!==''&&typeof o[k]!=='object'){ found=o[k]; return; } }
-    for(const k of Object.keys(o)){ if(o[k]&&typeof o[k]==='object'){ walk(o[k]); if(found!==undefined) return; } }
-  })(obj);
-  return found;
+    if(!o||typeof o!=='object') return;
+    if(Array.isArray(o)){
+      if(o.length && o.every(x=>x&&typeof x==='object') && o.some(x=>gciHasKey(x,['emailid','email','userlinkid','dbinfolinkid']))){
+        if(!best||o.length>best.length) best=o;
+      }
+      o.forEach(walk); return;
+    }
+    for(const k of Object.keys(o)) walk(o[k]);
+  })(resp);
+  if(best) return best;
+  return [resp];
 }
 
 async function gciGetDetails(){
@@ -314,29 +344,75 @@ async function gciGetDetails(){
   try{
     const out=await gciApi({action:'getDetails', emailid:q});
     GCI_RAW=out.result;
-    GCI_REC={
-      email:        gciPick(GCI_RAW,['emailid','email']) ?? q,
-      mobile:       gciPick(GCI_RAW,['mobile','mobileno','mobilenumber']),
-      licenceno:    gciPick(GCI_RAW,['licenceno','licenseno','lince','licno','license']),
-      usertype:     gciPick(GCI_RAW,['usertype','utype']),
-      userlinkid:   gciPick(GCI_RAW,['userlinkid','userlinkidstr']),
-      dbinfolinkid: gciPick(GCI_RAW,['dbinfolinkid','dbinfolinkidstr']),
-      schema:       gciPick(GCI_RAW,['schema','schemaname']),
-      dbname:       gciPick(GCI_RAW,['dbname','databasename']),
-      dbserver:     gciPick(GCI_RAW,['dbserver','server','dbserverip']),
-      dbversion:    gciPick(GCI_RAW,['dbversion','webdbversion']),
-      mobdbversion: gciPick(GCI_RAW,['mobdbversion','mobiledbversion']),
-      apiversion:   gciPick(GCI_RAW,['apiversion','apiver']),
-      status:       gciPick(GCI_RAW,['dbstatus','status','isactive','active']),
-      url:          gciPick(GCI_RAW,['url','loginurl']),
-      pwd:          gciPick(GCI_RAW,['pwd','password']),
-    };
-    gciRenderResults();
-    gciToast('Customer details loaded','ok');
+    const recs=gciFindRecords(GCI_RAW).filter(r=>r&&typeof r==='object');
+    GCI_RECORDS=recs;
+    if(recs.length>1){ gciSelectDialog(recs); gciToast(recs.length+' customers found — select one','ok'); }
+    else { gciMapRecord(recs[0]||GCI_RAW); gciToast('Customer details loaded','ok'); }
   }catch(e){ gciToast(e.message||'Failed','err'); }
   finally{ btn.disabled=false; btn.innerHTML=old; }
 }
+function gciSelectDialog(recs){
+  const rows=recs.map((r,i)=>{
+    const em=gciPick(r,['emailid','email'])||('Record '+(i+1));
+    const lic=gciPick(r,['licenceno','lince','license']);
+    return `<button class="abtn v-secondary" style="width:100%;margin-bottom:8px" onclick="gciChoose(${i})"><span class="ic">👤</span><span class="lbl">${gciEsc(em)}${lic?` &nbsp;·&nbsp; <span style="color:var(--muted);font-weight:600">Lic ${gciEsc(lic)}</span>`:''}</span></button>`;
+  }).join('');
+  gciOpenOut('👥 Select Customer', recs.length+' emails found for this mobile number', rows);
+}
+function gciChoose(i){ gciCloseOut(); gciMapRecord(GCI_RECORDS[i]); gciToast('Customer details loaded','ok'); }
 
+function gciMapRecord(rec){
+  const R=rec||{};
+  GCI_REC={
+    _raw:R,
+    email:        gciPick(R,['emailid','email']),
+    mobile:       gciPick(R,['mobile','mobileno','mobilenumber']),
+    licenceno:    gciPick(R,['licenceno','lince','licenseno','licno','license']),
+    userlinkid:   gciPick(R,['userlinkid','userlinkidstr']),
+    dbinfolinkid: gciPick(R,['dbinfolinkid','dbinfolinkidstr']),
+    schema:       gciPick(R,['schema','schemaname']),
+    dbname:       gciPick(R,['dbname','databasename']),
+    dbserver:     gciPick(R,['dbserver','dbserverip','dbservername','serverip','servername','sqlserver','mssqlserver','dbip','serverip','server','ipaddress','dbserveraddress']),
+    dbversion:    gciPick(R,['dbversion','webdbversion']),
+    mobdbversion: gciPick(R,['mobdbversion','mobiledbversion']),
+    apiversion:   gciPick(R,['apiversion','apiver']),
+    status:       gciPick(R,['dbstatus','databasestatus','accountstatus','activestatus','isactive','active']),
+    url:          gciPick(R,['url','loginurl']),
+    pwd:          gciPick(R,['pwd','password']),
+    pwd2:         gciPick(R,['pwd2','password2','secondpassword']),
+  };
+  gciRenderResults();
+}
+async function gciRefresh(){
+  if(!GCI_REC||!GCI_REC.email) return;
+  try{
+    const out=await gciApi({action:'getDetails', emailid:GCI_REC.email});
+    GCI_RAW=out.result;
+    const recs=gciFindRecords(GCI_RAW);
+    const em=String(GCI_REC.email).toLowerCase();
+    const rec=recs.find(r=>String(gciPick(r,['emailid','email'])||'').toLowerCase()===em)||recs[0]||GCI_RAW;
+    gciMapRecord(rec);
+  }catch(e){}
+}
+
+// ── DB status helpers ──
+function gciDbState(v){
+  if(v==null||v==='') return 'unknown';
+  const s=String(v).toLowerCase().trim();
+  if(s==='1'||s==='true'||s==='yes') return 'active';
+  if(s==='0'||s==='false'||s==='no') return 'inactive';
+  if(s.includes('deactive')||s.includes('inactive')||s.includes('disable')||s.includes('block')) return 'inactive';
+  if(s.includes('active')) return 'active';
+  return 'unknown';
+}
+function gciDbBadge(v){
+  if(v==null||v==='') return '<span class="pill" style="background:#f1f5f9;color:#64748b">Not Available</span>';
+  const st=gciDbState(v);
+  const cls = st==='active'?'pill-on': st==='inactive'?'pill-off':'pill-other';
+  return `<span class="pill ${cls}">${gciEsc(v)}</span>`;
+}
+
+// ── Action definitions ──
 const GCI_QUICK=[
   {id:'viewPwd',   label:'View Password',     ic:'👁️', v:'v-primary',  kind:'reveal'},
   {id:'viewPwd2',  label:'View Password 2',   ic:'🔑', v:'v-primary',  kind:'run'},
@@ -367,22 +443,26 @@ const GCI_DBOPS=[
 ];
 const GCI_ALL=[...GCI_QUICK,...GCI_DBOPS];
 function gciDef(id){ return GCI_ALL.find(x=>x.id===id); }
-
-function gciStatusPill(v){
-  if(v==null||v==='') return '<span style="color:#cbd5e1">—</span>';
-  const s=String(v).toLowerCase();
-  if(s==='active'||s==='1'||s==='true'||s==='yes') return '<span class="pill pill-on">Active</span>';
-  if(s==='deactive'||s==='inactive'||s==='0'||s==='false'||s==='no') return '<span class="pill pill-off">Inactive</span>';
-  return gciEsc(v);
+// dynamic Quick Actions list based on DB status
+function gciQuickList(){
+  const st=gciDbState(GCI_REC.status);
+  return GCI_QUICK.filter(b=>{
+    if(b.id==='activate')   return st!=='active';    // hide Activate when already Active
+    if(b.id==='deactivate') return st!=='inactive';  // hide Deactivate when already Inactive
+    return true;
+  });
 }
+
+function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-style:italic">Not Available</span>':gciEsc(v); }
 function gciRenderResults(){
   const R=GCI_REC;
   const info=[
-    ['Email',R.email],['Mobile',R.mobile],['License No',R.licenceno],['User Type',R.usertype],
+    ['Email',R.email],['Mobile',R.mobile],['License No',R.licenceno],
     ['User Link ID',R.userlinkid],['DB Info Link ID',R.dbinfolinkid],['Schema',R.schema],['Database Name',R.dbname],
-    ['DB Server',R.dbserver],['DB Version',R.dbversion||R.mobdbversion],['API Version',R.apiversion],['Status',gciStatusPill(R.status)],
+    ['DB Server',R.dbserver],['DB Version',R.dbversion||R.mobdbversion],['API Version',R.apiversion],
+    ['DB Status', gciDbBadge(R.status)],
   ];
-  const infoHtml=info.map(([k,v])=>`<div class="info-item"><div class="info-k">${gciEsc(k)}</div><div class="info-v">${v==null||v===''?'<span style="color:#cbd5e1">—</span>':(k==='Status'?v:gciEsc(v))}</div></div>`).join('');
+  const infoHtml=info.map(([k,v])=>`<div class="info-item"><div class="info-k">${gciEsc(k)}</div><div class="info-v">${k==='DB Status'?v:gciNA(v)}</div></div>`).join('');
   const btns=arr=>arr.map(b=>`<button class="abtn ${b.v}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><span class="ic">${b.ic}</span><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
   const missing=(R.dbinfolinkid==null||R.dbinfolinkid==='');
   document.getElementById('gciResults').innerHTML=`
@@ -390,12 +470,12 @@ function gciRenderResults(){
       <div class="card-title">Customer Information <span class="badge">Loaded</span></div>
       <div class="card-desc">Details fetched from Marg for <strong>${gciEsc(R.email||'')}</strong>. <span class="pwd-toggle" onclick="gciShowRaw()">View raw response</span></div>
       <div class="info-grid">${infoHtml}</div>
-      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field mapping confirm karni pad sakti hai.</div>':''}
+      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
     </div>
     <div class="card">
       <div class="card-title">⚡ Quick Actions</div>
       <div class="card-desc">Account &amp; user operations.</div>
-      <div class="btn-grid">${btns(GCI_QUICK)}</div>
+      <div class="btn-grid">${btns(gciQuickList())}</div>
     </div>
     <div class="card">
       <div class="card-title">🛠️ Database Operations</div>
@@ -406,36 +486,72 @@ function gciRenderResults(){
 
 function gciOnAction(id){
   const b=gciDef(id); if(!b) return;
-  if(b.kind==='reveal'){ gciRevealPwd(); return; }
+  if(b.kind==='reveal'){ gciPwdDialog(); return; }
   if(b.kind==='input'){ gciOpenInput(b); return; }
   if(b.kind==='confirm'){ gciOpenConfirm(b); return; }
   gciRunAction(b);
 }
-function gciRevealPwd(){
-  if(GCI_REC.pwd==null||GCI_REC.pwd===''){ gciToast('Password details me nahi mila','err'); return; }
-  gciOpenOut('👁️ Password', GCI_REC.email||'', `<div class="sum-row"><span class="sum-k">Password</span><span class="sum-v" style="font-family:monospace;font-size:15px">${gciEsc(GCI_REC.pwd)}</span></div>`);
-}
 function gciBaseParams(){ return { dbinfolinkid:GCI_REC.dbinfolinkid, userlinkid:GCI_REC.userlinkid, licenceno:GCI_REC.licenceno, emailid:GCI_REC.email }; }
+function gciSuccessMsg(b){ const m={activate:'Database Activated',deactivate:'Database Deactivated',resetPwd:'Password Reset Successfully',syncToBI:'Sync Completed',viewCompanyList:'Company List Loaded',healthProc:'Health Check Completed',viewTransaction:'Transactions Loaded',removeCaching:'Cache Cleared',companyDelete:'Company Deleted'}; return m[b.id]||(b.label+' Completed'); }
+
 async function gciRunAction(b,extra){
   const el=document.getElementById('gab_'+b.id);
   if(el){ el.disabled=true; el.dataset.h=el.innerHTML; el.innerHTML=`<span class="mini-spin"></span><span class="lbl">Running…</span>`; }
   try{
     const out=await gciApi(Object.assign({action:b.id}, gciBaseParams(), extra||{}));
-    gciToast(b.label+' — done','ok');
-    gciOpenOut('✅ '+b.label, GCI_REC.email||'', gciRenderResult(out.result));
+    gciToast(gciSuccessMsg(b),'ok');
+    if(b.id==='activate'||b.id==='deactivate'){ await gciRefresh(); }
+    else if(b.id==='viewPwd2'){ gciPwdDialog(gciPick(out.result,['pwd2','password2','pwd','password'])); }
+    else { gciShowResult(b, out.result); }
   }catch(e){ gciToast(b.label+' — '+(e.message||'failed'),'err'); }
   finally{ if(el){ el.disabled=false; el.innerHTML=el.dataset.h; } }
 }
-function gciRenderResult(r){
-  let head='';
-  if(r&&typeof r==='object'){
-    const msg=gciPick(r,['message','msg','result','status']); const url=gciPick(r,['url','link','downloadurl']);
-    if(msg!=null) head+=`<div class="sum-row"><span class="sum-k">Message</span><span class="sum-v">${gciEsc(msg)}</span></div>`;
-    if(url!=null&&/^https?:\/\//.test(String(url))) head+=`<div class="sum-row"><span class="sum-k">Link</span><span class="sum-v"><a href="${gciEsc(url)}" target="_blank" rel="noopener" style="color:var(--brand)">Open ↗</a></span></div>`;
-  } else if(r!=null){ head+=`<div class="sum-row"><span class="sum-k">Result</span><span class="sum-v">${gciEsc(r)}</span></div>`; }
-  return (head?`<div style="margin-bottom:12px">${head}</div>`:'')+`<pre class="raw">${gciEsc(typeof r==='string'?r:JSON.stringify(r,null,2))}</pre>`;
+
+// ── Result renderers (no raw JSON) ──
+function gciToRows(result){
+  let rows=null;
+  (function walk(o){ if(rows||!o||typeof o!=='object') return; if(Array.isArray(o)){ if(o.length&&o.every(x=>x&&typeof x==='object')){ rows=o; return; } o.forEach(walk); return; } for(const k of Object.keys(o)) walk(o[k]); })(result);
+  return rows;
+}
+function gciCell(v){ if(v==null||v==='') return '<span style="color:#cbd5e1">—</span>'; if(typeof v==='object') return gciEsc(JSON.stringify(v)); return gciEsc(v); }
+function gciTableHtml(rows){
+  const cols=[...new Set(rows.flatMap(r=>Object.keys(r)))].slice(0,14);
+  const body=rows.slice(0,500).map(r=>`<tr>${cols.map(c=>`<td>${gciCell(r[c])}</td>`).join('')}</tr>`).join('');
+  return `<div style="overflow:auto;max-height:56vh"><table class="gci-tbl"><thead><tr>${cols.map(c=>`<th>${gciEsc(c)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>${rows.length>500?`<div style="font-size:11px;color:var(--muted);margin-top:8px">Showing first 500 of ${rows.length} rows</div>`:`<div style="font-size:11px;color:var(--muted);margin-top:8px">${rows.length} row${rows.length!==1?'s':''}</div>`}`;
+}
+function gciKvHtml(obj){
+  const ents=Object.entries(obj).filter(([k,v])=>v===null||typeof v!=='object');
+  if(!ents.length) return '<div style="color:var(--muted);padding:6px 0">Completed successfully.</div>';
+  return ents.map(([k,v])=>`<div class="sum-row"><span class="sum-k">${gciEsc(k)}</span><span class="sum-v">${v==null||v===''?'Not Available':gciEsc(v)}</span></div>`).join('');
+}
+function gciShowResult(b,result){
+  const rows=gciToRows(result);
+  let html;
+  if(rows&&rows.length){ html=gciTableHtml(rows); }
+  else if(result&&typeof result==='object'){ html=gciKvHtml(result); }
+  else { html=`<div style="font-size:14px;padding:8px 0">${gciEsc(result==null||result===''?'Completed successfully.':result)}</div>`; }
+  gciOpenOut((b.ic||'✅')+' '+b.label, GCI_REC.email||'', html);
 }
 
+// Password dialog with copy
+function gciPwdDialog(pwd2){
+  const rows=[];
+  if(GCI_REC.pwd) rows.push(['Password',GCI_REC.pwd]);
+  const p2 = pwd2 || GCI_REC.pwd2;
+  if(p2) rows.push(['Password 2',p2]);
+  if(!rows.length){ gciToast('Password details me nahi mila','err'); return; }
+  const html=rows.map(r=>`<div class="sum-row"><span class="sum-k">${gciEsc(r[0])}</span><span class="sum-v" style="display:flex;align-items:center;gap:10px"><code style="font-family:monospace;font-size:15px;color:#0f172a">${gciEsc(r[1])}</code><button class="gci-copy" data-copy="${gciEsc(r[1])}" onclick="gciCopy(this)">Copy</button></span></div>`).join('');
+  gciOpenOut('🔑 Password', GCI_REC.email||'', html);
+}
+function gciCopy(btn){
+  const t=btn.getAttribute('data-copy')||'';
+  const done=()=>{ btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent='Copy',1500); gciToast('Copied to clipboard','ok'); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done).catch(()=>{ gciFallbackCopy(t); done(); }); }
+  else { gciFallbackCopy(t); done(); }
+}
+function gciFallbackCopy(t){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove(); }
+
+// ── Modals ──
 function gciOpenConfirm(b){
   document.getElementById('gciCfTitle').innerHTML=(b.cta==='danger'?'⚠️ ':'')+gciEsc(b.label);
   document.getElementById('gciCfDesc').textContent=b.desc||'Please confirm this action.';
@@ -461,6 +577,7 @@ function gciCloseConfirm(){ document.getElementById('gciConfirm').classList.remo
 function gciOpenOut(title,desc,html){ document.getElementById('gciOutTitle').innerHTML=gciEsc(title); document.getElementById('gciOutDesc').textContent=desc||''; document.getElementById('gciOutBody').innerHTML=html; document.getElementById('gciOut').classList.add('show'); }
 function gciCloseOut(){ document.getElementById('gciOut').classList.remove('show'); }
 function gciShowRaw(){ gciOpenOut('🧾 Raw getDetails response', GCI_REC.email||'', `<pre class="raw">${gciEsc(JSON.stringify(GCI_RAW,null,2))}</pre>`); }
+
 
 /* ============================ TOOL SWITCHER ============================ */
 function switchTool(tool){
