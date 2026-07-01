@@ -155,6 +155,19 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
 .gci-tbl tbody tr:hover{background:#f8fafc}
 .gci-copy{border:1px solid var(--border);background:#fff;border-radius:7px;padding:3px 11px;font-size:11px;font-weight:700;cursor:pointer;color:#0f766e;font-family:inherit}
 .gci-copy:hover{background:#f0fdfa}
+
+/* ===== GCI: compact info + modal scroll + quickbar + select list ===== */
+.info-grid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.info-item{padding:9px 12px}
+.info-k{margin-bottom:3px}
+.info-v{font-size:12.5px;line-height:1.35;overflow-wrap:anywhere}
+.modal{max-height:88vh;display:flex;flex-direction:column}
+.modal-h,.modal-f{flex-shrink:0}
+.modal-b{overflow:auto;flex:1 1 auto}
+.gci-quickbar{display:flex;gap:10px;flex-wrap:wrap;margin:2px 0 18px}
+.gci-quickbar .abtn{flex:0 0 auto;min-height:40px}
+.gci-sel-list{max-height:52vh;overflow:auto;padding-right:2px}
+.gci-tbl th.sno,.gci-tbl td.sno{width:38px;text-align:center;color:var(--muted2)}
 </style>
 </head>
 <body>
@@ -302,7 +315,12 @@ async function gciToken(){ const {data:{session}}=await sb.auth.getSession(); if
 async function gciApi(payload){
   const res=await fetch('/api/client-info',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${await gciToken()}`},body:JSON.stringify(payload)});
   let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
-  if(!res.ok||out.error) throw new Error(out.error||('HTTP '+res.status));
+  if(!res.ok||out.error){
+    let m = out.error || ('Request failed ('+res.status+')');
+    const up = out.upstream; const um = up && (up.Message||up.message||up.msg);
+    if(um && typeof um==='string') m += ' — '+um;
+    throw new Error(m);
+  }
   return out;
 }
 // candidate-PRIORITY deep pick: first candidate that exists anywhere wins
@@ -337,6 +355,26 @@ function gciFindRecords(resp){
   return [resp];
 }
 
+// action -> real column names (Marg returns dummy col1,col2,...)
+const GCI_COLMAP={
+  viewTransaction:['month_name','dataType','savebill','deletebills'],
+  viewCompanyList:['linkid','compname','BranchCode'],
+  viewDataBss:['LinkId','CompanyName','PartnerCode','status'],
+  stockMismatch:['compname','productname','storename','BatchMasterQty','ItemRegisterQty','ItemMasterQty','HoldQty'],
+  itemTxnMismatch:['sno','compname','BranchCode','sn','name','record'],
+  acctTxnMismatch:['sno','compname','BranchCode','sn','name','record'],
+  referralHistory:['sno','ReferralCode','createdate'],
+};
+// detect Marg fail even on HTTP 200 (top-level Status/Message only, to avoid data false positives)
+function gciResultError(r){
+  if(!r||typeof r!=='object'||Array.isArray(r)) return null;
+  let st; for(const k of Object.keys(r)){ const lk=k.toLowerCase(); if(lk==='status'||lk==='issuccess'||lk==='success'){ st=r[k]; break; } }
+  const mg=r.Message||r.message||r.msg||r.Error||r.error;
+  if(typeof st==='string' && /^(fail|failed|error)$/i.test(st.trim())) return mg||'Action failed';
+  if(st===false) return mg||'Action failed';
+  return null;
+}
+
 async function gciGetDetails(){
   const q=(document.getElementById('gciQ').value||'').trim();
   if(!q){ gciToast('Email ID / Mobile daalo','err'); return; }
@@ -344,20 +382,33 @@ async function gciGetDetails(){
   try{
     const out=await gciApi({action:'getDetails', emailid:q});
     GCI_RAW=out.result;
+    const gerr=gciResultError(GCI_RAW);
+    if(gerr){ gciToast(gerr,'err'); return; }
     const recs=gciFindRecords(GCI_RAW).filter(r=>r&&typeof r==='object');
     GCI_RECORDS=recs;
     if(recs.length>1){ gciSelectDialog(recs); gciToast(recs.length+' customers found — select one','ok'); }
-    else { gciMapRecord(recs[0]||GCI_RAW); gciToast('Customer details loaded','ok'); }
+    else {
+      const r0=recs[0]||GCI_RAW;
+      if(!gciPick(r0,['emailid','email','dbinfolinkid','userlinkid'])){ gciToast('No customer found for "'+q+'"','err'); return; }
+      gciMapRecord(r0); gciToast('Customer details loaded','ok');
+    }
   }catch(e){ gciToast(e.message||'Failed','err'); }
   finally{ btn.disabled=false; btn.innerHTML=old; }
 }
 function gciSelectDialog(recs){
-  const rows=recs.map((r,i)=>{
-    const em=gciPick(r,['emailid','email'])||('Record '+(i+1));
-    const lic=gciPick(r,['licenceno','lince','license']);
-    return `<button class="abtn v-secondary" style="width:100%;margin-bottom:8px" onclick="gciChoose(${i})"><span class="ic">👤</span><span class="lbl">${gciEsc(em)}${lic?` &nbsp;·&nbsp; <span style="color:var(--muted);font-weight:600">Lic ${gciEsc(lic)}</span>`:''}</span></button>`;
-  }).join('');
-  gciOpenOut('👥 Select Customer', recs.length+' emails found for this mobile number', rows);
+  GCI_RECORDS=recs;
+  const body=`<div style="margin-bottom:12px"><input class="modal-input" id="gciSelSearch" placeholder="🔎 Search email or license…" autocomplete="off" oninput="gciSelFilter(this.value)" style="margin-top:0"/></div><div id="gciSelList" class="gci-sel-list"></div>`;
+  gciOpenOut('👥 Select Customer', recs.length+' emails found for this mobile number', body);
+  gciSelFilter('');
+  setTimeout(()=>{ const i=document.getElementById('gciSelSearch'); if(i) i.focus(); },50);
+}
+function gciSelFilter(q){
+  q=(q||'').toLowerCase().trim();
+  const list=document.getElementById('gciSelList'); if(!list) return;
+  const items=GCI_RECORDS.map((r,i)=>({i,em:String(gciPick(r,['emailid','email'])||'').trim(),lic:String(gciPick(r,['licenceno','lince','license'])||'').trim()}));
+  const fil=q?items.filter(x=>x.em.toLowerCase().includes(q)||x.lic.toLowerCase().includes(q)):items;
+  if(!fil.length){ list.innerHTML='<div style="padding:22px;text-align:center;color:var(--muted)">No match</div>'; return; }
+  list.innerHTML=fil.map(x=>`<button class="abtn v-secondary" style="width:100%;margin-bottom:8px" onclick="gciChoose(${x.i})"><span class="ic">👤</span><span class="lbl">${gciEsc(x.em||('Record '+(x.i+1)))}${x.lic?` &nbsp;·&nbsp; <span style="color:var(--muted);font-weight:600">Lic ${gciEsc(x.lic)}</span>`:''}</span></button>`).join('')+`<div style="font-size:11px;color:var(--muted);padding:4px 2px">${fil.length} of ${GCI_RECORDS.length}</div>`;
 }
 function gciChoose(i){ gciCloseOut(); gciMapRecord(GCI_RECORDS[i]); gciToast('Customer details loaded','ok'); }
 
@@ -453,6 +504,15 @@ function gciQuickList(){
   });
 }
 
+function gciTopBarHtml(){
+  const st=gciDbState(GCI_REC.status);
+  let acts=[gciDef('viewPwd'), gciDef('syncToBI')];
+  if(st==='active') acts.push(gciDef('deactivate'));
+  else if(st==='inactive') acts.push(gciDef('activate'));
+  else { acts.push(gciDef('activate')); acts.push(gciDef('deactivate')); }
+  return `<div class="gci-quickbar">`+acts.map(b=>`<button class="abtn ${b.v}" id="gtop_${b.id}" onclick="gciOnAction('${b.id}')">
+    <span class="ic">${b.ic}</span><span class="lbl">${gciEsc(b.label)}</span></button>`).join('')+`</div>`;
+}
 function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-style:italic">Not Available</span>':gciEsc(v); }
 function gciRenderResults(){
   const R=GCI_REC;
@@ -469,6 +529,7 @@ function gciRenderResults(){
     <div class="card">
       <div class="card-title">Customer Information <span class="badge">Loaded</span></div>
       <div class="card-desc">Details fetched from Marg for <strong>${gciEsc(R.email||'')}</strong>. <span class="pwd-toggle" onclick="gciShowRaw()">View raw response</span></div>
+      ${gciTopBarHtml()}
       <div class="info-grid">${infoHtml}</div>
       ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
     </div>
@@ -499,6 +560,8 @@ async function gciRunAction(b,extra){
   if(el){ el.disabled=true; el.dataset.h=el.innerHTML; el.innerHTML=`<span class="mini-spin"></span><span class="lbl">Running…</span>`; }
   try{
     const out=await gciApi(Object.assign({action:b.id}, gciBaseParams(), extra||{}));
+    const rerr=gciResultError(out.result);
+    if(rerr){ gciToast(b.label+' — '+rerr,'err'); return; }
     gciToast(gciSuccessMsg(b),'ok');
     if(b.id==='activate'||b.id==='deactivate'){ await gciRefresh(); }
     else if(b.id==='viewPwd2'){ gciPwdDialog(gciPick(out.result,['pwd2','password2','pwd','password'])); }
@@ -514,10 +577,13 @@ function gciToRows(result){
   return rows;
 }
 function gciCell(v){ if(v==null||v==='') return '<span style="color:#cbd5e1">—</span>'; if(typeof v==='object') return gciEsc(JSON.stringify(v)); return gciEsc(v); }
-function gciTableHtml(rows){
+function gciTableHtml(rows, colmap){
   const cols=[...new Set(rows.flatMap(r=>Object.keys(r)))].slice(0,14);
-  const body=rows.slice(0,500).map(r=>`<tr>${cols.map(c=>`<td>${gciCell(r[c])}</td>`).join('')}</tr>`).join('');
-  return `<div style="overflow:auto;max-height:56vh"><table class="gci-tbl"><thead><tr>${cols.map(c=>`<th>${gciEsc(c)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>${rows.length>500?`<div style="font-size:11px;color:var(--muted);margin-top:8px">Showing first 500 of ${rows.length} rows</div>`:`<div style="font-size:11px;color:var(--muted);margin-top:8px">${rows.length} row${rows.length!==1?'s':''}</div>`}`;
+  const isDummy = cols.length>0 && cols.every(c=>/^col\d+$/i.test(c));
+  const label=(c,i)=> (isDummy && colmap && colmap[i])?colmap[i]:c;
+  const head=`<th class="sno">#</th>`+cols.map((c,i)=>`<th>${gciEsc(label(c,i))}</th>`).join('');
+  const body=rows.slice(0,500).map((r,ri)=>`<tr><td class="sno">${ri+1}</td>${cols.map(c=>`<td>${gciCell(r[c])}</td>`).join('')}</tr>`).join('');
+  return `<div style="overflow:auto;max-height:56vh"><table class="gci-tbl"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${rows.length>500?`<div style="font-size:11px;color:var(--muted);margin-top:8px">Showing first 500 of ${rows.length} rows</div>`:`<div style="font-size:11px;color:var(--muted);margin-top:8px">${rows.length} row${rows.length!==1?'s':''}</div>`}`;
 }
 function gciKvHtml(obj){
   const ents=Object.entries(obj).filter(([k,v])=>v===null||typeof v!=='object');
@@ -527,7 +593,7 @@ function gciKvHtml(obj){
 function gciShowResult(b,result){
   const rows=gciToRows(result);
   let html;
-  if(rows&&rows.length){ html=gciTableHtml(rows); }
+  if(rows&&rows.length){ html=gciTableHtml(rows, GCI_COLMAP[b.id]); }
   else if(result&&typeof result==='object'){ html=gciKvHtml(result); }
   else { html=`<div style="font-size:14px;padding:8px 0">${gciEsc(result==null||result===''?'Completed successfully.':result)}</div>`; }
   gciOpenOut((b.ic||'✅')+' '+b.label, GCI_REC.email||'', html);
