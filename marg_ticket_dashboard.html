@@ -715,6 +715,9 @@ tbody td.r { text-align:right; }
 .ldr-fill  { height:100%;border-radius:20px;background:var(--it-g);width:0%;transition:width .3s ease; }
 .ldr-step  { font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px; }
 
+.ldr-track,.ldr-step,#loaderTimer{display:none!important}
+.loader-box{padding:30px 44px;min-width:0}
+.ldr-msg{margin-bottom:0}
 /* ── TOAST ── */
 .toast {
   position:fixed;bottom:22px;right:22px;
@@ -993,18 +996,6 @@ td.grp-l { border-left:1px solid var(--border); }
 .ai-single{background:#f8fafc;border:1px dashed #cbd5e1}
 .ai-single .ai-badge{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
 .ai-empty{grid-column:1/-1;text-align:center;color:#94a3b8;padding:40px;font-size:13px}
-/* ===== AI premium page loader ===== */
-.page-loader{position:fixed;inset:0;background:rgba(15,23,42,.34);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:9999}
-.page-loader.show{display:flex}
-.pl-card{background:#fff;border-radius:18px;padding:28px 40px;box-shadow:0 24px 70px rgba(0,0,0,.24);display:flex;flex-direction:column;align-items:center;gap:15px;animation:aipop .2s ease}
-.pl-spin{position:relative;width:48px;height:48px}
-.pl-spin::before,.pl-spin::after{content:'';position:absolute;border-radius:50%;border:4px solid transparent}
-.pl-spin::before{inset:0;border-top-color:#0d9488;border-right-color:#0891b2;animation:aisp .8s linear infinite}
-.pl-spin::after{inset:8px;border-bottom-color:#0891b2;border-left-color:#0d9488;animation:aisp 1.15s linear infinite reverse}
-.pl-text{font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:.2px}
-.pl-sub{font-size:11px;color:#64748b;margin-top:-9px}
-@keyframes aisp{to{transform:rotate(360deg)}}
-@keyframes aipop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -2257,10 +2248,14 @@ function aiSim(){ return _aiMode==='ai'&&_aiDense ? (i,j)=>aiDot(_aiDense[i],_ai
 function aiStatus(html){ const el=document.getElementById('aiStatus'); if(el) el.innerHTML=html; }
 
 // ---- premium page loader ----
-function aiShowLoader(t,sub){ const el=document.getElementById('aiPageLoader'); if(!el)return;
-  const a=document.getElementById('aiLoaderText'); if(a)a.textContent=t||'Working…';
-  const b=document.getElementById('aiLoaderSub'); if(b)b.textContent=sub||'Please wait'; el.classList.add('show'); }
-function aiHideLoader(){ const el=document.getElementById('aiPageLoader'); if(el)el.classList.remove('show'); }
+function aiShowLoader(t,sub){
+  const o=document.getElementById('loaderOverlay'); if(!o)return;
+  const a=document.getElementById('loaderTitle'); if(a)a.textContent=t||'Working…';
+  const b=document.getElementById('loaderMsg'); if(b)b.textContent=sub||'Please wait';
+  o.classList.add('active');
+}
+function aiHideLoader(){ const o=document.getElementById('loaderOverlay'); if(o)o.classList.remove('active');
+  const t=document.getElementById('loaderTitle'); if(t)t.textContent='Loading Data…'; }
 
 function aiInit(){
   const rows=aiStageRows(); const sig=rows.length+'|'+(rows[0]?.n||'')+'|'+(rows[rows.length-1]?.n||'');
@@ -4200,13 +4195,6 @@ window.mbSignOut = async function(){
 };
 </script>
 
-<!-- AI premium loader -->
-<div class="page-loader" id="aiPageLoader">
-  <div class="pl-card">
-    <div class="pl-spin"></div>
-    <div class="pl-text" id="aiLoaderText">Working…</div>
-    <div class="pl-sub" id="aiLoaderSub">Please wait</div>
-  </div>
 </div>
 </body>
 </html>
