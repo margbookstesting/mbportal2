@@ -715,6 +715,15 @@ tbody td.r { text-align:right; }
 .ldr-fill  { height:100%;border-radius:20px;background:var(--it-g);width:0%;transition:width .3s ease; }
 .ldr-step  { font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px; }
 
+/* ── admin_activity-style loader ── */
+.loader-box{border-radius:18px;padding:28px 40px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:15px;box-shadow:0 24px 70px rgba(0,0,0,.24);border:none}
+.ldr-ring{position:relative;width:48px;height:48px;margin:0}
+.ldr-ring svg{display:none}
+.ldr-ring::before,.ldr-ring::after{content:'';position:absolute;border-radius:50%;border:4px solid transparent}
+.ldr-ring::before{inset:0;border-top-color:#0d9488;border-right-color:#0891b2;animation:lspin .8s linear infinite}
+.ldr-ring::after{inset:8px;border-bottom-color:#0891b2;border-left-color:#0d9488;animation:lspin 1.15s linear infinite reverse}
+.ldr-title{font-size:13.5px;font-weight:800;color:#0f172a;margin:0}
+.ldr-msg{font-size:11px;color:#64748b;margin:0}
 .ldr-track,.ldr-step,#loaderTimer{display:none!important}
 .loader-box{padding:30px 44px;min-width:0}
 .ldr-msg{margin-bottom:0}
