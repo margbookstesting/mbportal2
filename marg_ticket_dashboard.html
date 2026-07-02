@@ -993,6 +993,18 @@ td.grp-l { border-left:1px solid var(--border); }
 .ai-single{background:#f8fafc;border:1px dashed #cbd5e1}
 .ai-single .ai-badge{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
 .ai-empty{grid-column:1/-1;text-align:center;color:#94a3b8;padding:40px;font-size:13px}
+/* ===== AI premium page loader ===== */
+.page-loader{position:fixed;inset:0;background:rgba(15,23,42,.34);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:9999}
+.page-loader.show{display:flex}
+.pl-card{background:#fff;border-radius:18px;padding:28px 40px;box-shadow:0 24px 70px rgba(0,0,0,.24);display:flex;flex-direction:column;align-items:center;gap:15px;animation:aipop .2s ease}
+.pl-spin{position:relative;width:48px;height:48px}
+.pl-spin::before,.pl-spin::after{content:'';position:absolute;border-radius:50%;border:4px solid transparent}
+.pl-spin::before{inset:0;border-top-color:#0d9488;border-right-color:#0891b2;animation:aisp .8s linear infinite}
+.pl-spin::after{inset:8px;border-bottom-color:#0891b2;border-left-color:#0d9488;animation:aisp 1.15s linear infinite reverse}
+.pl-text{font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:.2px}
+.pl-sub{font-size:11px;color:#64748b;margin-top:-9px}
+@keyframes aisp{to{transform:rotate(360deg)}}
+@keyframes aipop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1471,7 +1483,7 @@ td.grp-l { border-left:1px solid var(--border); }
     <div class="ai-head">
       <div>
         <div class="ai-title">🤖 AI Bug Analysis</div>
-        <div class="ai-sub">Transfer&nbsp;to&nbsp;IT · Acknowledge · In&nbsp;Progress tickets ko <b>description</b> se group karke unique bugs nikalta hai. Kisi disposition par click → tickets · ticket par click → detail.</div>
+        <div class="ai-sub">Groups the Transfer to IT · Acknowledge · In Progress tickets by their <b>description</b> to find unique bugs. Click a group to see its tickets · click a ticket for full details.</div>
       </div>
       <div class="ai-tools">
         <div class="ai-modes">
@@ -2160,8 +2172,8 @@ function switchTab(n){
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
 let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='kw', _aiClusters=[], _aiSig='', _aiBusy=false;
-const AI_STOP=new Set(('the a an an and or of to in is are be for on with so please check give solution asap not no we our their my me it its as at by from this that then when where which while want need customer cx user party name item bill there also kindly issue problem showing show getting coming take done using able unable open create making made get set same different wrong correct proper properly'
- +' jab hum kar rahe hai ho rha rhe rha nhi ki ka ke ko mein me se par pe bhi hi krne kr raha rahi hain jb toh vo wo ye yeh is us or aur agar magar lekin karte time rha hain hain lakin').split(/\s+/));
+const AI_STOP=new Set(('the a an and or of to in is are be for on with so please check give solution asap not no we our their my me it its as at by from this that then when where which while want need customer cx user party name item bill there also kindly issue problem showing show getting coming take done using able unable open create making made get set same different wrong correct proper properly'
+ +' jab hum kar rahe hai ho rha rhe rha nhi ki ka ke ko mein me se par pe bhi hi krne kr raha rahi hain jb toh vo wo ye yeh is us or aur agar magar lekin karte time rha hain lakin attech attached attach screenshot below rohan rachna neha priya babita anil yadav kanchan sharma shristhi').split(/\s+/));
 function aiClean(t){
   t=String(t||'').toLowerCase();
   t=t.replace(/\S+@\S+/g,' ').replace(/https?:\/\/\S+/g,' ');
@@ -2190,12 +2202,36 @@ function aiVectorize(cleans){
 }
 function aiCosSparse(a,b){ let s=0; const [x,y]=a.size<b.size?[a,b]:[b,a]; x.forEach((w,t)=>{const o=y.get(t); if(o)s+=w*o;}); return s; }
 function aiDot(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
-function aiLeader(n, sim, thr){
-  const leaders=[], assign=new Array(n).fill(-1);
-  for(let i=0;i<n;i++){ let best=-1,bs=thr;
-    for(let l=0;l<leaders.length;l++){ const s=sim(i,leaders[l]); if(s>=bs){bs=s;best=l;} }
-    if(best<0){ leaders.push(i); assign[i]=leaders.length-1; } else assign[i]=best; }
-  return assign;
+function aiNormMap(m){ let ss=0; m.forEach(w=>ss+=w*w); const n=Math.sqrt(ss)||1; const o=new Map(); m.forEach((w,t)=>o.set(t,w/n)); return o; }
+function aiAddMap(dst,src){ src.forEach((w,t)=>dst.set(t,(dst.get(t)||0)+w)); }
+function aiNormArr(a){ let ss=0; for(const x of a)ss+=x*x; const n=Math.sqrt(ss)||1; return a.map(x=>x/n); }
+function aiAddArr(dst,src){ for(let i=0;i<dst.length;i++) dst[i]+=src[i]; }
+
+// Centroid clustering + merge pass (sparse TF-IDF)
+function aiClusterSparse(vecs, thr, mergeThr){
+  const cents=[], members=[];
+  for(let i=0;i<vecs.length;i++){ let best=-1,bs=thr;
+    for(let c=0;c<cents.length;c++){ const s=aiCosSparse(vecs[i],cents[c].norm); if(s>=bs){bs=s;best=c;} }
+    if(best<0){ const sum=new Map(vecs[i]); cents.push({sum,norm:aiNormMap(sum)}); members.push([i]); }
+    else { aiAddMap(cents[best].sum,vecs[i]); cents[best].norm=aiNormMap(cents[best].sum); members[best].push(i); } }
+  let merged=true;
+  while(merged){ merged=false;
+    for(let a=0;a<cents.length&&!merged;a++)for(let b=a+1;b<cents.length;b++){
+      if(aiCosSparse(cents[a].norm,cents[b].norm)>=mergeThr){ aiAddMap(cents[a].sum,cents[b].sum); cents[a].norm=aiNormMap(cents[a].sum); members[a]=members[a].concat(members[b]); cents.splice(b,1); members.splice(b,1); merged=true; break; } } }
+  return members;
+}
+// Centroid clustering + merge pass (dense embeddings)
+function aiClusterDense(vecs, thr, mergeThr){
+  const cents=[], members=[], D=vecs[0].length;
+  for(let i=0;i<vecs.length;i++){ let best=-1,bs=thr;
+    for(let c=0;c<cents.length;c++){ const s=aiDot(vecs[i],cents[c].norm); if(s>=bs){bs=s;best=c;} }
+    if(best<0){ const sum=vecs[i].slice(); cents.push({sum,norm:aiNormArr(sum)}); members.push([i]); }
+    else { aiAddArr(cents[best].sum,vecs[i]); cents[best].norm=aiNormArr(cents[best].sum); members[best].push(i); } }
+  let merged=true;
+  while(merged){ merged=false;
+    for(let a=0;a<cents.length&&!merged;a++)for(let b=a+1;b<cents.length;b++){
+      if(aiDot(cents[a].norm,cents[b].norm)>=mergeThr){ aiAddArr(cents[a].sum,cents[b].sum); cents[a].norm=aiNormArr(cents[a].sum); members[a]=members[a].concat(members[b]); cents.splice(b,1); members.splice(b,1); merged=true; break; } } }
+  return members;
 }
 function aiMatch(members, sim){ if(members.length<2)return 100; let s=0,c=0;
   for(let i=0;i<members.length;i++)for(let j=i+1;j<members.length;j++){ s+=sim(members[i],members[j]); c++; } return Math.round(s/c*1000)/10; }
@@ -2212,84 +2248,99 @@ function aiStageRows(){
   base.forEach(r=>{ if(!['IT','AK','IP'].includes(r.sc))return; const d=(r.desc||'').trim(); if(d.length<4)return; if(seen.has(r.n))return; seen.add(r.n); out.push(r); });
   return out;
 }
-function aiThrVal(){
+function aiThrPair(){
   const v=+(document.getElementById('aiThr')?.value||3);
-  return _aiMode==='ai' ? ({1:0.68,2:0.62,3:0.55,4:0.48,5:0.42}[v]) : ({1:0.30,2:0.26,3:0.22,4:0.18,5:0.15}[v]);
+  if(_aiMode==='ai') return ({1:[0.68,0.74],2:[0.62,0.70],3:[0.55,0.64],4:[0.48,0.58],5:[0.42,0.52]}[v]);
+  return ({1:[0.26,0.36],2:[0.23,0.33],3:[0.20,0.30],4:[0.17,0.27],5:[0.14,0.24]}[v]);
 }
 function aiSim(){ return _aiMode==='ai'&&_aiDense ? (i,j)=>aiDot(_aiDense[i],_aiDense[j]) : (i,j)=>aiCosSparse(_aiTfidf.vecs[i],_aiTfidf.vecs[j]); }
-
 function aiStatus(html){ const el=document.getElementById('aiStatus'); if(el) el.innerHTML=html; }
+
+// ---- premium page loader ----
+function aiShowLoader(t,sub){ const el=document.getElementById('aiPageLoader'); if(!el)return;
+  const a=document.getElementById('aiLoaderText'); if(a)a.textContent=t||'Working…';
+  const b=document.getElementById('aiLoaderSub'); if(b)b.textContent=sub||'Please wait'; el.classList.add('show'); }
+function aiHideLoader(){ const el=document.getElementById('aiPageLoader'); if(el)el.classList.remove('show'); }
 
 function aiInit(){
   const rows=aiStageRows(); const sig=rows.length+'|'+(rows[0]?.n||'')+'|'+(rows[rows.length-1]?.n||'');
-  if(sig!==_aiSig){ aiRun(true); } else if(!_aiClusters.length){ aiRun(true); }
+  if(sig!==_aiSig || !_aiClusters.length) aiRun(true);
 }
-function aiRun(force){
+function aiRun(){
   if(_aiBusy) return;
   const rows=aiStageRows();
   _aiRows=rows; _aiSig=rows.length+'|'+(rows[0]?.n||'')+'|'+(rows[rows.length-1]?.n||'');
-  if(!rows.length){ document.getElementById('aiSummary').innerHTML=''; document.getElementById('aiList').innerHTML='<div class="ai-empty">In-stage (Transfer to IT / Acknowledge / In Progress) koi ticket nahi mila is filter mein.</div>'; aiStatus(''); return; }
-  aiStatus('<span class="ai-spin"></span> Building keyword vectors…');
+  if(!rows.length){ document.getElementById('aiSummary').innerHTML=''; document.getElementById('aiList').innerHTML='<div class="ai-empty">No tickets in the Transfer to IT / Acknowledge / In Progress stages for the current filter.</div>'; aiStatus(''); return; }
+  aiShowLoader('Analyzing tickets…', 'Reading '+rows.length+' descriptions');
   setTimeout(()=>{
-    _aiTfidf=aiVectorize(rows.map(r=>aiClean(r.desc)));
-    if(_aiMode==='ai' && !_aiDense){ aiEmbedThenRender(); }
-    else aiRerender();
-    if(_aiMode!=='ai') aiStatus('Grouped by <b>keywords</b> (fast). "AI meaning" mode se paraphrase/Hinglish bhi match hote hain.');
-  },30);
+    try{
+      _aiTfidf=aiVectorize(rows.map(r=>aiClean(r.desc)));
+      if(_aiMode==='ai' && !_aiDense){ aiHideLoader(); aiEmbedThenRender(); return; }
+      aiRerender();
+      aiStatus(_aiMode==='ai' ? 'Grouped by <b>AI meaning</b> — paraphrased &amp; mixed-language tickets are matched.' : 'Grouped by <b>keywords</b> (fast). Switch to "AI meaning" to also match paraphrased &amp; mixed-language tickets.');
+    } finally { aiHideLoader(); }
+  },40);
 }
 function aiRerender(){
   if(!_aiTfidf) return;
-  const n=_aiRows.length, sim=aiSim(), thr=aiThrVal();
-  const assign=aiLeader(n, sim, thr);
-  const groups=new Map(); assign.forEach((c,i)=>{ if(!groups.has(c))groups.set(c,[]); groups.get(c).push(i); });
-  _aiClusters=[...groups.values()].map(members=>({members, count:members.length, match:aiMatch(members,sim), name:aiNameOf(members), tickets:members.map(i=>_aiRows[i].n)}))
+  const [thr,mg]=aiThrPair();
+  const members = (_aiMode==='ai'&&_aiDense) ? aiClusterDense(_aiDense,thr,mg) : aiClusterSparse(_aiTfidf.vecs,thr,mg);
+  const sim=aiSim();
+  _aiClusters=members.map(m=>({members:m, count:m.length, match:aiMatch(m,sim), name:aiNameOf(m), tickets:m.map(i=>_aiRows[i].n)}))
     .sort((a,b)=>b.count-a.count || b.match-a.match);
   aiRenderList();
 }
+function aiRowsOf(members){ return members.map(i=>_aiRows[i]); }
 function aiRenderList(){
   const cl=_aiClusters, total=_aiRows.length;
   const multi=cl.filter(c=>c.count>=2), singles=cl.filter(c=>c.count===1);
   const tIn=multi.reduce((s,c)=>s+c.count,0);
+  const kpi=(val,lab,fn)=>`<div class="ai-kpi" onclick="${fn}"><b>${fmt(val)}</b><span>${lab}</span></div>`;
   document.getElementById('aiSummary').innerHTML=
-    `<div class="ai-kpi"><b>${fmt(total)}</b><span>Open tickets</span></div>`+
-    `<div class="ai-kpi"><b>${fmt(cl.length)}</b><span>Unique bugs</span></div>`+
-    `<div class="ai-kpi"><b>${fmt(multi.length)}</b><span>Duplicate groups</span></div>`+
-    `<div class="ai-kpi"><b>${fmt(tIn)}</b><span>Tickets in groups</span></div>`+
-    `<div class="ai-kpi"><b>${fmt(tIn-multi.length)}</b><span>Redundant (1 fix→many)</span></div>`;
+    kpi(total,'Open tickets','aiKpi(\'all\')')+
+    kpi(cl.length,'Unique bugs','aiKpi(\'unique\')')+
+    kpi(multi.length,'Duplicate groups','aiKpi(\'groups\')')+
+    kpi(tIn,'Tickets in groups','aiKpi(\'ingroups\')')+
+    kpi(tIn-multi.length,'Redundant (1 fix → many)','aiKpi(\'redundant\')');
   let html='';
   multi.forEach((c,idx)=>{
     const pct=Math.max(4,Math.min(100,Math.round(c.match)));
     html+=`<div class="ai-card" onclick="aiOpen(${idx})">
-      <div class="ai-card-top"><div class="ai-badge">${c.count}</div>
-        <div class="ai-name">${sdEsc(c.name)}</div></div>
+      <div class="ai-card-top"><div class="ai-badge">${c.count}</div><div class="ai-name">${sdEsc(c.name)}</div></div>
       <div class="ai-meta"><span>Match</span><div class="ai-bar"><i style="width:${pct}%"></i></div><span>${c.match}%</span><span class="ai-arrow">${c.count} tickets ↗</span></div>
     </div>`;
   });
   if(singles.length){
-    html+=`<div class="ai-card ai-single" onclick="aiOpenSingles()">
-      <div class="ai-card-top"><div class="ai-badge">${singles.length}</div>
-        <div class="ai-name">Unique one-off bugs (1 ticket each)</div></div>
+    html+=`<div class="ai-card ai-single" onclick="aiKpi('single')">
+      <div class="ai-card-top"><div class="ai-badge">${singles.length}</div><div class="ai-name">Unique one-off bugs (1 ticket each)</div></div>
       <div class="ai-meta"><span class="ai-arrow">${singles.length} tickets ↗</span></div>
     </div>`;
   }
   document.getElementById('aiList').innerHTML = html || '<div class="ai-empty">No groups.</div>';
 }
 function aiOpen(idx){ const c=_aiClusters.filter(x=>x.count>=2)[idx]; if(!c)return;
-  _openSecModal(c.members.map(i=>_aiRows[i]), 'AI · '+c.name+' — Ticket Details'); }
-function aiOpenSingles(){ const s=_aiClusters.filter(c=>c.count===1).map(c=>_aiRows[c.members[0]]);
-  _openSecModal(s, 'AI · Unique one-off bugs — Ticket Details'); }
-
+  _openSecModal(aiRowsOf(c.members), 'AI · '+c.name+' — Ticket Details'); }
+function aiKpi(kind){
+  const cl=_aiClusters, multi=cl.filter(c=>c.count>=2);
+  let rows=[], title='';
+  if(kind==='all'){ rows=_aiRows.slice(); title='All open tickets'; }
+  else if(kind==='unique'){ rows=cl.map(c=>_aiRows[c.members[0]]); title='Unique bugs (one ticket per bug)'; }
+  else if(kind==='groups'||kind==='ingroups'){ multi.forEach(c=>c.members.forEach(i=>rows.push(_aiRows[i]))); title='Tickets in duplicate groups'; }
+  else if(kind==='redundant'){ multi.forEach(c=>c.members.slice(1).forEach(i=>rows.push(_aiRows[i]))); title='Redundant tickets (closed by another\'s fix)'; }
+  else if(kind==='single'){ rows=cl.filter(c=>c.count===1).map(c=>_aiRows[c.members[0]]); title='Unique one-off bugs'; }
+  if(rows.length) _openSecModal(rows, 'AI · '+title+' — Ticket Details');
+}
 function aiSetMode(m){
   if(_aiMode===m) return; _aiMode=m;
   document.getElementById('aiModeKw').classList.toggle('active', m==='kw');
   document.getElementById('aiModeAi').classList.toggle('active', m==='ai');
   if(m==='ai' && !_aiDense){ aiEmbedThenRender(); }
-  else { if(m!=='ai') aiStatus('Grouped by <b>keywords</b> (fast).'); aiRerender(); }
+  else { aiStatus(m==='ai' ? 'Grouped by <b>AI meaning</b>.' : 'Grouped by <b>keywords</b> (fast).'); aiRerender(); }
 }
 async function aiEmbedThenRender(){
   if(_aiBusy) return; _aiBusy=true;
   try{
-    aiStatus('<span class="ai-spin"></span> Loading AI meaning-model (first time ~15-30s, phir cached)…');
+    aiShowLoader('Loading AI meaning-model…','First time ~15–30s, then cached');
     const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
     mod.env.allowLocalModels=false;
     const ext=await mod.pipeline('feature-extraction','Xenova/all-MiniLM-L6-v2');
@@ -2297,21 +2348,19 @@ async function aiEmbedThenRender(){
     for(let i=0;i<texts.length;i++){
       const e=await ext(texts[i]||'x',{pooling:'mean',normalize:true});
       out[i]=Array.from(e.data);
-      if(i%25===0) aiStatus(`<span class="ai-spin"></span> AI reading tickets… ${i}/${texts.length}`);
+      if(i%20===0) aiShowLoader('Reading tickets with AI…', i+' / '+texts.length);
     }
     _aiDense=out;
-    aiStatus('Grouped by <b>AI meaning</b> — paraphrase & Hinglish bhi match. Slider se grouping adjust karein.');
+    aiStatus('Grouped by <b>AI meaning</b> — paraphrased &amp; mixed-language tickets are matched.');
     aiRerender();
   }catch(e){
     _aiMode='kw';
     document.getElementById('aiModeKw').classList.add('active');
     document.getElementById('aiModeAi').classList.remove('active');
-    aiStatus('⚠️ AI meaning-model load nahi hua (offline/blocked). Keywords mode par wapas. '+(e&&e.message?('('+e.message.slice(0,60)+')'):''));
+    aiStatus('⚠️ AI meaning-model could not load (offline/blocked). Falling back to keywords.');
     aiRerender();
-  }finally{ _aiBusy=false; }
+  }finally{ _aiBusy=false; aiHideLoader(); }
 }
-
-
 let _subdispRows = [], _devRows = [];
 function sdEsc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function _stTat(arr, pred, key){ let inC=0,outC=0; arr.forEach(r=>{ if(!pred(r))return; if(r[key]==='I')inC++; else if(r[key]==='O')outC++; }); return {inC,outC}; }
@@ -4150,5 +4199,14 @@ window.mbSignOut = async function(){
   location.replace('index.html');
 };
 </script>
+
+<!-- AI premium loader -->
+<div class="page-loader" id="aiPageLoader">
+  <div class="pl-card">
+    <div class="pl-spin"></div>
+    <div class="pl-text" id="aiLoaderText">Working…</div>
+    <div class="pl-sub" id="aiLoaderSub">Please wait</div>
+  </div>
+</div>
 </body>
 </html>
