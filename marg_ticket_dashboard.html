@@ -992,6 +992,11 @@ td.grp-l { border-left:1px solid var(--border); }
 .ai-kpi span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8}
 .ai-status{font-size:12px;color:#64748b;margin-bottom:10px;min-height:16px;display:flex;align-items:center;gap:8px}
 .ai-spin{width:14px;height:14px;border:2px solid #e2e8f0;border-top-color:#0d9488;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+.ai-search{padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-family:inherit;font-size:12px;min-width:190px;outline:none;color:#0f172a}
+.ai-search:focus{border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+.ai-searchcard{background:linear-gradient(135deg,#f0fdfa,#ecfeff);border-color:#5eead4}
+.ai-searchcard .ai-badge{background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;border:none}
+.ai-hint{grid-column:1/-1;font-size:12px;color:#64748b;padding:4px 2px}
 .ai-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:11px}
 .ai-card{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:12px 14px;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:8px}
 .ai-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(13,148,136,.14);border-color:#5eead4}
@@ -1486,6 +1491,7 @@ td.grp-l { border-left:1px solid var(--border); }
         <div class="ai-sub">Groups the Transfer to IT · Acknowledge · In Progress tickets by their <b>description</b> to find unique bugs. Click a group to see its tickets · click a ticket for full details.</div>
       </div>
       <div class="ai-tools">
+        <input class="ai-search" id="aiSearch" placeholder="🔍 Search keyword…" oninput="aiSearchApply()" autocomplete="off">
         <div class="ai-modes">
           <button class="ai-mode active" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
           <button class="ai-mode" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
@@ -2171,7 +2177,7 @@ function switchTab(n){
 }
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
-let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='kw', _aiClusters=[], _aiSig='', _aiBusy=false;
+let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='kw', _aiClusters=[], _aiSig='', _aiBusy=false, _aiSearch='';
 const AI_STOP=new Set(('the a an and or of to in is are be for on with so please check give solution asap not no we our their my me it its as at by from this that then when where which while want need customer cx user party name item bill there also kindly issue problem showing show getting coming take done using able unable open create making made get set same different wrong correct proper properly'
  +' jab hum kar rahe hai ho rha rhe rha nhi ki ka ke ko mein me se par pe bhi hi krne kr raha rahi hain jb toh vo wo ye yeh is us or aur agar magar lekin karte time rha hain lakin attech attached attach screenshot below rohan rachna neha priya babita anil yadav kanchan sharma shristhi').split(/\s+/));
 function aiClean(t){
@@ -2295,6 +2301,9 @@ function aiRerender(){
   aiRenderList();
 }
 function aiRowsOf(members){ return members.map(i=>_aiRows[i]); }
+function aiSearchApply(){ _aiSearch=(document.getElementById('aiSearch').value||'').trim().toLowerCase(); aiRenderList(); }
+function aiMatchRows(kw){ return _aiRows.filter(r=>String(r.desc||'').toLowerCase().includes(kw) || String(r.n||'').toLowerCase().includes(kw)); }
+function aiOpenSearch(){ const kw=_aiSearch; if(!kw)return; const rows=aiMatchRows(kw); if(rows.length) _openSecModal(rows, 'Search "'+kw+'" — '+rows.length+' matching tickets'); }
 function aiRenderList(){
   const cl=_aiClusters, total=_aiRows.length;
   const multi=cl.filter(c=>c.count>=2), singles=cl.filter(c=>c.count===1);
@@ -2306,15 +2315,27 @@ function aiRenderList(){
     kpi(multi.length,'Duplicate groups','aiKpi(\'groups\')')+
     kpi(tIn,'Tickets in groups','aiKpi(\'ingroups\')')+
     kpi(tIn-multi.length,'Redundant (1 fix → many)','aiKpi(\'redundant\')');
+  const kw=_aiSearch;
+  const has=(c)=> !kw || String(c.name||'').toLowerCase().includes(kw) || c.members.some(i=>String(_aiRows[i].desc||'').toLowerCase().includes(kw) || String(_aiRows[i].n||'').toLowerCase().includes(kw));
   let html='';
-  multi.forEach((c,idx)=>{
+  if(kw){
+    const mr=aiMatchRows(kw);
+    html+=`<div class="ai-card ai-searchcard" onclick="aiOpenSearch()">
+      <div class="ai-card-top"><div class="ai-badge">${mr.length}</div><div class="ai-name">Tickets matching \u201c${sdEsc(kw)}\u201d</div></div>
+      <div class="ai-meta"><span class="ai-arrow">${mr.length} tickets \u2197</span></div>
+    </div>`;
+    if(!mr.length) html+=`<div class="ai-hint">No tickets found for \u201c${sdEsc(kw)}\u201d.</div>`;
+    else html+=`<div class="ai-hint">Showing groups related to \u201c${sdEsc(kw)}\u201d. Click the teal card to see all matching tickets.</div>`;
+  }
+  multi.filter(has).forEach((c)=>{
+    const idx=multi.indexOf(c);
     const pct=Math.max(4,Math.min(100,Math.round(c.match)));
     html+=`<div class="ai-card" onclick="aiOpen(${idx})">
       <div class="ai-card-top"><div class="ai-badge">${c.count}</div><div class="ai-name">${sdEsc(c.name)}</div></div>
       <div class="ai-meta"><span>Match</span><div class="ai-bar"><i style="width:${pct}%"></i></div><span>${c.match}%</span><span class="ai-arrow">${c.count} tickets ↗</span></div>
     </div>`;
   });
-  if(singles.length){
+  if(singles.length && !kw){
     html+=`<div class="ai-card ai-single" onclick="aiKpi('single')">
       <div class="ai-card-top"><div class="ai-badge">${singles.length}</div><div class="ai-name">Unique one-off bugs (1 ticket each)</div></div>
       <div class="ai-meta"><span class="ai-arrow">${singles.length} tickets ↗</span></div>
