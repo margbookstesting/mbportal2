@@ -724,7 +724,12 @@ tbody td.r { text-align:right; }
 .ldr-ring::after{inset:8px;border-bottom-color:#0891b2;border-left-color:#0d9488;animation:lspin 1.15s linear infinite reverse}
 .ldr-title{font-size:13.5px;font-weight:800;color:#0f172a;margin:0}
 .ldr-msg{font-size:11px;color:#64748b;margin:0}
-.ldr-track,.ldr-step,#loaderTimer{display:none!important}
+.ldr-step{display:none!important}
+#loaderTimer{margin-top:4px!important;font-size:16px!important;color:#0d9488!important}
+.ldr-track{width:100%;min-width:200px;margin-top:2px}
+.ldr-track.indet{overflow:hidden}
+.ldr-track.indet .ldr-fill{width:40%;animation:ldrindet 1.1s ease-in-out infinite}
+@keyframes ldrindet{0%{transform:translateX(-110%)}100%{transform:translateX(280%)}}
 .loader-box{padding:30px 44px;min-width:0}
 .ldr-msg{margin-bottom:0}
 /* ── TOAST ── */
@@ -2263,13 +2268,19 @@ function aiSim(){ return _aiMode==='ai'&&_aiDense ? (i,j)=>aiDot(_aiDense[i],_ai
 function aiStatus(html){ const el=document.getElementById('aiStatus'); if(el) el.innerHTML=html; }
 
 // ---- premium page loader ----
-function aiShowLoader(t,sub){
+function aiShowLoader(t,sub,pct){
   const o=document.getElementById('loaderOverlay'); if(!o)return;
   const a=document.getElementById('loaderTitle'); if(a)a.textContent=t||'Working…';
   const b=document.getElementById('loaderMsg'); if(b)b.textContent=sub||'Please wait';
+  const trk=document.querySelector('.ldr-track'), bar=document.getElementById('loaderBar');
+  if(trk&&bar){ if(pct==null){ trk.classList.add('indet'); bar.style.width='40%'; } else { trk.classList.remove('indet'); bar.style.width=Math.max(0,Math.min(100,pct))+'%'; } }
   o.classList.add('active');
+  if(typeof startLoaderTimer==='function') startLoaderTimer();
 }
-function aiHideLoader(){ const o=document.getElementById('loaderOverlay'); if(o)o.classList.remove('active');
+function aiHideLoader(){ if(typeof stopLoaderTimer==='function') stopLoaderTimer();
+  const trk=document.querySelector('.ldr-track'); if(trk)trk.classList.remove('indet');
+  const bar=document.getElementById('loaderBar'); if(bar)bar.style.width='0%';
+  const o=document.getElementById('loaderOverlay'); if(o)o.classList.remove('active');
   const t=document.getElementById('loaderTitle'); if(t)t.textContent='Loading Data…'; }
 
 function aiInit(){
@@ -2373,7 +2384,7 @@ async function aiEmbedThenRender(){
     for(let i=0;i<texts.length;i++){
       const e=await ext(texts[i]||'x',{pooling:'mean',normalize:true});
       out[i]=Array.from(e.data);
-      if(i%20===0) aiShowLoader('Reading tickets with AI…', i+' / '+texts.length);
+      if(i%10===0) aiShowLoader('Reading tickets with AI…', i+' / '+texts.length, Math.round(i/texts.length*100));
     }
     _aiDense=out;
     aiStatus('Grouped by <b>AI meaning</b> — paraphrased &amp; mixed-language tickets are matched.');
