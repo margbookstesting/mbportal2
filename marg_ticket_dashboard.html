@@ -2286,16 +2286,28 @@ function aiSim(){ return _aiMode==='ai'&&_aiDense ? (i,j)=>aiDot(_aiDense[i],_ai
 function aiStatus(html){ const el=document.getElementById('aiStatus'); if(el) el.innerHTML=html; }
 
 // ---- premium page loader ----
+let _aiTimerInt=null;
+function aiFmtSecs(ms){ const secs=Math.max(0,Math.floor(ms/1000)); const m=Math.floor(secs/60), s=secs%60; return m>0 ? (m+'m '+String(s).padStart(2,'0')+'s') : (secs+'s'); }
+function aiStartTimer(){
+  if(_aiTimerInt){ clearInterval(_aiTimerInt); _aiTimerInt=null; }
+  const start=Date.now();
+  const el=document.getElementById('loaderTimer'); if(el) el.textContent='0s';
+  _aiTimerInt=setInterval(()=>{
+    const e=document.getElementById('loaderTimer'); if(e) e.textContent=aiFmtSecs(Date.now()-start);
+  },200);
+}
+function aiStopTimer(){ if(_aiTimerInt){ clearInterval(_aiTimerInt); _aiTimerInt=null; } }
 function aiShowLoader(t,sub,pct){
   const o=document.getElementById('loaderOverlay'); if(!o)return;
   const a=document.getElementById('loaderTitle'); if(a)a.textContent=t||'Working…';
   const b=document.getElementById('loaderMsg'); if(b)b.textContent=sub||'Please wait';
   const trk=document.querySelector('.ldr-track'), bar=document.getElementById('loaderBar');
   if(trk&&bar){ if(pct==null){ trk.classList.add('indet'); bar.style.width='40%'; } else { trk.classList.remove('indet'); bar.style.width=Math.max(0,Math.min(100,pct))+'%'; } }
+  const fresh=!o.classList.contains('active');
   o.classList.add('active');
-  if(typeof startLoaderTimer==='function') startLoaderTimer();
+  if(fresh || !_aiTimerInt) aiStartTimer();   // start on first show; also self-heal if timer somehow stopped
 }
-function aiHideLoader(){ if(typeof stopLoaderTimer==='function') stopLoaderTimer();
+function aiHideLoader(){ aiStopTimer();
   const trk=document.querySelector('.ldr-track'); if(trk)trk.classList.remove('indet');
   const bar=document.getElementById('loaderBar'); if(bar)bar.style.width='0%';
   const o=document.getElementById('loaderOverlay'); if(o)o.classList.remove('active');
@@ -4062,7 +4074,6 @@ async function cacheSave(raw){
 let _timerInterval = null;
 
 function startLoaderTimer(){
-  if(_timerInterval) return; // already running — keep counting, don't reset
   let secs = 0;
   document.getElementById('loaderTimer').textContent = '0s';
   _timerInterval = setInterval(()=>{
