@@ -338,6 +338,13 @@ body::before {
   gap:8px;
   margin-bottom:14px;
 }
+.direct-kpi{display:flex;align-items:center;gap:14px;margin:6px 0 2px;padding:11px 16px;border-radius:14px;cursor:pointer;background:linear-gradient(135deg,#ecfeff,#f0fdfa);border:1.5px solid #99f6e4;transition:.15s}
+.direct-kpi:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(13,148,136,.15);border-color:#5eead4}
+.direct-kpi .dk-ic{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#0d9488,#0891b2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.direct-kpi .dk-num{font-size:24px;font-weight:900;color:#0f766e;line-height:1}
+.direct-kpi .dk-lbl{font-size:12px;font-weight:800;color:#0f172a;margin-top:2px}
+.direct-kpi .dk-lbl span{display:block;font-size:10px;font-weight:600;color:#64748b;text-transform:none}
+.direct-kpi .dk-arrow{margin-left:auto;font-size:11px;font-weight:800;color:#0d9488;white-space:nowrap}
 .kpi-row {
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -821,7 +828,7 @@ tbody td.r { text-align:right; }
 .ov-pill { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:5px 11px; border-radius:9px; border:1.5px solid; }
 .ov-pill.in  { background:#f0fdf4; border-color:#bbf7d0; }
 .ov-pill.out { background:#fef2f2; border-color:#fecaca; }
-.ov-lbl { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+.ov-lbl { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
 .ov-pill.in  .ov-lbl { color:#166534; }
 .ov-pill.out .ov-lbl { color:#991b1b; }
 .ov-pct { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:800; min-width:42px; text-align:right; }
@@ -1197,7 +1204,7 @@ td.grp-l { border-left:1px solid var(--border); }
           <div class="sec-accent" style="background:linear-gradient(180deg,var(--ip),var(--live))"></div>
           <div>
             <div class="sec-title">Key Licences — Bug / Development Breakdown</div>
-            <div class="sec-sub">Stage-wise breakdown for Implementation, International &amp; Margbooks Sales</div>
+            <div class="sec-sub">Stage-wise breakdown for Implementation, International, Margbooks Sales &amp; Saksham</div>
           </div>
         </div>
       </div>
@@ -1211,7 +1218,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r ip-h" rowspan="2">In Progress</th>
               <th class="r live-h" rowspan="2">Ready to Go Live</th>
               <th class="r sup-h" rowspan="2">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
               <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
@@ -1266,7 +1273,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th colspan="3" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
@@ -1304,7 +1311,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th colspan="3" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
@@ -1346,7 +1353,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th colspan="3" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
@@ -1391,7 +1398,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r ip-h" rowspan="2">In Progress</th>
               <th class="r live-h" rowspan="2">Go Live</th>
               <th class="r sup-h" rowspan="2">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
               <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
@@ -1431,7 +1438,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r ip-h" rowspan="2">In Progress</th>
               <th class="r live-h" rowspan="2">Go Live</th>
               <th class="r sup-h" rowspan="2">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
               <th rowspan="2">Distribution</th>
             </tr>
             <tr>
@@ -1470,7 +1477,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th colspan="3" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
-              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Closed by IT</th>
+              <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
@@ -2274,8 +2281,9 @@ function aiShowLoader(t,sub,pct){
   const b=document.getElementById('loaderMsg'); if(b)b.textContent=sub||'Please wait';
   const trk=document.querySelector('.ldr-track'), bar=document.getElementById('loaderBar');
   if(trk&&bar){ if(pct==null){ trk.classList.add('indet'); bar.style.width='40%'; } else { trk.classList.remove('indet'); bar.style.width=Math.max(0,Math.min(100,pct))+'%'; } }
+  const wasActive=o.classList.contains('active');
   o.classList.add('active');
-  if(typeof startLoaderTimer==='function') startLoaderTimer();
+  if(!wasActive && typeof startLoaderTimer==='function') startLoaderTimer();
 }
 function aiHideLoader(){ if(typeof stopLoaderTimer==='function') stopLoaderTimer();
   const trk=document.querySelector('.ldr-track'); if(trk)trk.classList.remove('indet');
@@ -2657,11 +2665,11 @@ function renderKPIs(){
         <div class="kpi-head">
           <div class="kpi-head-l">
             <div class="kpi-num">${fmt(tot)}</div>
-            <div class="pend-badge" title="Currently at this stage (from all data, not date-filtered)">Now: ${fmt(pending)}</div>
+            <div class="pend-badge" title="Currently at this stage (from all data, not date-filtered)">Overall: ${fmt(pending)}</div>
           </div>
           <div class="kpi-overall" title="Overall InTAT / OutTAT">
-            <div class="ov-pill in"><span class="ov-lbl">InTAT</span><span class="ov-pct">${inPct}%</span></div>
-            <div class="ov-pill out"><span class="ov-lbl">OutTAT</span><span class="ov-pct">${outPct}%</span></div>
+            <div class="ov-pill in"><span class="ov-lbl">Overall InTAT</span><span class="ov-pct">${inPct}%</span></div>
+            <div class="ov-pill out"><span class="ov-lbl">Overall OutTAT</span><span class="ov-pct">${outPct}%</span></div>
           </div>
         </div>
         ${monthCompareHtml(s.data, s.cls, s.tatKey)}
@@ -2696,12 +2704,19 @@ function renderKPIs(){
     </div>`;
   });
 
+  const directRows = fSup.filter(r => r.a && !r.b && !r.c);
+  window._directSupRows = directRows;
   document.getElementById('kpiRow').innerHTML =
     `<div class="kpi-row-label">
        <span class="kpi-row-label-text">📅 Date-Filtered Stages</span>
        <span class="kpi-row-label-line"></span>
      </div>
      <div class="kpi-row">${dateFilteredCards.join('')}</div>
+     <div class="direct-kpi" onclick="openDirectSup()" title="Tickets whose date range close-by-IT happened directly after Transfer to IT (Acknowledge, In Progress & every other stage skipped)">
+       <div class="dk-ic">⚡</div>
+       <div class="dk-txt"><div class="dk-num">${fmt(directRows.length)}</div><div class="dk-lbl">Direct: Transfer to IT → Close by IT <span>skipped Acknowledge / In Progress &amp; all other stages · in date range</span></div></div>
+       <div class="dk-arrow">View tickets ↗</div>
+     </div>
      <div class="kpi-row-label" style="margin-top:4px">
        <span class="kpi-row-label-text">🔖 Current Status (All Data)</span>
        <span class="kpi-row-label-line"></span>
@@ -2709,6 +2724,8 @@ function renderKPIs(){
      <div class="kpi-row">${statusOnlyCards.join('')}</div>`;
 }
 
+
+function openDirectSup(){ const r=window._directSupRows||[]; if(r.length) _openSecModal(r, 'Direct: Transfer to IT → Close by IT — '+r.length+' tickets'); }
 
 function renderDisp(){
   const DISPS = ['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
@@ -2761,6 +2778,7 @@ const KEY_LICENCES = [
   { lic:'8011594', name:'Implementation',  email:'implementation@margerp.com' },
   { lic:'8011595', name:'International',   email:'international@margerp.com'  },
   { lic:'8011596', name:'Margbooks Sales', email:'margbookssales@gmail.com'   },
+  { lic:'8012581', name:'Saksham',         email:'saksham@margbooks.net'     },
 ];
 function renderKeyLic(){
   const tbody = document.querySelector('#tLic tbody');
