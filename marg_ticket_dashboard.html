@@ -25,7 +25,9 @@
     const {data:_p}=await _g.from('users').select('role,dashboards').eq('id',session.user.id).single();
     const _ok=_p&&(_p.role==='admin'||(_p.dashboards||[]).includes(_DASH));
     if(!_ok){location.replace('portal.html');return;}
-  }catch(e){/* profile read fail -> logged-in user allowed */}
+    window._MARG_PERM={admin:_p.role==='admin', dash:_p.dashboards||[]};
+    if(window._applyTabPerms) window._applyTabPerms();
+  }catch(e){ window._MARG_PERM={admin:true, dash:[]}; if(window._applyTabPerms) window._applyTabPerms(); }
 })();
 </script>
 
@@ -2194,6 +2196,15 @@ function switchTab(n){
   if(n===2) renderSubdisp();
   if(n===3) aiInit();
 }
+function applyTabPerms(){
+  const p=window._MARG_PERM; if(!p || p.admin) return;
+  const d=p.dash||[];
+  if(!d.includes('tat-disposition')){ const el=document.getElementById('tabBtn2'); if(el) el.style.display='none'; }
+  if(!d.includes('tat-ai-analysis')){ const el=document.getElementById('tabBtn3'); if(el) el.style.display='none'; }
+}
+window._applyTabPerms=applyTabPerms;
+document.addEventListener('DOMContentLoaded', applyTabPerms);
+setTimeout(applyTabPerms, 0);
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
 let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='ai', _aiClusters=[], _aiSig='', _aiBusy=false, _aiSearch='';
