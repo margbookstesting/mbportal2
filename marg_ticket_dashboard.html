@@ -346,10 +346,11 @@ body::before {
 .direct-kpi .dk-lbl span{display:block;font-size:10px;font-weight:600;color:#64748b;text-transform:none}
 .direct-kpi .dk-arrow{margin-left:auto;font-size:11px;font-weight:800;color:#0d9488;white-space:nowrap}
 .direct-card{box-shadow:0 0 0 1.5px #5eead4 inset}
-.kpi-card.no-tat .kpi-body{display:flex;flex-direction:column}
-.no-tat .nt-mid{display:flex;align-items:center;gap:12px;margin:12px 0 10px}
-.no-tat .nt-num{font-size:46px;font-weight:900;line-height:.85;color:#0f172a}
-.no-tat .nt-desc{font-size:10.5px;color:var(--muted2);line-height:1.65;margin-top:auto}
+.kpi-card.no-tat{display:flex;flex-direction:column}
+.kpi-card.no-tat .kpi-body{flex:1;display:flex;flex-direction:column}
+.no-tat .nt-mid{display:flex;align-items:center;gap:10px;margin:6px 0 6px}
+.no-tat .nt-num{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;line-height:1;color:var(--text);letter-spacing:-1.5px}
+.no-tat .nt-desc{font-size:10px;color:var(--muted2);line-height:1.6}
 .kpi-row {
   display:grid;
   grid-template-columns:repeat(4,1fr);
