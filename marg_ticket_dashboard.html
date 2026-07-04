@@ -1515,7 +1515,7 @@ td.grp-l { border-left:1px solid var(--border); }
           <button class="ai-mode" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
           <button class="ai-mode active" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
         </div>
-        <label class="ai-gran">Grouping <input type="range" id="aiThr" min="1" max="5" value="1" oninput="aiRerender()"></label>
+        <label class="ai-gran">Grouping <input type="range" id="aiThr" min="1" max="5" value="1" onchange="aiRerender()"></label>
         <button class="ai-refresh" onclick="aiRun(true)">↻ Re-run</button>
       </div>
     </div>
@@ -2316,15 +2316,15 @@ function aiRun(){
   if(!rows.length){ document.getElementById('aiSummary').innerHTML=''; document.getElementById('aiList').innerHTML='<div class="ai-empty">No tickets in the Transfer to IT / Acknowledge / In Progress stages for the current filter.</div>'; aiStatus(''); return; }
   aiShowLoader('Analyzing tickets…', 'Reading '+rows.length+' descriptions');
   setTimeout(()=>{
+    _aiTfidf=aiVectorize(rows.map(r=>aiClean(r.desc)));
+    if(_aiMode==='ai' && !_aiDense){ aiEmbedThenRender(); return; }
     try{
-      _aiTfidf=aiVectorize(rows.map(r=>aiClean(r.desc)));
-      if(_aiMode==='ai' && !_aiDense){ aiHideLoader(); aiEmbedThenRender(); return; }
-      aiRerender();
+      aiRerenderNow();
       aiStatus(_aiMode==='ai' ? 'Grouped by <b>AI meaning</b> — paraphrased &amp; mixed-language tickets are matched.' : 'Grouped by <b>keywords</b> (fast). Switch to "AI meaning" to also match paraphrased &amp; mixed-language tickets.');
     } finally { aiHideLoader(); }
   },40);
 }
-function aiRerender(){
+function aiRerenderNow(){
   if(!_aiTfidf) return;
   const [thr,mg]=aiThrPair();
   const members = (_aiMode==='ai'&&_aiDense) ? aiClusterDense(_aiDense,thr,mg) : aiClusterSparse(_aiTfidf.vecs,thr,mg);
@@ -2332,6 +2332,11 @@ function aiRerender(){
   _aiClusters=members.map(m=>({members:m, count:m.length, match:aiMatch(m,sim), name:aiNameOf(m), tickets:m.map(i=>_aiRows[i].n)}))
     .sort((a,b)=>b.count-a.count || b.match-a.match);
   aiRenderList();
+}
+function aiRerender(){
+  if(!_aiTfidf) return;
+  aiShowLoader('Grouping tickets…','Please wait');
+  setTimeout(()=>{ try{ aiRerenderNow(); } finally { aiHideLoader(); } }, 30);
 }
 function aiRowsOf(members){ return members.map(i=>_aiRows[i]); }
 function aiSearchApply(){ _aiSearch=(document.getElementById('aiSearch').value||'').trim().toLowerCase(); aiRenderList(); }
@@ -2410,13 +2415,13 @@ async function aiEmbedThenRender(){
     }
     _aiDense=out;
     aiStatus('Grouped by <b>AI meaning</b> — paraphrased &amp; mixed-language tickets are matched.');
-    aiRerender();
+    aiRerenderNow();
   }catch(e){
     _aiMode='kw';
     document.getElementById('aiModeKw').classList.add('active');
     document.getElementById('aiModeAi').classList.remove('active');
     aiStatus('⚠️ AI meaning-model could not load (offline/blocked). Falling back to keywords.');
-    aiRerender();
+    aiRerenderNow();
   }finally{ _aiBusy=false; aiHideLoader(); }
 }
 let _subdispRows = [], _devRows = [];
