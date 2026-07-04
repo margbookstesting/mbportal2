@@ -326,7 +326,7 @@ body::before {
 
 /* ── MAIN ── */
 .main {
-  padding:24px 28px;
+  padding:12px 28px 24px;
   max-width:1700px;margin:0 auto;
   position:relative;z-index:1;
 }
@@ -346,6 +346,10 @@ body::before {
 .direct-kpi .dk-lbl span{display:block;font-size:10px;font-weight:600;color:#64748b;text-transform:none}
 .direct-kpi .dk-arrow{margin-left:auto;font-size:11px;font-weight:800;color:#0d9488;white-space:nowrap}
 .direct-card{box-shadow:0 0 0 1.5px #5eead4 inset}
+.kpi-card.no-tat .kpi-body{display:flex;flex-direction:column}
+.no-tat .nt-mid{display:flex;align-items:center;gap:12px;margin:12px 0 10px}
+.no-tat .nt-num{font-size:46px;font-weight:900;line-height:.85;color:#0f172a}
+.no-tat .nt-desc{font-size:10.5px;color:var(--muted2);line-height:1.65;margin-top:auto}
 .kpi-row {
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -987,7 +991,7 @@ td.grp-l { border-left:1px solid var(--border); }
   font-size:13px; display:flex; flex-direction:column; align-items:center; gap:10px;
 }
 /* ===== AI ANALYSIS TAB ===== */
-.ai-wrap{padding:16px 22px}
+.ai-wrap{padding:4px 22px 16px}
 .ai-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .ai-title{font-size:18px;font-weight:800;color:#0f172a}
 .ai-sub{font-size:12px;color:#64748b;margin-top:3px;max-width:640px;line-height:1.5}
@@ -1000,7 +1004,8 @@ td.grp-l { border-left:1px solid var(--border); }
 .ai-refresh{padding:7px 12px;border:1.5px solid #e2e8f0;background:#fff;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;color:#0f766e;cursor:pointer}
 .ai-refresh:hover{background:#f0fdfa;border-color:#5eead4}
 .ai-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.ai-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 15px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.ai-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 15px;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer;transition:.15s}
+.ai-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(13,148,136,.14);border-color:#5eead4}
 .ai-kpi b{display:block;font-size:19px;font-weight:800;color:#0f172a;line-height:1.1}
 .ai-kpi span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8}
 .ai-status{font-size:12px;color:#64748b;margin-bottom:10px;min-height:16px;display:flex;align-items:center;gap:8px}
@@ -1505,11 +1510,11 @@ td.grp-l { border-left:1px solid var(--border); }
       </div>
       <div class="ai-tools">
         <input class="ai-search" id="aiSearch" placeholder="🔍 Search keyword…" oninput="aiSearchApply()" autocomplete="off">
-        <div class="ai-modes">
-          <button class="ai-mode active" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
-          <button class="ai-mode" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
+        <div class="ai-modes" style="display:none">
+          <button class="ai-mode" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
+          <button class="ai-mode active" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
         </div>
-        <label class="ai-gran">Grouping <input type="range" id="aiThr" min="1" max="5" value="3" oninput="aiRerender()"></label>
+        <label class="ai-gran">Grouping <input type="range" id="aiThr" min="1" max="5" value="1" oninput="aiRerender()"></label>
         <button class="ai-refresh" onclick="aiRun(true)">↻ Re-run</button>
       </div>
     </div>
@@ -2175,6 +2180,7 @@ function applyFilter(){
     `${from} → ${to}  ·  IT:${fmt(fIT.length)} ACK:${fmt(fAck.length)} IP:${fmt(fIP.length)} Sup:${fmt(fSup.length)} Live:${fmt(fLive.length)}  (${fmt(VIEW.length)}/${fmt(RAW.length)})${activeFilterSummary()}`;
   renderAll();
   renderSubdisp();
+  if(document.getElementById('tab3') && document.getElementById('tab3').style.display!=='none'){ try{ aiRun(); }catch(e){} }
 }
 
 // ===== TABS =====
@@ -2190,7 +2196,7 @@ function switchTab(n){
 }
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
-let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='kw', _aiClusters=[], _aiSig='', _aiBusy=false, _aiSearch='';
+let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='ai', _aiClusters=[], _aiSig='', _aiBusy=false, _aiSearch='';
 const AI_STOP=new Set(('the a an and or of to in is are be for on with so please check give solution asap not no we our their my me it its as at by from this that then when where which while want need customer cx user party name item bill there also kindly issue problem showing show getting coming take done using able unable open create making made get set same different wrong correct proper properly'
  +' jab hum kar rahe hai ho rha rhe rha nhi ki ka ke ko mein me se par pe bhi hi krne kr raha rahi hain jb toh vo wo ye yeh is us or aur agar magar lekin karte time rha hain lakin attech attached attach screenshot below rohan rachna neha priya babita anil yadav kanchan sharma shristhi').split(/\s+/));
 function aiClean(t){
@@ -2263,8 +2269,12 @@ function aiNameOf(members){ const agg=new Map();
 
 function aiStageRows(){
   const base=(typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]);
+  const cf=(typeof currentFrom!=='undefined')?currentFrom:'', ct=(typeof currentTo!=='undefined')?currentTo:'';
+  const dOf=r=> r.sc==='IT'?r.a : r.sc==='AK'?r.b : r.sc==='IP'?r.c : (r.c||r.b||r.a);
   const seen=new Set(), out=[];
-  base.forEach(r=>{ if(!['IT','AK','IP'].includes(r.sc))return; const d=(r.desc||'').trim(); if(d.length<4)return; if(seen.has(r.n))return; seen.add(r.n); out.push(r); });
+  base.forEach(r=>{ if(!['IT','AK','IP'].includes(r.sc))return; const d=(r.desc||'').trim(); if(d.length<4)return;
+    if((cf||ct) && typeof inRange==='function' && !inRange(dOf(r), cf, ct)) return;
+    if(seen.has(r.n))return; seen.add(r.n); out.push(r); });
   return out;
 }
 function aiThrPair(){
@@ -2299,7 +2309,9 @@ function aiInit(){
 function aiRun(){
   if(_aiBusy) return;
   const rows=aiStageRows();
-  _aiRows=rows; _aiSig=rows.length+'|'+(rows[0]?.n||'')+'|'+(rows[rows.length-1]?.n||'');
+  const sig=rows.length+'|'+(rows[0]?.n||'')+'|'+(rows[rows.length-1]?.n||'');
+  if(sig!==_aiSig){ _aiDense=null; }
+  _aiRows=rows; _aiSig=sig;
   if(!rows.length){ document.getElementById('aiSummary').innerHTML=''; document.getElementById('aiList').innerHTML='<div class="ai-empty">No tickets in the Transfer to IT / Acknowledge / In Progress stages for the current filter.</div>'; aiStatus(''); return; }
   aiShowLoader('Analyzing tickets…', 'Reading '+rows.length+' descriptions');
   setTimeout(()=>{
@@ -2385,7 +2397,7 @@ function aiSetMode(m){
 async function aiEmbedThenRender(){
   if(_aiBusy) return; _aiBusy=true;
   try{
-    aiShowLoader('Loading AI meaning-model…','First time ~15–30s, then cached');
+    aiShowLoader('Loading AI meaning-model…','Please wait');
     const mod=await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
     mod.env.allowLocalModels=false;
     const ext=await mod.pipeline('feature-extraction','Xenova/all-MiniLM-L6-v2');
@@ -2684,19 +2696,15 @@ function renderKPIs(){
 
   const statusOnlyCards = statusOnlyStages.map(s=>{
     const count = VIEW.filter(r=>r.sc===s.sc).length;
-    return `<div class="kpi-card ${s.cls}">
+    return `<div class="kpi-card ${s.cls} no-tat">
       <div class="kpi-top"></div>
       <div class="kpi-body">
         <div class="kpi-stage">${s.label}</div>
-        <div class="kpi-row1">
-          <div class="kpi-num">${fmt(count)}</div>
-          <div class="pend-badge" style="font-size:9px;padding:2px 7px;opacity:.75">ALL DATA</div>
+        <div class="nt-mid">
+          <div class="nt-num">${fmt(count)}</div>
+          <div class="pend-badge" style="font-size:9px;padding:2px 8px;opacity:.85">ALL DATA</div>
         </div>
-        <div class="kpi-tat-wrap" style="padding:6px 0 2px;">
-          <div style="font-size:10px;color:var(--muted2);line-height:1.6;">
-            Count of tickets currently at this stage across all loaded data (no date filter applied).
-          </div>
-        </div>
+        <div class="nt-desc">Currently at this stage across all loaded data (no date filter applied).</div>
       </div>
       <div class="kpi-footer">
         <span class="kpi-link" onclick="openModal('${s.key}')">🔍 View Details</span>
@@ -2707,19 +2715,15 @@ function renderKPIs(){
 
   const directRows = fSup.filter(r => r.a && !r.b && !r.c);
   window._directSupRows = directRows;
-  const directCard = `<div class="kpi-card c-sup direct-card" onclick="openDirectSup()" style="cursor:pointer">
+  const directCard = `<div class="kpi-card c-sup no-tat direct-card" onclick="openDirectSup()" style="cursor:pointer">
       <div class="kpi-top"></div>
       <div class="kpi-body">
         <div class="kpi-stage">⚡ Direct: IT → Close by IT</div>
-        <div class="kpi-row1">
-          <div class="kpi-num">${fmt(directRows.length)}</div>
-          <div class="pend-badge" style="font-size:9px;padding:2px 7px;background:#ccfbf1;color:#0f766e">DATE RANGE</div>
+        <div class="nt-mid">
+          <div class="nt-num">${fmt(directRows.length)}</div>
+          <div class="pend-badge" style="font-size:9px;padding:2px 8px;background:#ccfbf1;color:#0f766e">DATE RANGE</div>
         </div>
-        <div class="kpi-tat-wrap" style="padding:6px 0 2px;">
-          <div style="font-size:10px;color:var(--muted2);line-height:1.6;">
-            Transfer to IT &rarr; Close by IT directly &mdash; Acknowledge, In Progress &amp; all other stages skipped (within date range).
-          </div>
-        </div>
+        <div class="nt-desc">Transfer to IT &rarr; Close by IT directly &mdash; Acknowledge, In Progress &amp; all other stages skipped (within date range).</div>
       </div>
       <div class="kpi-footer">
         <span class="kpi-link" onclick="event.stopPropagation();openDirectSup()">\ud83d\udd0d View Details</span>
