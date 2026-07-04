@@ -345,6 +345,7 @@ body::before {
 .direct-kpi .dk-lbl{font-size:12px;font-weight:800;color:#0f172a;margin-top:2px}
 .direct-kpi .dk-lbl span{display:block;font-size:10px;font-weight:600;color:#64748b;text-transform:none}
 .direct-kpi .dk-arrow{margin-left:auto;font-size:11px;font-weight:800;color:#0d9488;white-space:nowrap}
+.direct-card{box-shadow:0 0 0 1.5px #5eead4 inset}
 .kpi-row {
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -2706,22 +2707,41 @@ function renderKPIs(){
 
   const directRows = fSup.filter(r => r.a && !r.b && !r.c);
   window._directSupRows = directRows;
+  const directCard = `<div class="kpi-card c-sup direct-card" onclick="openDirectSup()" style="cursor:pointer">
+      <div class="kpi-top"></div>
+      <div class="kpi-body">
+        <div class="kpi-stage">⚡ Direct: IT → Close by IT</div>
+        <div class="kpi-row1">
+          <div class="kpi-num">${fmt(directRows.length)}</div>
+          <div class="pend-badge" style="font-size:9px;padding:2px 7px;background:#ccfbf1;color:#0f766e">DATE RANGE</div>
+        </div>
+        <div class="kpi-tat-wrap" style="padding:6px 0 2px;">
+          <div style="font-size:10px;color:var(--muted2);line-height:1.6;">
+            Transfer to IT &rarr; Close by IT directly &mdash; Acknowledge, In Progress &amp; all other stages skipped (within date range).
+          </div>
+        </div>
+      </div>
+      <div class="kpi-footer">
+        <span class="kpi-link" onclick="event.stopPropagation();openDirectSup()">\ud83d\udd0d View Details</span>
+      </div>
+    </div>`;
+  // Final sequence: IT, Acknowledge, In Progress, Ready for Testing, Ready for UAT, Ready to Go Live, Close by IT, Direct
+  const ordered = [
+    dateFilteredCards[0], // Transfer to IT
+    dateFilteredCards[1], // Acknowledge
+    dateFilteredCards[2], // In Progress
+    statusOnlyCards[1],   // Ready for Testing
+    statusOnlyCards[2],   // Ready for UAT
+    statusOnlyCards[3],   // Ready to Go Live
+    dateFilteredCards[3], // Close by IT
+    directCard            // Direct (replaces Return to Support)
+  ];
   document.getElementById('kpiRow').innerHTML =
     `<div class="kpi-row-label">
-       <span class="kpi-row-label-text">📅 Date-Filtered Stages</span>
+       <span class="kpi-row-label-text">\ud83d\udcca Ticket Stages</span>
        <span class="kpi-row-label-line"></span>
      </div>
-     <div class="kpi-row">${dateFilteredCards.join('')}</div>
-     <div class="direct-kpi" onclick="openDirectSup()" title="Tickets whose date range close-by-IT happened directly after Transfer to IT (Acknowledge, In Progress & every other stage skipped)">
-       <div class="dk-ic">⚡</div>
-       <div class="dk-txt"><div class="dk-num">${fmt(directRows.length)}</div><div class="dk-lbl">Direct: Transfer to IT → Close by IT <span>skipped Acknowledge / In Progress &amp; all other stages · in date range</span></div></div>
-       <div class="dk-arrow">View tickets ↗</div>
-     </div>
-     <div class="kpi-row-label" style="margin-top:4px">
-       <span class="kpi-row-label-text">🔖 Current Status (All Data)</span>
-       <span class="kpi-row-label-line"></span>
-     </div>
-     <div class="kpi-row">${statusOnlyCards.join('')}</div>`;
+     <div class="kpi-row">${ordered.join('')}</div>`;
 }
 
 
