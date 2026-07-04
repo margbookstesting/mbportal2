@@ -2290,13 +2290,12 @@ let _aiTimerInt=null;
 function aiFmtSecs(ms){ const secs=Math.max(0,Math.floor(ms/1000)); const m=Math.floor(secs/60), s=secs%60; return m>0 ? (m+'m '+String(s).padStart(2,'0')+'s') : (secs+'s'); }
 function aiStartTimer(){
   if(_aiTimerInt){ clearInterval(_aiTimerInt); _aiTimerInt=null; }
-  const start=Date.now();
-  const el=document.getElementById('loaderTimer'); if(el) el.textContent='0s';
-  _aiTimerInt=setInterval(()=>{
-    const e=document.getElementById('loaderTimer'); if(e) e.textContent=aiFmtSecs(Date.now()-start);
-  },200);
+  const el=document.getElementById('loaderTimer'); if(el){ el.dataset.aiHidden='1'; el.style.display='none'; } // AI loader: spinner only, no timer
 }
-function aiStopTimer(){ if(_aiTimerInt){ clearInterval(_aiTimerInt); _aiTimerInt=null; } }
+function aiStopTimer(){
+  if(_aiTimerInt){ clearInterval(_aiTimerInt); _aiTimerInt=null; }
+  const el=document.getElementById('loaderTimer'); if(el && el.dataset.aiHidden){ el.style.display=''; delete el.dataset.aiHidden; }
+}
 function aiShowLoader(t,sub,pct){
   const o=document.getElementById('loaderOverlay'); if(!o)return;
   const a=document.getElementById('loaderTitle'); if(a)a.textContent=t||'Working…';
