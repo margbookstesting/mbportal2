@@ -1515,7 +1515,6 @@ td.grp-l { border-left:1px solid var(--border); }
           <button class="ai-mode" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
           <button class="ai-mode active" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
         </div>
-        <label class="ai-gran">Grouping <input type="range" id="aiThr" min="1" max="5" value="1" onchange="aiRerender()"></label>
         <button class="ai-refresh" onclick="aiRun(true)">↻ Re-run</button>
       </div>
     </div>
@@ -2279,7 +2278,7 @@ function aiStageRows(){
   return out;
 }
 function aiThrPair(){
-  const v=+(document.getElementById('aiThr')?.value||3);
+  const v=1; // grouping fixed to lowest criteria (maximum match)
   if(_aiMode==='ai') return ({1:[0.68,0.74],2:[0.62,0.70],3:[0.55,0.64],4:[0.48,0.58],5:[0.42,0.52]}[v]);
   return ({1:[0.26,0.36],2:[0.23,0.33],3:[0.20,0.30],4:[0.17,0.27],5:[0.14,0.24]}[v]);
 }
@@ -2293,9 +2292,8 @@ function aiShowLoader(t,sub,pct){
   const b=document.getElementById('loaderMsg'); if(b)b.textContent=sub||'Please wait';
   const trk=document.querySelector('.ldr-track'), bar=document.getElementById('loaderBar');
   if(trk&&bar){ if(pct==null){ trk.classList.add('indet'); bar.style.width='40%'; } else { trk.classList.remove('indet'); bar.style.width=Math.max(0,Math.min(100,pct))+'%'; } }
-  const wasActive=o.classList.contains('active');
   o.classList.add('active');
-  if(!wasActive && typeof startLoaderTimer==='function') startLoaderTimer();
+  if(typeof startLoaderTimer==='function') startLoaderTimer();
 }
 function aiHideLoader(){ if(typeof stopLoaderTimer==='function') stopLoaderTimer();
   const trk=document.querySelector('.ldr-track'); if(trk)trk.classList.remove('indet');
@@ -4064,6 +4062,7 @@ async function cacheSave(raw){
 let _timerInterval = null;
 
 function startLoaderTimer(){
+  if(_timerInterval) return; // already running — keep counting, don't reset
   let secs = 0;
   document.getElementById('loaderTimer').textContent = '0s';
   _timerInterval = setInterval(()=>{
