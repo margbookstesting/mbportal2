@@ -1607,7 +1607,7 @@ td.grp-l { border-left:1px solid var(--border); }
 let RAW = [];
 
 // ===== STATE =====
-let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[];
+let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[], fRt=[], fUa=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
 const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
@@ -2045,6 +2045,8 @@ function buildFiltered(from, to){
   const baseIP   = testerRowsFor(baseRows, 't');
   const baseSup  = testerRowsFor(baseRows, 'ts');
   const baseLive = testerRowsFor(baseRows, 'eb');
+  const baseRt   = testerRowsFor(baseRows, 't');
+  const baseUa   = testerRowsFor(baseRows, 't');
 
   const hasTicketSearch = !!(document.getElementById('ticketSearch')?.value || '').trim();
   if(hasTicketSearch){
@@ -2054,6 +2056,8 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => !!r.c);
     fSup  = baseSup.filter(r => !!r.d);
     fLive = baseLive.filter(r => !!r.e);
+    fRt   = baseRt.filter(r => !!r.rtd);
+    fUa   = baseUa.filter(r => !!r.uad);
   } else {
     // Normal: date range filter
     const dateOk = d => inRange(d, from, to);
@@ -2062,6 +2066,8 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => dateOk(r.c));
     fSup  = baseSup.filter(r => dateOk(r.d));
     fLive = baseLive.filter(r => dateOk(r.e));
+    fRt   = baseRt.filter(r => dateOk(r.rtd));
+    fUa   = baseUa.filter(r => dateOk(r.uad));
   }
   currentFrom = from; currentTo = to;
 }
@@ -2675,14 +2681,14 @@ function renderKPIs(){
     // Acknowledge By — moved to Tester section (rendered separately)
     { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => RAW.filter(r=>r.sc==='IP').length   },
     { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => RAW.filter(r=>r.sc==='SP').length  },
+    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT',  pendingFn: () => RAW.filter(r=>r.sc==='RT').length  },
+    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU',  pendingFn: () => RAW.filter(r=>r.sc==='RU').length  },
+    { label:'Ready for Go Live',data:fLive, tatKey:'et', cls:'c-glv',  key:'RGL',  pendingFn: () => RAW.filter(r=>r.sc==='LV').length  },
   ];
 
   // Status-only KPIs use the current filtered dashboard view.
   const statusOnlyStages = [
     { label:'Return to Support',  sc:'RS', cls:'c-ret', key:'RTS' },
-    { label:'Ready for Testing',  sc:'RT', cls:'c-tst', key:'RFT' },
-    { label:'Ready for UAT',      sc:'RU', cls:'c-uat', key:'RFU' },
-    { label:'Ready for Go Live',  sc:'LV', cls:'c-glv', key:'RGL' },
   ];
 
   const dateFilteredCards = stages.map(s=>{
@@ -2794,9 +2800,9 @@ function renderKPIs(){
     dateFilteredCards[0], // Transfer to IT
     dateFilteredCards[1], // Acknowledge
     dateFilteredCards[2], // In Progress
-    statusOnlyCards[1],   // Ready for Testing
-    statusOnlyCards[2],   // Ready for UAT
-    statusOnlyCards[3],   // Ready to Go Live
+    dateFilteredCards[4], // Ready for Testing (TAT)
+    dateFilteredCards[5], // Ready for UAT (TAT)
+    dateFilteredCards[6], // Ready for Go Live (TAT)
     dateFilteredCards[3], // Close by IT
     directCard            // Direct (replaces Return to Support)
   ];
@@ -3905,8 +3911,8 @@ function getStageConfig(key){
     LIVE: { data:fLive, tatKey:'et', dateKey:'e', durKey:'',   actKey:'ev', pendingSc:'LV', label:'Ready to Go Live',   filename:'ReadyToGoLive'   },
     // Status-only KPIs use the current filtered dashboard view.
     RTS:  { data:VIEW.filter(r=>r.sc==='RS'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RS', label:'Return to Support',  filename:'ReturnToSupport'  },
-    RFT:  { data:VIEW.filter(r=>r.sc==='RT'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RT', label:'Ready for Testing',  filename:'ReadyForTesting'  },
-    RFU:  { data:VIEW.filter(r=>r.sc==='RU'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RU', label:'Ready for UAT',      filename:'ReadyForUAT'      },
+    RFT:  { data:fRt,  tatKey:'rtt', dateKey:'rtd', durKey:'', actKey:'rtv', pendingSc:'RT', label:'Ready for Testing',  filename:'ReadyForTesting'  },
+    RFU:  { data:fUa,  tatKey:'uat', dateKey:'uad', durKey:'', actKey:'uav', pendingSc:'RU', label:'Ready for UAT',      filename:'ReadyForUAT'      },
     RGL:  { data:VIEW.filter(r=>r.sc==='LV'), tatKey:'et', dateKey:'e', durKey:'', actKey:'ev', pendingSc:'LV', label:'Ready for Go Live', filename:'ReadyForGoLive' },
   };
   return cfg[key];
