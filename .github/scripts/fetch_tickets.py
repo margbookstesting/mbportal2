@@ -101,6 +101,28 @@ def parse_record(r):
         ev=compact_tat(r.get('ReadyToGoLive_TATDetails'))
         if ev: rec['ev']=ev
 
+    # additional stages for full 13-stage timeline
+    for k,dk,tk,gk in [('rt','ReadyForTestingDate','ReadyForTesting_TATDetails','ReadyForTestingBy'),
+                       ('cr','ReadyForCodeReviewDate','ReadyForCodeReview_TATDetails','ReadyForCodeReviewBy'),
+                       ('mg','ReadyForMergingDate','ReadyForMerging_TATDetails','ReadyForMergingBy'),
+                       ('ua','ReadyForUATDate','ReadyForUAT_TATDetails','ReadyForUATBy'),
+                       ('rf','ReopendfromTestingDate','ReopendfromTesting_TATDetails','ReopendfromTestingBy'),
+                       ('ro','ReOpenDate','Reopen_TATDetails','ReOpenBy'),
+                       ('fd','FutureDevelopmentDate','Futuredevelopment_TATDetails','FutureDevelopmentBy'),
+                       ('rj','RejectedDate','Rejected_TATDetails','RejectedBy')]:
+        dd=parse_date(r.get(dk))
+        if dd:
+            rec[k+'d']=dd
+            tf=tat_flag(r.get(tk))
+            if tf: rec[k+'t']=tf
+            tv=compact_tat(r.get(tk))
+            if tv: rec[k+'v']=tv
+            if str(r.get(gk,'') or '').strip(): rec[k+'g']=str(r[gk]).strip()
+    cld=parse_date(r.get('CloseDate'))
+    if cld:
+        rec['cld']=cld
+        if str(r.get('ClosedBY','') or '').strip(): rec['clb']=str(r['ClosedBY']).strip()
+
     # Raw status string (exact label from Marg) — used by Support Dashboard for
     # status-wise KPIs (Pending, Reopen, Code Review, Merging, Future Dev, Rejected, etc.)
     st = str(r.get('Status', '') or '').strip()
