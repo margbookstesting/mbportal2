@@ -1031,6 +1031,20 @@ td.grp-l { border-left:1px solid var(--border); }
 .ai-single{background:#f8fafc;border:1px dashed #cbd5e1}
 .ai-single .ai-badge{background:#f1f5f9;border-color:#e2e8f0;color:#64748b}
 .ai-empty{grid-column:1/-1;text-align:center;color:#94a3b8;padding:40px;font-size:13px}
+/* ── Ticket detail: Stage Timeline ── */
+.tl{position:relative;padding-left:28px;margin-top:2px}
+.tl::before{content:'';position:absolute;left:8px;top:8px;bottom:8px;width:2px;background:linear-gradient(#0d9488,#cbd5e1)}
+.tl-node{position:relative;padding:0 0 15px}
+.tl-node:last-child{padding-bottom:2px}
+.tl-dot{position:absolute;left:-28px;top:0;width:19px;height:19px;border-radius:50%;background:#fff;border:2.5px solid #0d9488;display:flex;align-items:center;justify-content:center;font-size:9px;box-shadow:0 0 0 3px #fff}
+.tl-name{font-size:12.5px;font-weight:800;color:#0f172a;line-height:1.3}
+.tl-meta{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:3px}
+.tl-date{font-size:11px;font-family:'JetBrains Mono',monospace;color:#475569}
+.tl-agent{font-size:11px;color:#64748b}
+.tl-tat{font-size:9.5px;font-weight:800;padding:1px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.3px}
+.tl-tat.in{background:#dcfce7;color:#059669}
+.tl-tat.out{background:#fee2e2;color:#dc2626}
+.tl-tat.none{background:#f1f5f9;color:#94a3b8}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -2128,6 +2142,26 @@ function parseAPIRecord(r){
   if(e){ rec.e=e;
     const et=getTATFlag(r.ReadyToGoLive_TATDetails);   if(et) rec.et=et;
     const ev=compactTATStr(r.ReadyToGoLive_TATDetails);if(ev) rec.ev=ev; }
+
+  // ── additional stages (for full 13-stage timeline) ──
+  [['rt','ReadyForTestingDate','ReadyForTesting_TATDetails','ReadyForTestingBy'],
+   ['cr','ReadyForCodeReviewDate','ReadyForCodeReview_TATDetails','ReadyForCodeReviewBy'],
+   ['mg','ReadyForMergingDate','ReadyForMerging_TATDetails','ReadyForMergingBy'],
+   ['ua','ReadyForUATDate','ReadyForUAT_TATDetails','ReadyForUATBy'],
+   ['rf','ReopendfromTestingDate','ReopendfromTesting_TATDetails','ReopendfromTestingBy'],
+   ['ro','ReOpenDate','Reopen_TATDetails','ReOpenBy'],
+   ['fd','FutureDevelopmentDate','Futuredevelopment_TATDetails','FutureDevelopmentBy'],
+   ['rj','RejectedDate','Rejected_TATDetails','RejectedBy']
+  ].forEach(function(m){
+    const k=m[0], dd=parseAPIDate(r[m[1]]);
+    if(dd){ rec[k+'d']=dd;
+      const tf=getTATFlag(r[m[2]]);    if(tf) rec[k+'t']=tf;
+      const tv=compactTATStr(r[m[2]]); if(tv) rec[k+'v']=tv;
+      if(r[m[3]]&&String(r[m[3]]).trim()) rec[k+'g']=String(r[m[3]]).trim();
+    }
+  });
+  const cld=parseAPIDate(r.CloseDate);
+  if(cld){ rec.cld=cld; if(r.ClosedBY&&String(r.ClosedBY).trim()) rec.clb=String(r.ClosedBY).trim(); }
 
   if(r.Status && String(r.Status).trim()) rec.st = String(r.Status).trim();
   rec.sc = STATUS_MAP_API[r.Status] || 'OT';
@@ -3728,6 +3762,39 @@ function buildTicketTimeline(rec, stageCfg) {
   html += '</div>';
   return html;
 }
+function buildTimeline(rec){
+  const fmt=d=>{ try{ return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}); }catch(e){ return d; } };
+  const esc=(typeof sdEsc==='function')?sdEsc:(x=>x);
+  const stages=[
+    {d:rec.tc,  name:'Created',                    ic:'🆕'},
+    {d:rec.a,   name:'Transfer to IT',             tat:rec.at,  dur:rec.av,  ag:rec.t,   ic:'📥'},
+    {d:rec.b,   name:'Acknowledge',                tat:rec.bt,  dur:rec.bv,  ag:rec.ta,  ic:'✅'},
+    {d:rec.c,   name:'In Progress',                tat:rec.ct,  dur:rec.cv,  ag:rec.ti,  ic:'⚙️'},
+    {d:rec.rtd, name:'Ready For Testing',          tat:rec.rtt, dur:rec.rtv, ag:rec.rtg, ic:'🧪'},
+    {d:rec.crd, name:'Ready For Code Review',      tat:rec.crt, dur:rec.crv, ag:rec.crg, ic:'🔍'},
+    {d:rec.mgd, name:'Ready For Merging',          tat:rec.mgt, dur:rec.mgv, ag:rec.mgg, ic:'🔀'},
+    {d:rec.uad, name:'Ready For UAT',              tat:rec.uat, dur:rec.uav, ag:rec.uag, ic:'🧾'},
+    {d:rec.rfd, name:'Reopened From Testing',      tat:rec.rft, dur:rec.rfv, ag:rec.rfg, ic:'↩️'},
+    {d:rec.d,   name:'Transfer to Support / Close by IT', tat:rec.dt, dur:rec.dv, ag:rec.ts, ic:'📤'},
+    {d:rec.rod, name:'Reopen',                     tat:rec.rot, dur:rec.rov, ag:rec.rog, ic:'🔄'},
+    {d:rec.fdd, name:'Future Development',         tat:rec.fdt, dur:rec.fdv, ag:rec.fdg, ic:'🗓️'},
+    {d:rec.rjd, name:'Rejected',                   tat:rec.rjt, dur:rec.rjv, ag:rec.rjg, ic:'⛔'},
+    {d:rec.e,   name:'Ready To Go Live',           tat:rec.et,  dur:rec.ev,  ag:rec.eb,  ic:'🚀'},
+    {d:rec.cld, name:'Closed',                     ag:rec.clb, ic:'🏁'},
+  ].filter(s=>s.d).sort((x,y)=> (x.d<y.d?-1:(x.d>y.d?1:0)));
+  if(!stages.length) return '';
+  const nodes=stages.map(s=>{
+    let tat='';
+    if(s.tat==='I') tat='<span class="tl-tat in">✔ InTAT'+(s.dur?' · '+esc(s.dur):'')+'</span>';
+    else if(s.tat==='O') tat='<span class="tl-tat out">✘ OutTAT'+(s.dur?' · '+esc(s.dur):'')+'</span>';
+    else if(s.name!=='Created' && s.name!=='Closed') tat='<span class="tl-tat none">No TAT</span>';
+    const ag=s.ag?('<span class="tl-agent">👤 '+esc(s.ag)+'</span>'):'';
+    return '<div class="tl-node"><div class="tl-dot">'+s.ic+'</div>'
+      +'<div class="tl-name">'+s.name+'</div>'
+      +'<div class="tl-meta"><span class="tl-date">'+fmt(s.d)+'</span>'+ag+tat+'</div></div>';
+  }).join('');
+  return '<div class="tdm-section"><div class="tdm-section-title">🗓️ Stage Timeline</div><div class="tl">'+nodes+'</div></div>';
+}
 function openTicketDetail(rec, stageCfg){
   if(!rec) return;
   document.getElementById('tdmTicketId').textContent = rec.n || '';
@@ -3811,7 +3878,8 @@ function openTicketDetail(rec, stageCfg){
     + field('Sub Disposition', rec.subDisp)
     + field('Problem Type', rec.probType)
     + field('Ack Disposition', rec.q)
-    + '</div></div>';
+    + '</div></div>'
+    + buildTimeline(rec);
 
   document.getElementById('ticketDetailOverlay').classList.add('open');
   // Scroll reset — naya ticket kholne par scroll top par aaye (stuck fix)
