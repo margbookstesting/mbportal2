@@ -1293,15 +1293,15 @@ td.grp-l { border-left:1px solid var(--border); }
             <tr>
               <th style="width:30px" rowspan="2">#</th>
               <th rowspan="2">Tester / Agent</th>
-              <th colspan="4" class="th-grp ack-h">Acknowledge</th>
-              <th colspan="4" class="th-grp ip-h">In Progress</th>
+              <th colspan="3" class="th-grp ack-h">Acknowledge</th>
+              <th colspan="3" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
@@ -1373,15 +1373,15 @@ td.grp-l { border-left:1px solid var(--border); }
             <tr>
               <th style="width:30px" rowspan="2">#</th>
               <th rowspan="2">Reporting Manager</th>
-              <th colspan="3" class="th-grp ack-h">Acknowledge</th>
-              <th colspan="3" class="th-grp ip-h">In Progress</th>
+              <th colspan="4" class="th-grp ack-h">Acknowledge</th>
+              <th colspan="4" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
@@ -3075,11 +3075,9 @@ function renderTester(){
     <td class="r grp-l"><strong class="n-ack">${fmt(totAck)}</strong></td>
     <td class="r">${tatCellIn(TaT.inC,TaT.outC)}</td>
     <td class="r">${tatCellOut(TaT.inC,TaT.outC)}</td>
-    <td class="r pend-cell"><strong>${fmt(totAckPend)}</strong></td>
     <td class="r grp-l"><strong class="n-ip">${fmt(totIP)}</strong></td>
     <td class="r">${tatCellIn(TiT.inC,TiT.outC)}</td>
     <td class="r">${tatCellOut(TiT.inC,TiT.outC)}</td>
-    <td class="r pend-cell"><strong>${fmt(totIpPend)}</strong></td>
     <td class="r grp-l"><strong class="n-live">${fmt(totLive)}</strong></td>
     <td class="r">${tatCellIn(TlT.inC,TlT.outC)}</td>
     <td class="r">${tatCellOut(TlT.inC,TlT.outC)}</td>
@@ -3170,9 +3168,11 @@ function renderRM(){
     <td class="r grp-l"><strong class="n-ack">${fmt(totAck)}</strong></td>
     <td class="r">${tatCellIn(TaT.inC,TaT.outC)}</td>
     <td class="r">${tatCellOut(TaT.inC,TaT.outC)}</td>
+    <td class="r pend-cell"><strong>${fmt(totAckPend)}</strong></td>
     <td class="r grp-l"><strong class="n-ip">${fmt(totIP)}</strong></td>
     <td class="r">${tatCellIn(TiT.inC,TiT.outC)}</td>
     <td class="r">${tatCellOut(TiT.inC,TiT.outC)}</td>
+    <td class="r pend-cell"><strong>${fmt(totIpPend)}</strong></td>
     <td class="r grp-l"><strong class="n-live">${fmt(totLive)}</strong></td>
     <td class="r">${tatCellIn(TlT.inC,TlT.outC)}</td>
     <td class="r">${tatCellOut(TlT.inC,TlT.outC)}</td>
