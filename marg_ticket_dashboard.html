@@ -2621,7 +2621,9 @@ function openPlanTickets2(i){ const r=_secPlanRows[i]; if(!r) return;
 function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   _openSecModal(_allRows().filter(x=>(x.t||x.eb||'').trim()===r.name), 'Tester: '+r.name+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
-  _openSecModal(_allRows().filter(x=>(x.r||'').trim()===r.name), 'RM: '+r.name+' — Ticket Details'); }
+  // Sirf Acknowledged + In Progress pending tickets — date filter ke bina (VIEW = date-range-free),
+  // taaki bahar wale ackPend/ipPend column se exactly match kare
+  _openSecModal(VIEW.filter(x=>(x.r||'').trim()===r.name && (x.sc==='AK'||x.sc==='IP')), 'RM: '+r.name+' — Ticket Details'); }
 
 // ===== DEVELOPER WISE (no Acknowledge column) =====
 function renderDeveloper(){
@@ -2672,7 +2674,9 @@ function renderDeveloper(){
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
   const name=row.name;
-  _openSecModal(_allRows().filter(r=>((r.dev&&String(r.dev).trim())||null)===name), 'Developer: '+name+' — Ticket Details');
+  // Sirf In Progress pending tickets — date filter ke bina (VIEW = date-range-free),
+  // taaki bahar wale ipPend column se exactly match kare
+  _openSecModal(VIEW.filter(r=>((r.dev&&String(r.dev).trim())||null)===name && r.sc==='IP'), 'Developer: '+name+' — Ticket Details');
 }
 
 function resetAll(){
