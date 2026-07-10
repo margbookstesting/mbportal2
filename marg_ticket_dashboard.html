@@ -866,6 +866,7 @@ tbody td.r { text-align:right; }
 .kpi-m-old .kpi-m-sublabel { color:#334155; font-weight:800; }
 
 /* Grouped table headers (Tester/RM TAT breakdown) */
+.pend-cell{color:#7c3aed;font-weight:700}
 .th-grp { text-align:center !important; border-left:1px solid var(--border); border-bottom:1px solid var(--border); }
 .th-sub { font-size:8px !important; padding-top:4px !important; padding-bottom:6px !important; }
 td.grp-l { border-left:1px solid var(--border); }
@@ -1292,15 +1293,15 @@ td.grp-l { border-left:1px solid var(--border); }
             <tr>
               <th style="width:30px" rowspan="2">#</th>
               <th rowspan="2">Tester / Agent</th>
-              <th colspan="3" class="th-grp ack-h">Acknowledge</th>
-              <th colspan="3" class="th-grp ip-h">In Progress</th>
+              <th colspan="4" class="th-grp ack-h">Acknowledge</th>
+              <th colspan="4" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
@@ -1331,13 +1332,13 @@ td.grp-l { border-left:1px solid var(--border); }
               <th style="width:30px" rowspan="2">#</th>
               <th rowspan="2">Developer</th>
               <th rowspan="2">RM</th>
-              <th colspan="3" class="th-grp ip-h">In Progress</th>
+              <th colspan="4" class="th-grp ip-h">In Progress</th>
               <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="3" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
             <tr>
-              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
+              <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th><th class="r th-sub" style="color:#7c3aed">Pending</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub">Total</th><th class="r th-sub" style="color:#059669">InTAT</th><th class="r th-sub" style="color:#dc2626">OutTAT</th>
               <th class="r th-sub" style="color:#b91c1c;background:#fff8f8">🐞 Bug</th><th class="r th-sub" style="color:#1d4ed8;background:#eff6ff">⚙️ Dev</th><th class="r th-sub" style="color:#6b7280;background:#f8fafc">📋 Others</th>
@@ -1968,9 +1969,9 @@ function getCurrentMonthRange(){
 
 // Returns YYYY-MM prefix strings for: thisMonth, prevMonth, olderLabel
 function getMonthLabels(from, to){
-  // Use the 'from' date to determine the selected month
-  if(!from) return { thisM: null, prevM: null };
-  const d = new Date(from);
+  // Current month = TO date's month; previous = month before it; rest = Older
+  if(!from && !to) return { thisM: null, prevM: null };
+  const d = new Date(to || from);
   const thisY = d.getFullYear(), thisM = d.getMonth(); // 0-indexed
   // Previous month
   const prevD = new Date(thisY, thisM - 1, 1);
@@ -2058,7 +2059,7 @@ function buildFiltered(from, to){
     fLive = baseLive.filter(r => !!r.e);
     fRt   = baseRt.filter(r => r.sc==='RT');
     fUa   = baseUa.filter(r => r.sc==='RU');
-    fGl   = baseLive.filter(r => r.sc==='LV');
+    fGl   = baseLive.filter(r => r.sc==='LV');  /* current status, no date filter */
   } else {
     // Normal: date range filter
     const dateOk = d => inRange(d, from, to);
@@ -2067,9 +2068,9 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => dateOk(r.c));
     fSup  = baseSup.filter(r => dateOk(r.d));
     fLive = baseLive.filter(r => dateOk(r.e));
-    fRt   = baseRt.filter(r => r.sc==='RT' && dateOk(r.rtd || r.tld || r.c || r.b || r.a || r.tc));
-    fUa   = baseUa.filter(r => r.sc==='RU' && dateOk(r.uad || r.tld || r.c || r.b || r.a || r.tc));
-    fGl   = baseLive.filter(r => r.sc==='LV' && dateOk(r.e   || r.tld || r.c || r.b || r.a || r.tc));
+    fRt   = baseRt.filter(r => r.sc==='RT');   /* current status, no date filter */
+    fUa   = baseUa.filter(r => r.sc==='RU');
+    fGl   = baseLive.filter(r => r.sc==='LV');
   }
   currentFrom = from; currentTo = to;
 }
@@ -2533,10 +2534,10 @@ function renderSubdisp(){
       <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td><td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td><td class="r" style="background:#f8fafc">${bd(r.sup-r.supBug-r.supDev,'#6b7280')}</td>
     </tr>`).join('');
   // totals
-  const T=rows.reduce((a,r)=>{a.ack+=r.ack;a.ip+=r.ip;a.live+=r.live;a.sup+=r.sup;a.aI+=r.aT.inC;a.aO+=r.aT.outC;a.iI+=r.iT.inC;a.iO+=r.iT.outC;a.lI+=r.lT.inC;a.lO+=r.lT.outC;a.sI+=r.sT.inC;a.sO+=r.sT.outC;a.bug+=r.supBug;a.dev+=r.supDev;return a;},{ack:0,ip:0,live:0,sup:0,aI:0,aO:0,iI:0,iO:0,lI:0,lO:0,sI:0,sO:0,bug:0,dev:0});
+  const T=rows.reduce((a,r)=>{a.ack+=r.ack;a.ip+=r.ip;a.ipPend+=r.ipPend;a.live+=r.live;a.sup+=r.sup;a.aI+=r.aT.inC;a.aO+=r.aT.outC;a.iI+=r.iT.inC;a.iO+=r.iT.outC;a.lI+=r.lT.inC;a.lO+=r.lT.outC;a.sI+=r.sT.inC;a.sO+=r.sT.outC;a.bug+=r.supBug;a.dev+=r.supDev;return a;},{ack:0,ip:0,live:0,sup:0,aI:0,aO:0,iI:0,iO:0,lI:0,lO:0,sI:0,sO:0,bug:0,dev:0});
   html += `<tr class="total-row"><td colspan="2"><strong>Total</strong></td>
     <td class="r grp-l"><strong class="n-ack">${fmt(T.ack)}</strong></td><td class="r">${tatCellIn(T.aI,T.aO)}</td><td class="r">${tatCellOut(T.aI,T.aO)}</td>
-    <td class="r grp-l"><strong class="n-ip">${fmt(T.ip)}</strong></td><td class="r">${tatCellIn(T.iI,T.iO)}</td><td class="r">${tatCellOut(T.iI,T.iO)}</td>
+    <td class="r grp-l"><strong class="n-ip">${fmt(T.ip)}</strong></td><td class="r">${tatCellIn(T.iI,T.iO)}</td><td class="r">${tatCellOut(T.iI,T.iO)}</td><td class="r pend-cell"><strong>${fmt(T.ipPend)}</strong></td>
     <td class="r grp-l"><strong class="n-live">${fmt(T.live)}</strong></td><td class="r">${tatCellIn(T.lI,T.lO)}</td><td class="r">${tatCellOut(T.lI,T.lO)}</td>
     <td class="r grp-l"><strong class="n-sup">${fmt(T.sup)}</strong></td><td class="r">${tatCellIn(T.sI,T.sO)}</td><td class="r">${tatCellOut(T.sI,T.sO)}</td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(T.bug)}</strong></td><td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(T.dev)}</strong></td><td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,T.sup-T.bug-T.dev))}</strong></td>
@@ -2600,7 +2601,11 @@ function _openSecModal(data, title){
   document.getElementById('modalOverlay').classList.add('open');
 }
 // ALL tickets in current view (union across stage arrays) for an entity predicate
-function _allRows(){ return (typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]); }
+function _allRows(){
+  const base=(typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]);
+  if(!(currentFrom||currentTo)) return base;
+  return base.filter(r=>{ const d=stageDateOf(r); return inRange((d&&d!=='—')?d:null, currentFrom, currentTo); });
+}
 function openDispTickets2(i){ const r=_secDispRows[i]; if(!r) return; const nm=r.d||r.name;
   const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
   const grp=x=>{ if(!x.q) return 'Others'; return DISPS.slice(0,-1).includes(x.q)?x.q:'Others'; };
@@ -2626,6 +2631,8 @@ function renderDeveloper(){
   const nameSet=new Set();
   [fIP,fLive,fSup].forEach(arr=>arr.forEach(r=>{const k=keyOf(r);if(k)nameSet.add(k);}));
   const selD=(typeof CF_STATE!=='undefined'&&CF_STATE.dev)?CF_STATE.dev:new Set();
+  const dvIpPendMap={};
+  VIEW.forEach(r=>{ const dv=r.dev&&String(r.dev).trim(); if(dv&&r.sc==='IP') dvIpPendMap[dv]=(dvIpPendMap[dv]||0)+1; });
   let names=[...nameSet]; if(selD.size) names=names.filter(n=>selD.has(n));
   function buildRow(name){
     const pred=r=>keyOf(r)===name;
@@ -2633,7 +2640,7 @@ function renderDeveloper(){
     const rmCount={};
     [...ipArr,...liveArr,...supArr].forEach(r=>{ const rm=r.r&&String(r.r).trim(); if(rm) rmCount[rm]=(rmCount[rm]||0)+1; });
     const rms=Object.entries(rmCount).sort((a,b)=>b[1]-a[1]).map(([k])=>k);
-    return {name, rms, ip:ipArr.length, live:liveArr.length, sup:supArr.length,
+    return {name, rms, ip:ipArr.length, ipPend:dvIpPendMap[name]||0, live:liveArr.length, sup:supArr.length,
       iT:_stTat(fIP,pred,'ct'), lT:_stTat(fLive,pred,'et'), sT:_stTat(fSup,pred,'dt'),
       supBug:supArr.filter(isBug).length, supDev:supArr.filter(isDev).length};
   }
@@ -2641,18 +2648,18 @@ function renderDeveloper(){
     .sort((a,b)=> b.sup!==a.sup ? b.sup-a.sup : (b.ip+b.live)-(a.ip+a.live));
   _devRows=rows;
   const bd=(v,c)=> v?`<span style="color:${c};font-weight:700;font-size:11px">${v}</span>`:'—';
-  if(!rows.length){ tbody.innerHTML=`<tr><td colspan="15" style="padding:36px;text-align:center;color:var(--muted)">No developer data in this date range.</td></tr>`; return; }
+  if(!rows.length){ tbody.innerHTML=`<tr><td colspan="16" style="padding:36px;text-align:center;color:var(--muted)">No developer data in this date range.</td></tr>`; return; }
   let html=rows.map((r,i)=>`
     <tr onclick="openDevTickets(${i})" title="Click for ticket details" style="cursor:pointer">
       <td>${rkHtml(i)}</td>
       <td>${sdEsc(r.name)}</td>
       <td style="text-align:left;font-size:11px;color:var(--text2)">${r.rms.length?sdEsc(r.rms[0]):'—'}</td>
-      <td class="r grp-l"><span class="n-ip">${r.ip||'—'}</span></td><td class="r">${tatCellIn(r.iT.inC,r.iT.outC)}</td><td class="r">${tatCellOut(r.iT.inC,r.iT.outC)}</td>
+      <td class="r grp-l"><span class="n-ip">${r.ip||'—'}</span></td><td class="r">${tatCellIn(r.iT.inC,r.iT.outC)}</td><td class="r">${tatCellOut(r.iT.inC,r.iT.outC)}</td><td class="r pend-cell">${r.ipPend||'—'}</td>
       <td class="r grp-l"><span class="n-live">${r.live||'—'}</span></td><td class="r">${tatCellIn(r.lT.inC,r.lT.outC)}</td><td class="r">${tatCellOut(r.lT.inC,r.lT.outC)}</td>
       <td class="r grp-l"><span class="n-sup">${r.sup||'—'}</span></td><td class="r">${tatCellIn(r.sT.inC,r.sT.outC)}</td><td class="r">${tatCellOut(r.sT.inC,r.sT.outC)}</td>
       <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td><td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td><td class="r" style="background:#f8fafc">${bd(r.sup-r.supBug-r.supDev,'#6b7280')}</td>
     </tr>`).join('');
-  const T=rows.reduce((a,r)=>{a.ip+=r.ip;a.live+=r.live;a.sup+=r.sup;a.iI+=r.iT.inC;a.iO+=r.iT.outC;a.lI+=r.lT.inC;a.lO+=r.lT.outC;a.sI+=r.sT.inC;a.sO+=r.sT.outC;a.bug+=r.supBug;a.dev+=r.supDev;return a;},{ip:0,live:0,sup:0,iI:0,iO:0,lI:0,lO:0,sI:0,sO:0,bug:0,dev:0});
+  const T=rows.reduce((a,r)=>{a.ip+=r.ip;a.live+=r.live;a.sup+=r.sup;a.iI+=r.iT.inC;a.iO+=r.iT.outC;a.lI+=r.lT.inC;a.lO+=r.lT.outC;a.sI+=r.sT.inC;a.sO+=r.sT.outC;a.bug+=r.supBug;a.dev+=r.supDev;return a;},{ip:0,ipPend:0,live:0,sup:0,iI:0,iO:0,lI:0,lO:0,sI:0,sO:0,bug:0,dev:0});
   html+=`<tr class="total-row"><td colspan="3"><strong>Total</strong></td>
     <td class="r grp-l"><strong class="n-ip">${fmt(T.ip)}</strong></td><td class="r">${tatCellIn(T.iI,T.iO)}</td><td class="r">${tatCellOut(T.iI,T.iO)}</td>
     <td class="r grp-l"><strong class="n-live">${fmt(T.live)}</strong></td><td class="r">${tatCellIn(T.lI,T.lO)}</td><td class="r">${tatCellOut(T.lI,T.lO)}</td>
@@ -2683,9 +2690,9 @@ function renderKPIs(){
     // Acknowledge By — moved to Tester section (rendered separately)
     { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => RAW.filter(r=>r.sc==='IP').length   },
     { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => RAW.filter(r=>r.sc==='SP').length  },
-    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT',  pendingFn: () => RAW.filter(r=>r.sc==='RT').length  },
-    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU',  pendingFn: () => RAW.filter(r=>r.sc==='RU').length  },
-    { label:'Ready for Go Live',data:fGl,   tatKey:'et', cls:'c-glv',  key:'RGL',  pendingFn: () => RAW.filter(r=>r.sc==='LV').length  },
+    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT', curStatus:true, pendingFn: () => RAW.filter(r=>r.sc==='RT').length  },
+    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU', curStatus:true, pendingFn: () => RAW.filter(r=>r.sc==='RU').length  },
+    { label:'Ready for Go Live',data:fGl,   tatKey:'et', cls:'c-glv',  key:'RGL', curStatus:true, pendingFn: () => RAW.filter(r=>r.sc==='LV').length  },
   ];
 
   // Status-only KPIs use the current filtered dashboard view.
@@ -2746,7 +2753,7 @@ function renderKPIs(){
         <div class="kpi-head">
           <div class="kpi-head-l">
             <div class="kpi-num">${fmt(tot)}</div>
-            <div class="pend-badge" title="Currently at this stage (from all data, not date-filtered)">Overall: ${fmt(pending)}</div>
+            ${s.curStatus ? '' : `<div class="pend-badge" title="Currently at this stage (from all data, not date-filtered)">Overall: ${fmt(pending)}</div>`}
           </div>
           <div class="kpi-overall" title="Overall InTAT / OutTAT">
             <div class="ov-pill in"><span class="ov-lbl">Overall InTAT</span><span class="ov-pct">${inPct}%</span></div>
@@ -3068,9 +3075,11 @@ function renderTester(){
     <td class="r grp-l"><strong class="n-ack">${fmt(totAck)}</strong></td>
     <td class="r">${tatCellIn(TaT.inC,TaT.outC)}</td>
     <td class="r">${tatCellOut(TaT.inC,TaT.outC)}</td>
+    <td class="r pend-cell"><strong>${fmt(totAckPend)}</strong></td>
     <td class="r grp-l"><strong class="n-ip">${fmt(totIP)}</strong></td>
     <td class="r">${tatCellIn(TiT.inC,TiT.outC)}</td>
     <td class="r">${tatCellOut(TiT.inC,TiT.outC)}</td>
+    <td class="r pend-cell"><strong>${fmt(totIpPend)}</strong></td>
     <td class="r grp-l"><strong class="n-live">${fmt(totLive)}</strong></td>
     <td class="r">${tatCellIn(TlT.inC,TlT.outC)}</td>
     <td class="r">${tatCellOut(TlT.inC,TlT.outC)}</td>
@@ -3081,7 +3090,7 @@ function renderTester(){
     <td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(rows.reduce((s,r)=>s+(r.supDev||0),0))}</strong></td>
     <td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(rows.reduce((s,r)=>s+Math.max(0,(r.sup||0)-(r.supBug||0)-(r.supDev||0)),0))}</strong></td>
   </tr>`
-  : `<tr><td colspan="17" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
+  : `<tr><td colspan="19" style="text-align:center;color:var(--muted);padding:20px">No data</td></tr>`;
 }
 
 // ===== RM TABLE =====
@@ -3090,6 +3099,8 @@ function renderRM(){
   const hasRM = r => r.r && String(r.r).trim();
   const namedRMs = [...new Set([...fAck,...fIP,...fLive,...fSup,...fIT]
     .filter(hasRM).map(r=>r.r))];
+  const ackPendMap={}, ipPendMap={};
+  VIEW.forEach(r=>{ const rm=r.r&&String(r.r).trim(); if(!rm)return; if(r.sc==='AK') ackPendMap[rm]=(ackPendMap[rm]||0)+1; else if(r.sc==='IP') ipPendMap[rm]=(ipPendMap[rm]||0)+1; });
 
   function stTat(arr, pred, key){
     let inC=0, outC=0;
@@ -3115,6 +3126,7 @@ function renderRM(){
     const liveBug = liveArr.filter(isBug).length, liveDev = liveArr.filter(isDev).length;
     const supBug  = supArr.filter(isBug).length,  supDev  = supArr.filter(isDev).length;
     return { name, ack, ip, live, sup, aT, iT, lT, sT,
+      ackPend: ackPendMap[name]||0, ipPend: ipPendMap[name]||0,
       ackBug, ackDev, ipBug, ipDev, liveBug, liveDev, supBug, supDev };
   }).filter(r=>r.ack||r.ip||r.live||r.sup)
     .sort((a,b)=>(b.ack+b.ip+b.live+b.sup)-(a.ack+a.ip+a.live+a.sup));
@@ -3126,6 +3138,8 @@ function renderRM(){
   const TiT = stTat(fIP,   hasRM, 'ct');
   const TlT = stTat(fLive, hasRM, 'et');
   const TsT = stTat(fSup,  hasRM, 'dt');
+  const totAckPend = VIEW.filter(r=>r.sc==='AK' && r.r && String(r.r).trim()).length;
+  const totIpPend  = VIEW.filter(r=>r.sc==='IP' && r.r && String(r.r).trim()).length;
 
   const bd = (v,c) => v ? `<span style="color:${c};font-weight:700;font-size:11px">${v}</span>` : '—';
   const tbody = document.querySelector('#tRM tbody');
@@ -3136,9 +3150,11 @@ function renderRM(){
       <td class="r grp-l"><span class="n-ack">${r.ack||'—'}</span></td>
       <td class="r">${tatCellIn(r.aT.inC,r.aT.outC)}</td>
       <td class="r">${tatCellOut(r.aT.inC,r.aT.outC)}</td>
+      <td class="r pend-cell">${r.ackPend||'—'}</td>
       <td class="r grp-l"><span class="n-ip">${r.ip||'—'}</span></td>
       <td class="r">${tatCellIn(r.iT.inC,r.iT.outC)}</td>
       <td class="r">${tatCellOut(r.iT.inC,r.iT.outC)}</td>
+      <td class="r pend-cell">${r.ipPend||'—'}</td>
       <td class="r grp-l"><span class="n-live">${r.live||'—'}</span></td>
       <td class="r">${tatCellIn(r.lT.inC,r.lT.outC)}</td>
       <td class="r">${tatCellOut(r.lT.inC,r.lT.outC)}</td>
