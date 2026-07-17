@@ -15,6 +15,29 @@ STATUS_MAP = {
   'Return to Support':'RS','Ready for Testing':'RT','Ready for UAT':'RU'
 }
 
+# Stage → its own disposition-field name (API record key).
+# Used to compute `ld` (last disposition) = the disposition of whatever stage
+# the ticket is CURRENTLY sitting at. Fallback = latest non-null Disp walked
+# in reverse chronological order.
+# Field names verified against live Marg API (2026-07-17 sample).
+STAGE_DISP_BY_SC = {
+  'IT': 'TransferToIT_Disp',
+  'AK': 'Ack_Disp',
+  'IP': 'Inprogress_Disp',
+  'RT': 'ReadyForTesting_Disp',
+  'RU': 'ReadyForUAT_Disp',
+  'LV': 'ReadyToGoLiveDisp',
+  'SP': 'TransferToSupportDisp',
+  'RS': 'ReopenDisp',
+}
+# Reverse chronological fallback order — later stages first
+DISP_FALLBACK_ORDER = [
+  'RejectDisp','FutureDevelopmentDisp','ReopenDisp','TransferToSupportDisp',
+  'ReadyToGoLiveDisp','ReopendfromTesting_Disp','ReadyForUAT_Disp',
+  'ReadyForMerging_Disp','ReadyForCodeReview_Disp','ReadyForTesting_Disp',
+  'Inprogress_Disp','Ack_Disp','TransferToIT_Disp'
+]
+
 def parse_date(v):
     if not v or v == '1900-01-01T00:00:00': return None
     s = str(v).strip()
@@ -101,28 +124,6 @@ def parse_record(r):
         ev=compact_tat(r.get('ReadyToGoLive_TATDetails'))
         if ev: rec['ev']=ev
 
-    # additional stages for full 13-stage timeline
-    for k,dk,tk,gk in [('rt','ReadyForTestingDate','ReadyForTesting_TATDetails','ReadyForTestingBy'),
-                       ('cr','ReadyForCodeReviewDate','ReadyForCodeReview_TATDetails','ReadyForCodeReviewBy'),
-                       ('mg','ReadyForMergingDate','ReadyForMerging_TATDetails','ReadyForMergingBy'),
-                       ('ua','ReadyForUATDate','ReadyForUAT_TATDetails','ReadyForUATBy'),
-                       ('rf','ReopendfromTestingDate','ReopendfromTesting_TATDetails','ReopendfromTestingBy'),
-                       ('ro','ReOpenDate','Reopen_TATDetails','ReOpenBy'),
-                       ('fd','FutureDevelopmentDate','Futuredevelopment_TATDetails','FutureDevelopmentBy'),
-                       ('rj','RejectedDate','Rejected_TATDetails','RejectedBy')]:
-        dd=parse_date(r.get(dk))
-        if dd:
-            rec[k+'d']=dd
-            tf=tat_flag(r.get(tk))
-            if tf: rec[k+'t']=tf
-            tv=compact_tat(r.get(tk))
-            if tv: rec[k+'v']=tv
-            if str(r.get(gk,'') or '').strip(): rec[k+'g']=str(r[gk]).strip()
-    cld=parse_date(r.get('CloseDate'))
-    if cld:
-        rec['cld']=cld
-        if str(r.get('ClosedBY','') or '').strip(): rec['clb']=str(r['ClosedBY']).strip()
-
     # Raw status string (exact label from Marg) — used by Support Dashboard for
     # status-wise KPIs (Pending, Reopen, Code Review, Merging, Future Dev, Rejected, etc.)
     st = str(r.get('Status', '') or '').strip()
@@ -131,32 +132,25 @@ def parse_record(r):
 
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
 
-    # ── LAST DISPOSITION (ld) ──
-    # Ticket ki current-stage ki disposition. Fallback = reverse-chronological walk.
-    STAGE_DISP_BY_SC = {
-        'IT': 'TransferToIT_Disp', 'AK': 'Ack_Disp', 'IP': 'Inprogress_Disp',
-        'RT': 'ReadyForTesting_Disp', 'RU': 'ReadyForUAT_Disp',
-        'LV': 'ReadyToGoLiveDisp',   'SP': 'TransferToSupportDisp',
-        'RS': 'ReopenDisp',
-    }
-    DISP_FALLBACK_ORDER = [
-        'RejectDisp','FutureDevelopmentDisp','ReopenDisp','TransferToSupportDisp',
-        'ReadyToGoLiveDisp','ReopendfromTesting_Disp','ReadyForUAT_Disp',
-        'ReadyForMerging_Disp','ReadyForCodeReview_Disp','ReadyForTesting_Disp',
-        'Inprogress_Disp','Ack_Disp','TransferToIT_Disp',
-    ]
-    ld = None
-    primary = STAGE_DISP_BY_SC.get(rec['sc'])
-    if primary and str(r.get(primary, '') or '').strip():
-        ld = str(r[primary]).strip()
-    else:
+    # ── LAST DISPOSITION (ld) ──────────────────────────────────────────────
+    # Primary: current stage's own Disp field (per STAGE_DISP_BY_SC).
+    # Fallback: reverse-chronological walk through all *_Disp fields, picking
+    # the first non-empty one. Mirrors parseAPIRecord() in
+    # marg_ticket_dashboard.html so cache-loaded records match live-fetched.
+    _ld = None
+    _primary_key = STAGE_DISP_BY_SC.get(rec['sc'])
+    if _primary_key:
+        v = r.get(_primary_key)
+        if v is not None and str(v).strip():
+            _ld = str(v).strip()
+    if not _ld:
         for k in DISP_FALLBACK_ORDER:
             v = r.get(k)
-            if v and str(v).strip():
-                ld = str(v).strip()
+            if v is not None and str(v).strip():
+                _ld = str(v).strip()
                 break
-    if ld:
-        rec['ld'] = ld
+    if _ld:
+        rec['ld'] = _ld
 
     # Keep a record if it reached any stage, OR is in a status-only stage, OR simply
     # carries a status label (so Pending / Reopen / Rejected / Future Dev etc. are not dropped).
