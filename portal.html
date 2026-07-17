@@ -191,11 +191,9 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
 
 const ALL_DASHBOARDS = [
-  {id:'it-dashboard',       title:'Marg IT Dashboard',       desc:'Stage-wise ticket tracking with Tester & RM breakdown, TAT analysis and live counts.',    icon:'🎫', tag:'Operations', url:'ticket_dashboard_api.html',   category:'Operations'},
   {id:'tat-dashboard',      title:'Marg TAT Dashboard',      desc:'TAT analysis with InTAT/OutTAT breakdown and stage-wise pending tickets summary.',         icon:'📊', tag:'Analytics',  url:'marg_ticket_dashboard.html',  category:'Analytics'},
   {id:'support-dashboard',  title:'Support Dashboard',       desc:'Current status-wise ticket counts (all statuses) with disposition-wise breakdown, client & plan views.', icon:'🛟', tag:'Support',    url:'support_dashboard.html',      category:'Operations'},
   {id:'upcoming-dashboard', title:'Marg Upcoming Deadlines', desc:'Track tickets with deadlines in 1-7, 8-15, 16-30, 31-60 days with Dev & Bug categories.', icon:'📅', tag:'Planning',   url:'upcoming_timeline.html',      category:'Planning'},
-  {id:'excel-dashboard',    title:'Excel Dashboard',         desc:'Excel-based data analysis and reporting dashboard with advanced charts and filters.',       icon:'📈', tag:'Analytics',  url:'ticket_dashboard_excel.html', category:'Analytics'},
   {id:'admin-activity',     title:'Admin Activity',          desc:'Client move to other server, control-room reset, remove caching and DB repair tools.',      icon:'🛠️', tag:'Admin',      url:'admin_activity.html',         category:'Admin'},
 ];
 

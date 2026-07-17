@@ -13,10 +13,6 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/dashboard",
-      "destination": "/ticket_dashboard_api.html"
-    },
-    {
       "source": "/tat",
       "destination": "/marg_ticket_dashboard.html"
     },
@@ -27,10 +23,6 @@
     {
       "source": "/upcoming",
       "destination": "/upcoming_timeline.html"
-    },
-    {
-      "source": "/excel",
-      "destination": "/ticket_dashboard_excel.html"
     },
     {
       "source": "/getclientinfo",

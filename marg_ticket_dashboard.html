@@ -1910,8 +1910,10 @@ function barHtml(val, max, col){
 }
 
 // ===== BUG / DEVELOPMENT / TAT HELPERS =====
-function isBug(r){ return r.q && /^bug/i.test(String(r.q)); }
-function isDev(r){ return r.q && /^development/i.test(String(r.q)); }
+// lastDisp = ticket ki current-stage disposition (ld); legacy fallback = Ack_Disp (q)
+function lastDisp(r){ return r.ld || r.q || ''; }
+function isBug(r){ const d=lastDisp(r); return d && /^bug/i.test(String(d)); }
+function isDev(r){ const d=lastDisp(r); return d && /^development/i.test(String(d)); }
 
 // Unique tickets (dedup by TicketNo) across multiple [array, predicate] pairs
 function uniqTickets(pairs){
@@ -2099,13 +2101,35 @@ const STATUS_MAP_API = {
   'Return to Support':'RS','Ready for Testing':'RT','Ready for UAT':'RU'
 };
 
+// Stage → its own disposition-field name (from API record).
+// Used to compute `ld` (last disposition) = the disposition of whatever stage
+// the ticket is CURRENTLY sitting at. Fallback = last non-null Disp walked
+// in reverse chronological order.
+const STAGE_DISP_BY_SC = {
+  'IT': 'TransferToIT_Disp',
+  'AK': 'Ack_Disp',
+  'IP': 'Inprogress_Disp',
+  'RT': 'ReadyForTesting_Disp',
+  'RU': 'ReadyForUAT_Disp',
+  'LV': 'ReadyToGoLiveDisp',
+  'SP': 'TransferToSupportDisp',
+  'RS': 'ReopenDisp',
+};
+// Reverse chronological fallback order — later stages first
+const DISP_FALLBACK_ORDER = [
+  'RejectDisp','FutureDevelopmentDisp','ReopenDisp','TransferToSupportDisp',
+  'ReadyToGoLiveDisp','ReopendfromTesting_Disp','ReadyForUAT_Disp',
+  'ReadyForMerging_Disp','ReadyForCodeReview_Disp','ReadyForTesting_Disp',
+  'Inprogress_Disp','Ack_Disp','TransferToIT_Disp'
+];
+
 function parseAPIRecord(r){
   const rec = {};
   if(r.TicketNo)              rec.n  = r.TicketNo;
   if(r.LicNo)                 rec.l  = r.LicNo;
   if(r.UserName&&r.UserName.trim()) rec.u = r.UserName.trim();
   if(r.subscriptionPlan&&r.subscriptionPlan.trim()) rec.p = r.subscriptionPlan.trim();
-  if(r.Ack_Disp)              rec.q  = r.Ack_Disp;
+  if(r.Ack_Disp)              rec.q  = r.Ack_Disp;   /* legacy field kept for backward-compat */
   if(r.RM&&r.RM.trim())       rec.r  = r.RM.trim();
   if(r.TransferTo)            rec.t  = r.TransferTo;
   if(r.AcknowledgebyAgents)   rec.ta = r.AcknowledgebyAgents;
@@ -2174,6 +2198,20 @@ function parseAPIRecord(r){
 
   if(r.Status && String(r.Status).trim()) rec.st = String(r.Status).trim();
   rec.sc = STATUS_MAP_API[r.Status] || 'OT';
+
+  // ── LAST DISPOSITION (ld) ──
+  // Primary: current status ka apna disposition. Fallback: reverse-chronological walk.
+  let _ld = null;
+  const _primaryKey = STAGE_DISP_BY_SC[rec.sc];
+  if(_primaryKey && r[_primaryKey] && String(r[_primaryKey]).trim()){
+    _ld = String(r[_primaryKey]).trim();
+  } else {
+    for(const k of DISP_FALLBACK_ORDER){
+      if(r[k] && String(r[k]).trim()){ _ld = String(r[k]).trim(); break; }
+    }
+  }
+  if(_ld) rec.ld = _ld;
+
   const statusOnlyOk = ['RS','RT','RU'].includes(rec.sc);
   return (a||b||c||d||e||statusOnlyOk||rec.st) ? rec : null;
 }
@@ -2563,6 +2601,12 @@ function applySecFilters(){
   if(f==='bug') rows=rows.filter(isBug);
   else if(f==='dev') rows=rows.filter(isDev);
   else if(f==='others') rows=rows.filter(r=>!isBug(r)&&!isDev(r));
+  else if(f && f.indexOf('ld:')===0){          /* last-disposition filter */
+    const val=f.slice(3);
+    rows = val==='__blank__'
+      ? rows.filter(r=>!lastDisp(r))
+      : rows.filter(r=>lastDisp(r)===val);
+  }
   else if(f && f.indexOf('st:')===0){ const key=f.slice(3); rows=rows.filter(r=>statusKeyOf(r)===key); }
   if(_smfTester) rows=rows.filter(r=>_smfTesterVal(r)===_smfTester);
   if(_smfRM)     rows=rows.filter(r=>(r.r||'').trim()===_smfRM);
@@ -2579,20 +2623,35 @@ function setSecFilter(f){
 function _openSecModal(data, title){
   _modalKey=null; _modalData=data; _secFilter='all'; _smfTester=''; _smfRM=''; _smfDev=''; window._modalShown=data;
   document.getElementById('modalTitle').textContent=title;
-  const bug=data.filter(isBug).length, dev=data.filter(isDev).length, oth=data.length-bug-dev;
-  const stCount={}; data.forEach(r=>{ const k=statusKeyOf(r); stCount[k]=(stCount[k]||0)+1; });
-  const stChips=SUP_STATUSES.filter(d=>stCount[d.key]).map(d=>
-    `<span class="ms ms-btn" data-f="st:${d.key}" onclick="setSecFilter('st:${d.key}')" style="cursor:pointer;border:1px solid var(--border)">${d.label}: ${fmt(stCount[d.key])}</span>`).join('');
+
+  // ── Last-disposition chips (dynamic, from ticket's current-stage disposition) ──
+  // Yeh screenshot walli confusing status-chip list ki jagah aaya hai. Sirf woh
+  // dispositions dikhti hain jo iss modal ki data mein actually exist karti hain.
+  const ldCount = {}; let ldBlank = 0;
+  data.forEach(r=>{ const v = lastDisp(r); if(v){ ldCount[v]=(ldCount[v]||0)+1; } else { ldBlank++; } });
+  const ldColorOf = v => /^bug/i.test(v) ? '#b91c1c'
+                      : /^development/i.test(v) ? '#1d4ed8'
+                      : /improvement/i.test(v) ? '#0891b2'
+                      : /data\s*updation/i.test(v) ? '#7c3aed'
+                      : '#0f766e';
+  const ldIconOf = v => /^bug/i.test(v) ? '🐞'
+                     : /^development/i.test(v) ? '⚙️'
+                     : /improvement/i.test(v) ? '✨'
+                     : /data\s*updation/i.test(v) ? '📝'
+                     : '📋';
+  const ldChips = Object.entries(ldCount).sort((a,b)=>b[1]-a[1]).map(([v,c])=>{
+    const val=v.replace(/'/g,"\\'");
+    return `<span class="ms ms-btn" data-f="ld:${sdEsc(v)}" onclick="setSecFilter('ld:${val}')" style="cursor:pointer;color:${ldColorOf(v)};border:1px solid ${ldColorOf(v)}22">${ldIconOf(v)} ${sdEsc(v)}: ${fmt(c)}</span>`;
+  }).join('');
+  const blankChip = ldBlank ? `<span class="ms ms-btn" data-f="ld:__blank__" onclick="setSecFilter('ld:__blank__')" style="cursor:pointer;color:#94a3b8;border:1px solid var(--border)">— No Disposition: ${fmt(ldBlank)}</span>` : '';
+
   const uniq=(arr)=>[...new Set(arr.filter(v=>v&&String(v).trim()).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
   const testers=uniq(data.map(r=>_smfTesterVal(r))), rms=uniq(data.map(r=>r.r)), devs=uniq(data.map(r=>r.dev));
   const drop=(type,label,vals)=>`<select onchange="onSecDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:150px">
     <option value="">${label} (all)</option>${vals.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('')}</select>`;
   document.getElementById('modalStats').innerHTML=`
     <span class="ms ms-total ms-btn" data-f="all" onclick="setSecFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
-    <span class="ms ms-btn" data-f="bug" onclick="setSecFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
-    <span class="ms ms-btn" data-f="dev" onclick="setSecFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
-    <span class="ms ms-btn" data-f="others" onclick="setSecFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
-    ${stChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+stChips : ''}
+    ${ldChips || blankChip ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+ldChips+blankChip : ''}
     <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
     ${drop('tester','Tester',testers)} ${drop('rm','RM',rms)} ${drop('dev','Developer',devs)}
     <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
@@ -2621,49 +2680,86 @@ function openPlanTickets2(i){ const r=_secPlanRows[i]; if(!r) return;
 function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   _openSecModal(_allRows().filter(x=>(x.t||x.eb||'').trim()===r.name), 'Tester: '+r.name+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
-  // Sirf Acknowledged + In Progress pending tickets — date filter ke bina (VIEW = date-range-free),
-  // taaki bahar wale ackPend/ipPend column se exactly match kare
-  _openSecModal(VIEW.filter(x=>(x.r||'').trim()===r.name && (x.sc==='AK'||x.sc==='IP')), 'RM: '+r.name+' — Ticket Details'); }
+  // Ackowledged + In Progress pending tickets — abhi fAck/fIP subset se (Total ke andar),
+  // taaki table ke ackPend + ipPend columns se exactly match kare.
+  const match = x => (x.r||'').trim()===r.name;
+  const rows = [
+    ...fAck.filter(x=>x.sc==='AK' && match(x)),
+    ...fIP .filter(x=>x.sc==='IP' && match(x)),
+  ];
+  // Dedup by ticket no
+  const seen=new Set(), out=[];
+  rows.forEach(x=>{ if(!seen.has(x.n)){ seen.add(x.n); out.push(x); }});
+  _openSecModal(out, 'RM: '+r.name+' — Pending Tickets'); }
 
 // ===== DEVELOPER WISE (no Acknowledge column) =====
+// Fixes:
+//   1) Pending count aab fIP se hi liya jaata hai (subset of IP Total), taaki Pending <= Total rahe.
+//   2) Agar ticket me developer name blank ho aur RM name ho, to us RM ke naam ki fallback row
+//      banti hai (dev bucket ki jagah RM bucket). Row 'isRM' flag se mark hoti hai.
 function renderDeveloper(){
   const tbody=document.querySelector('#tDeveloper tbody');
   if(!tbody) return;
-  const keyOf=r=>(r.dev&&String(r.dev).trim())?String(r.dev).trim():null;
-  const nameSet=new Set();
-  [fIP,fLive,fSup].forEach(arr=>arr.forEach(r=>{const k=keyOf(r);if(k)nameSet.add(k);}));
+  const hasDev = r => r.dev && String(r.dev).trim();
+  const rmOf   = r => (r.r && String(r.r).trim()) || '';
+  // Har ticket ka effective bucket: dev name ya (dev blank + rm present) → RM fallback
+  const bucketOf = r => {
+    if(hasDev(r)) return { name:String(r.dev).trim(), isRM:false };
+    const rm = rmOf(r); return rm ? { name:rm, isRM:true } : null;
+  };
+
   const selD=(typeof CF_STATE!=='undefined'&&CF_STATE.dev)?CF_STATE.dev:new Set();
+
+  // Unique buckets from fIP/fLive/fSup — key = name+'|'+isRM to avoid collision
+  const bucketMap = new Map();  // key -> {name, isRM}
+  [fIP,fLive,fSup].forEach(arr=>arr.forEach(r=>{
+    const b=bucketOf(r); if(!b) return;
+    const key=b.name+'|'+(b.isRM?'1':'0');
+    if(!bucketMap.has(key)) bucketMap.set(key, b);
+  }));
+
+  // Pending count from fIP only, sc==='IP' filter — matches Total (fIP.length) semantics
+  const pendKey = r => { const b=bucketOf(r); return b ? (b.name+'|'+(b.isRM?'1':'0')) : null; };
   const dvIpPendMap={};
-  VIEW.forEach(r=>{ const dv=r.dev&&String(r.dev).trim(); if(dv&&r.sc==='IP') dvIpPendMap[dv]=(dvIpPendMap[dv]||0)+1; });
-  let names=[...nameSet]; if(selD.size) names=names.filter(n=>selD.has(n));
-  function buildRow(name){
-    const pred=r=>keyOf(r)===name;
+  fIP.forEach(r=>{ if(r.sc!=='IP') return; const k=pendKey(r); if(k) dvIpPendMap[k]=(dvIpPendMap[k]||0)+1; });
+
+  let buckets=[...bucketMap.values()];
+  // Dev CF filter — sirf named developer entries filter hoti hain, RM-fallback rows filter mein aa jati hain
+  if(selD.size) buckets=buckets.filter(b => b.isRM ? true : selD.has(b.name));
+
+  function buildRow(b){
+    const key=b.name+'|'+(b.isRM?'1':'0');
+    const pred = b.isRM
+      ? r => !hasDev(r) && rmOf(r)===b.name
+      : r => hasDev(r) && String(r.dev).trim()===b.name;
     const ipArr=fIP.filter(pred), liveArr=fLive.filter(pred), supArr=fSup.filter(pred);
     const rmCount={};
-    [...ipArr,...liveArr,...supArr].forEach(r=>{ const rm=r.r&&String(r.r).trim(); if(rm) rmCount[rm]=(rmCount[rm]||0)+1; });
+    [...ipArr,...liveArr,...supArr].forEach(r=>{ const rm=rmOf(r); if(rm) rmCount[rm]=(rmCount[rm]||0)+1; });
     const rms=Object.entries(rmCount).sort((a,b)=>b[1]-a[1]).map(([k])=>k);
-    return {name, rms, ip:ipArr.length, ipPend:dvIpPendMap[name]||0, live:liveArr.length, sup:supArr.length,
+    return {name:b.name, isRM:b.isRM, rms, ip:ipArr.length, ipPend:dvIpPendMap[key]||0,
+      live:liveArr.length, sup:supArr.length,
       iT:_stTat(fIP,pred,'ct'), lT:_stTat(fLive,pred,'et'), sT:_stTat(fSup,pred,'dt'),
       supBug:supArr.filter(isBug).length, supDev:supArr.filter(isDev).length};
   }
-  const rows=names.map(buildRow).filter(r=>r.ip||r.live||r.sup)
+  const rows=buckets.map(buildRow).filter(r=>r.ip||r.live||r.sup)
     .sort((a,b)=> b.sup!==a.sup ? b.sup-a.sup : (b.ip+b.live)-(a.ip+a.live));
   _devRows=rows;
   const bd=(v,c)=> v?`<span style="color:${c};font-weight:700;font-size:11px">${v}</span>`:'—';
+  const rmBadge = '<span style="font-size:8px;background:#f5f3ff;color:#7c3aed;padding:2px 6px;border-radius:8px;border:1px solid #ddd6fe;margin-left:6px;font-weight:800;letter-spacing:.3px">RM · NO DEV</span>';
   if(!rows.length){ tbody.innerHTML=`<tr><td colspan="16" style="padding:36px;text-align:center;color:var(--muted)">No developer data in this date range.</td></tr>`; return; }
   let html=rows.map((r,i)=>`
-    <tr onclick="openDevTickets(${i})" title="Click for ticket details" style="cursor:pointer">
+    <tr onclick="openDevTickets(${i})" title="Click for ticket details" style="cursor:pointer${r.isRM?';background:#faf5ff':''}">
       <td>${rkHtml(i)}</td>
-      <td>${sdEsc(r.name)}</td>
-      <td style="text-align:left;font-size:11px;color:var(--text2)">${r.rms.length?sdEsc(r.rms[0]):'—'}</td>
+      <td>${sdEsc(r.name)}${r.isRM?rmBadge:''}</td>
+      <td style="text-align:left;font-size:11px;color:var(--text2)">${r.isRM?sdEsc(r.name):(r.rms.length?sdEsc(r.rms[0]):'—')}</td>
       <td class="r grp-l"><span class="n-ip">${r.ip||'—'}</span></td><td class="r">${tatCellIn(r.iT.inC,r.iT.outC)}</td><td class="r">${tatCellOut(r.iT.inC,r.iT.outC)}</td><td class="r pend-cell">${r.ipPend||'—'}</td>
       <td class="r grp-l"><span class="n-live">${r.live||'—'}</span></td><td class="r">${tatCellIn(r.lT.inC,r.lT.outC)}</td><td class="r">${tatCellOut(r.lT.inC,r.lT.outC)}</td>
       <td class="r grp-l"><span class="n-sup">${r.sup||'—'}</span></td><td class="r">${tatCellIn(r.sT.inC,r.sT.outC)}</td><td class="r">${tatCellOut(r.sT.inC,r.sT.outC)}</td>
       <td class="r grp-l" style="background:#fff8f8">${bd(r.supBug,'#b91c1c')}</td><td class="r" style="background:#eff6ff">${bd(r.supDev,'#1d4ed8')}</td><td class="r" style="background:#f8fafc">${bd(r.sup-r.supBug-r.supDev,'#6b7280')}</td>
     </tr>`).join('');
-  const T=rows.reduce((a,r)=>{a.ip+=r.ip;a.live+=r.live;a.sup+=r.sup;a.iI+=r.iT.inC;a.iO+=r.iT.outC;a.lI+=r.lT.inC;a.lO+=r.lT.outC;a.sI+=r.sT.inC;a.sO+=r.sT.outC;a.bug+=r.supBug;a.dev+=r.supDev;return a;},{ip:0,ipPend:0,live:0,sup:0,iI:0,iO:0,lI:0,lO:0,sI:0,sO:0,bug:0,dev:0});
+  const T=rows.reduce((a,r)=>{a.ip+=r.ip;a.ipPend+=r.ipPend;a.live+=r.live;a.sup+=r.sup;a.iI+=r.iT.inC;a.iO+=r.iT.outC;a.lI+=r.lT.inC;a.lO+=r.lT.outC;a.sI+=r.sT.inC;a.sO+=r.sT.outC;a.bug+=r.supBug;a.dev+=r.supDev;return a;},{ip:0,ipPend:0,live:0,sup:0,iI:0,iO:0,lI:0,lO:0,sI:0,sO:0,bug:0,dev:0});
   html+=`<tr class="total-row"><td colspan="3"><strong>Total</strong></td>
-    <td class="r grp-l"><strong class="n-ip">${fmt(T.ip)}</strong></td><td class="r">${tatCellIn(T.iI,T.iO)}</td><td class="r">${tatCellOut(T.iI,T.iO)}</td>
+    <td class="r grp-l"><strong class="n-ip">${fmt(T.ip)}</strong></td><td class="r">${tatCellIn(T.iI,T.iO)}</td><td class="r">${tatCellOut(T.iI,T.iO)}</td><td class="r pend-cell"><strong>${fmt(T.ipPend)}</strong></td>
     <td class="r grp-l"><strong class="n-live">${fmt(T.live)}</strong></td><td class="r">${tatCellIn(T.lI,T.lO)}</td><td class="r">${tatCellOut(T.lI,T.lO)}</td>
     <td class="r grp-l"><strong class="n-sup">${fmt(T.sup)}</strong></td><td class="r">${tatCellIn(T.sI,T.sO)}</td><td class="r">${tatCellOut(T.sI,T.sO)}</td>
     <td class="r grp-l" style="background:#fff8f8"><strong style="color:#b91c1c">${fmt(T.bug)}</strong></td><td class="r" style="background:#eff6ff"><strong style="color:#1d4ed8">${fmt(T.dev)}</strong></td><td class="r" style="background:#f8fafc"><strong style="color:#6b7280">${fmt(Math.max(0,T.sup-T.bug-T.dev))}</strong></td>
@@ -2673,10 +2769,14 @@ function renderDeveloper(){
 
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
-  const name=row.name;
-  // Sirf In Progress pending tickets — date filter ke bina (VIEW = date-range-free),
-  // taaki bahar wale ipPend column se exactly match kare
-  _openSecModal(VIEW.filter(r=>((r.dev&&String(r.dev).trim())||null)===name && r.sc==='IP'), 'Developer: '+name+' — Ticket Details');
+  // Pending IP tickets ke liye: fIP (date-in-range IP entries) me se abhi bhi IP wale hi
+  // — taaki row ke ipPend column se exactly match kare.
+  const hasDev = r => r.dev && String(r.dev).trim();
+  const pred = row.isRM
+    ? r => !hasDev(r) && ((r.r||'').trim()===row.name) && r.sc==='IP'
+    : r => hasDev(r) && String(r.dev).trim()===row.name && r.sc==='IP';
+  const label = row.isRM ? ('RM (No Dev): '+row.name) : ('Developer: '+row.name);
+  _openSecModal(fIP.filter(pred), label+' — Pending In Progress Tickets');
 }
 
 function resetAll(){
@@ -3101,8 +3201,11 @@ function renderRM(){
   const hasRM = r => r.r && String(r.r).trim();
   const namedRMs = [...new Set([...fAck,...fIP,...fLive,...fSup,...fIT]
     .filter(hasRM).map(r=>r.r))];
+  // Pending counts NOW aati hain apne apne fAck/fIP subset se (Total ke andar hi),
+  // taaki Pending kabhi Total se zyada na dikhe — Dev-wise ki tarah.
   const ackPendMap={}, ipPendMap={};
-  VIEW.forEach(r=>{ const rm=r.r&&String(r.r).trim(); if(!rm)return; if(r.sc==='AK') ackPendMap[rm]=(ackPendMap[rm]||0)+1; else if(r.sc==='IP') ipPendMap[rm]=(ipPendMap[rm]||0)+1; });
+  fAck.forEach(r=>{ if(r.sc!=='AK') return; const rm=r.r&&String(r.r).trim(); if(rm) ackPendMap[rm]=(ackPendMap[rm]||0)+1; });
+  fIP .forEach(r=>{ if(r.sc!=='IP') return; const rm=r.r&&String(r.r).trim(); if(rm) ipPendMap[rm] =(ipPendMap[rm] ||0)+1; });
 
   function stTat(arr, pred, key){
     let inC=0, outC=0;
@@ -3140,8 +3243,9 @@ function renderRM(){
   const TiT = stTat(fIP,   hasRM, 'ct');
   const TlT = stTat(fLive, hasRM, 'et');
   const TsT = stTat(fSup,  hasRM, 'dt');
-  const totAckPend = VIEW.filter(r=>r.sc==='AK' && r.r && String(r.r).trim()).length;
-  const totIpPend  = VIEW.filter(r=>r.sc==='IP' && r.r && String(r.r).trim()).length;
+  // Totals bhi ab fAck/fIP subset se — column-wise sum se match karega
+  const totAckPend = fAck.filter(r=>r.sc==='AK' && r.r && String(r.r).trim()).length;
+  const totIpPend  = fIP .filter(r=>r.sc==='IP' && r.r && String(r.r).trim()).length;
 
   const bd = (v,c) => v ? `<span style="color:${c};font-weight:700;font-size:11px">${v}</span>` : '—';
   const tbody = document.querySelector('#tRM tbody');
@@ -3373,14 +3477,16 @@ function renderCharts(){
     }
   });
 
-  /* ── 2. InTAT vs OutTAT bar (%) ── */
+  /* ── 2. InTAT vs OutTAT bar (%) ──
+     % is calculated as % of TAT-FLAGGED tickets (in+out), not total —
+     consistent with tatCellIn/tatCellOut & KPI ov-pill. */
   destroyMake('bar', document.getElementById('chartBar'), {
     type:'bar',
     data:{
       labels: ST.map(s=>s.short),
       datasets:[
-        { label:'InTAT %',  data:ST.map(s=>s.n?parseFloat((s.in/s.n*100).toFixed(1)):0),  backgroundColor:'#10b98122', borderColor:'#059669', borderWidth:2, borderRadius:5, borderSkipped:false },
-        { label:'OutTAT %', data:ST.map(s=>s.n?parseFloat((s.out/s.n*100).toFixed(1)):0), backgroundColor:'#ef444422', borderColor:'#dc2626', borderWidth:2, borderRadius:5, borderSkipped:false },
+        { label:'InTAT %',  data:ST.map(s=>{const t=s.in+s.out; return t?parseFloat((s.in/t*100).toFixed(1)):0;}),  backgroundColor:'#10b98122', borderColor:'#059669', borderWidth:2, borderRadius:5, borderSkipped:false },
+        { label:'OutTAT %', data:ST.map(s=>{const t=s.in+s.out; return t?parseFloat((s.out/t*100).toFixed(1)):0;}), backgroundColor:'#ef444422', borderColor:'#dc2626', borderWidth:2, borderRadius:5, borderSkipped:false },
       ]
     },
     options:{
