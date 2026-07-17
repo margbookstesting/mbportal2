@@ -15,6 +15,29 @@ STATUS_MAP = {
   'Return to Support':'RS','Ready for Testing':'RT','Ready for UAT':'RU'
 }
 
+# Stage → its own disposition-field name (API record key).
+# Used to compute `ld` (last disposition) = the disposition of whatever stage
+# the ticket is CURRENTLY sitting at. Fallback = latest non-null Disp walked
+# in reverse chronological order.
+# Field names verified against live Marg API (2026-07-17 sample).
+STAGE_DISP_BY_SC = {
+  'IT': 'TransferToIT_Disp',
+  'AK': 'Ack_Disp',
+  'IP': 'Inprogress_Disp',
+  'RT': 'ReadyForTesting_Disp',
+  'RU': 'ReadyForUAT_Disp',
+  'LV': 'ReadyToGoLiveDisp',
+  'SP': 'TransferToSupportDisp',
+  'RS': 'ReopenDisp',
+}
+# Reverse chronological fallback order — later stages first
+DISP_FALLBACK_ORDER = [
+  'RejectDisp','FutureDevelopmentDisp','ReopenDisp','TransferToSupportDisp',
+  'ReadyToGoLiveDisp','ReopendfromTesting_Disp','ReadyForUAT_Disp',
+  'ReadyForMerging_Disp','ReadyForCodeReview_Disp','ReadyForTesting_Disp',
+  'Inprogress_Disp','Ack_Disp','TransferToIT_Disp'
+]
+
 def parse_date(v):
     if not v or v == '1900-01-01T00:00:00': return None
     s = str(v).strip()
@@ -108,6 +131,27 @@ def parse_record(r):
         rec['st'] = st
 
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
+
+    # ── LAST DISPOSITION (ld) ──────────────────────────────────────────────
+    # Primary: current stage's own Disp field (per STAGE_DISP_BY_SC).
+    # Fallback: reverse-chronological walk through all *_Disp fields, picking
+    # the first non-empty one. Mirrors parseAPIRecord() in
+    # marg_ticket_dashboard.html so cache-loaded records match live-fetched.
+    _ld = None
+    _primary_key = STAGE_DISP_BY_SC.get(rec['sc'])
+    if _primary_key:
+        v = r.get(_primary_key)
+        if v is not None and str(v).strip():
+            _ld = str(v).strip()
+    if not _ld:
+        for k in DISP_FALLBACK_ORDER:
+            v = r.get(k)
+            if v is not None and str(v).strip():
+                _ld = str(v).strip()
+                break
+    if _ld:
+        rec['ld'] = _ld
+
     # Keep a record if it reached any stage, OR is in a status-only stage, OR simply
     # carries a status label (so Pending / Reopen / Rejected / Future Dev etc. are not dropped).
     return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU'] or st) else None
