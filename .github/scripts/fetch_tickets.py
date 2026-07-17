@@ -130,6 +130,34 @@ def parse_record(r):
         rec['st'] = st
 
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
+
+    # ── LAST DISPOSITION (ld) ──
+    # Ticket ki current-stage ki disposition. Fallback = reverse-chronological walk.
+    STAGE_DISP_BY_SC = {
+        'IT': 'TransferToIT_Disp', 'AK': 'Ack_Disp', 'IP': 'Inprogress_Disp',
+        'RT': 'ReadyForTesting_Disp', 'RU': 'ReadyForUAT_Disp',
+        'LV': 'ReadyToGoLiveDisp',   'SP': 'TransferToSupportDisp',
+        'RS': 'ReopenDisp',
+    }
+    DISP_FALLBACK_ORDER = [
+        'RejectDisp','FutureDevelopmentDisp','ReopenDisp','TransferToSupportDisp',
+        'ReadyToGoLiveDisp','ReopendfromTesting_Disp','ReadyForUAT_Disp',
+        'ReadyForMerging_Disp','ReadyForCodeReview_Disp','ReadyForTesting_Disp',
+        'Inprogress_Disp','Ack_Disp','TransferToIT_Disp',
+    ]
+    ld = None
+    primary = STAGE_DISP_BY_SC.get(rec['sc'])
+    if primary and str(r.get(primary, '') or '').strip():
+        ld = str(r[primary]).strip()
+    else:
+        for k in DISP_FALLBACK_ORDER:
+            v = r.get(k)
+            if v and str(v).strip():
+                ld = str(v).strip()
+                break
+    if ld:
+        rec['ld'] = ld
+
     # Keep a record if it reached any stage, OR is in a status-only stage, OR simply
     # carries a status label (so Pending / Reopen / Rejected / Future Dev etc. are not dropped).
     return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU'] or st) else None
