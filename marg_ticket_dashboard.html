@@ -2088,7 +2088,7 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => !!r.c);
     fSup  = baseSup.filter(r => !!r.d);
     fLive = baseLive.filter(r => !!r.e);
-    fRfT  = baseRfT.filter(r => !!r.rtd);            // Ready For Testing (date-scoped by rtd)
+    fRfT  = baseRfT.filter(r => r.sc==='RT');        // current status, no date filter (like pending)
     fRt   = baseRt.filter(r => r.sc==='RT');
     fUa   = baseUa.filter(r => r.sc==='RU');
     fGl   = baseLive.filter(r => r.sc==='LV');  /* current status, no date filter */
@@ -2100,7 +2100,7 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => dateOk(r.c));
     fSup  = baseSup.filter(r => dateOk(r.d));
     fLive = baseLive.filter(r => dateOk(r.e));
-    fRfT  = baseRfT.filter(r => dateOk(r.rtd));      // Ready For Testing stage (date-scoped)
+    fRfT  = baseRfT.filter(r => r.sc==='RT');        // current status, no date filter (like pending)
     fRt   = baseRt.filter(r => r.sc==='RT');   /* current status, no date filter */
     fUa   = baseUa.filter(r => r.sc==='RU');
     fGl   = baseLive.filter(r => r.sc==='LV');
