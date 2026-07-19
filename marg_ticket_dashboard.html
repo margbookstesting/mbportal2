@@ -696,6 +696,59 @@ tbody td.r { text-align:right; }
 
 .modal-body { overflow-y:auto;flex:1;overflow-x:auto; }
 
+/* ── Multi-select dropdown (Tester/RM/Dev/Status filters) ── */
+.ms-drop-wrap { position:relative; display:inline-flex; align-items:center; flex-shrink:0; }
+.ms-drop-btn {
+  height:26px; padding:0 8px 0 10px; font-size:10px; font-family:inherit;
+  color:var(--text); background:#fff; cursor:pointer;
+  border:1px solid var(--border); border-radius:14px;
+  display:inline-flex; align-items:center; gap:4px;
+  max-width:180px; white-space:nowrap;
+  transition:all .12s;
+}
+.ms-drop-btn:hover { border-color:var(--muted); }
+.ms-drop-btn[data-active="1"] {
+  background:#ecfeff; border-color:#0891b2; color:#075985; font-weight:700;
+}
+.ms-drop-btn-lbl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-drop-caret { color:var(--muted); font-size:9px; }
+.ms-drop-panel {
+  position:absolute; top:30px; left:0; z-index:2000;
+  background:#fff; border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 10px 30px rgba(8,16,30,.14);
+  min-width:220px; max-width:300px; padding:8px;
+  display:none;
+}
+.ms-drop-search {
+  width:100%; height:26px; padding:0 8px; font-size:11px; font-family:inherit;
+  border:1px solid var(--border); border-radius:6px; margin-bottom:6px;
+  box-sizing:border-box;
+}
+.ms-drop-list { max-height:220px; overflow-y:auto; padding:2px 0; }
+.ms-drop-item {
+  display:flex; align-items:center; gap:8px; padding:5px 8px;
+  cursor:pointer; border-radius:5px; font-size:11px; color:var(--text);
+}
+.ms-drop-item:hover { background:var(--s2); }
+.ms-drop-item input[type=checkbox] { margin:0; cursor:pointer; flex-shrink:0; }
+.ms-drop-item span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-drop-footer {
+  display:flex; justify-content:space-between; gap:8px;
+  border-top:1px solid var(--border); margin-top:6px; padding-top:8px;
+}
+.ms-drop-btn2 {
+  height:24px; padding:0 12px; font-size:10px; border-radius:6px; cursor:pointer;
+  font-family:inherit; font-weight:700; letter-spacing:.3px;
+}
+.ms-drop-clear { background:#fff; color:var(--muted); border:1px solid var(--border); }
+.ms-drop-clear:hover { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+.ms-drop-apply { background:#0d9488; color:#fff; border:0; box-shadow:0 2px 5px rgba(13,148,136,.28); }
+.ms-drop-apply:hover { background:#0f766e; }
+
+/* Two-row modal-stats layout */
+.modal-stats-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; }
+.modal-stats-row + .modal-stats-row { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); }
+
 /* ── LOADER ── */
 .loader-overlay {
   display:none;position:fixed;inset:0;z-index:9999;
@@ -1556,10 +1609,12 @@ td.grp-l { border-left:1px solid var(--border); }
       <table id="modalTable">
         <thead>
           <tr>
-            <th>Ticket No</th><th>Created</th><th>Stage Date</th>
-            <th>Current Status</th><th>Timeline</th><th class="col-client">Client</th>
-            <th>Plan</th><th class="col-tester">Tester</th><th class="col-rm">RM</th>
-            <th>Developer</th><th>Bug / Dev</th>
+            <th>Ticket No</th><th>Current Status</th><th>Created</th>
+            <th>Transfer To IT</th><th>Stage Date</th><th>Timeline</th>
+            <th class="col-rm">RM</th><th>Developer</th>
+            <th class="col-tester">Tester</th>
+            <th class="col-client">Client</th>
+            <th>Disposition</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -2669,16 +2724,22 @@ function openSubdispTickets(i){
 // ===== Generic section-row modal (Bug/Dev/Others filter) =====
 let _secDispRows=[], _secLicRows=[], _secCliRows=[], _secPlanRows=[], _secTesterRows=[], _secRMRows=[];
 function _smfTesterVal(r){ return (r.t||r.eb||r.ts||'').trim(); }
-let _secFilter='all', _smfTester='', _smfRM='', _smfDev='', _smfStatus='';
+// Filter state — Sets (multi-select). Empty set = no filter (all pass).
+let _secFilter='all', _smfTester=new Set(), _smfRM=new Set(), _smfDev=new Set(), _smfStatus=new Set();
+// Draft state used while a multi-select panel is open (Apply commits draft → committed)
+let _smfDraft = { tester:null, rm:null, dev:null, status:null };
 // New — multi-stage date filter mode state
 let _modalEntityMatch=null, _modalUseDates=false, _modalFrom='', _modalTo='';
 
 // Date filter for section modals.
-// A ticket qualifies if its TransferToIT date (r.a) falls in [from, to].
-// (No stage-count OR check, no RT-bypass — per user request 2026-07-19.)
+// A ticket qualifies if:
+//   • Its current status is Ready For Testing (RT), Ready For UAT (RU),
+//     or Ready to Go Live (LV) — these bypass the date filter, always shown.
+//   • OR its TransferToIT date (r.a) falls in [from, to].
 // If both from AND to are empty → no filter, all pass.
 function inTransferToITRange(r, from, to){
   if(!from && !to) return true;
+  if(r.sc === 'RT' || r.sc === 'RU' || r.sc === 'LV') return true;
   return !!r.a && inRange(r.a, from, to);
 }
 
@@ -2715,6 +2776,96 @@ function onModalDateClear(){
   applySecFilters();
 }
 
+// ── Multi-select dropdown component (Tester/RM/Dev/Status) ──
+// A single button opens a checkbox panel. Selections are held in a DRAFT
+// Set; nothing is filtered until user hits APPLY. Outside-click discards.
+function _msDropCommittedSet(type){
+  return type==='tester' ? _smfTester
+       : type==='rm'     ? _smfRM
+       : type==='dev'    ? _smfDev
+       : type==='status' ? _smfStatus
+       : null;
+}
+function _msDropSetCommitted(type, newSet){
+  if(type==='tester')      _smfTester = newSet;
+  else if(type==='rm')     _smfRM     = newSet;
+  else if(type==='dev')    _smfDev    = newSet;
+  else if(type==='status') _smfStatus = newSet;
+}
+function toggleMsDrop(type){
+  const wrap = document.querySelector(`[data-msdrop="${type}"]`);
+  if(!wrap) return;
+  const panel = wrap.querySelector('.ms-drop-panel');
+  const isOpen = panel.style.display === 'block';
+  // Close every open dropdown first
+  document.querySelectorAll('.ms-drop-panel').forEach(p => p.style.display = 'none');
+  if(!isOpen){
+    // Initialize draft = current committed
+    _smfDraft[type] = new Set(_msDropCommittedSet(type));
+    panel.style.display = 'block';
+    setTimeout(()=>wrap.querySelector('.ms-drop-search')?.focus(), 30);
+  }
+}
+function onMsDropToggle(type, value, checked){
+  if(!_smfDraft[type]) _smfDraft[type] = new Set(_msDropCommittedSet(type));
+  if(checked) _smfDraft[type].add(value);
+  else        _smfDraft[type].delete(value);
+}
+function filterMsDrop(input){
+  const list = input.parentElement.querySelector('.ms-drop-list');
+  const q = input.value.toLowerCase();
+  list.querySelectorAll('label').forEach(lb=>{
+    lb.style.display = lb.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
+  });
+}
+function clearMsDrop(type){
+  _smfDraft[type] = new Set();
+  const wrap = document.querySelector(`[data-msdrop="${type}"]`);
+  wrap?.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+}
+function applyMsDrop(type){
+  const draft = _smfDraft[type] || new Set();
+  _msDropSetCommitted(type, new Set(draft));
+  const wrap = document.querySelector(`[data-msdrop="${type}"]`);
+  const panel = wrap?.querySelector('.ms-drop-panel');
+  if(panel) panel.style.display = 'none';
+  _renderModalHeader();
+  applySecFilters();
+}
+// Outside click closes any open panel — draft is discarded.
+document.addEventListener('click', function(e){
+  if(e.target.closest('.ms-drop-wrap')) return;
+  // Only close panels inside the modal (avoid affecting other UI)
+  document.querySelectorAll('.ms-drop-panel').forEach(p => p.style.display = 'none');
+}, true);
+// Renders a single multi-select dropdown (button + panel HTML).
+function _msDrop(type, labelPrefix, vals){
+  const committed = _msDropCommittedSet(type);
+  const btnLbl = committed.size === 0
+    ? `${labelPrefix} (all)`
+    : committed.size === 1 ? `${labelPrefix}: ${[...committed][0]}`
+    : `${labelPrefix}: ${committed.size} selected`;
+  const items = vals.map(v=>{
+    const safeV = String(v).replace(/"/g,'&quot;');
+    const isChecked = committed.has(String(v)) ? 'checked' : '';
+    return `<label class="ms-drop-item"><input type="checkbox" value="${safeV}" ${isChecked} onchange="onMsDropToggle('${type}', this.value, this.checked)"><span>${sdEsc(String(v))}</span></label>`;
+  }).join('');
+  const activeAttr = committed.size > 0 ? 'data-active="1"' : '';
+  return `<div class="ms-drop-wrap" data-msdrop="${type}">
+    <button class="ms-drop-btn" ${activeAttr} onclick="toggleMsDrop('${type}')" type="button">
+      <span class="ms-drop-btn-lbl">${sdEsc(btnLbl)}</span><span class="ms-drop-caret">▾</span>
+    </button>
+    <div class="ms-drop-panel">
+      <input class="ms-drop-search" placeholder="Search…" oninput="filterMsDrop(this)">
+      <div class="ms-drop-list">${items || '<div style="padding:8px;color:var(--muted);font-size:11px;text-align:center">No options</div>'}</div>
+      <div class="ms-drop-footer">
+        <button class="ms-drop-btn2 ms-drop-clear" onclick="clearMsDrop('${type}')" type="button">Clear All</button>
+        <button class="ms-drop-btn2 ms-drop-apply" onclick="applyMsDrop('${type}')" type="button">Apply</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 // 7 fixed disposition categories (chip filter values are `cat:<Category>`).
 // Only chips with count > 0 are rendered.
 // Regex patterns mirror isBug/isDev exactly so column totals == chip totals.
@@ -2739,11 +2890,14 @@ function _bdCatMatcher(catKey){
   return c ? c.match : (()=>false);
 }
 
-function onSecDrop(type,val){
-  if(type==='tester')      _smfTester = val;
-  else if(type==='rm')     _smfRM = val;
-  else if(type==='dev')    _smfDev = val;
-  else if(type==='status') _smfStatus = val;
+// Legacy single-select handler — no longer wired to any UI element but kept
+// as a defensive stub so any lingering DOM inline handlers don't crash. The
+// multi-select dropdown component uses onMsDropToggle / applyMsDrop instead.
+function onSecDrop(type, val){
+  const set = _msDropCommittedSet(type);
+  if(!set) return;
+  if(!val){ _msDropSetCommitted(type, new Set()); }
+  else    { _msDropSetCommitted(type, new Set([val])); }
   applySecFilters();
 }
 function applySecFilters(){
@@ -2764,10 +2918,11 @@ function applySecFilters(){
       : rows.filter(r=>lastDisp(r)===val);
   }
   else if(f && f.indexOf('st:')===0){ const key=f.slice(3); rows=rows.filter(r=>statusKeyOf(r)===key); }
-  if(_smfTester) rows=rows.filter(r=>_smfTesterVal(r)===_smfTester);
-  if(_smfRM)     rows=rows.filter(r=>(r.r||'').trim()===_smfRM);
-  if(_smfDev)    rows=rows.filter(r=>(r.dev||'').trim()===_smfDev);
-  if(_smfStatus) rows=rows.filter(r=>statusKeyOf(r)===_smfStatus);
+  // Multi-select dropdown filters (empty Set = no filter)
+  if(_smfTester.size) rows=rows.filter(r=>_smfTester.has(_smfTesterVal(r)));
+  if(_smfRM.size)     rows=rows.filter(r=>_smfRM.has((r.r||'').trim()));
+  if(_smfDev.size)    rows=rows.filter(r=>_smfDev.has((r.dev||'').trim()));
+  if(_smfStatus.size) rows=rows.filter(r=>_smfStatus.has(statusLabelOf(r)));
   window._modalShown=rows;
   const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
   renderModalTable(rows);
@@ -2792,51 +2947,44 @@ function _renderModalHeader(){
     return `<span class="ms ms-btn" data-f="cat:${sdEsc(c.key)}" onclick="setSecFilter('cat:${val}')" style="cursor:pointer;color:${c.color};border:1px solid ${c.color}22">${c.icon} ${sdEsc(c.key)}: ${fmt(c.n)}</span>`;
   }).join('');
 
-  // ── Dropdown filters: Tester / RM / Developer / Status ──
+  // ── Multi-select dropdown options: Tester / RM / Developer / Status ──
   const uniq=(arr)=>[...new Set(arr.filter(v=>v&&String(v).trim()).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
   const testers=uniq(data.map(r=>_smfTesterVal(r))), rms=uniq(data.map(r=>r.r)), devs=uniq(data.map(r=>r.dev));
-  // Status options: only statuses present in this modal's data
-  const statusPresent = {};
-  data.forEach(r=>{ const k=statusKeyOf(r); statusPresent[k]=(statusPresent[k]||0)+1; });
-  const statusOpts = SUP_STATUSES.filter(s=>statusPresent[s.key]).map(s=>({v:s.key, lbl:s.label}));
-  if(statusPresent['other']) statusOpts.push({v:'other', lbl:'Other'});
+  // Status uses LABELS for both dropdown values AND filter matching (labels
+  // are unique across SUP_STATUSES + 'Other', so this stays keyed by label).
+  const statusLabels = uniq(data.map(r=>statusLabelOf(r)));
 
-  // If a currently-selected dropdown value no longer exists in the refreshed
-  // data (e.g. after a modal-date change), clear it so the visible dropdown
-  // ("all") and the actual filter state stay in sync.
-  if(_smfTester && !testers.includes(_smfTester)) _smfTester = '';
-  if(_smfRM     && !rms.includes(_smfRM))         _smfRM     = '';
-  if(_smfDev    && !devs.includes(_smfDev))       _smfDev    = '';
-  if(_smfStatus && !statusOpts.find(s => s.v === _smfStatus)) _smfStatus = '';
-
-  const drop=(type,label,vals,selVal)=>`<select onchange="onSecDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:150px">
-    <option value="">${label} (all)</option>${vals.map(v=>{const s=selVal===v?' selected':'';return `<option value="${v.replace(/"/g,'&quot;')}"${s}>${v}</option>`;}).join('')}</select>`;
-  const statusDrop = `<select onchange="onSecDrop('status',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:170px">
-    <option value="">Status (all)</option>${statusOpts.map(o=>{const s=_smfStatus===o.v?' selected':'';return `<option value="${o.v}"${s}>${o.lbl}</option>`;}).join('')}</select>`;
+  // Clear stale selections whose values no longer exist in refreshed data
+  if(_smfTester.size) _smfTester = new Set([..._smfTester].filter(v => testers.includes(v)));
+  if(_smfRM.size)     _smfRM     = new Set([..._smfRM].filter(v => rms.includes(v)));
+  if(_smfDev.size)    _smfDev    = new Set([..._smfDev].filter(v => devs.includes(v)));
+  if(_smfStatus.size) _smfStatus = new Set([..._smfStatus].filter(v => statusLabels.includes(v)));
 
   // ── Date range picker (only when opts.useMultiStageDates) ──
-  // Grouped in a single inline-flex "pill" so label + inputs + Apply + Clear
-  // stay together on one line (previous layout let them wrap mid-group,
-  // leaving APPLY/CLEAR orphaned on line 2).
-  const dateInputs = _modalUseDates ? `
-    <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
+  // RT/RU/LV current statuses bypass this filter (always shown).
+  const dateRow = _modalUseDates ? `
     <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;background:#fff;border:1px solid var(--border);border-radius:14px;flex-shrink:0;">
-      <span style="font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.4px;white-space:nowrap;" title="Filter tickets by TransferToIT date. Change dates and click Apply.">TRANSFER TO IT DATE</span>
+      <span style="font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.4px;white-space:nowrap;" title="Filter tickets by TransferToIT date. Ready For Testing / Ready For UAT / Ready to Go Live tickets always shown regardless of date.">TRANSFER TO IT DATE</span>
       <input type="date" id="modalDateFrom" value="${_modalFrom||''}" style="height:22px;border:1px solid var(--border);border-radius:6px;padding:0 4px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
       <span style="color:var(--muted);font-size:11px;line-height:1">→</span>
       <input type="date" id="modalDateTo" value="${_modalTo||''}" style="height:22px;border:1px solid var(--border);border-radius:6px;padding:0 4px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
-      <button onclick="onModalDateChange()" style="height:22px;padding:0 10px;font-size:9.5px;font-family:inherit;font-weight:700;letter-spacing:.5px;color:#fff;background:#0d9488;border:0;border-radius:6px;cursor:pointer;box-shadow:0 2px 5px rgba(13,148,136,.28);white-space:nowrap;">APPLY</button>
-      <button onclick="onModalDateClear()" title="Clear the date range" style="height:22px;padding:0 8px;font-size:9.5px;font-family:inherit;font-weight:600;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap;">CLEAR</button>
+      <button onclick="onModalDateChange()" type="button" style="height:22px;padding:0 10px;font-size:9.5px;font-family:inherit;font-weight:700;letter-spacing:.5px;color:#fff;background:#0d9488;border:0;border-radius:6px;cursor:pointer;box-shadow:0 2px 5px rgba(13,148,136,.28);white-space:nowrap;">APPLY</button>
+      <button onclick="onModalDateClear()" type="button" title="Clear the date range" style="height:22px;padding:0 8px;font-size:9.5px;font-family:inherit;font-weight:600;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap;">CLEAR</button>
     </div>
   ` : '';
 
   document.getElementById('modalStats').innerHTML=`
-    <span class="ms ms-total ms-btn" data-f="all" onclick="setSecFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
-    ${catChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+catChips : ''}
-    <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
-    ${drop('tester','Tester',testers,_smfTester)} ${drop('rm','RM',rms,_smfRM)} ${drop('dev','Developer',devs,_smfDev)} ${statusDrop}
-    ${dateInputs}
-    <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+    ${_modalUseDates ? `<div class="modal-stats-row">${dateRow}</div>` : ''}
+    <div class="modal-stats-row">
+      <span class="ms ms-total ms-btn" data-f="all" onclick="setSecFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
+      ${catChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+catChips : ''}
+      <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
+      ${_msDrop('tester', 'Tester', testers)}
+      ${_msDrop('rm', 'RM', rms)}
+      ${_msDrop('dev', 'Developer', devs)}
+      ${_msDrop('status', 'Status', statusLabels)}
+      <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>
+    </div>`;
 }
 
 function _openSecModal(data, title, opts){
@@ -2858,7 +3006,8 @@ function _openSecModal(data, title, opts){
       .filter(r => inTransferToITRange(r, _modalFrom, _modalTo));
   }
   _modalKey=null; _modalData=data; _secFilter='all';
-  _smfTester=''; _smfRM=''; _smfDev=''; _smfStatus='';
+  _smfTester=new Set(); _smfRM=new Set(); _smfDev=new Set(); _smfStatus=new Set();
+  _smfDraft = { tester:null, rm:null, dev:null, status:null };
   window._modalShown=data;
   document.getElementById('modalTitle').textContent=title;
   _renderModalHeader();
@@ -3991,7 +4140,7 @@ function renderModalTable(rows){
   const stageCfg = _modalKey ? getStageConfig(_modalKey) : null;
   window._modalShown = rows;
   const tbody = document.querySelector('#modalTable tbody');
-  const bd=r=>{
+  const disp=r=>{
     const c=bugDevClass(r);
     if(c==='Bug')           return '<span style="color:#b91c1c;font-weight:700;font-size:11px">🐞 Bug</span>';
     if(c==='Development')   return '<span style="color:#1d4ed8;font-weight:700;font-size:11px">⚙️ Dev</span>';
@@ -4002,16 +4151,16 @@ function renderModalTable(rows){
   tbody.innerHTML = slice.map((r,ri)=>{
     return `<tr onclick="openTicketDetail(_filteredRows[${ri}], _stageCfgSnap)" title="Click to view ticket details">
       <td style="font-size:11px;color:var(--it);font-family:'JetBrains Mono',monospace;font-weight:700">${r.n||'—'}</td>
-      <td style="font-size:11px;color:var(--muted)">${r.tc||'—'}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${stageDateOf(r)}</td>
       <td style="font-size:11px;font-weight:600">${statusLabelOf(r)}</td>
+      <td style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${r.tc||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${r.a||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${stageDateOf(r)}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)">${r.tld||'—'}</td>
-      <td class="col-client" style="font-weight:500">${r.u||'—'}</td>
-      <td>${planTag(r.p)}</td>
-      <td class="col-tester" style="font-size:11px">${r.t||r.eb||'—'}</td>
       <td class="col-rm" style="font-size:11px">${r.r||'—'}</td>
       <td style="font-size:11px">${r.dev||'—'}</td>
-      <td>${bd(r)}</td>
+      <td class="col-tester" style="font-size:11px">${r.t||r.eb||'—'}</td>
+      <td class="col-client" style="font-weight:500">${r.u||'—'}</td>
+      <td>${disp(r)}</td>
     </tr>`;
   }).join('');
   window._filteredRows = slice;
@@ -4113,11 +4262,11 @@ function exportCurrentModal(){
   const data=(window._modalShown&&window._modalShown.length!==undefined)?window._modalShown:_modalData;
   if(!data||!data.length){ if(typeof showToast==='function')showToast('No rows to export'); return; }
   const wb=XLSX.utils.book_new();
-  const header=['Ticket No','Created Date','Stage Date','Current Status','Timeline','Client','Plan','Tester','RM','Developer','Bug/Development','LicNo'];
+  const header=['Ticket No','Current Status','Created Date','Transfer To IT','Stage Date','Timeline','RM','Developer','Tester','Client','Disposition','LicNo'];
   const out=[header];
-  data.forEach(r=>out.push([r.n||'',r.tc||'',stageDateOf(r),statusLabelOf(r),r.tld||'',r.u||'',r.p||'',r.t||r.eb||'',r.r||'',r.dev||'',bugDevClass(r),r.l||'']));
+  data.forEach(r=>out.push([r.n||'',statusLabelOf(r),r.tc||'',r.a||'',stageDateOf(r),r.tld||'',r.r||'',r.dev||'',r.t||r.eb||'',r.u||'',bugDevClass(r),r.l||'']));
   const ws=XLSX.utils.aoa_to_sheet(out);
-  ws['!cols']=[{wch:14},{wch:12},{wch:12},{wch:20},{wch:12},{wch:30},{wch:14},{wch:18},{wch:16},{wch:16},{wch:14},{wch:10}];
+  ws['!cols']=[{wch:14},{wch:20},{wch:12},{wch:12},{wch:12},{wch:12},{wch:16},{wch:16},{wch:18},{wch:30},{wch:14},{wch:10}];
   const title=(document.getElementById('modalTitle').textContent||'Tickets').replace(/[^a-z0-9]/gi,'_').slice(0,40);
   XLSX.utils.book_append_sheet(wb,ws,'Tickets');
   XLSX.writeFile(wb, title+'.xlsx');
