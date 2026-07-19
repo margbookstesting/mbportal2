@@ -930,7 +930,7 @@ td.grp-l { border-left:1px solid var(--border); }
 #modalTable tbody tr { cursor:pointer; }
 #modalTable th, #modalTable td { font-size:11px; padding:6px 8px; white-space:nowrap; vertical-align:top; }
 #modalTable thead th { position:sticky; top:0; z-index:10; background:var(--s2); }
-/* CLIENT, TESTER, RM — wrap allow karo */
+/* CLIENT, TESTER, RM — allow wrap */
 #modalTable td.col-client, #modalTable td.col-tester, #modalTable td.col-rm { white-space:normal; min-width:120px; max-width:200px; word-break:break-word; line-height:1.4; }
 #modalTable th.col-client { min-width:120px; }
 #modalTable th.col-tester, #modalTable th.col-rm { min-width:100px; }
@@ -1760,11 +1760,11 @@ function doTicketSearch(){
   const raw=(document.getElementById('ticketSearch').value||'').trim();
   if(!raw){clearSearch();return;}
   // Normalize: remove spaces, dashes, "MB" prefix — handle all formats
-  // "MB - 036061", "MB-036061", "036061" sab match honge
+  // "MB - 036061", "MB-036061", "036061" all match
   const normalize = v => String(v||'').replace(/[\s\-]/gi,'').replace(/^MB/i,'').toUpperCase();
   const q = normalize(raw);
-  const found = RAW.find(r => r.n && normalize(r.n) === q)        // exact match pehle
-             || RAW.find(r => r.n && normalize(r.n).includes(q)); // phir partial
+  const found = RAW.find(r => r.n && normalize(r.n) === q)        // exact match first
+             || RAW.find(r => r.n && normalize(r.n).includes(q)); // then partial
   if(!found){ showToast('Ticket "'+raw+'" not found'); return; }
   document.getElementById('ticketSearch').value = String(found.n);
   document.getElementById('bannerTicket').textContent = String(found.n);
@@ -1910,13 +1910,13 @@ function barHtml(val, max, col){
 }
 
 // ===== BUG / DEVELOPMENT / TAT HELPERS =====
-// lastDisp = ticket ki current-stage disposition (ld); legacy fallback = Ack_Disp (q)
+// lastDisp = the ticket's current-stage disposition (ld); legacy fallback = Ack_Disp (q)
 function lastDisp(r){ return r.ld || r.q || ''; }
 // isBug / isDev — strict match of the exact 2 disposition strings per category.
-// Ye consciously strict hain taaki table ki "Bug"/"Dev" column ka count aur
-// modal ki "Bug"+"Bug Urgent" (ya "Development"+"Development Urgent") chip ka
-// sum bilkul same rahe. "Bug Approved" jaisi kisi bhi disposition ab Others me
-// jaayegi — both column me aur chip me — jo user ki spec ke andar hai.
+// Deliberately strict so the table's "Bug"/"Dev" column count matches the modal's
+// "Bug"+"Bug Urgent" (or "Development"+"Development Urgent") chip sum exactly.
+// Any disposition like "Bug Approved" now falls into Others in both column and
+// chip, matching the user's spec.
 function isBug(r){ const d=lastDisp(r); return /^\s*bug\s*$/i.test(String(d)) || /^\s*bug\s*urgent\s*$/i.test(String(d)); }
 function isDev(r){ const d=lastDisp(r); return /^\s*development\s*$/i.test(String(d)) || /^\s*development\s*urgent\s*$/i.test(String(d)); }
 function isImprovement(r){ const d=lastDisp(r); return d && /improvement/i.test(String(d)); }
@@ -2082,7 +2082,7 @@ function buildFiltered(from, to){
 
   const hasTicketSearch = !!(document.getElementById('ticketSearch')?.value || '').trim();
   if(hasTicketSearch){
-    // Ticket search: sirf woh stage dikhao jisme ticket actually gaya ho (date exist ho)
+    // Ticket search: show only stages the ticket actually reached (date exists)
     fIT   = baseIT.filter(r => !!r.a);
     fAck  = baseAck.filter(r => !!r.b);
     fIP   = baseIP.filter(r => !!r.c);
@@ -2231,7 +2231,7 @@ function parseAPIRecord(r){
   rec.sc = STATUS_MAP_API[r.Status] || 'OT';
 
   // ── LAST DISPOSITION (ld) ──
-  // Primary: current status ka apna disposition. Fallback: reverse-chronological walk.
+  // Primary: current stage's own disposition. Fallback: reverse-chronological walk.
   let _ld = null;
   const _primaryKey = STAGE_DISP_BY_SC[rec.sc];
   if(_primaryKey && r[_primaryKey] && String(r[_primaryKey]).trim()){
@@ -2358,6 +2358,11 @@ setTimeout(applyTabPerms, 0);
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
 let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='ai', _aiClusters=[], _aiSig='', _aiBusy=false, _aiSearch='';
+// AI_STOP = NLP stopwords for the AI clustering pipeline. Includes both
+// English filler words AND common Hindi-transliterated words (jab/kar/hai/
+// nahi/etc.) because Marg tickets frequently mix English and Hinglish text.
+// Do NOT translate or drop the Hindi tokens — they are data, not narration.
+// Removing them would let common filler words dominate the ticket clusters.
 const AI_STOP=new Set(('the a an and or of to in is are be for on with so please check give solution asap not no we our their my me it its as at by from this that then when where which while want need customer cx user party name item bill there also kindly issue problem showing show getting coming take done using able unable open create making made get set same different wrong correct proper properly'
  +' jab hum kar rahe hai ho rha rhe rha nhi ki ka ke ko mein me se par pe bhi hi krne kr raha rahi hain jb toh vo wo ye yeh is us or aur agar magar lekin karte time rha hain lakin attech attached attach screenshot below rohan rachna neha priya babita anil yadav kanchan sharma shristhi').split(/\s+/));
 function aiClean(t){
@@ -2734,8 +2739,8 @@ function _openSecModal(data, title){
   document.getElementById('modalTitle').textContent=title;
 
   // ── 7 fixed disposition-category chips (non-zero only) ──
-  // Har chip par click karne se modal us category ke tickets pe filter hota hai.
-  // Others = blank/no-disposition + koi bhi disposition jo top 6 mein nahi aati.
+  // Clicking a chip filters the modal to that category's tickets.
+  // Others = blank/no-disposition + any disposition not in the top 6.
   const catCount = BD_CATEGORIES.map(c => ({ ...c, n: data.filter(c.match).length }))
                                 .filter(c => c.n > 0);
   const catChips = catCount.map(c=>{
@@ -2776,9 +2781,9 @@ function _allRows(){
 // Date-INDEPENDENT source used ONLY for pending counts (AK/IP status).
 // _allRows() applies the date-range filter on stageDateOf(r), which excludes
 // old pending tickets whose stage date is before the selected 'from'. For
-// pending we don't want that — koi bhi ticket jo abhi AK/IP status me hai,
-// count me aana chahiye chahe kitna bhi purana ho.
-// CF filters (RM/Dev/Status/Tester) apne aap already respect ho jaate hain
+// pending we don't want that — any ticket currently at AK/IP status
+// should count regardless of how old it is.
+// CF filters (RM/Dev/Status/Tester) are respected implicitly
 // via getGlobalFilteredRows().
 function _pendingSource(){
   return (typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]);
@@ -2807,27 +2812,27 @@ function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   const nm=r.name;
   // renderTester counts a row across multiple agent-fields per stage:
   //   ACK/IP → r.t   |   Ready For Testing → r.rtg   |   Close by IT → r.ts
-  // r.eb (ReadyToGoLiveBy) also included so legacy tester activity ka click bhi
-  // pura ticket set kholta hai.
+  // r.eb (ReadyToGoLiveBy) is also included so that a click on a legacy
+  // tester still opens their full ticket set.
   _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.rtg===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
-  // Acknowledged + In Progress pending — no date filter. Table ke ackPend + ipPend
-  // columns se exactly match karta hai kyunki wo bhi _pendingSource() se hi count hote hain.
+  // Acknowledged + In Progress pending — no date filter. Matches the table's
+  // ackPend + ipPend columns exactly, because those are also counted from _pendingSource().
   const match = x => (x.r||'').trim()===r.name;
   const rows = _pendingSource().filter(x => match(x) && (x.sc==='AK' || x.sc==='IP'));
   _openSecModal(rows, 'RM: '+r.name+' — Pending Tickets'); }
 
 // ===== DEVELOPER WISE (no Acknowledge column) =====
 // Fixes:
-//   1) Pending count aab fIP se hi liya jaata hai (subset of IP Total), taaki Pending <= Total rahe.
-//   2) Agar ticket me developer name blank ho aur RM name ho, to us RM ke naam ki fallback row
-//      banti hai (dev bucket ki jagah RM bucket). Row 'isRM' flag se mark hoti hai.
+//   1) Pending count is now taken from fIP (subset of IP Total), so Pending <= Total.
+//   2) When a ticket has a blank developer name but an RM name, a fallback row keyed by
+//      is created (RM bucket instead of dev bucket). Row is tagged with the 'isRM' flag.
 function renderDeveloper(){
   const tbody=document.querySelector('#tDeveloper tbody');
   if(!tbody) return;
   const hasDev = r => r.dev && String(r.dev).trim();
   const rmOf   = r => (r.r && String(r.r).trim()) || '';
-  // Har ticket ka effective bucket: dev name ya (dev blank + rm present) → RM fallback
+  // Effective bucket per ticket: dev name, or (dev blank + rm present) → RM fallback
   const bucketOf = r => {
     if(hasDev(r)) return { name:String(r.dev).trim(), isRM:false };
     const rm = rmOf(r); return rm ? { name:rm, isRM:true } : null;
@@ -2843,8 +2848,8 @@ function renderDeveloper(){
     if(!bucketMap.has(key)) bucketMap.set(key, b);
   }));
   // ALSO include buckets with only OLD pending IP tickets (outside date range).
-  // Ye zaroori hai taaki jis dev/RM ke sirf purane pending tickets hain,
-  // wo bhi row me aayen with '—' totals + real pending count.
+  // This is needed so devs/RMs with only old pending tickets still get a row,
+  // with '—' totals + a real pending count.
   _pendingSource().forEach(r=>{
     if(r.sc!=='IP') return;
     const b=bucketOf(r); if(!b) return;
@@ -2852,14 +2857,14 @@ function renderDeveloper(){
     if(!bucketMap.has(key)) bucketMap.set(key, b);
   });
 
-  // Pending IP count — no date filter. Har wo ticket jiska current status IP
-  // hai, apne dev/RM-fallback bucket me count hoga. Date range se independent.
+  // Pending IP count — no date filter. Every ticket whose current status is IP
+  // is counted against its dev/RM-fallback bucket. Independent of the date range.
   const pendKey = r => { const b=bucketOf(r); return b ? (b.name+'|'+(b.isRM?'1':'0')) : null; };
   const dvIpPendMap={};
   _pendingSource().forEach(r=>{ if(r.sc!=='IP') return; const k=pendKey(r); if(k) dvIpPendMap[k]=(dvIpPendMap[k]||0)+1; });
 
   let buckets=[...bucketMap.values()];
-  // Dev CF filter — sirf named developer entries filter hoti hain, RM-fallback rows filter mein aa jati hain
+  // Dev CF filter — only named developer entries are filtered; RM-fallback rows pass through
   if(selD.size) buckets=buckets.filter(b => b.isRM ? true : selD.has(b.name));
 
   function buildRow(b){
@@ -2905,8 +2910,9 @@ function renderDeveloper(){
 
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
-  // Pending IP tickets — no date filter. _pendingSource() se hi jo bhi currently IP hai,
-  // dev-name (ya RM-fallback) match ho — taaki row ke ipPend column se exactly match kare.
+  // Pending IP tickets — no date filter. Anything currently at IP status in
+  // _pendingSource() whose dev-name (or RM-fallback) matches — this makes the
+  // count line up with the row's ipPend column exactly.
   const hasDev = r => r.dev && String(r.dev).trim();
   const pred = row.isRM
     ? r => !hasDev(r) && ((r.r||'').trim()===row.name) && r.sc==='IP'
@@ -3254,7 +3260,7 @@ function renderTester(){
       supBug: supBd.bug, supDev: supBd.dev, supImp: supBd.imp, supDU: supBd.du, supOther: supBd.other,
       bug: supBd.bug, dev: supBd.dev };
   }
-  // Agar Tester filter laga hai to sirf selected naam hi dikhao
+  // If a Tester filter is active, show only the selected names
   let names = [...namedSet];
   const selT = (typeof CF_STATE!=='undefined' && CF_STATE.tester) ? CF_STATE.tester : new Set();
   if(selT.size) names = names.filter(n=>selT.has(n));
@@ -3269,7 +3275,7 @@ function renderTester(){
     if(bRow.ack||bRow.ip||bRow.live||bRow.sup){ bRow.isBlank = true; rows.push(bRow); }
   }
 
-  // Totals: bina filter = KPI match; tester filter active = sirf selected testers ka sum
+  // Totals: no filter = matches KPI; tester filter active = sum over selected testers only
   const tPred  = selT.size ? (r=>selT.has(r.t))   : (()=>true);
   const tPredR = selT.size ? (r=>selT.has(r.rtg)) : (()=>true);
   const tPredS = selT.size ? (r=>selT.has(r.ts))  : (()=>true);
@@ -3337,16 +3343,16 @@ function renderTester(){
 
 // ===== RM TABLE =====
 function renderRM(){
-  // Sirf wahi tickets jinme RM assigned hai — blank/no-RM tickets is table me nahi aate
+  // Only tickets with an RM assigned — blank/no-RM tickets don't appear in this table
   const hasRM = r => r.r && String(r.r).trim();
   // namedRMs = RMs from date-range activity + RMs of ANY currently-pending (AK/IP) ticket.
-  // Isse jis RM ke sirf purane pending tickets hain, wo bhi row me aayenge.
+  // So RMs with only old pending tickets also get a row.
   const namedRMs = [...new Set([
     ...fAck, ...fIP, ...fRfT, ...fSup, ...fIT,
     ..._pendingSource().filter(r => r.sc==='AK' || r.sc==='IP')
   ].filter(hasRM).map(r=>r.r))];
-  // Pending counts — NO date filter. Jitne bhi tickets ka current status
-  // AK ya IP hai, un sabko unke RM ke count me daal do.
+  // Pending counts — NO date filter. Every ticket whose current status is
+  // AK or IP is counted against its RM.
   const ackPendMap={}, ipPendMap={};
   _pendingSource().forEach(r=>{
     const rm = r.r && String(r.r).trim(); if(!rm) return;
@@ -3384,14 +3390,14 @@ function renderRM(){
   }).filter(r=>r.ack||r.ip||r.live||r.sup||r.ackPend||r.ipPend)
     .sort((a,b)=>(b.ack+b.ip+b.live+b.sup+b.ackPend+b.ipPend)-(a.ack+a.ip+a.live+a.sup+a.ackPend+a.ipPend));
 
-  // Totals = sirf RM-wale tickets ke counts (KPI totals se alag ho sakte hain)
+  // Totals = counts of RM-assigned tickets only (may differ from KPI totals)
   const totAck = fAck.filter(hasRM).length, totIP  = fIP.filter(hasRM).length;
   const totLive= fRfT.filter(hasRM).length, totSup = fSup.filter(hasRM).length;
   const TaT = stTat(fAck,  hasRM, 'bt');
   const TiT = stTat(fIP,   hasRM, 'ct');
   const TlT = stTat(fRfT,  hasRM, 'rtt');
   const TsT = stTat(fSup,  hasRM, 'dt');
-  // Totals bhi ab fAck/fIP subset se — column-wise sum se match karega
+  // Totals also come from the fAck/fIP subsets now — column-wise sums line up
   const totAckPend = fAck.filter(r=>r.sc==='AK' && r.r && String(r.r).trim()).length;
   const totIpPend  = fIP .filter(r=>r.sc==='IP' && r.r && String(r.r).trim()).length;
 
@@ -4184,7 +4190,7 @@ function openTicketDetail(rec, stageCfg){
     + buildTimeline(rec);
 
   document.getElementById('ticketDetailOverlay').classList.add('open');
-  // Scroll reset — naya ticket kholne par scroll top par aaye (stuck fix)
+  // Scroll reset — opening a new ticket should start at the top (stuck-scroll fix)
   const tdmBody = document.getElementById('tdmBody');
   tdmBody.scrollTop = 0;
   requestAnimationFrame(()=>{ tdmBody.scrollTop = 0; });
@@ -4361,7 +4367,7 @@ function showEmptyState(){
 }
 
 // ===== SUPABASE CACHE SYSTEM =====
-// Data Supabase DB mein save hota hai — sab devices par same data milta hai
+// Data is persisted in the Supabase DB — all devices see the same data
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -4373,10 +4379,10 @@ function cacheAgeLabel(ts){
   return `${date} at ${time}`;
 }
 
-// Supabase se latest cached data load karo
+// Load latest cached data from Supabase
 async function cacheLoad(){
   try{
-    // Saari rows fetch karo — matrix run mein har saal ki alag row hoti hai
+    // Fetch all rows — the matrix run stores one row per year
     const { data, error } = await sb.from('ticket_cache').select('id, data, fetched_at, total_count, date_from, date_to');
     if(error){ console.warn('Supabase cacheLoad error:', error.message); return null; }
     if(!data || data.length === 0) return null;
@@ -4386,7 +4392,7 @@ async function cacheLoad(){
     let absoluteMaxDate = null;
     let latestFetchedAt = null;
 
-    // Saari rows ka data merge karo
+    // Merge data across all rows
     data.forEach(row => {
       if(row.data && Array.isArray(row.data)){
         allTickets = allTickets.concat(row.data);
@@ -4399,7 +4405,7 @@ async function cacheLoad(){
         latestFetchedAt = row.fetched_at;
     });
 
-    // Duplicate tickets filter karo
+    // Filter out duplicate tickets
     const uniqueMap = {};
     allTickets.forEach(t => { if(t && t.n) uniqueMap[t.n] = t; });
     const finalTickets = Object.values(uniqueMap);
@@ -4416,28 +4422,28 @@ async function cacheLoad(){
   } catch(e){ console.warn('Supabase cacheLoad failed:', e); return null; }
 }
 
-// Refresh ke baad sirf current year ki row update karo
-// (Baaki saal ki rows GitHub Actions se aati hain — unhe mat chhuo)
+// After Refresh, update only the current-year row
+// (Rows for other years come from GitHub Actions — leave them untouched)
 async function cacheSave(raw){
   try{
     const today = new Date().toISOString().split('T')[0];
     const currentYear = new Date().getFullYear().toString();
     const yearStart = `${currentYear}-01-01`;
 
-    // Sirf current year ke tickets filter karo
+    // Filter to the current year's tickets only
     const yearRaw = raw.filter(r => {
       const d = r.a || r.b || r.c || r.d || r.e || r.tld || r.tc || '';
       return d.startsWith(currentYear);
     });
 
-    // Current year ki purani row delete karo
+    // Delete the current year's old row
     try{
       await sb.from('ticket_cache')
         .delete()
         .eq('date_from', yearStart);
     }catch(_){}
 
-    // Current year ki nai row insert karo
+    // Insert the current year's new row
     const { error } = await sb.from('ticket_cache').insert({
       data: yearRaw.length ? yearRaw : raw, // fallback to all if filter empty
       total_count: (yearRaw.length ? yearRaw : raw).length,
@@ -4615,7 +4621,7 @@ async function init(){
   document.getElementById('dateFrom').value = from;
   document.getElementById('dateTo').value   = to;
 
-  // Loader show karo with timer
+  // Show loader with timer
   document.getElementById('loaderTitle').textContent = 'Loading Data…';
   document.getElementById('loaderMsg').textContent   = 'Connecting to database…';
   document.getElementById('loaderStep').textContent  = 'Fetching from Supabase';
@@ -4642,12 +4648,12 @@ async function init(){
       document.getElementById('fetchTimeBadgeText').textContent =
         `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
       badge.style.display = 'flex';
-      showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
+      showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Press ⟳ Refresh for the latest.`);
     }, 500);
     return;
   }
 
-  // Supabase mein data nahi — API se fetch karo
+  // No data in Supabase — fetch from API
   stopLoaderTimer();
   document.getElementById('loaderOverlay').classList.remove('active');
   showEmptyState();
