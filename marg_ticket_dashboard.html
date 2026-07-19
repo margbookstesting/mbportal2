@@ -2797,12 +2797,25 @@ function toggleMsDrop(type){
   if(!wrap) return;
   const panel = wrap.querySelector('.ms-drop-panel');
   const isOpen = panel.style.display === 'block';
-  // Close every open dropdown first
-  document.querySelectorAll('.ms-drop-panel').forEach(p => p.style.display = 'none');
+  // Close every open dropdown first + reset any prior right-align flip
+  document.querySelectorAll('.ms-drop-panel').forEach(p => {
+    p.style.display = 'none';
+    p.style.left = ''; p.style.right = '';
+  });
   if(!isOpen){
     // Initialize draft = current committed
     _smfDraft[type] = new Set(_msDropCommittedSet(type));
     panel.style.display = 'block';
+    // Flip to right-alignment if panel would overflow the viewport's right edge.
+    // Panel is `position:absolute; left:0` by default; a rightmost dropdown
+    // (e.g. Status) can spill past the modal / viewport.
+    requestAnimationFrame(()=>{
+      const rect = panel.getBoundingClientRect();
+      if(rect.right > window.innerWidth - 12){
+        panel.style.left  = 'auto';
+        panel.style.right = '0';
+      }
+    });
     setTimeout(()=>wrap.querySelector('.ms-drop-search')?.focus(), 30);
   }
 }
