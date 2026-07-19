@@ -2732,6 +2732,16 @@ function _allRows(){
   if(!(currentFrom||currentTo)) return base;
   return base.filter(r=>{ const d=stageDateOf(r); return inRange((d&&d!=='—')?d:null, currentFrom, currentTo); });
 }
+// Date-INDEPENDENT source used ONLY for pending counts (AK/IP status).
+// _allRows() applies the date-range filter on stageDateOf(r), which excludes
+// old pending tickets whose stage date is before the selected 'from'. For
+// pending we don't want that — koi bhi ticket jo abhi AK/IP status me hai,
+// count me aana chahiye chahe kitna bhi purana ho.
+// CF filters (RM/Dev/Status/Tester) apne aap already respect ho jaate hain
+// via getGlobalFilteredRows().
+function _pendingSource(){
+  return (typeof getGlobalFilteredRows==='function')?getGlobalFilteredRows():(window.VIEW||RAW||[]);
+}
 function openDispTickets2(i){
   const r=_secDispRows[i]; if(!r) return;
   const nm = r.d || r.name;
@@ -2761,9 +2771,9 @@ function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
   // Acknowledged + In Progress pending — no date filter. Table ke ackPend + ipPend
-  // columns se exactly match karta hai kyunki wo bhi _allRows() se hi count hote hain.
+  // columns se exactly match karta hai kyunki wo bhi _pendingSource() se hi count hote hain.
   const match = x => (x.r||'').trim()===r.name;
-  const rows = _allRows().filter(x => match(x) && (x.sc==='AK' || x.sc==='IP'));
+  const rows = _pendingSource().filter(x => match(x) && (x.sc==='AK' || x.sc==='IP'));
   _openSecModal(rows, 'RM: '+r.name+' — Pending Tickets'); }
 
 // ===== DEVELOPER WISE (no Acknowledge column) =====
@@ -2794,7 +2804,7 @@ function renderDeveloper(){
   // ALSO include buckets with only OLD pending IP tickets (outside date range).
   // Ye zaroori hai taaki jis dev/RM ke sirf purane pending tickets hain,
   // wo bhi row me aayen with '—' totals + real pending count.
-  _allRows().forEach(r=>{
+  _pendingSource().forEach(r=>{
     if(r.sc!=='IP') return;
     const b=bucketOf(r); if(!b) return;
     const key=b.name+'|'+(b.isRM?'1':'0');
@@ -2805,7 +2815,7 @@ function renderDeveloper(){
   // hai, apne dev/RM-fallback bucket me count hoga. Date range se independent.
   const pendKey = r => { const b=bucketOf(r); return b ? (b.name+'|'+(b.isRM?'1':'0')) : null; };
   const dvIpPendMap={};
-  _allRows().forEach(r=>{ if(r.sc!=='IP') return; const k=pendKey(r); if(k) dvIpPendMap[k]=(dvIpPendMap[k]||0)+1; });
+  _pendingSource().forEach(r=>{ if(r.sc!=='IP') return; const k=pendKey(r); if(k) dvIpPendMap[k]=(dvIpPendMap[k]||0)+1; });
 
   let buckets=[...bucketMap.values()];
   // Dev CF filter — sirf named developer entries filter hoti hain, RM-fallback rows filter mein aa jati hain
@@ -2854,14 +2864,14 @@ function renderDeveloper(){
 
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
-  // Pending IP tickets — no date filter. _allRows() se hi jo bhi currently IP hai,
+  // Pending IP tickets — no date filter. _pendingSource() se hi jo bhi currently IP hai,
   // dev-name (ya RM-fallback) match ho — taaki row ke ipPend column se exactly match kare.
   const hasDev = r => r.dev && String(r.dev).trim();
   const pred = row.isRM
     ? r => !hasDev(r) && ((r.r||'').trim()===row.name) && r.sc==='IP'
     : r =>  hasDev(r) && String(r.dev).trim()===row.name && r.sc==='IP';
   const label = row.isRM ? ('RM (No Dev): '+row.name) : ('Developer: '+row.name);
-  _openSecModal(_allRows().filter(pred), label+' — Pending In Progress Tickets');
+  _openSecModal(_pendingSource().filter(pred), label+' — Pending In Progress Tickets');
 }
 
 function resetAll(){
@@ -3292,12 +3302,12 @@ function renderRM(){
   // Isse jis RM ke sirf purane pending tickets hain, wo bhi row me aayenge.
   const namedRMs = [...new Set([
     ...fAck, ...fIP, ...fLive, ...fSup, ...fIT,
-    ..._allRows().filter(r => r.sc==='AK' || r.sc==='IP')
+    ..._pendingSource().filter(r => r.sc==='AK' || r.sc==='IP')
   ].filter(hasRM).map(r=>r.r))];
   // Pending counts — NO date filter. Jitne bhi tickets ka current status
   // AK ya IP hai, un sabko unke RM ke count me daal do.
   const ackPendMap={}, ipPendMap={};
-  _allRows().forEach(r=>{
+  _pendingSource().forEach(r=>{
     const rm = r.r && String(r.r).trim(); if(!rm) return;
     if(r.sc==='AK') ackPendMap[rm] = (ackPendMap[rm]||0)+1;
     if(r.sc==='IP') ipPendMap[rm]  = (ipPendMap[rm] ||0)+1;
