@@ -125,12 +125,12 @@ def parse_record(r):
         if ev: rec['ev']=ev
 
     # ── ADDITIONAL SUB-STAGES ──────────────────────────────────────────────
-    # Mirrors parseAPIRecord()'s 8-stage extraction. Har sub-stage se date +
-    # TAT flag + compact TAT + agent extract karte hain — same short-key
+    # Mirrors parseAPIRecord()'s 8-stage extraction. For each sub-stage we
+    # extract date + TAT flag + compact TAT + agent — same short-key
     # convention: date=<k>d, TAT flag=<k>t, TAT compact=<k>v, agent=<k>g.
-    # Ye pehle sirf JS-side parser me tha, isliye cache-loaded records me
-    # rtt/uat missing the — KPI cards ke InTAT/OutTAT ka 0 dikhne ka wahi
-    # root cause tha. Ab dono side match karte hain.
+    # Previously only the JS-side parser did this, so cache-loaded records
+    # were missing rtt/uat — that was the root cause of the KPI cards
+    # showing 0% for InTAT/OutTAT. Both sides are now aligned.
     sub_stages = [
         ('rt', 'ReadyForTestingDate',       'ReadyForTesting_TATDetails',    'ReadyForTestingBy'),
         ('cr', 'ReadyForCodeReviewDate',    'ReadyForCodeReview_TATDetails', 'ReadyForCodeReviewBy'),
@@ -301,7 +301,7 @@ payload = {
     'fetched_at': datetime.now(timezone.utc).isoformat()
 }
 
-# Purane range entries ko target delete karna takki matrix jobs ek doosre ko disturb na karein
+# Target-delete stale range entries so parallel matrix jobs don't clobber each other
 print(f"Cleaning existing database entry for row range {START_DATE} to {today}...", flush=True)
 requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?date_from=eq.{START_DATE}", headers=supa_headers, timeout=60)
 
