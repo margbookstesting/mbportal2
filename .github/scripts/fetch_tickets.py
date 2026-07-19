@@ -124,6 +124,45 @@ def parse_record(r):
         ev=compact_tat(r.get('ReadyToGoLive_TATDetails'))
         if ev: rec['ev']=ev
 
+    # ── ADDITIONAL SUB-STAGES ──────────────────────────────────────────────
+    # Mirrors parseAPIRecord()'s 8-stage extraction. Har sub-stage se date +
+    # TAT flag + compact TAT + agent extract karte hain — same short-key
+    # convention: date=<k>d, TAT flag=<k>t, TAT compact=<k>v, agent=<k>g.
+    # Ye pehle sirf JS-side parser me tha, isliye cache-loaded records me
+    # rtt/uat missing the — KPI cards ke InTAT/OutTAT ka 0 dikhne ka wahi
+    # root cause tha. Ab dono side match karte hain.
+    sub_stages = [
+        ('rt', 'ReadyForTestingDate',       'ReadyForTesting_TATDetails',    'ReadyForTestingBy'),
+        ('cr', 'ReadyForCodeReviewDate',    'ReadyForCodeReview_TATDetails', 'ReadyForCodeReviewBy'),
+        ('mg', 'ReadyForMergingDate',       'ReadyForMerging_TATDetails',    'ReadyForMergingBy'),
+        ('ua', 'ReadyForUATDate',           'ReadyForUAT_TATDetails',        'ReadyForUATBy'),
+        ('rf', 'ReopendfromTestingDate',    'ReopendfromTesting_TATDetails', 'ReopendfromTestingBy'),
+        ('ro', 'ReOpenDate',                'Reopen_TATDetails',             'ReOpenBy'),
+        ('fd', 'FutureDevelopmentDate',     'Futuredevelopment_TATDetails',  'FutureDevelopmentBy'),
+        ('rj', 'RejectedDate',              'Rejected_TATDetails',           'RejectedBy'),
+    ]
+    has_substage_date = False
+    for k, date_field, tat_field, agent_field in sub_stages:
+        dd = parse_date(r.get(date_field))
+        if dd:
+            rec[k+'d'] = dd
+            has_substage_date = True
+            tf = tat_flag(r.get(tat_field))
+            if tf: rec[k+'t'] = tf
+            tv = compact_tat(r.get(tat_field))
+            if tv: rec[k+'v'] = tv
+            ag = r.get(agent_field)
+            if ag and str(ag).strip():
+                rec[k+'g'] = str(ag).strip()
+
+    # Close date + closed-by agent
+    cld = parse_date(r.get('CloseDate'))
+    if cld:
+        rec['cld'] = cld
+        cby = r.get('ClosedBY')
+        if cby and str(cby).strip():
+            rec['clb'] = str(cby).strip()
+
     # Raw status string (exact label from Marg) — used by Support Dashboard for
     # status-wise KPIs (Pending, Reopen, Code Review, Merging, Future Dev, Rejected, etc.)
     st = str(r.get('Status', '') or '').strip()
@@ -152,9 +191,10 @@ def parse_record(r):
     if _ld:
         rec['ld'] = _ld
 
-    # Keep a record if it reached any stage, OR is in a status-only stage, OR simply
-    # carries a status label (so Pending / Reopen / Rejected / Future Dev etc. are not dropped).
-    return rec if (a or b or c or d or e or rec['sc'] in ['RS','RT','RU'] or st) else None
+    # Keep a record if it reached any stage (main OR sub-stage), OR is in a
+    # status-only stage, OR simply carries a status label (so Pending / Reopen
+    # / Rejected / Future Dev etc. are not dropped).
+    return rec if (a or b or c or d or e or has_substage_date or rec['sc'] in ['RS','RT','RU'] or st) else None
 
 def make_chunks(start_str, end_date, months=3):
     chunks = []
