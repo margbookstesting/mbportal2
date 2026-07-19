@@ -2076,7 +2076,7 @@ function buildFiltered(from, to){
   const baseIP   = testerRowsFor(baseRows, 't');
   const baseSup  = testerRowsFor(baseRows, 'ts');
   const baseLive = testerRowsFor(baseRows, 'eb');
-  const baseRfT  = testerRowsFor(baseRows, 'rtg');    // Ready For Testing → ReadyForTestingBy agent
+  const baseRfT  = testerRowsFor(baseRows, 't');     // Ready For Testing → tester field same as ACK/IP (r.t)
   const baseRt   = testerRowsFor(baseRows, 't');
   const baseUa   = testerRowsFor(baseRows, 't');
 
@@ -2806,15 +2806,15 @@ function openPlanTickets2(i){ const r=_secPlanRows[i]; if(!r) return;
   _openSecModal(_allRows().filter(x=>String(x.p||'').trim()===nm), 'Plan: '+nm+' — Ticket Details'); }
 function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   if(r.isBlank){
-    _openSecModal(_allRows().filter(x=>!(x.t||'').trim() && !(x.eb||'').trim() && !(x.ts||'').trim() && !(x.rtg||'').trim()), 'Tester: (Blank) — Ticket Details');
+    _openSecModal(_allRows().filter(x=>!(x.t||'').trim() && !(x.eb||'').trim() && !(x.ts||'').trim()), 'Tester: (Blank) — Ticket Details');
     return;
   }
   const nm=r.name;
-  // renderTester counts a row across multiple agent-fields per stage:
-  //   ACK/IP → r.t   |   Ready For Testing → r.rtg   |   Close by IT → r.ts
-  // r.eb (ReadyToGoLiveBy) is also included so that a click on a legacy
-  // tester still opens their full ticket set.
-  _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.rtg===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
+  // renderTester counts a row across agent-fields per stage:
+  //   ACK/IP/Ready-For-Testing → r.t   |   Close by IT → r.ts
+  // r.eb (ReadyToGoLiveBy) is also included so a click on a legacy Live-stage
+  // tester still opens their full ticket set (legacy data with no rtd yet).
+  _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
   // Acknowledged + In Progress pending — no date filter. Matches the table's
   // ackPend + ipPend columns exactly, because those are also counted from _pendingSource().
@@ -3225,11 +3225,14 @@ function renderAckBy(){
 function renderTester(){
   // Date-range filtered stages only: ACK / IP / Ready-For-Testing carry TAT,
   // Close by IT (SUP) shows count only. Each stage array already has unique tickets.
+  // Tester identity per stage:
+  //   ACK/IP/Ready-For-Testing → r.t   |   Close by IT → r.ts
+  // (Legacy Live stage was r.eb; that column is now Ready For Testing.)
   const namedSet = new Set([
     ...fAck.filter(r=>r.t).map(r=>r.t),
     ...fIP.filter(r=>r.t).map(r=>r.t),
+    ...fRfT.filter(r=>r.t).map(r=>r.t),
     ...fSup.filter(r=>r.ts).map(r=>r.ts),
-    ...fRfT.filter(r=>r.rtg).map(r=>r.rtg),   // Ready For Testing → ReadyForTestingBy (rtg)
   ]);
   // Per-stage TAT counts for a predicate
   function stTat(arr, pred, key){
@@ -3237,11 +3240,11 @@ function renderTester(){
     arr.forEach(r=>{ if(!pred(r)) return; if(r[key]==='I') inC++; else if(r[key]==='O') outC++; });
     return { inC, outC };
   }
-  function buildRow(name, pred, predRfT, predSup){
+  function buildRow(name, pred, predSup){
     predSup = predSup || pred;
     const ackArr  = fAck.filter(pred);
     const ipArr   = fIP.filter(pred);
-    const liveArr = fRfT.filter(predRfT);      // fRfT + rtg tester matcher
+    const liveArr = fRfT.filter(pred);         // RfT shares tester field with ACK/IP (r.t)
     const supArr  = fSup.filter(predSup);
     const ack  = ackArr.length;
     const ip   = ipArr.length;
@@ -3249,7 +3252,7 @@ function renderTester(){
     const sup  = supArr.length;
     const aT = stTat(fAck, pred,    'bt');
     const iT = stTat(fIP,  pred,    'ct');
-    const lT = stTat(fRfT, predRfT, 'rtt');    // TAT flag for RfT is rtt (was: et)
+    const lT = stTat(fRfT, pred,    'rtt');    // TAT flag for RfT is rtt
     const sT = stTat(fSup, predSup, 'dt');
     const ackBug  = ackArr.filter(isBug).length,  ackDev  = ackArr.filter(isDev).length;
     const ipBug   = ipArr.filter(isBug).length,   ipDev   = ipArr.filter(isDev).length;
@@ -3265,27 +3268,26 @@ function renderTester(){
   const selT = (typeof CF_STATE!=='undefined' && CF_STATE.tester) ? CF_STATE.tester : new Set();
   if(selT.size) names = names.filter(n=>selT.has(n));
   const rows = names
-    .map(name=>buildRow(name, r=>r.t===name, r=>r.rtg===name, r=>r.ts===name))
+    .map(name=>buildRow(name, r=>r.t===name, r=>r.ts===name))
     .filter(r=>r.ack||r.ip||r.live||r.sup)
     .sort((a,b)=> b.sup !== a.sup ? b.sup - a.sup : (b.ack+b.ip+b.live)-(a.ack+a.ip+a.live));
 
-  // (Blank) row for unassigned tickets — Total KPI se match rahe
+  // (Blank) row for unassigned tickets — matches Total KPI
   if(!selT.size){
-    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.rtg, r=>!r.ts);
+    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.ts);
     if(bRow.ack||bRow.ip||bRow.live||bRow.sup){ bRow.isBlank = true; rows.push(bRow); }
   }
 
   // Totals: no filter = matches KPI; tester filter active = sum over selected testers only
-  const tPred  = selT.size ? (r=>selT.has(r.t))   : (()=>true);
-  const tPredR = selT.size ? (r=>selT.has(r.rtg)) : (()=>true);
-  const tPredS = selT.size ? (r=>selT.has(r.ts))  : (()=>true);
-  const totAck = selT.size ? fAck.filter(tPred).length   : fAck.length;
-  const totIP  = selT.size ? fIP.filter(tPred).length    : fIP.length;
-  const totLive= selT.size ? fRfT.filter(tPredR).length  : fRfT.length;
-  const totSup = selT.size ? fSup.filter(tPredS).length  : fSup.length;
+  const tPred  = selT.size ? (r=>selT.has(r.t))  : (()=>true);
+  const tPredS = selT.size ? (r=>selT.has(r.ts)) : (()=>true);
+  const totAck = selT.size ? fAck.filter(tPred).length  : fAck.length;
+  const totIP  = selT.size ? fIP.filter(tPred).length   : fIP.length;
+  const totLive= selT.size ? fRfT.filter(tPred).length  : fRfT.length;
+  const totSup = selT.size ? fSup.filter(tPredS).length : fSup.length;
   const TaT = stTat(fAck, tPred,  'bt');
   const TiT = stTat(fIP,  tPred,  'ct');
-  const TlT = stTat(fRfT, tPredR, 'rtt');
+  const TlT = stTat(fRfT, tPred,  'rtt');
   const TsT = stTat(fSup, tPredS, 'dt');
   const sumBug = rows.reduce((s,r)=>s+r.bug,0), sumDev = rows.reduce((s,r)=>s+r.dev,0);
   const namedRows = rows.filter(r=>!r.isBlank);
