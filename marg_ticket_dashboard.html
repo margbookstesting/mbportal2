@@ -1210,7 +1210,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r it-h">Transfer to IT</th>
               <th class="r ack-h">Acknowledge</th>
               <th class="r ip-h">In Progress</th>
-              <th class="r live-h">Go Live</th>
+              <th class="r live-h">Ready For Testing</th>
               <th class="r sup-h">Close by IT</th>
             </tr>
           </thead>
@@ -1240,7 +1240,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r it-h" rowspan="2">Transfer to IT</th>
               <th class="r ack-h" rowspan="2">Acknowledge</th>
               <th class="r ip-h" rowspan="2">In Progress</th>
-              <th class="r live-h" rowspan="2">Ready to Go Live</th>
+              <th class="r live-h" rowspan="2">Ready For Testing</th>
               <th class="r sup-h" rowspan="2">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
@@ -1295,7 +1295,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th rowspan="2">Tester / Agent</th>
               <th colspan="3" class="th-grp ack-h">Acknowledge</th>
               <th colspan="3" class="th-grp ip-h">In Progress</th>
-              <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
+              <th colspan="3" class="th-grp live-h">Ready For Testing</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
@@ -1333,7 +1333,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th rowspan="2">Developer</th>
               <th rowspan="2">RM</th>
               <th colspan="4" class="th-grp ip-h">In Progress</th>
-              <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
+              <th colspan="3" class="th-grp live-h">Ready For Testing</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
@@ -1375,7 +1375,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th rowspan="2">Reporting Manager</th>
               <th colspan="4" class="th-grp ack-h">Acknowledge</th>
               <th colspan="4" class="th-grp ip-h">In Progress</th>
-              <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
+              <th colspan="3" class="th-grp live-h">Ready For Testing</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
@@ -1608,7 +1608,7 @@ td.grp-l { border-left:1px solid var(--border); }
 let RAW = [];
 
 // ===== STATE =====
-let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[], fRt=[], fUa=[], fGl=[];
+let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[], fRfT=[], fRt=[], fUa=[], fGl=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
 const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
@@ -2076,6 +2076,7 @@ function buildFiltered(from, to){
   const baseIP   = testerRowsFor(baseRows, 't');
   const baseSup  = testerRowsFor(baseRows, 'ts');
   const baseLive = testerRowsFor(baseRows, 'eb');
+  const baseRfT  = testerRowsFor(baseRows, 'rtg');    // Ready For Testing → ReadyForTestingBy agent
   const baseRt   = testerRowsFor(baseRows, 't');
   const baseUa   = testerRowsFor(baseRows, 't');
 
@@ -2087,6 +2088,7 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => !!r.c);
     fSup  = baseSup.filter(r => !!r.d);
     fLive = baseLive.filter(r => !!r.e);
+    fRfT  = baseRfT.filter(r => !!r.rtd);            // Ready For Testing (date-scoped by rtd)
     fRt   = baseRt.filter(r => r.sc==='RT');
     fUa   = baseUa.filter(r => r.sc==='RU');
     fGl   = baseLive.filter(r => r.sc==='LV');  /* current status, no date filter */
@@ -2098,6 +2100,7 @@ function buildFiltered(from, to){
     fIP   = baseIP.filter(r => dateOk(r.c));
     fSup  = baseSup.filter(r => dateOk(r.d));
     fLive = baseLive.filter(r => dateOk(r.e));
+    fRfT  = baseRfT.filter(r => dateOk(r.rtd));      // Ready For Testing stage (date-scoped)
     fRt   = baseRt.filter(r => r.sc==='RT');   /* current status, no date filter */
     fUa   = baseUa.filter(r => r.sc==='RU');
     fGl   = baseLive.filter(r => r.sc==='LV');
@@ -2279,19 +2282,57 @@ function applyFilter(){
   const to   = document.getElementById('dateTo').value;
   if(!from || !to){ showToast('Please select both From and To dates'); return; }
   if(RAW.length === 0){ showToast('⏳ Data is still loading, please wait…'); return; }
-  buildFiltered(from, to);
-  const ticketQ=(document.getElementById('ticketSearch')?.value||'').trim();
-  if(ticketQ){
-    document.getElementById('bannerTicket').textContent=ticketQ;
-    document.getElementById('searchBanner').classList.add('vis');
-  } else {
-    document.getElementById('searchBanner').classList.remove('vis');
+
+  // Show loader so user gets feedback while filter/render runs (can be
+  // several hundred ms on big datasets). Only customize if not already active
+  // for something else (e.g. initial data load).
+  const ldr = document.getElementById('loaderOverlay');
+  const ldrTitle = document.getElementById('loaderTitle');
+  const ldrMsg   = document.getElementById('loaderMsg');
+  const ldrStep  = document.getElementById('loaderStep');
+  const wasActive = ldr && ldr.classList.contains('active');
+  let originalTitle, originalMsg, originalStep;
+  if(ldr && !wasActive){
+    originalTitle = ldrTitle ? ldrTitle.textContent : null;
+    originalMsg   = ldrMsg   ? ldrMsg.textContent   : null;
+    originalStep  = ldrStep  ? ldrStep.textContent  : null;
+    if(ldrTitle) ldrTitle.textContent = 'Applying Filter…';
+    if(ldrMsg)   ldrMsg.textContent   = `${from} → ${to}`;
+    if(ldrStep)  ldrStep.textContent  = 'Filtering tickets & re-rendering sections';
+    ldr.classList.add('active');
   }
-  document.getElementById('fInfo').textContent =
-    `${from} → ${to}  ·  IT:${fmt(fIT.length)} ACK:${fmt(fAck.length)} IP:${fmt(fIP.length)} Sup:${fmt(fSup.length)} Live:${fmt(fLive.length)}  (${fmt(VIEW.length)}/${fmt(RAW.length)})${activeFilterSummary()}`;
-  renderAll();
-  renderSubdisp();
-  if(document.getElementById('tab3') && document.getElementById('tab3').style.display!=='none'){ try{ aiRun(); }catch(e){} }
+
+  // Yield to browser so the spinner actually paints, then do the heavy work.
+  // Double rAF is safer across browsers than a bare setTimeout(0).
+  const runWork = () => {
+    try {
+      buildFiltered(from, to);
+      const ticketQ=(document.getElementById('ticketSearch')?.value||'').trim();
+      if(ticketQ){
+        document.getElementById('bannerTicket').textContent=ticketQ;
+        document.getElementById('searchBanner').classList.add('vis');
+      } else {
+        document.getElementById('searchBanner').classList.remove('vis');
+      }
+      document.getElementById('fInfo').textContent =
+        `${from} → ${to}  ·  IT:${fmt(fIT.length)} ACK:${fmt(fAck.length)} IP:${fmt(fIP.length)} Sup:${fmt(fSup.length)} RfT:${fmt(fRfT.length)}  (${fmt(VIEW.length)}/${fmt(RAW.length)})${activeFilterSummary()}`;
+      renderAll();
+      renderSubdisp();
+      if(document.getElementById('tab3') && document.getElementById('tab3').style.display!=='none'){ try{ aiRun(); }catch(e){} }
+    } finally {
+      if(ldr && !wasActive){
+        ldr.classList.remove('active');
+        if(ldrTitle && originalTitle!=null) ldrTitle.textContent = originalTitle;
+        if(ldrMsg   && originalMsg  !=null) ldrMsg.textContent   = originalMsg;
+        if(ldrStep  && originalStep !=null) ldrStep.textContent  = originalStep;
+      }
+    }
+  };
+  if(ldr && !wasActive){
+    requestAnimationFrame(()=>requestAnimationFrame(runWork));
+  } else {
+    runWork();  // no loader shown — no reason to defer
+  }
 }
 
 // ===== TABS =====
@@ -2760,15 +2801,15 @@ function openPlanTickets2(i){ const r=_secPlanRows[i]; if(!r) return;
   _openSecModal(_allRows().filter(x=>String(x.p||'').trim()===nm), 'Plan: '+nm+' — Ticket Details'); }
 function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   if(r.isBlank){
-    _openSecModal(_allRows().filter(x=>!(x.t||'').trim() && !(x.eb||'').trim() && !(x.ts||'').trim()), 'Tester: (Blank) — Ticket Details');
+    _openSecModal(_allRows().filter(x=>!(x.t||'').trim() && !(x.eb||'').trim() && !(x.ts||'').trim() && !(x.rtg||'').trim()), 'Tester: (Blank) — Ticket Details');
     return;
   }
   const nm=r.name;
-  // renderTester counts a row across 3 different agent-fields per stage:
-  //   ACK/IP → r.t   |   LIVE → r.eb   |   SUP (Close by IT) → r.ts
-  // So the click-through must union all three so the modal count matches
-  // the sum of the row's stage columns.
-  _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
+  // renderTester counts a row across multiple agent-fields per stage:
+  //   ACK/IP → r.t   |   Ready For Testing → r.rtg   |   Close by IT → r.ts
+  // r.eb (ReadyToGoLiveBy) also included so legacy tester activity ka click bhi
+  // pura ticket set kholta hai.
+  _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.rtg===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
   // Acknowledged + In Progress pending — no date filter. Table ke ackPend + ipPend
   // columns se exactly match karta hai kyunki wo bhi _pendingSource() se hi count hote hain.
@@ -2794,9 +2835,9 @@ function renderDeveloper(){
 
   const selD=(typeof CF_STATE!=='undefined'&&CF_STATE.dev)?CF_STATE.dev:new Set();
 
-  // Unique buckets from fIP/fLive/fSup — key = name+'|'+isRM to avoid collision
+  // Unique buckets from fIP/fRfT/fSup — key = name+'|'+isRM to avoid collision
   const bucketMap = new Map();  // key -> {name, isRM}
-  [fIP,fLive,fSup].forEach(arr=>arr.forEach(r=>{
+  [fIP,fRfT,fSup].forEach(arr=>arr.forEach(r=>{
     const b=bucketOf(r); if(!b) return;
     const key=b.name+'|'+(b.isRM?'1':'0');
     if(!bucketMap.has(key)) bucketMap.set(key, b);
@@ -2826,14 +2867,14 @@ function renderDeveloper(){
     const pred = b.isRM
       ? r => !hasDev(r) && rmOf(r)===b.name
       : r => hasDev(r) && String(r.dev).trim()===b.name;
-    const ipArr=fIP.filter(pred), liveArr=fLive.filter(pred), supArr=fSup.filter(pred);
+    const ipArr=fIP.filter(pred), liveArr=fRfT.filter(pred), supArr=fSup.filter(pred);
     const rmCount={};
     [...ipArr,...liveArr,...supArr].forEach(r=>{ const rm=rmOf(r); if(rm) rmCount[rm]=(rmCount[rm]||0)+1; });
     const rms=Object.entries(rmCount).sort((a,b)=>b[1]-a[1]).map(([k])=>k);
     const bd_ = bdCounts(supArr);
     return {name:b.name, isRM:b.isRM, rms, ip:ipArr.length, ipPend:dvIpPendMap[key]||0,
       live:liveArr.length, sup:supArr.length,
-      iT:_stTat(fIP,pred,'ct'), lT:_stTat(fLive,pred,'et'), sT:_stTat(fSup,pred,'dt'),
+      iT:_stTat(fIP,pred,'ct'), lT:_stTat(fRfT,pred,'rtt'), sT:_stTat(fSup,pred,'dt'),
       supBug:bd_.bug, supDev:bd_.dev, supImp:bd_.imp, supDU:bd_.du, supOther:bd_.other};
   }
   const rows=buckets.map(buildRow).filter(r=>r.ip||r.live||r.sup)
@@ -3036,12 +3077,12 @@ function renderDisp(){
     const it   = countForCat(fIT,   c.match);
     const ack  = countForCat(fAck,  c.match);
     const ip   = countForCat(fIP,   c.match);
-    const live = countForCat(fLive, c.match);
+    const rft  = countForCat(fRfT,  c.match);   // Ready For Testing (was: Go Live)
     const sup  = countForCat(fSup,  c.match);
-    return {d:c.key, it, ack, ip, live, sup, total: it+ack+ip+live+sup};
+    return {d:c.key, it, ack, ip, rft, sup, total: it+ack+ip+rft+sup};
   }).filter(r=>r.total>0);
 
-  const tot = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
+  const tot = {it:fIT.length, ack:fAck.length, ip:fIP.length, rft:fRfT.length, sup:fSup.length};
 
   _secDispRows = rows;
   tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openDispTickets2(${i})" style="cursor:pointer" title="Click for tickets">
@@ -3049,7 +3090,7 @@ function renderDisp(){
     <td class="r dc"><span class="n-it">${fmt(r.it)}</span></td>
     <td class="r dc"><span class="n-ack">${fmt(r.ack)}</span></td>
     <td class="r dc"><span class="n-ip">${fmt(r.ip)}</span></td>
-    <td class="r dc"><span class="n-live">${fmt(r.live)}</span></td>
+    <td class="r dc"><span class="n-live">${fmt(r.rft)}</span></td>
     <td class="r dc"><span class="n-sup">${fmt(r.sup)}</span></td>
   </tr>`).join('')
   + `<tr class="total-row">
@@ -3057,7 +3098,7 @@ function renderDisp(){
     <td class="r dc"><strong class="n-it">${fmt(tot.it)}</strong></td>
     <td class="r dc"><strong class="n-ack">${fmt(tot.ack)}</strong></td>
     <td class="r dc"><strong class="n-ip">${fmt(tot.ip)}</strong></td>
-    <td class="r dc"><strong class="n-live">${fmt(tot.live)}</strong></td>
+    <td class="r dc"><strong class="n-live">${fmt(tot.rft)}</strong></td>
     <td class="r dc"><strong class="n-sup">${fmt(tot.sup)}</strong></td>
   </tr>`;
 }
@@ -3086,7 +3127,7 @@ function renderKeyLic(){
       it:   fIT.filter(pred).length,
       ack:  fAck.filter(pred).length,
       ip:   fIP.filter(pred).length,
-      live: fLive.filter(pred).length,
+      live: fRfT.filter(pred).length,   // "live" bucket now holds Ready For Testing counts
       sup:  fSup.filter(pred).length,
     };
   });
@@ -3176,13 +3217,13 @@ function renderAckBy(){
 }
 
 function renderTester(){
-  // Date-range filtered stages only: ACK / IP / Ready-to-Go-Live carry TAT,
+  // Date-range filtered stages only: ACK / IP / Ready-For-Testing carry TAT,
   // Close by IT (SUP) shows count only. Each stage array already has unique tickets.
   const namedSet = new Set([
     ...fAck.filter(r=>r.t).map(r=>r.t),
     ...fIP.filter(r=>r.t).map(r=>r.t),
     ...fSup.filter(r=>r.ts).map(r=>r.ts),
-    ...fLive.filter(r=>r.eb).map(r=>r.eb),
+    ...fRfT.filter(r=>r.rtg).map(r=>r.rtg),   // Ready For Testing → ReadyForTestingBy (rtg)
   ]);
   // Per-stage TAT counts for a predicate
   function stTat(arr, pred, key){
@@ -3190,20 +3231,20 @@ function renderTester(){
     arr.forEach(r=>{ if(!pred(r)) return; if(r[key]==='I') inC++; else if(r[key]==='O') outC++; });
     return { inC, outC };
   }
-  function buildRow(name, pred, predLive, predSup){
+  function buildRow(name, pred, predRfT, predSup){
     predSup = predSup || pred;
     const ackArr  = fAck.filter(pred);
     const ipArr   = fIP.filter(pred);
-    const liveArr = fLive.filter(predLive);
+    const liveArr = fRfT.filter(predRfT);      // fRfT + rtg tester matcher
     const supArr  = fSup.filter(predSup);
     const ack  = ackArr.length;
     const ip   = ipArr.length;
     const live = liveArr.length;
     const sup  = supArr.length;
-    const aT = stTat(fAck,  pred,     'bt');
-    const iT = stTat(fIP,   pred,     'ct');
-    const lT = stTat(fLive, predLive, 'et');
-    const sT = stTat(fSup,  predSup,  'dt');
+    const aT = stTat(fAck, pred,    'bt');
+    const iT = stTat(fIP,  pred,    'ct');
+    const lT = stTat(fRfT, predRfT, 'rtt');    // TAT flag for RfT is rtt (was: et)
+    const sT = stTat(fSup, predSup, 'dt');
     const ackBug  = ackArr.filter(isBug).length,  ackDev  = ackArr.filter(isDev).length;
     const ipBug   = ipArr.filter(isBug).length,   ipDev   = ipArr.filter(isDev).length;
     const liveBug = liveArr.filter(isBug).length, liveDev = liveArr.filter(isDev).length;
@@ -3218,27 +3259,27 @@ function renderTester(){
   const selT = (typeof CF_STATE!=='undefined' && CF_STATE.tester) ? CF_STATE.tester : new Set();
   if(selT.size) names = names.filter(n=>selT.has(n));
   const rows = names
-    .map(name=>buildRow(name, r=>r.t===name, r=>r.eb===name, r=>r.ts===name))
+    .map(name=>buildRow(name, r=>r.t===name, r=>r.rtg===name, r=>r.ts===name))
     .filter(r=>r.ack||r.ip||r.live||r.sup)
     .sort((a,b)=> b.sup !== a.sup ? b.sup - a.sup : (b.ack+b.ip+b.live)-(a.ack+a.ip+a.live));
 
   // (Blank) row for unassigned tickets — Total KPI se match rahe
   if(!selT.size){
-    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.eb, r=>!r.ts);
+    const bRow = buildRow('(Blank)', r=>!r.t, r=>!r.rtg, r=>!r.ts);
     if(bRow.ack||bRow.ip||bRow.live||bRow.sup){ bRow.isBlank = true; rows.push(bRow); }
   }
 
   // Totals: bina filter = KPI match; tester filter active = sirf selected testers ka sum
-  const tPred  = selT.size ? (r=>selT.has(r.t))  : (()=>true);
-  const tPredL = selT.size ? (r=>selT.has(r.eb)) : (()=>true);
-  const tPredS = selT.size ? (r=>selT.has(r.ts)) : (()=>true);
+  const tPred  = selT.size ? (r=>selT.has(r.t))   : (()=>true);
+  const tPredR = selT.size ? (r=>selT.has(r.rtg)) : (()=>true);
+  const tPredS = selT.size ? (r=>selT.has(r.ts))  : (()=>true);
   const totAck = selT.size ? fAck.filter(tPred).length   : fAck.length;
   const totIP  = selT.size ? fIP.filter(tPred).length    : fIP.length;
-  const totLive= selT.size ? fLive.filter(tPredL).length : fLive.length;
+  const totLive= selT.size ? fRfT.filter(tPredR).length  : fRfT.length;
   const totSup = selT.size ? fSup.filter(tPredS).length  : fSup.length;
   const TaT = stTat(fAck, tPred,  'bt');
   const TiT = stTat(fIP,  tPred,  'ct');
-  const TlT = stTat(fLive,tPredL, 'et');
+  const TlT = stTat(fRfT, tPredR, 'rtt');
   const TsT = stTat(fSup, tPredS, 'dt');
   const sumBug = rows.reduce((s,r)=>s+r.bug,0), sumDev = rows.reduce((s,r)=>s+r.dev,0);
   const namedRows = rows.filter(r=>!r.isBlank);
@@ -3301,7 +3342,7 @@ function renderRM(){
   // namedRMs = RMs from date-range activity + RMs of ANY currently-pending (AK/IP) ticket.
   // Isse jis RM ke sirf purane pending tickets hain, wo bhi row me aayenge.
   const namedRMs = [...new Set([
-    ...fAck, ...fIP, ...fLive, ...fSup, ...fIT,
+    ...fAck, ...fIP, ...fRfT, ...fSup, ...fIT,
     ..._pendingSource().filter(r => r.sc==='AK' || r.sc==='IP')
   ].filter(hasRM).map(r=>r.r))];
   // Pending counts — NO date filter. Jitne bhi tickets ka current status
@@ -3322,7 +3363,7 @@ function renderRM(){
     const pred = r=>r.r===name;
     const ackArr  = fAck.filter(pred);
     const ipArr   = fIP.filter(pred);
-    const liveArr = fLive.filter(pred);
+    const liveArr = fRfT.filter(pred);
     const supArr  = fSup.filter(pred);
     const ack  = ackArr.length;
     const ip   = ipArr.length;
@@ -3330,7 +3371,7 @@ function renderRM(){
     const sup  = supArr.length;
     const aT = stTat(fAck,  pred, 'bt');
     const iT = stTat(fIP,   pred, 'ct');
-    const lT = stTat(fLive, pred, 'et');
+    const lT = stTat(fRfT,  pred, 'rtt');
     const sT = stTat(fSup,  pred, 'dt');
     const ackBug  = ackArr.filter(isBug).length,  ackDev  = ackArr.filter(isDev).length;
     const ipBug   = ipArr.filter(isBug).length,   ipDev   = ipArr.filter(isDev).length;
@@ -3345,10 +3386,10 @@ function renderRM(){
 
   // Totals = sirf RM-wale tickets ke counts (KPI totals se alag ho sakte hain)
   const totAck = fAck.filter(hasRM).length, totIP  = fIP.filter(hasRM).length;
-  const totLive= fLive.filter(hasRM).length, totSup = fSup.filter(hasRM).length;
+  const totLive= fRfT.filter(hasRM).length, totSup = fSup.filter(hasRM).length;
   const TaT = stTat(fAck,  hasRM, 'bt');
   const TiT = stTat(fIP,   hasRM, 'ct');
-  const TlT = stTat(fLive, hasRM, 'et');
+  const TlT = stTat(fRfT,  hasRM, 'rtt');
   const TsT = stTat(fSup,  hasRM, 'dt');
   // Totals bhi ab fAck/fIP subset se — column-wise sum se match karega
   const totAckPend = fAck.filter(r=>r.sc==='AK' && r.r && String(r.r).trim()).length;
