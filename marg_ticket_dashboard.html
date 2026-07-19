@@ -2673,25 +2673,20 @@ let _secFilter='all', _smfTester='', _smfRM='', _smfDev='', _smfStatus='';
 // New — multi-stage date filter mode state
 let _modalEntityMatch=null, _modalUseDates=false, _modalFrom='', _modalTo='';
 
-// Multi-stage date filter for modals.
-// A ticket qualifies if EITHER its current status is Ready For Testing
-// (no date check) OR at least one of these 9 stage dates falls in [from, to]:
-//   a=TransferToIT, b=Acknowledge, c=InProgress, crd=CodeReview,
-//   mgd=Merging, uad=UAT, e=ReadyToGoLive, d=TransferToSupport, rod=Reopen
-// Excluded intentionally: rtd (Ready For Testing date — covered by sc==='RT'),
-// cld (Close date), rjd (Rejected date), fdd (Future Development date).
-function inMultiStageRange(r, from, to){
+// Date filter for section modals.
+// A ticket qualifies if its TransferToIT date (r.a) falls in [from, to].
+// (No stage-count OR check, no RT-bypass — per user request 2026-07-19.)
+// If both from AND to are empty → no filter, all pass.
+function inTransferToITRange(r, from, to){
   if(!from && !to) return true;
-  if(r.sc === 'RT') return true;
-  const dates = [r.a, r.b, r.c, r.crd, r.mgd, r.uad, r.e, r.d, r.rod];
-  return dates.some(d => d && inRange(d, from, to));
+  return !!r.a && inRange(r.a, from, to);
 }
 
 function _computeMultiStageData(){
   if(!_modalEntityMatch) return _modalData;
   return _pendingSource()
     .filter(_modalEntityMatch)
-    .filter(r => inMultiStageRange(r, _modalFrom, _modalTo));
+    .filter(r => inTransferToITRange(r, _modalFrom, _modalTo));
 }
 
 function onModalDateChange(){
@@ -2703,6 +2698,19 @@ function onModalDateChange(){
   _modalData = _computeMultiStageData();
   window._modalShown = _modalData;
   // Re-render chips + dropdowns for new data, preserving selected filters where possible
+  _renderModalHeader();
+  applySecFilters();
+}
+
+function onModalDateClear(){
+  _modalFrom = ''; _modalTo = '';
+  const fromEl = document.getElementById('modalDateFrom');
+  const toEl   = document.getElementById('modalDateTo');
+  if(fromEl) fromEl.value = '';
+  if(toEl)   toEl.value   = '';
+  if(!_modalEntityMatch) return;
+  _modalData = _computeMultiStageData();
+  window._modalShown = _modalData;
   _renderModalHeader();
   applySecFilters();
 }
@@ -2806,15 +2814,17 @@ function _renderModalHeader(){
   const statusDrop = `<select onchange="onSecDrop('status',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:170px">
     <option value="">Status (all)</option>${statusOpts.map(o=>{const s=_smfStatus===o.v?' selected':'';return `<option value="${o.v}"${s}>${o.lbl}</option>`;}).join('')}</select>`;
 
-  // ── Multi-stage date range pickers (only when opts.useMultiStageDates) ──
-  // Ticket qualifies if ANY of 9 stage dates (Ack/IP/CR/MG/UA/Live/Sup/Reopen/IT)
-  // falls in range, OR its current status is Ready For Testing.
+  // ── Date range picker (only when opts.useMultiStageDates) ──
+  // Filters modal tickets by whether their TransferToIT date (r.a) falls in
+  // the selected range. Apply button commits changes; Clear resets the range.
   const dateInputs = _modalUseDates ? `
     <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
-    <span style="font-size:10px;color:var(--muted);align-self:center;font-weight:600;letter-spacing:.5px" title="Ticket shown if any stage date (IT/Ack/IP/CR/MG/UA/Live/Sup/Reopen) is in range, or current status is Ready For Testing.">MULTI-STAGE DATE:</span>
-    <input type="date" id="modalDateFrom" value="${_modalFrom||''}" onchange="onModalDateChange()" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+    <span style="font-size:10px;color:var(--muted);align-self:center;font-weight:600;letter-spacing:.5px" title="Filter tickets by TransferToIT date. Change dates and click Apply.">TRANSFER TO IT DATE:</span>
+    <input type="date" id="modalDateFrom" value="${_modalFrom||''}" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
     <span style="align-self:center;color:var(--muted);font-size:11px">→</span>
-    <input type="date" id="modalDateTo" value="${_modalTo||''}" onchange="onModalDateChange()" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+    <input type="date" id="modalDateTo" value="${_modalTo||''}" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+    <button onclick="onModalDateChange()" style="height:26px;padding:0 12px;font-size:10px;font-family:inherit;font-weight:700;letter-spacing:.5px;color:#fff;background:var(--brand);border:0;border-radius:8px;cursor:pointer;">APPLY</button>
+    <button onclick="onModalDateClear()" title="Clear the date range" style="height:26px;padding:0 10px;font-size:10px;font-family:inherit;font-weight:600;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:8px;cursor:pointer;">CLEAR</button>
   ` : '';
 
   document.getElementById('modalStats').innerHTML=`
@@ -2842,7 +2852,7 @@ function _openSecModal(data, title, opts){
   if(_modalEntityMatch){
     data = _pendingSource()
       .filter(_modalEntityMatch)
-      .filter(r => inMultiStageRange(r, _modalFrom, _modalTo));
+      .filter(r => inTransferToITRange(r, _modalFrom, _modalTo));
   }
   _modalKey=null; _modalData=data; _secFilter='all';
   _smfTester=''; _smfRM=''; _smfDev=''; _smfStatus='';
