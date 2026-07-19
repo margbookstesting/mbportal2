@@ -1420,7 +1420,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r it-h" rowspan="2">Transfer to IT</th>
               <th class="r ack-h" rowspan="2">Acknowledge</th>
               <th class="r ip-h" rowspan="2">In Progress</th>
-              <th class="r live-h" rowspan="2">Go Live</th>
+              <th class="r live-h" rowspan="2">Ready For Testing</th>
               <th class="r sup-h" rowspan="2">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
@@ -1460,7 +1460,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r it-h" rowspan="2">Transfer to IT</th>
               <th class="r ack-h" rowspan="2">Acknowledge</th>
               <th class="r ip-h" rowspan="2">In Progress</th>
-              <th class="r live-h" rowspan="2">Go Live</th>
+              <th class="r live-h" rowspan="2">Ready For Testing</th>
               <th class="r sup-h" rowspan="2">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
               <th rowspan="2">Distribution</th>
@@ -1499,7 +1499,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th rowspan="2">Disposition</th>
               <th colspan="3" class="th-grp ack-h">Acknowledge</th>
               <th colspan="3" class="th-grp ip-h">In Progress</th>
-              <th colspan="3" class="th-grp live-h">Ready to Go Live</th>
+              <th colspan="3" class="th-grp live-h">Ready For Testing</th>
               <th colspan="3" class="th-grp sup-h">Close by IT</th>
               <th colspan="5" class="th-grp" style="color:#dc2626;background:#fff1f2;border-left:2px solid #fca5a5">Bug / Dev / Others (Closed)</th>
             </tr>
@@ -2620,13 +2620,13 @@ function renderSubdisp(){
   if(!tbody) return;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
   const nameSet = new Set();
-  [fAck,fIP,fLive,fSup].forEach(arr=>arr.forEach(r=>nameSet.add(keyOf(r))));
+  [fAck,fIP,fRfT,fSup].forEach(arr=>arr.forEach(r=>nameSet.add(keyOf(r))));
   function buildRow(name){
     const pred = r => keyOf(r)===name;
-    const ackArr=fAck.filter(pred), ipArr=fIP.filter(pred), liveArr=fLive.filter(pred), supArr=fSup.filter(pred);
+    const ackArr=fAck.filter(pred), ipArr=fIP.filter(pred), liveArr=fRfT.filter(pred), supArr=fSup.filter(pred);
     const supBd = bdCounts(supArr);
     return { name, ack:ackArr.length, ip:ipArr.length, live:liveArr.length, sup:supArr.length,
-      aT:_stTat(fAck,pred,'bt'), iT:_stTat(fIP,pred,'ct'), lT:_stTat(fLive,pred,'et'), sT:_stTat(fSup,pred,'dt'),
+      aT:_stTat(fAck,pred,'bt'), iT:_stTat(fIP,pred,'ct'), lT:_stTat(fRfT,pred,'rtt'), sT:_stTat(fSup,pred,'dt'),
       supBug:supBd.bug, supDev:supBd.dev, supImp:supBd.imp, supDU:supBd.du, supOther:supBd.other };
   }
   const rows = [...nameSet].map(buildRow).filter(r=>r.ack||r.ip||r.live||r.sup)
@@ -3465,7 +3465,8 @@ function renderClients(){
   fIT.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].it++; });
   fAck.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].ack++; });
   fIP.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].ip++; });
-  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].live++; });
+  fLive.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); });   // Kept so seed captures licences that touched Live only (no double-count of live column below)
+  fRfT.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].live++; });   // "live" bucket now holds Ready For Testing counts
   fSup.filter(r=>r.l&&r.l!==0).forEach(r=>{ seed(r); licMap[r.l].sup++; });
 
   const top10 = Object.values(licMap).sort((a,b)=> b.it!==a.it ? b.it-a.it : (b.ip+b.live+b.sup+b.ack)-(a.ip+a.live+a.sup+a.ack)).slice(0,10);
@@ -3512,8 +3513,8 @@ function renderClients(){
 
 // ===== PLAN TABLE =====
 function renderPlan(){
-  // Get all unique named plans
-  const namedPlans = [...new Set([...fIT,...fAck,...fIP,...fLive,...fSup]
+  // Get all unique named plans — include fRfT so plans with only currently-RfT tickets appear
+  const namedPlans = [...new Set([...fIT,...fAck,...fIP,...fRfT,...fSup]
     .filter(r=>r.p && String(r.p).trim()).map(r=>r.p))];
 
   function planStats(pred){
@@ -3526,7 +3527,7 @@ function renderPlan(){
     it:   fIT.filter(r=>r.p===p).length,
     ack:  fAck.filter(r=>r.p===p).length,
     ip:   fIP.filter(r=>r.p===p).length,
-    live: fLive.filter(r=>r.p===p).length,
+    live: fRfT.filter(r=>r.p===p).length,   // "live" bucket now shows Ready For Testing
     sup:  fSup.filter(r=>r.p===p).length,
     ...planStats(r=>r.p===p),
   })).sort((a,b)=>b.it-a.it);
@@ -3535,14 +3536,14 @@ function renderPlan(){
   const blankIT   = fIT.filter(r=>!r.p||!String(r.p).trim()).length;
   const blankAck  = fAck.filter(r=>!r.p||!String(r.p).trim()).length;
   const blankIP   = fIP.filter(r=>!r.p||!String(r.p).trim()).length;
-  const blankLive = fLive.filter(r=>!r.p||!String(r.p).trim()).length;
+  const blankLive = fRfT.filter(r=>!r.p||!String(r.p).trim()).length;   // now Ready For Testing
   const blankSup  = fSup.filter(r=>!r.p||!String(r.p).trim()).length;
   if(blankIT||blankAck||blankIP||blankLive||blankSup)
     rows.push({p:'(Blank)', it:blankIT, ack:blankAck, ip:blankIP, live:blankLive, sup:blankSup,
       ...planStats(r=>!r.p||!String(r.p).trim()), isBlank:true});
 
   // Grand Total must match KPI counts exactly
-  const pTotals = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fLive.length, sup:fSup.length};
+  const pTotals = {it:fIT.length, ack:fAck.length, ip:fIP.length, live:fRfT.length, sup:fSup.length};
   const totalIT = fIT.length||1;
   const namedRows = rows.filter(r=>!r.isBlank);
   const tbody = document.querySelector('#tPlan tbody');
