@@ -1099,6 +1099,37 @@ td.grp-l { border-left:1px solid var(--border); }
 .tl-tat.in{background:#dcfce7;color:#059669}
 .tl-tat.out{background:#fee2e2;color:#dc2626}
 .tl-tat.none{background:#f1f5f9;color:#94a3b8}
+
+/* ═════════════════════════════════════════════════════════════════
+   ANALYST THEME (hardcoded default via body[data-theme="analyst"])
+   Dense info, small type, prominent gridlines, monospace numbers.
+   Grid lines darkened for stronger separation between rows/cells.
+   ═════════════════════════════════════════════════════════════════ */
+body[data-theme="analyst"]{
+  --bg:       #FCFCFD;
+  --surface:  #FFFFFF;
+  --s2:       #F9FAFB;
+  --border:   #D1D5DB;
+  --border2:  #9CA3AF;
+  --text:     #111827;
+  --text2:    #374151;
+  --muted:    #6B7280;
+  --muted2:   #9CA3AF;
+  --r: 6px; --r2: 4px;
+  --sh-s: none;
+  --sh-m: 0 1px 3px rgba(0,0,0,.04);
+  --sh-l: 0 4px 12px rgba(0,0,0,.08);
+}
+body[data-theme="analyst"] .kpi-card{ border:1px solid #D1D5DB; box-shadow:none; border-radius:6px; }
+body[data-theme="analyst"] .kpi-card:hover{ border-color:#6B7280; box-shadow:0 2px 6px rgba(0,0,0,.06); transform:none; }
+body[data-theme="analyst"] .kpi-body{ padding:8px 10px !important; }
+body[data-theme="analyst"] .kpi-num{ font-size:22px !important; font-family:'JetBrains Mono','SF Mono',monospace; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+body[data-theme="analyst"] .kpi-stage{ font-size:8.5px !important; letter-spacing:.8px !important; }
+body[data-theme="analyst"] .kpi-top{ height:2px !important; }
+body[data-theme="analyst"] table{ border-collapse:collapse; font-size:10.5px; }
+body[data-theme="analyst"] th{ background:#F3F4F6 !important; border:1px solid #9CA3AF !important; padding:4px 8px !important; font-size:10px !important; letter-spacing:.4px; color:#374151; }
+body[data-theme="analyst"] td{ border:1px solid #D1D5DB !important; padding:4px 8px !important; font-variant-numeric:tabular-nums; }
+body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1116,7 +1147,7 @@ td.grp-l { border-left:1px solid var(--border); }
 .sd-total td{font-weight:800;background:#f0fdfa;border-top:2px solid #99f6e4;color:#0f172a}
 </style>
 </head>
-<body>
+<body data-theme="analyst">
 
 <!-- ████ TOP BAR ████ -->
 <header class="topbar">
