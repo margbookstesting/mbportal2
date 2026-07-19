@@ -2662,13 +2662,50 @@ function openSubdispTickets(i){
   const row=_subdispRows[i]; if(!row) return;
   const name=row.name;
   const keyOf = r => (r.subDisp && String(r.subDisp).trim()) ? String(r.subDisp).trim() : '(No Disposition)';
-  _openSecModal(_allRows().filter(r=>keyOf(r)===name), 'Disposition: '+name+' — Ticket Details');
+  const em = r => keyOf(r) === name;
+  _openSecModal(null, 'Disposition: '+name+' — Ticket Details', { entityMatch: em, useMultiStageDates: true });
 }
 
 // ===== Generic section-row modal (Bug/Dev/Others filter) =====
 let _secDispRows=[], _secLicRows=[], _secCliRows=[], _secPlanRows=[], _secTesterRows=[], _secRMRows=[];
 function _smfTesterVal(r){ return (r.t||r.eb||r.ts||'').trim(); }
 let _secFilter='all', _smfTester='', _smfRM='', _smfDev='', _smfStatus='';
+// New — multi-stage date filter mode state
+let _modalEntityMatch=null, _modalUseDates=false, _modalFrom='', _modalTo='';
+
+// Multi-stage date filter for modals.
+// A ticket qualifies if EITHER its current status is Ready For Testing
+// (no date check) OR at least one of these 9 stage dates falls in [from, to]:
+//   a=TransferToIT, b=Acknowledge, c=InProgress, crd=CodeReview,
+//   mgd=Merging, uad=UAT, e=ReadyToGoLive, d=TransferToSupport, rod=Reopen
+// Excluded intentionally: rtd (Ready For Testing date — covered by sc==='RT'),
+// cld (Close date), rjd (Rejected date), fdd (Future Development date).
+function inMultiStageRange(r, from, to){
+  if(!from && !to) return true;
+  if(r.sc === 'RT') return true;
+  const dates = [r.a, r.b, r.c, r.crd, r.mgd, r.uad, r.e, r.d, r.rod];
+  return dates.some(d => d && inRange(d, from, to));
+}
+
+function _computeMultiStageData(){
+  if(!_modalEntityMatch) return _modalData;
+  return _pendingSource()
+    .filter(_modalEntityMatch)
+    .filter(r => inMultiStageRange(r, _modalFrom, _modalTo));
+}
+
+function onModalDateChange(){
+  const fromEl = document.getElementById('modalDateFrom');
+  const toEl   = document.getElementById('modalDateTo');
+  _modalFrom = fromEl ? fromEl.value : _modalFrom;
+  _modalTo   = toEl   ? toEl.value   : _modalTo;
+  if(!_modalEntityMatch) return;
+  _modalData = _computeMultiStageData();
+  window._modalShown = _modalData;
+  // Re-render chips + dropdowns for new data, preserving selected filters where possible
+  _renderModalHeader();
+  applySecFilters();
+}
 
 // 7 fixed disposition categories (chip filter values are `cat:<Category>`).
 // Only chips with count > 0 are rendered.
@@ -2732,11 +2769,10 @@ function setSecFilter(f){
   document.querySelectorAll('.ms-btn').forEach(el=>{const a=el.dataset.f===f;el.style.opacity=a?'1':'.45';el.style.transform=a?'scale(1.05)':'scale(1)';el.style.boxShadow=a?'0 2px 8px rgba(0,0,0,.12)':'none';el.style.cursor='pointer';});
   applySecFilters();
 }
-function _openSecModal(data, title){
-  _modalKey=null; _modalData=data; _secFilter='all';
-  _smfTester=''; _smfRM=''; _smfDev=''; _smfStatus='';
-  window._modalShown=data;
-  document.getElementById('modalTitle').textContent=title;
+// Extracted so both the initial open and onModalDateChange can re-render.
+// Uses current _modalData for chip counts + dropdown options.
+function _renderModalHeader(){
+  const data = _modalData;
 
   // ── 7 fixed disposition-category chips (non-zero only) ──
   // Clicking a chip filters the modal to that category's tickets.
@@ -2757,17 +2793,62 @@ function _openSecModal(data, title){
   const statusOpts = SUP_STATUSES.filter(s=>statusPresent[s.key]).map(s=>({v:s.key, lbl:s.label}));
   if(statusPresent['other']) statusOpts.push({v:'other', lbl:'Other'});
 
-  const drop=(type,label,vals)=>`<select onchange="onSecDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:150px">
-    <option value="">${label} (all)</option>${vals.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('')}</select>`;
+  // If a currently-selected dropdown value no longer exists in the refreshed
+  // data (e.g. after a modal-date change), clear it so the visible dropdown
+  // ("all") and the actual filter state stay in sync.
+  if(_smfTester && !testers.includes(_smfTester)) _smfTester = '';
+  if(_smfRM     && !rms.includes(_smfRM))         _smfRM     = '';
+  if(_smfDev    && !devs.includes(_smfDev))       _smfDev    = '';
+  if(_smfStatus && !statusOpts.find(s => s.v === _smfStatus)) _smfStatus = '';
+
+  const drop=(type,label,vals,selVal)=>`<select onchange="onSecDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:150px">
+    <option value="">${label} (all)</option>${vals.map(v=>{const s=selVal===v?' selected':'';return `<option value="${v.replace(/"/g,'&quot;')}"${s}>${v}</option>`;}).join('')}</select>`;
   const statusDrop = `<select onchange="onSecDrop('status',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:170px">
-    <option value="">Status (all)</option>${statusOpts.map(o=>`<option value="${o.v}">${o.lbl}</option>`).join('')}</select>`;
+    <option value="">Status (all)</option>${statusOpts.map(o=>{const s=_smfStatus===o.v?' selected':'';return `<option value="${o.v}"${s}>${o.lbl}</option>`;}).join('')}</select>`;
+
+  // ── Multi-stage date range pickers (only when opts.useMultiStageDates) ──
+  // Ticket qualifies if ANY of 9 stage dates (Ack/IP/CR/MG/UA/Live/Sup/Reopen/IT)
+  // falls in range, OR its current status is Ready For Testing.
+  const dateInputs = _modalUseDates ? `
+    <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
+    <span style="font-size:10px;color:var(--muted);align-self:center;font-weight:600;letter-spacing:.5px" title="Ticket shown if any stage date (IT/Ack/IP/CR/MG/UA/Live/Sup/Reopen) is in range, or current status is Ready For Testing.">MULTI-STAGE DATE:</span>
+    <input type="date" id="modalDateFrom" value="${_modalFrom||''}" onchange="onModalDateChange()" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+    <span style="align-self:center;color:var(--muted);font-size:11px">→</span>
+    <input type="date" id="modalDateTo" value="${_modalTo||''}" onchange="onModalDateChange()" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+  ` : '';
 
   document.getElementById('modalStats').innerHTML=`
     <span class="ms ms-total ms-btn" data-f="all" onclick="setSecFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
     ${catChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+catChips : ''}
     <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
-    ${drop('tester','Tester',testers)} ${drop('rm','RM',rms)} ${drop('dev','Developer',devs)} ${statusDrop}
+    ${drop('tester','Tester',testers,_smfTester)} ${drop('rm','RM',rms,_smfRM)} ${drop('dev','Developer',devs,_smfDev)} ${statusDrop}
+    ${dateInputs}
     <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
+}
+
+function _openSecModal(data, title, opts){
+  opts = opts || {};
+  _modalEntityMatch = opts.entityMatch || null;
+  _modalUseDates    = !!opts.useMultiStageDates;
+  // Pre-populate modal date range with dashboard's current filter (falls back
+  // to whatever inputs currently hold).
+  if(_modalUseDates){
+    _modalFrom = currentFrom || (document.getElementById('dateFrom')?.value || '');
+    _modalTo   = currentTo   || (document.getElementById('dateTo')?.value   || '');
+  } else {
+    _modalFrom = ''; _modalTo = '';
+  }
+  // If entityMatch provided, ignore `data` and derive from _pendingSource().
+  if(_modalEntityMatch){
+    data = _pendingSource()
+      .filter(_modalEntityMatch)
+      .filter(r => inMultiStageRange(r, _modalFrom, _modalTo));
+  }
+  _modalKey=null; _modalData=data; _secFilter='all';
+  _smfTester=''; _smfRM=''; _smfDev=''; _smfStatus='';
+  window._modalShown=data;
+  document.getElementById('modalTitle').textContent=title;
+  _renderModalHeader();
   renderModalTable(data);
   setTimeout(()=>setSecFilter('all'),0);
   document.getElementById('modalOverlay').classList.add('open');
@@ -2794,19 +2875,27 @@ function openDispTickets2(i){
   const cat = BD_CATEGORIES.find(c => c.key === nm);
   if(!cat){ _openSecModal([], 'Type: '+nm+' — Ticket Details'); return; }
   const title = 'Type: '+(nm==='Others'?'TBD':nm)+' — Ticket Details';
-  _openSecModal(_allRows().filter(cat.match), title);
+  _openSecModal(null, title, { entityMatch: cat.match, useMultiStageDates: true });
 }
 function openLicTickets2(i){ const r=_secLicRows[i]; if(!r) return;
-  _openSecModal(_allRows().filter(x=>String(x.l)===String(r.lic)), r.name+' ('+r.lic+') — Ticket Details'); }
+  const em = x => String(x.l)===String(r.lic);
+  _openSecModal(null, r.name+' ('+r.lic+') — Ticket Details', { entityMatch: em, useMultiStageDates: true }); }
 function openCliTickets2(i){ const r=_secCliRows[i]; if(!r) return;
-  _openSecModal(_allRows().filter(x=>String(x.l)===String(r.lic)), r.name+' — Ticket Details'); }
+  const em = x => String(x.l)===String(r.lic);
+  _openSecModal(null, r.name+' — Ticket Details', { entityMatch: em, useMultiStageDates: true }); }
 function openPlanTickets2(i){ const r=_secPlanRows[i]; if(!r) return;
-  if(r.isBlank){ _openSecModal(_allRows().filter(x=>!x.p||!String(x.p).trim()), 'Plan: (Blank) — Ticket Details'); return; }
+  if(r.isBlank){
+    const em = x => !x.p || !String(x.p).trim();
+    _openSecModal(null, 'Plan: (Blank) — Ticket Details', { entityMatch: em, useMultiStageDates: true });
+    return;
+  }
   const nm=String(r.p||'').trim();
-  _openSecModal(_allRows().filter(x=>String(x.p||'').trim()===nm), 'Plan: '+nm+' — Ticket Details'); }
+  const em = x => String(x.p||'').trim()===nm;
+  _openSecModal(null, 'Plan: '+nm+' — Ticket Details', { entityMatch: em, useMultiStageDates: true }); }
 function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   if(r.isBlank){
-    _openSecModal(_allRows().filter(x=>!(x.t||'').trim() && !(x.eb||'').trim() && !(x.ts||'').trim()), 'Tester: (Blank) — Ticket Details');
+    const em = x => !(x.t||'').trim() && !(x.eb||'').trim() && !(x.ts||'').trim();
+    _openSecModal(null, 'Tester: (Blank) — Ticket Details', { entityMatch: em, useMultiStageDates: true });
     return;
   }
   const nm=r.name;
@@ -2814,10 +2903,12 @@ function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   //   ACK/IP/Ready-For-Testing → r.t   |   Close by IT → r.ts
   // r.eb (ReadyToGoLiveBy) is also included so a click on a legacy Live-stage
   // tester still opens their full ticket set (legacy data with no rtd yet).
-  _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
+  const em = x => x.t===nm || x.eb===nm || x.ts===nm;
+  _openSecModal(null, 'Tester: '+nm+' — Ticket Details', { entityMatch: em, useMultiStageDates: true }); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
   // Acknowledged + In Progress pending — no date filter. Matches the table's
   // ackPend + ipPend columns exactly, because those are also counted from _pendingSource().
+  // Left UNCHANGED intentionally: pending-only view, no multi-stage date picker.
   const match = x => (x.r||'').trim()===r.name;
   const rows = _pendingSource().filter(x => match(x) && (x.sc==='AK' || x.sc==='IP'));
   _openSecModal(rows, 'RM: '+r.name+' — Pending Tickets'); }
@@ -2910,15 +3001,17 @@ function renderDeveloper(){
 
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
-  // Pending IP tickets — no date filter. Anything currently at IP status in
-  // _pendingSource() whose dev-name (or RM-fallback) matches — this makes the
-  // count line up with the row's ipPend column exactly.
+  // Pending AK+IP tickets — no date filter. Anything currently at AK or IP
+  // status in _pendingSource() whose dev-name (or RM-fallback) matches.
+  // Kept in sync with the plan's decision to align Developer Wise click with
+  // RM Wise click semantics (AK + IP, no date filter).
   const hasDev = r => r.dev && String(r.dev).trim();
+  const pending = r => r.sc==='AK' || r.sc==='IP';
   const pred = row.isRM
-    ? r => !hasDev(r) && ((r.r||'').trim()===row.name) && r.sc==='IP'
-    : r =>  hasDev(r) && String(r.dev).trim()===row.name && r.sc==='IP';
+    ? r => !hasDev(r) && ((r.r||'').trim()===row.name) && pending(r)
+    : r =>  hasDev(r) && String(r.dev).trim()===row.name && pending(r);
   const label = row.isRM ? ('RM (No Dev): '+row.name) : ('Developer: '+row.name);
-  _openSecModal(_pendingSource().filter(pred), label+' — Pending In Progress Tickets');
+  _openSecModal(_pendingSource().filter(pred), label+' — Pending Tickets');
 }
 
 function resetAll(){
