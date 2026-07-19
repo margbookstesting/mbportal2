@@ -2760,17 +2760,11 @@ function openTesterTickets2(i){ const r=_secTesterRows[i]; if(!r) return;
   // the sum of the row's stage columns.
   _openSecModal(_allRows().filter(x => x.t===nm || x.eb===nm || x.ts===nm), 'Tester: '+nm+' — Ticket Details'); }
 function openRMTickets2(i){ const r=_secRMRows[i]; if(!r) return;
-  // Ackowledged + In Progress pending tickets — abhi fAck/fIP subset se (Total ke andar),
-  // taaki table ke ackPend + ipPend columns se exactly match kare.
+  // Acknowledged + In Progress pending — no date filter. Table ke ackPend + ipPend
+  // columns se exactly match karta hai kyunki wo bhi _allRows() se hi count hote hain.
   const match = x => (x.r||'').trim()===r.name;
-  const rows = [
-    ...fAck.filter(x=>x.sc==='AK' && match(x)),
-    ...fIP .filter(x=>x.sc==='IP' && match(x)),
-  ];
-  // Dedup by ticket no
-  const seen=new Set(), out=[];
-  rows.forEach(x=>{ if(!seen.has(x.n)){ seen.add(x.n); out.push(x); }});
-  _openSecModal(out, 'RM: '+r.name+' — Pending Tickets'); }
+  const rows = _allRows().filter(x => match(x) && (x.sc==='AK' || x.sc==='IP'));
+  _openSecModal(rows, 'RM: '+r.name+' — Pending Tickets'); }
 
 // ===== DEVELOPER WISE (no Acknowledge column) =====
 // Fixes:
@@ -2797,11 +2791,21 @@ function renderDeveloper(){
     const key=b.name+'|'+(b.isRM?'1':'0');
     if(!bucketMap.has(key)) bucketMap.set(key, b);
   }));
+  // ALSO include buckets with only OLD pending IP tickets (outside date range).
+  // Ye zaroori hai taaki jis dev/RM ke sirf purane pending tickets hain,
+  // wo bhi row me aayen with '—' totals + real pending count.
+  _allRows().forEach(r=>{
+    if(r.sc!=='IP') return;
+    const b=bucketOf(r); if(!b) return;
+    const key=b.name+'|'+(b.isRM?'1':'0');
+    if(!bucketMap.has(key)) bucketMap.set(key, b);
+  });
 
-  // Pending count from fIP only, sc==='IP' filter — matches Total (fIP.length) semantics
+  // Pending IP count — no date filter. Har wo ticket jiska current status IP
+  // hai, apne dev/RM-fallback bucket me count hoga. Date range se independent.
   const pendKey = r => { const b=bucketOf(r); return b ? (b.name+'|'+(b.isRM?'1':'0')) : null; };
   const dvIpPendMap={};
-  fIP.forEach(r=>{ if(r.sc!=='IP') return; const k=pendKey(r); if(k) dvIpPendMap[k]=(dvIpPendMap[k]||0)+1; });
+  _allRows().forEach(r=>{ if(r.sc!=='IP') return; const k=pendKey(r); if(k) dvIpPendMap[k]=(dvIpPendMap[k]||0)+1; });
 
   let buckets=[...bucketMap.values()];
   // Dev CF filter — sirf named developer entries filter hoti hain, RM-fallback rows filter mein aa jati hain
@@ -2850,14 +2854,14 @@ function renderDeveloper(){
 
 function openDevTickets(i){
   const row=_devRows[i]; if(!row) return;
-  // Pending IP tickets ke liye: fIP (date-in-range IP entries) me se abhi bhi IP wale hi
-  // — taaki row ke ipPend column se exactly match kare.
+  // Pending IP tickets — no date filter. _allRows() se hi jo bhi currently IP hai,
+  // dev-name (ya RM-fallback) match ho — taaki row ke ipPend column se exactly match kare.
   const hasDev = r => r.dev && String(r.dev).trim();
   const pred = row.isRM
     ? r => !hasDev(r) && ((r.r||'').trim()===row.name) && r.sc==='IP'
-    : r => hasDev(r) && String(r.dev).trim()===row.name && r.sc==='IP';
+    : r =>  hasDev(r) && String(r.dev).trim()===row.name && r.sc==='IP';
   const label = row.isRM ? ('RM (No Dev): '+row.name) : ('Developer: '+row.name);
-  _openSecModal(fIP.filter(pred), label+' — Pending In Progress Tickets');
+  _openSecModal(_allRows().filter(pred), label+' — Pending In Progress Tickets');
 }
 
 function resetAll(){
@@ -3284,13 +3288,20 @@ function renderTester(){
 function renderRM(){
   // Sirf wahi tickets jinme RM assigned hai — blank/no-RM tickets is table me nahi aate
   const hasRM = r => r.r && String(r.r).trim();
-  const namedRMs = [...new Set([...fAck,...fIP,...fLive,...fSup,...fIT]
-    .filter(hasRM).map(r=>r.r))];
-  // Pending counts NOW aati hain apne apne fAck/fIP subset se (Total ke andar hi),
-  // taaki Pending kabhi Total se zyada na dikhe — Dev-wise ki tarah.
+  // namedRMs = RMs from date-range activity + RMs of ANY currently-pending (AK/IP) ticket.
+  // Isse jis RM ke sirf purane pending tickets hain, wo bhi row me aayenge.
+  const namedRMs = [...new Set([
+    ...fAck, ...fIP, ...fLive, ...fSup, ...fIT,
+    ..._allRows().filter(r => r.sc==='AK' || r.sc==='IP')
+  ].filter(hasRM).map(r=>r.r))];
+  // Pending counts — NO date filter. Jitne bhi tickets ka current status
+  // AK ya IP hai, un sabko unke RM ke count me daal do.
   const ackPendMap={}, ipPendMap={};
-  fAck.forEach(r=>{ if(r.sc!=='AK') return; const rm=r.r&&String(r.r).trim(); if(rm) ackPendMap[rm]=(ackPendMap[rm]||0)+1; });
-  fIP .forEach(r=>{ if(r.sc!=='IP') return; const rm=r.r&&String(r.r).trim(); if(rm) ipPendMap[rm] =(ipPendMap[rm] ||0)+1; });
+  _allRows().forEach(r=>{
+    const rm = r.r && String(r.r).trim(); if(!rm) return;
+    if(r.sc==='AK') ackPendMap[rm] = (ackPendMap[rm]||0)+1;
+    if(r.sc==='IP') ipPendMap[rm]  = (ipPendMap[rm] ||0)+1;
+  });
 
   function stTat(arr, pred, key){
     let inC=0, outC=0;
@@ -3319,8 +3330,8 @@ function renderRM(){
       ackPend: ackPendMap[name]||0, ipPend: ipPendMap[name]||0,
       ackBug, ackDev, ipBug, ipDev, liveBug, liveDev,
       supBug: supBd.bug, supDev: supBd.dev, supImp: supBd.imp, supDU: supBd.du, supOther: supBd.other };
-  }).filter(r=>r.ack||r.ip||r.live||r.sup)
-    .sort((a,b)=>(b.ack+b.ip+b.live+b.sup)-(a.ack+a.ip+a.live+a.sup));
+  }).filter(r=>r.ack||r.ip||r.live||r.sup||r.ackPend||r.ipPend)
+    .sort((a,b)=>(b.ack+b.ip+b.live+b.sup+b.ackPend+b.ipPend)-(a.ack+a.ip+a.live+a.sup+a.ackPend+a.ipPend));
 
   // Totals = sirf RM-wale tickets ke counts (KPI totals se alag ho sakte hain)
   const totAck = fAck.filter(hasRM).length, totIP  = fIP.filter(hasRM).length;
