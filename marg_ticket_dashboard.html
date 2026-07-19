@@ -1099,157 +1099,6 @@ td.grp-l { border-left:1px solid var(--border); }
 .tl-tat.in{background:#dcfce7;color:#059669}
 .tl-tat.out{background:#fee2e2;color:#dc2626}
 .tl-tat.none{background:#f1f5f9;color:#94a3b8}
-
-/* ═════════════════════════════════════════════════════════════════
-   THEMES
-   ═════════════════════════════════════════════════════════════════
-   Default theme = no data-theme attribute → :root variables untouched.
-   Alternate themes override variables + component styles to match the
-   aesthetic of each mockup direction. Layout structure never changes,
-   only visual language.
-   ═════════════════════════════════════════════════════════════════ */
-
-/* ─── THEME 1: BENTO ─── Modular, colorful, softer gradients, big radii */
-body[data-theme="bento"]{
-  --bg:       #FAFAFB;
-  --surface:  #FFFFFF;
-  --s2:       #F5F5F7;
-  --border:   #E5E5EA;
-  --border2:  #D1D1D6;
-  --text:     #1D1D1F;
-  --text2:    #3A3A3C;
-  --muted:    #6E6E73;
-  --muted2:   #8E8E93;
-  --r: 18px; --r2: 12px;
-  --sh-s: 0 2px 6px rgba(0,0,0,.04);
-  --sh-m: 0 6px 20px rgba(0,0,0,.06);
-  --sh-l: 0 12px 40px rgba(0,0,0,.09);
-}
-body[data-theme="bento"] .kpi-card{ border-width:0; box-shadow:0 4px 14px rgba(0,0,0,.06); }
-body[data-theme="bento"] .kpi-card:hover{ box-shadow:0 8px 28px rgba(0,0,0,.12); transform:translateY(-2px); }
-body[data-theme="bento"] .c-it   .kpi-card{ background:linear-gradient(135deg,#F0FDFA,#FFFFFF); }
-body[data-theme="bento"] .c-ack  .kpi-card{ background:linear-gradient(135deg,#F0F9FF,#FFFFFF); }
-body[data-theme="bento"] .c-ip   .kpi-card{ background:linear-gradient(135deg,#ECFDF5,#FFFFFF); }
-body[data-theme="bento"] .c-tst  .kpi-card{ background:linear-gradient(135deg,#FFFBEB,#FFFFFF); }
-body[data-theme="bento"] .c-uat  .kpi-card{ background:linear-gradient(135deg,#EEF2FF,#FFFFFF); }
-body[data-theme="bento"] .c-live .kpi-card{ background:linear-gradient(135deg,#FDF4FF,#FFFFFF); }
-body[data-theme="bento"] .c-sup  .kpi-card{ background:linear-gradient(135deg,#F0FDF4,#FFFFFF); }
-body[data-theme="bento"] .c-ret  .kpi-card{ background:linear-gradient(135deg,#ECFEFF,#FFFFFF); }
-
-/* ─── THEME 2: COMMAND CENTER ─── Dark navy, cyan accents, monospace numbers */
-body[data-theme="command"]{
-  --bg:       #0a0e14;
-  --surface:  #0f172a;
-  --s2:       #111a2e;
-  --border:   #1e293b;
-  --border2:  #334155;
-  --text:     #e2e8f0;
-  --text2:    #cbd5e1;
-  --muted:    #94a3b8;
-  --muted2:   #64748b;
-  --it:    #22d3ee; --it-l:  #082f3f;  --it-m:#0a4a67;
-  --ack:   #a78bfa; --ack-l: #241b3d;  --ack-m:#3f2f6b;
-  --ip:    #34d399; --ip-l:  #093329;  --ip-m:#0f5a49;
-  --live:  #60a5fa; --live-l:#0a2540;  --live-m:#0f3a66;
-  --tst:   #fbbf24; --tst-l: #2e2004;  --tst-m:#5a3f0a;
-  --uat:   #818cf8; --uat-l: #1c2140;  --uat-m:#2d3466;
-  --glv:   #4ade80; --glv-l: #0a2b18;  --glv-m:#124f2b;
-  --sup:   #f87171; --sup-l: #2f1010;  --sup-m:#5a1a1a;
-  --ret:   #22d3ee; --ret-l: #082f3f;  --ret-m:#0a4a67;
-  --pend:  #fb923c;
-  --sh-s: 0 0 0 1px rgba(34,211,238,.06);
-  --sh-m: 0 0 0 1px rgba(34,211,238,.1);
-  --sh-l: 0 0 0 1px rgba(34,211,238,.15);
-}
-body[data-theme="command"]{ font-family:'JetBrains Mono','SF Mono',monospace; }
-body[data-theme="command"] .kpi-num,
-body[data-theme="command"] .kpi-stage,
-body[data-theme="command"] th,
-body[data-theme="command"] .brand-name{ font-family:'JetBrains Mono','SF Mono',monospace; letter-spacing:.5px; }
-body[data-theme="command"] .kpi-card{ border-color:#1e293b; box-shadow:none; }
-body[data-theme="command"] .kpi-card:hover{ box-shadow:0 0 0 1px #22d3ee44; transform:none; }
-body[data-theme="command"] .topbar,
-body[data-theme="command"] header{ background:#0a0e14 !important; border-bottom:1px solid #1e293b; }
-body[data-theme="command"] table tr:hover td{ background:#152341 !important; }
-body[data-theme="command"] input,
-body[data-theme="command"] select,
-body[data-theme="command"] textarea{ background:#0f172a; color:#e2e8f0; border-color:#334155; }
-
-/* ─── THEME 3: EDITORIAL ─── Warm off-white, big elegant typography, hairline borders */
-body[data-theme="editorial"]{
-  --bg:       #FAF9F7;
-  --surface:  #FFFCF8;
-  --s2:       #F5F1EA;
-  --border:   #EBE4D7;
-  --border2:  #D6C9B0;
-  --text:     #1A1815;
-  --text2:    #3B342A;
-  --muted:    #8B7E6D;
-  --muted2:   #A89A83;
-  --r: 8px; --r2: 5px;
-  --sh-s: 0 1px 2px rgba(46,32,10,.04);
-  --sh-m: 0 4px 12px rgba(46,32,10,.06);
-  --sh-l: 0 12px 32px rgba(46,32,10,.08);
-}
-body[data-theme="editorial"] .kpi-card{ border:0.5px solid #EBE4D7; box-shadow:none; }
-body[data-theme="editorial"] .kpi-card:hover{ box-shadow:0 8px 24px rgba(46,32,10,.08); transform:translateY(-2px); }
-body[data-theme="editorial"] .kpi-num{ font-size:36px !important; letter-spacing:-1px !important; font-weight:400 !important; }
-body[data-theme="editorial"] .kpi-stage{ letter-spacing:1.5px !important; font-weight:500 !important; color:#8B7E6D !important; }
-body[data-theme="editorial"] .kpi-top{ opacity:.7; }
-body[data-theme="editorial"] table{ border-collapse:collapse; }
-body[data-theme="editorial"] th{ border-bottom:0.5px solid #EBE4D7; font-weight:500; letter-spacing:.6px; text-transform:uppercase; font-size:10px; color:#8B7E6D; }
-body[data-theme="editorial"] td{ border-bottom:0.5px solid #F0EBDF; }
-
-/* ─── THEME 4: ENTERPRISE ─── Clean corporate blue-slate, formal, structured */
-body[data-theme="enterprise"]{
-  --bg:       #F1F5F9;
-  --surface:  #FFFFFF;
-  --s2:       #F8FAFC;
-  --border:   #CBD5E1;
-  --border2:  #94A3B8;
-  --text:     #0F172A;
-  --text2:    #1E293B;
-  --muted:    #475569;
-  --muted2:   #64748B;
-  --r: 10px; --r2: 6px;
-  --sh-s: 0 1px 2px rgba(15,23,42,.04);
-  --sh-m: 0 4px 12px rgba(15,23,42,.06);
-  --sh-l: 0 12px 32px rgba(15,23,42,.10);
-}
-body[data-theme="enterprise"] .kpi-card{ border:1px solid #E2E8F0; box-shadow:0 1px 3px rgba(15,23,42,.05); }
-body[data-theme="enterprise"] .kpi-card:hover{ border-color:#94A3B8; box-shadow:0 8px 24px rgba(15,23,42,.08); transform:translateY(-1px); }
-body[data-theme="enterprise"] .kpi-top{ height:3px !important; }
-body[data-theme="enterprise"] table{ border-collapse:separate; border-spacing:0; }
-body[data-theme="enterprise"] th{ background:#F8FAFC !important; border-bottom:1px solid #CBD5E1 !important; text-transform:uppercase; font-size:10px; letter-spacing:.5px; color:#475569; }
-body[data-theme="enterprise"] td{ border-bottom:1px solid #F1F5F9 !important; }
-body[data-theme="enterprise"] table tr:hover td{ background:#F1F5F9 !important; }
-
-/* ─── THEME 5: ANALYST ─── Dense info, small type, gridlines, monospace numbers */
-body[data-theme="analyst"]{
-  --bg:       #FCFCFD;
-  --surface:  #FFFFFF;
-  --s2:       #F9FAFB;
-  --border:   #E5E7EB;
-  --border2:  #D1D5DB;
-  --text:     #111827;
-  --text2:    #374151;
-  --muted:    #6B7280;
-  --muted2:   #9CA3AF;
-  --r: 6px; --r2: 4px;
-  --sh-s: none;
-  --sh-m: 0 1px 3px rgba(0,0,0,.04);
-  --sh-l: 0 4px 12px rgba(0,0,0,.08);
-}
-body[data-theme="analyst"] .kpi-card{ border:1px solid #E5E7EB; box-shadow:none; border-radius:6px; }
-body[data-theme="analyst"] .kpi-card:hover{ border-color:#9CA3AF; box-shadow:0 2px 6px rgba(0,0,0,.06); transform:none; }
-body[data-theme="analyst"] .kpi-body{ padding:8px 10px !important; }
-body[data-theme="analyst"] .kpi-num{ font-size:22px !important; font-family:'JetBrains Mono','SF Mono',monospace; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
-body[data-theme="analyst"] .kpi-stage{ font-size:8.5px !important; letter-spacing:.8px !important; }
-body[data-theme="analyst"] .kpi-top{ height:2px !important; }
-body[data-theme="analyst"] table{ border-collapse:collapse; font-size:10.5px; }
-body[data-theme="analyst"] th{ background:#F9FAFB !important; border:1px solid #E5E7EB !important; padding:4px 8px !important; font-size:10px !important; letter-spacing:.4px; }
-body[data-theme="analyst"] td{ border:1px solid #F3F4F6 !important; padding:4px 8px !important; font-variant-numeric:tabular-nums; }
-body[data-theme="analyst"] table tr:hover td{ background:#FAFBFC !important; }
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1281,14 +1130,6 @@ body[data-theme="analyst"] table tr:hover td{ background:#FAFBFC !important; }
     </div>
     <div class="topbar-actions">
       <button onclick="location.href='portal.html'" style="height:32px;padding:0 16px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);">← Portal</button>
-      <select id="themeSel" onchange="applyTheme(this.value, true)" title="Change theme" style="height:32px;padding:0 24px 0 10px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22 viewBox=%220 0 10 10%22><path fill=%22%230d9488%22 d=%22M5 7L1 3h8z%22/></svg>');background-repeat:no-repeat;background-position:right 8px center;">
-        <option value="">🎨 Default</option>
-        <option value="bento">🧩 Bento</option>
-        <option value="command">🌙 Command</option>
-        <option value="editorial">📜 Editorial</option>
-        <option value="enterprise">🏢 Enterprise</option>
-        <option value="analyst">📊 Analyst</option>
-      </select>
       <button onclick="mbSignOut()" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:#e11d48;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(225,29,72,.3);">Sign Out</button>
       <div id="fetchTimeBadge" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,.18);
         border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:11px;
@@ -5089,35 +4930,7 @@ async function init(){
   backgroundFetch();
 }
 
-// ── Theme selector ──
-// Applies data-theme to <body> so CSS overrides in :style scope kick in.
-// Default theme (empty value) → no data-theme attribute → :root variables
-// unchanged, so existing dashboard looks identical.
-// Choice persists in localStorage under key 'mbTheme' (UI preference only —
-// not ticket data). Data visibility is preserved: themes only change color
-// variables, not layout or content.
-function applyTheme(name, persist){
-  const validThemes = new Set(['', 'bento', 'command', 'editorial', 'enterprise', 'analyst']);
-  if(!validThemes.has(name)) name = '';
-  if(name){ document.body.setAttribute('data-theme', name); }
-  else    { document.body.removeAttribute('data-theme'); }
-  try{
-    if(persist){
-      if(name) localStorage.setItem('mbTheme', name);
-      else     localStorage.removeItem('mbTheme');
-    }
-  }catch(e){ /* localStorage may be blocked in private mode — silently ignore */ }
-  // Sync the dropdown selection back (in case call site was outside the dropdown)
-  const sel = document.getElementById('themeSel');
-  if(sel && sel.value !== name) sel.value = name;
-}
-
 window.addEventListener('DOMContentLoaded', ()=>{
-  // Restore saved theme BEFORE init() so first render already reflects it
-  try{
-    const saved = localStorage.getItem('mbTheme');
-    if(saved) applyTheme(saved, false);
-  }catch(e){}
   init();
 });
 </script>
