@@ -679,7 +679,7 @@ tbody td.r { text-align:right; }
 .btn-mclose:hover{border-color:var(--border2);color:var(--text);}
 
 .modal-stats {
-  display:flex;gap:8px;flex-wrap:wrap;
+  display:flex;gap:8px;row-gap:6px;flex-wrap:wrap;align-items:center;
   padding:12px 20px;border-bottom:1.5px solid var(--border);
   background:var(--s2);
 }
@@ -2815,16 +2815,19 @@ function _renderModalHeader(){
     <option value="">Status (all)</option>${statusOpts.map(o=>{const s=_smfStatus===o.v?' selected':'';return `<option value="${o.v}"${s}>${o.lbl}</option>`;}).join('')}</select>`;
 
   // ── Date range picker (only when opts.useMultiStageDates) ──
-  // Filters modal tickets by whether their TransferToIT date (r.a) falls in
-  // the selected range. Apply button commits changes; Clear resets the range.
+  // Grouped in a single inline-flex "pill" so label + inputs + Apply + Clear
+  // stay together on one line (previous layout let them wrap mid-group,
+  // leaving APPLY/CLEAR orphaned on line 2).
   const dateInputs = _modalUseDates ? `
     <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
-    <span style="font-size:10px;color:var(--muted);align-self:center;font-weight:600;letter-spacing:.5px" title="Filter tickets by TransferToIT date. Change dates and click Apply.">TRANSFER TO IT DATE:</span>
-    <input type="date" id="modalDateFrom" value="${_modalFrom||''}" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
-    <span style="align-self:center;color:var(--muted);font-size:11px">→</span>
-    <input type="date" id="modalDateTo" value="${_modalTo||''}" style="height:26px;border:1px solid var(--border);border-radius:8px;padding:0 6px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
-    <button onclick="onModalDateChange()" style="height:26px;padding:0 12px;font-size:10px;font-family:inherit;font-weight:700;letter-spacing:.5px;color:#fff;background:var(--brand);border:0;border-radius:8px;cursor:pointer;">APPLY</button>
-    <button onclick="onModalDateClear()" title="Clear the date range" style="height:26px;padding:0 10px;font-size:10px;font-family:inherit;font-weight:600;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:8px;cursor:pointer;">CLEAR</button>
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 8px;background:#fff;border:1px solid var(--border);border-radius:14px;flex-shrink:0;">
+      <span style="font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.4px;white-space:nowrap;" title="Filter tickets by TransferToIT date. Change dates and click Apply.">TRANSFER TO IT DATE</span>
+      <input type="date" id="modalDateFrom" value="${_modalFrom||''}" style="height:22px;border:1px solid var(--border);border-radius:6px;padding:0 4px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+      <span style="color:var(--muted);font-size:11px;line-height:1">→</span>
+      <input type="date" id="modalDateTo" value="${_modalTo||''}" style="height:22px;border:1px solid var(--border);border-radius:6px;padding:0 4px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;">
+      <button onclick="onModalDateChange()" style="height:22px;padding:0 10px;font-size:9.5px;font-family:inherit;font-weight:700;letter-spacing:.5px;color:#fff;background:#0d9488;border:0;border-radius:6px;cursor:pointer;box-shadow:0 2px 5px rgba(13,148,136,.28);white-space:nowrap;">APPLY</button>
+      <button onclick="onModalDateClear()" title="Clear the date range" style="height:22px;padding:0 8px;font-size:9.5px;font-family:inherit;font-weight:600;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap;">CLEAR</button>
+    </div>
   ` : '';
 
   document.getElementById('modalStats').innerHTML=`
