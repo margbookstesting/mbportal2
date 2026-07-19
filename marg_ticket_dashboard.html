@@ -1099,6 +1099,74 @@ td.grp-l { border-left:1px solid var(--border); }
 .tl-tat.in{background:#dcfce7;color:#059669}
 .tl-tat.out{background:#fee2e2;color:#dc2626}
 .tl-tat.none{background:#f1f5f9;color:#94a3b8}
+
+/* ═════════ THEMES ═════════
+   Default theme = no data-theme attribute → :root variables untouched.
+   Alternate themes override only surface/text/border variables. Stage colors
+   (--it, --ack, --ip, --live, --sup, --tst, --uat, --glv) and their gradients
+   stay identical across themes so data-encoded colors remain consistent.
+   The `-l` (light bg tint) variants are gently adjusted per theme so chips
+   and pills still contrast against the theme's background. */
+
+/* Dark theme — soft dark navy, high-contrast text */
+body[data-theme="dark"]{
+  --bg:       #0b1220;
+  --surface:  #111a2e;
+  --s2:       #0f1a2f;
+  --border:   #1e2c4a;
+  --border2:  #2a3a5c;
+  --text:     #e2e8f0;
+  --text2:    #cbd5e1;
+  --muted:    #94a3b8;
+  --muted2:   #64748b;
+  --it-l:    #0e2e2c;  --it-m:#0f5851;
+  --ack-l:   #072535;  --ack-m:#0a4a67;
+  --ip-l:    #0a2e2b;  --ip-m:#0d554e;
+  --live-l:  #072033;  --live-m:#0a3a5e;
+  --sup-l:   #331010;  --sup-m:#5c1919;
+  --tst-l:   #2e2004;  --tst-m:#5a3f0a;
+  --uat-l:   #082133;  --uat-m:#0e3a5c;
+  --glv-l:   #0a2b18;  --glv-m:#124f2b;
+}
+body[data-theme="dark"] .modal-body table tr:hover td,
+body[data-theme="dark"] table tr:hover td { background:#152341 !important; }
+body[data-theme="dark"] input,
+body[data-theme="dark"] select,
+body[data-theme="dark"] textarea { background:#0f1a2f; color:#e2e8f0; border-color:#2a3a5c; }
+
+/* Sepia theme — warm off-white, muted terracotta accent */
+body[data-theme="sepia"]{
+  --bg:       #F5EFE1;
+  --surface:  #FBF7EE;
+  --s2:       #F0E9D6;
+  --border:   #E5D9BE;
+  --border2:  #D0BE97;
+  --text:     #2D2416;
+  --text2:    #574A2E;
+  --muted:    #8B7E5C;
+  --muted2:   #A89A73;
+  --it-l:    #EEF6F3;
+  --ack-l:   #EBF6F8;
+  --ip-l:    #EEF6F3;
+  --live-l:  #EEF3F7;
+  --sup-l:   #F9E9E4;
+  --tst-l:   #F9F0DE;
+  --uat-l:   #EBF3F8;
+  --glv-l:   #ECF6E9;
+}
+
+/* Slate theme — cool neutral gray, professional enterprise feel */
+body[data-theme="slate"]{
+  --bg:       #F1F5F9;
+  --surface:  #FFFFFF;
+  --s2:       #F8FAFC;
+  --border:   #CBD5E1;
+  --border2:  #94A3B8;
+  --text:     #0F172A;
+  --text2:    #334155;
+  --muted:    #64748B;
+  --muted2:   #94A3B8;
+}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1130,6 +1198,12 @@ td.grp-l { border-left:1px solid var(--border); }
     </div>
     <div class="topbar-actions">
       <button onclick="location.href='portal.html'" style="height:32px;padding:0 16px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);">← Portal</button>
+      <select id="themeSel" onchange="applyTheme(this.value, true)" title="Change theme" style="height:32px;padding:0 24px 0 10px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22 viewBox=%220 0 10 10%22><path fill=%22%230d9488%22 d=%22M5 7L1 3h8z%22/></svg>');background-repeat:no-repeat;background-position:right 8px center;">
+        <option value="">🎨 Default</option>
+        <option value="dark">🌙 Dark</option>
+        <option value="sepia">📜 Sepia</option>
+        <option value="slate">🪨 Slate</option>
+      </select>
       <button onclick="mbSignOut()" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:#e11d48;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(225,29,72,.3);">Sign Out</button>
       <div id="fetchTimeBadge" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,.18);
         border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 14px;font-size:11px;
@@ -4930,7 +5004,35 @@ async function init(){
   backgroundFetch();
 }
 
+// ── Theme selector ──
+// Applies data-theme to <body> so CSS overrides in :style scope kick in.
+// Default theme (empty value) → no data-theme attribute → :root variables
+// unchanged, so existing dashboard looks identical.
+// Choice persists in localStorage under key 'mbTheme' (UI preference only —
+// not ticket data). Data visibility is preserved: themes only change color
+// variables, not layout or content.
+function applyTheme(name, persist){
+  const validThemes = new Set(['', 'dark', 'sepia', 'slate']);
+  if(!validThemes.has(name)) name = '';
+  if(name){ document.body.setAttribute('data-theme', name); }
+  else    { document.body.removeAttribute('data-theme'); }
+  try{
+    if(persist){
+      if(name) localStorage.setItem('mbTheme', name);
+      else     localStorage.removeItem('mbTheme');
+    }
+  }catch(e){ /* localStorage may be blocked in private mode — silently ignore */ }
+  // Sync the dropdown selection back (in case call site was outside the dropdown)
+  const sel = document.getElementById('themeSel');
+  if(sel && sel.value !== name) sel.value = name;
+}
+
 window.addEventListener('DOMContentLoaded', ()=>{
+  // Restore saved theme BEFORE init() so first render already reflects it
+  try{
+    const saved = localStorage.getItem('mbTheme');
+    if(saved) applyTheme(saved, false);
+  }catch(e){}
   init();
 });
 </script>
