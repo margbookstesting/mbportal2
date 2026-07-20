@@ -583,6 +583,8 @@ const GCI_QUICK=[
   {id:'viewDataBss', label:'View Data In BSS', ic:'🗄️', icon:'ti-database',         color:'purple', v:'v-secondary', kind:'run'},
   {id:'activate',  label:'Activate',          ic:'✅', icon:'ti-circle-check',     color:'green',  v:'v-success',  kind:'confirm', cta:'success', desc:'Activate this account.'},
   {id:'deactivate',label:'Deactivate',        ic:'⛔', icon:'ti-circle-minus',     color:'red',    v:'v-danger',   kind:'confirm', cta:'danger',  desc:'Deactivate this account.'},
+  {id:'changeEmail',  label:'Change Email',   ic:'✉️', icon:'ti-mail',              color:'purple', v:'v-secondary', kind:'changeEmail',  desc:'Update the email address for this account.'},
+  {id:'changeMobile', label:'Change Mobile',  ic:'📱', icon:'ti-device-mobile',     color:'purple', v:'v-secondary', kind:'changeMobile', desc:'Update the mobile number for this account.'},
 ];
 const GCI_DBOPS=[
   {id:'repairMobileDb', label:'Repair Mobile Database', ic:'📱', icon:'ti-device-mobile', color:'red',    v:'v-danger',  kind:'confirm', cta:'danger', desc:'Run mobile database repair.'},
@@ -603,7 +605,7 @@ const GCI_DBOPS=[
 ];
 const GCI_ALL=[...GCI_QUICK,...GCI_DBOPS];
 function gciDef(id){ return GCI_ALL.find(x=>x.id===id); }
-const GCI_TOPSET=new Set(['viewPwd','syncToBI','removeCaching','activate','deactivate']);
+const GCI_TOPSET=new Set(['viewPwd','syncToBI','removeCaching','activate','deactivate','changeEmail','changeMobile']);
 function gciDbopsList(){ return GCI_DBOPS.filter(b=>!GCI_TOPSET.has(b.id)); }
 // dynamic Quick Actions list based on DB status
 function gciQuickList(){
@@ -616,6 +618,8 @@ function gciTopBarHtml(){
   if(st==='active') acts.push(gciDef('deactivate'));
   else if(st==='inactive') acts.push(gciDef('activate'));
   else { acts.push(gciDef('activate')); acts.push(gciDef('deactivate')); }
+  acts.push(gciDef('changeEmail'));
+  acts.push(gciDef('changeMobile'));
   return `<div class="gci-pinned-row">`+acts.map(b=>`<button class="abtn pl-${b.color} big" id="gtop_${b.id}" onclick="gciOnAction('${b.id}')">
     <i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('')+`</div>`;
 }
@@ -656,10 +660,11 @@ function gciOnAction(id){
   if(b.kind==='reveal'){ gciPwdDialog(); return; }
   if(b.kind==='input'){ gciOpenInput(b); return; }
   if(b.kind==='confirm'){ gciOpenConfirm(b); return; }
+  if(b.kind==='changeEmail' || b.kind==='changeMobile'){ gciOpenChangeContact(b); return; }
   gciRunAction(b);
 }
 function gciBaseParams(){ return { dbinfolinkid:GCI_REC.dbinfolinkid, userlinkid:GCI_REC.userlinkid, licenceno:GCI_REC.licenceno, emailid:GCI_REC.email }; }
-function gciSuccessMsg(b){ const m={activate:'Database Activated',deactivate:'Database Deactivated',resetPwd:'Password Reset Successfully',syncToBI:'Sync Completed',viewCompanyList:'Company List Loaded',healthProc:'Health Check Completed',viewTransaction:'Transactions Loaded',removeCaching:'Cache Cleared',companyDelete:'Company Deleted'}; return m[b.id]||(b.label+' Completed'); }
+function gciSuccessMsg(b){ const m={activate:'Database Activated',deactivate:'Database Deactivated',resetPwd:'Password Reset Successfully',syncToBI:'Sync Completed',viewCompanyList:'Company List Loaded',healthProc:'Health Check Completed',viewTransaction:'Transactions Loaded',removeCaching:'Cache Cleared',companyDelete:'Company Deleted',changeEmail:'Email Updated Successfully',changeMobile:'Mobile Number Updated Successfully'}; return m[b.id]||(b.label+' Completed'); }
 
 function gciShowLoader(t){ const el=document.getElementById('pageLoader'); if(!el) return; const tx=document.getElementById('pageLoaderText'); if(tx) tx.textContent=t||'Working…'; el.classList.add('show'); }
 function gciHideLoader(){ const el=document.getElementById('pageLoader'); if(el) el.classList.remove('show'); }
@@ -674,6 +679,7 @@ async function gciRunAction(b,extra){
     if(rerr){ gciToast(b.label+' — '+rerr,'err'); return; }
     gciToast(gciSuccessMsg(b),'ok');
     if(b.id==='activate'||b.id==='deactivate'){ await gciRefresh(); }
+    else if(b.id==='changeEmail'||b.id==='changeMobile'){ await gciRefresh(); }
     else if(b.id==='viewPwd2'){ gciPwdDialog(gciPick(out.result,['pwd2','password2','pwd','password'])); }
     else { gciShowResult(b, out.result); }
   }catch(e){ gciToast(b.label+' — '+(e.message||'failed'),'err'); }
@@ -748,6 +754,74 @@ function gciOpenInput(b){
   btn.onclick=()=>{ const v=(document.getElementById('gciCfInput').value||'').trim(); if(!v){ gciToast('New password daalo','err'); return; } gciCloseConfirm(); gciRunAction(b,{remark:v}); };
   document.getElementById('gciConfirm').classList.add('show');
   setTimeout(()=>{ const i=document.getElementById('gciCfInput'); if(i) i.focus(); },50);
+}
+
+// ── Change Email / Change Mobile modal ──
+// Old value = auto-filled read-only from GCI_REC; user types new value.
+// Submit → in-modal confirmation summary → Confirm → gciRunAction(...).
+function gciOpenChangeContact(b){
+  const isEmail = (b.kind === 'changeEmail');
+  const oldVal  = isEmail ? (GCI_REC.email || '') : (GCI_REC.mobile || '');
+  const label   = isEmail ? 'Email' : 'Mobile';
+  const icon    = isEmail ? '✉️'    : '📱';
+  const placeholder = isEmail ? 'new.email@example.com' : '10-digit mobile number';
+  const inputType   = isEmail ? 'email' : 'tel';
+  const validate    = isEmail
+    ? v => /^\S+@\S+\.\S+$/.test(v) ? null : 'Valid email daalo (name@example.com)'
+    : v => /^\d{10}$/.test(v)      ? null : 'Valid 10-digit mobile number daalo';
+
+  const dbid = GCI_REC.dbinfolinkid || '';
+  if(!dbid){ gciToast('DB Info Link ID missing — pehle "Get Details" chalao','err'); return; }
+  if(!oldVal){
+    gciToast('Current '+label.toLowerCase()+' is not available on this record — cannot change','err');
+    return;
+  }
+
+  document.getElementById('gciCfTitle').innerHTML = icon + ' ' + gciEsc(b.label);
+  document.getElementById('gciCfDesc').textContent = b.desc || '';
+
+  const renderForm = ()=>{
+    document.getElementById('gciCfBody').innerHTML = `
+      <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'—')}</span></div>
+      <div class="sum-row"><span class="sum-k">License</span><span class="sum-v">${gciEsc(GCI_REC.licenceno||'—')}</span></div>
+      <div class="sum-row"><span class="sum-k">Current ${gciEsc(label)}</span><span class="sum-v" style="font-family:monospace">${gciEsc(oldVal)}</span></div>
+      <div style="margin-top:12px;font-size:12px;color:#374151;font-weight:600">New ${gciEsc(label)}</div>
+      <input class="modal-input" id="gciCfInput" type="${inputType}" placeholder="${placeholder}" autocomplete="off"/>`;
+    const btn = document.getElementById('gciCfBtn');
+    btn.className = 'btn-cta';
+    btn.textContent = 'Continue';
+    btn.onclick = ()=>{
+      const v = (document.getElementById('gciCfInput').value||'').trim();
+      const err = validate(v);
+      if(err){ gciToast(err,'err'); return; }
+      if(v === oldVal){ gciToast('New '+label.toLowerCase()+' current jaisa hi hai','err'); return; }
+      renderConfirm(v);
+    };
+    setTimeout(()=>{ const i=document.getElementById('gciCfInput'); if(i){ i.focus(); i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); btn.click(); } }); } },50);
+  };
+
+  const renderConfirm = (newVal)=>{
+    document.getElementById('gciCfDesc').textContent = 'Please confirm this change.';
+    document.getElementById('gciCfBody').innerHTML = `
+      <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'—')}</span></div>
+      <div class="sum-row"><span class="sum-k">License</span><span class="sum-v">${gciEsc(GCI_REC.licenceno||'—')}</span></div>
+      <div class="sum-row"><span class="sum-k">Old ${gciEsc(label)}</span><span class="sum-v" style="font-family:monospace">${gciEsc(oldVal)}</span></div>
+      <div class="sum-row"><span class="sum-k">New ${gciEsc(label)}</span><span class="sum-v" style="font-family:monospace;color:#0d9488;font-weight:700">${gciEsc(newVal)}</span></div>
+      <div style="margin-top:10px;font-size:11px;color:#b45309">This will update the record on Marg. Confirm to proceed.</div>`;
+    const btn = document.getElementById('gciCfBtn');
+    btn.className = 'btn-cta';
+    btn.textContent = 'Confirm & Update';
+    btn.onclick = ()=>{
+      gciCloseConfirm();
+      const extra = isEmail
+        ? { oldEmail: oldVal, newEmail: newVal }
+        : { oldMobile: oldVal, newMobile: newVal };
+      gciRunAction(b, extra);
+    };
+  };
+
+  renderForm();
+  document.getElementById('gciConfirm').classList.add('show');
 }
 function gciCloseConfirm(){ document.getElementById('gciConfirm').classList.remove('show'); }
 function gciOpenOut(title,desc,html){ document.getElementById('gciOutTitle').innerHTML=gciEsc(title); document.getElementById('gciOutDesc').textContent=desc||''; document.getElementById('gciOutBody').innerHTML=html; document.getElementById('gciOut').classList.add('show'); }
