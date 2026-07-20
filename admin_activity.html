@@ -476,6 +476,26 @@ const GCI_COLMAP={
 // detect Marg fail even on HTTP 200 (top-level Status/Message only, to avoid data false positives)
 function gciResultError(r){
   if(!r||typeof r!=='object'||Array.isArray(r)) return null;
+
+  // Marg legacy license API shape (used by changeEmail / changeMobile etc.):
+  //   { status: { apiversion:"4.2", errorLavel:30, status:"0", error:{ message, Exception } } }
+  //   status.status === "0" (or "false"/"failed") → failure with HTTP 200
+  //   status.status === "1" (or "true"/"success") → success
+  if(r.status && typeof r.status === 'object' && !Array.isArray(r.status) && r.status.status !== undefined){
+    const inner = String(r.status.status).trim();
+    if(/^(0|false|failed|fail|error)$/i.test(inner)){
+      const err = r.status.error;
+      let msg = null;
+      if(err && typeof err === 'object'){
+        msg = err.message || err.Message || err.Exception || err.exception;
+      } else if(typeof err === 'string' && err.trim()){
+        msg = err;
+      }
+      return msg || r.status.Message || r.status.message || 'Action failed';
+    }
+    // Otherwise treat inner as success indicator — fall through in case top-level has other signals
+  }
+
   let st; for(const k of Object.keys(r)){ const lk=k.toLowerCase(); if(lk==='status'||lk==='issuccess'||lk==='success'){ st=r[k]; break; } }
   const mg=r.Message||r.message||r.msg||r.Error||r.error;
   if(typeof st==='string' && /^(fail|failed|error)$/i.test(st.trim())) return mg||'Action failed';
@@ -781,12 +801,16 @@ function gciOpenChangeContact(b){
   document.getElementById('gciCfDesc').textContent = b.desc || '';
 
   const renderForm = ()=>{
+    // Mobile input: hard-cap at 10 digits, numeric keyboard on mobile devices,
+    // strip anything non-numeric as user types or pastes.
+    const extraAttrs = isEmail ? '' :
+      `maxlength="10" inputmode="numeric" pattern="\\d{10}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)"`;
     document.getElementById('gciCfBody').innerHTML = `
       <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'—')}</span></div>
       <div class="sum-row"><span class="sum-k">License</span><span class="sum-v">${gciEsc(GCI_REC.licenceno||'—')}</span></div>
       <div class="sum-row"><span class="sum-k">Current ${gciEsc(label)}</span><span class="sum-v" style="font-family:monospace">${gciEsc(oldVal)}</span></div>
       <div style="margin-top:12px;font-size:12px;color:#374151;font-weight:600">New ${gciEsc(label)}</div>
-      <input class="modal-input" id="gciCfInput" type="${inputType}" placeholder="${placeholder}" autocomplete="off"/>`;
+      <input class="modal-input" id="gciCfInput" type="${inputType}" placeholder="${placeholder}" autocomplete="off" ${extraAttrs}/>`;
     const btn = document.getElementById('gciCfBtn');
     btn.className = 'btn-cta';
     btn.textContent = 'Continue';
