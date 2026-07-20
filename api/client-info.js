@@ -35,7 +35,16 @@ const GW     = 'https://gateway6.margbooks.com/v4.2';
 // Legacy license API (query-param + static key, no Bearer token).
 // Used for Change Email / Change Mobile.
 const LICENSE_BASE       = process.env.MARG_LICENSE_BASE       || 'https://license.margbooks.com';
-const KEY_LICENSE_CHANGE = process.env.MARG_LICENSE_CHANGE_KEY || '!2645^5$ret$38$rt';
+const KEY_LICENSE_CHANGE = process.env.MARG_LICENSE_CHANGE_KEY || '!2645^5$ret$38^rt';
+// Marg legacy API is strict about URL encoding — it rejects the raw '!' that
+// encodeURIComponent leaves unencoded per RFC 3986. Pre-encode the key once
+// with an RFC 3986-strict transform (also handles '() * for completeness).
+const KEY_LICENSE_CHANGE_ENC = encodeURIComponent(KEY_LICENSE_CHANGE)
+  .replace(/!/g,  '%21')
+  .replace(/'/g,  '%27')
+  .replace(/\(/g, '%28')
+  .replace(/\)/g, '%29')
+  .replace(/\*/g, '%2A');
 
 // URL-encode a plain object into a query-string
 function qs(obj){
@@ -74,10 +83,11 @@ const ACTIONS = {
   activate:        p => ({ url: `${DBWORK}/api/DataBaseActivity/AccountActive`, body: { dbinfolinkid: p.dbinfolinkid, userlinkid: p.userlinkid, type: 2, useremailid: OPERATOR } }),
   deactivate:      p => ({ url: `${DBWORK}/api/DataBaseActivity/AccountActive`, body: { dbinfolinkid: p.dbinfolinkid, userlinkid: p.userlinkid, type: 3, useremailid: OPERATOR } }),
 
-  // Legacy license API — GET-style with query params + static key (not Bearer)
+  // Legacy license API — GET-style with query params + static key (not Bearer).
+  // Key is inlined (already strictly encoded) to bypass qs()'s Node-default
+  // encodeURIComponent which would leave '!' unencoded — Marg rejects raw '!'.
   changeEmail:  p => ({
-    url: `${LICENSE_BASE}/MargBookBSS/changeEmailID?` + qs({
-      key: KEY_LICENSE_CHANGE,
+    url: `${LICENSE_BASE}/MargBookBSS/changeEmailID?key=${KEY_LICENSE_CHANGE_ENC}&` + qs({
       oldEmailId:   p.oldEmail  || p.emailid || '',
       newEmailID:   p.newEmail  || '',
       dbInfolinkid: p.dbinfolinkid || '',
@@ -85,8 +95,7 @@ const ACTIONS = {
     legacy: true,
   }),
   changeMobile: p => ({
-    url: `${LICENSE_BASE}/MargBookBSS/changeMobileNo?` + qs({
-      key: KEY_LICENSE_CHANGE,
+    url: `${LICENSE_BASE}/MargBookBSS/changeMobileNo?key=${KEY_LICENSE_CHANGE_ENC}&` + qs({
       oldPhoneNo:   p.oldMobile || '',
       newPhoneNo:   p.newMobile || '',
       EmailId:      p.emailid   || '',
