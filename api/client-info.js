@@ -32,6 +32,19 @@ const KEY_ITEM       = process.env.MARG_ITEM_KEY  || '74287673';
 const DBWORK = 'https://dbwork.margbooks.com';
 const GW     = 'https://gateway6.margbooks.com/v4.2';
 
+// Legacy license API (query-param + static key, no Bearer token).
+// Used for Change Email / Change Mobile.
+const LICENSE_BASE       = process.env.MARG_LICENSE_BASE       || 'https://license.margbooks.com';
+const KEY_LICENSE_CHANGE = process.env.MARG_LICENSE_CHANGE_KEY || '!2645^5$ret$38$rt';
+
+// URL-encode a plain object into a query-string
+function qs(obj){
+  return Object.entries(obj)
+    .filter(([_,v]) => v !== undefined && v !== null)
+    .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+}
+
 // ── Marg endpoint + body builder per action ────────────────────────────────
 // commonreports helper
 function cr(p, type, actiontype, extra) {
@@ -60,6 +73,27 @@ const ACTIONS = {
   syncToBI:        p => ({ url: `${DBWORK}/biDataSync/syncallusersid`, body: { userlinkid: p.userlinkid, licenceno: String(p.licenceno || '') } }),
   activate:        p => ({ url: `${DBWORK}/api/DataBaseActivity/AccountActive`, body: { dbinfolinkid: p.dbinfolinkid, userlinkid: p.userlinkid, type: 2, useremailid: OPERATOR } }),
   deactivate:      p => ({ url: `${DBWORK}/api/DataBaseActivity/AccountActive`, body: { dbinfolinkid: p.dbinfolinkid, userlinkid: p.userlinkid, type: 3, useremailid: OPERATOR } }),
+
+  // Legacy license API — GET-style with query params + static key (not Bearer)
+  changeEmail:  p => ({
+    url: `${LICENSE_BASE}/MargBookBSS/changeEmailID?` + qs({
+      key: KEY_LICENSE_CHANGE,
+      oldEmailId:   p.oldEmail  || p.emailid || '',
+      newEmailID:   p.newEmail  || '',
+      dbInfolinkid: p.dbinfolinkid || '',
+    }),
+    legacy: true,
+  }),
+  changeMobile: p => ({
+    url: `${LICENSE_BASE}/MargBookBSS/changeMobileNo?` + qs({
+      key: KEY_LICENSE_CHANGE,
+      oldPhoneNo:   p.oldMobile || '',
+      newPhoneNo:   p.newMobile || '',
+      EmailId:      p.emailid   || '',
+      dbInfolinkid: p.dbinfolinkid || '',
+    }),
+    legacy: true,
+  }),
 
   // Database operations
   repairMobileDb:     p => ({ url: `${GW}/LoginUser/AlterDatabaseMobile`, body: { dbinfolinkid: p.dbinfolinkid, type: 3 } }),
@@ -151,6 +185,21 @@ async function callMarg(token, url, body) {
   return { status: r.status, ok: r.ok, data };
 }
 
+// Legacy Marg license API (GET, no Bearer, key already in query string).
+// Used for changeEmail / changeMobile.
+async function callMargLegacy(url) {
+  const r = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36',
+    },
+  });
+  const text = await r.text();
+  let data; try { data = text ? JSON.parse(text) : text; } catch { data = text; }
+  return { status: r.status, ok: r.ok, data };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!SERVICE_KEY) return res.status(500).json({ error: 'Server not configured: SUPABASE_SERVICE_KEY missing' });
@@ -182,15 +231,32 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Pehle "Get Details" chalao (record load karo)' });
   if (action === 'resetPwd' && !String(body.remark || '').trim())
     return res.status(400).json({ error: 'New password daalo' });
+  if (action === 'changeEmail'){
+    if (!String(body.newEmail||'').trim())   return res.status(400).json({ error: 'New email daalo' });
+    if (!String(body.oldEmail||'').trim())   return res.status(400).json({ error: 'Current email is missing on this record' });
+  }
+  if (action === 'changeMobile'){
+    if (!String(body.newMobile||'').trim())  return res.status(400).json({ error: 'New mobile number daalo' });
+    if (!String(body.oldMobile||'').trim())  return res.status(400).json({ error: 'Current mobile is missing on this record' });
+  }
 
-  const { url, body: mbody } = builder(body);
+  const built = builder(body);
+  const { url, body: mbody, legacy } = built;
+
+  let r;
+  // Legacy license API path — GET with query-string key, no Bearer token, no retry.
+  if (legacy) {
+    try { r = await callMargLegacy(url); }
+    catch (e) { return res.status(502).json({ error: 'Marg API reach nahi hui: ' + (e.message || String(e)) }); }
+    if (!r.ok) return res.status(502).json({ error: 'Marg API error', upstreamStatus: r.status, upstream: r.data });
+    return res.status(200).json({ ok: true, action, result: r.data });
+  }
 
   // 4) Token -> call -> 401/403 par ek baar re-login + retry
   let mtok;
   try { mtok = await getMargToken(false); }
   catch (e) { return res.status(500).json({ error: e.message || String(e) }); }
 
-  let r;
   try { r = await callMarg(mtok, url, mbody); }
   catch (e) { return res.status(502).json({ error: 'Marg API reach nahi hui: ' + (e.message || String(e)) }); }
 
