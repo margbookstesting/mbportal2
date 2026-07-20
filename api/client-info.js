@@ -104,6 +104,14 @@ const ACTIONS = {
     legacy: true,
   }),
 
+  // Domain list for Client Move screen — takes countrylinkid and returns
+  // the current active domains for that country. Note Marg's typo in URL:
+  // "getdomianlist" (not "getdomainlist"). POST with { countrylinkid }.
+  getDomainList: p => ({
+    url: `${DBWORK}/api/Other/getdomianlist`,
+    body: { countrylinkid: Number(p.countrylinkid) || 0 },
+  }),
+
   // Database operations
   repairMobileDb:     p => ({ url: `${GW}/LoginUser/AlterDatabaseMobile`, body: { dbinfolinkid: p.dbinfolinkid, type: 3 } }),
   repairWebDb:        p => ({ url: `${GW}/LoginUser/AlterDatabaseMobile`, body: { dbinfolinkid: p.dbinfolinkid, type: 2 } }),
@@ -124,7 +132,7 @@ const ACTIONS = {
 };
 
 // actions that need a loaded record's dbinfolinkid/userlinkid
-const NEEDS_RECORD = new Set(Object.keys(ACTIONS).filter(a => a !== 'getDetails'));
+const NEEDS_RECORD = new Set(Object.keys(ACTIONS).filter(a => a !== 'getDetails' && a !== 'getDomainList'));
 
 // ── token cache (warm instance) ─────────────────────────────────────────────
 let _cache = { token: '', exp: 0 };
@@ -247,6 +255,9 @@ module.exports = async function handler(req, res) {
   if (action === 'changeMobile'){
     if (!String(body.newMobile||'').trim())  return res.status(400).json({ error: 'New mobile number daalo' });
     if (!String(body.oldMobile||'').trim())  return res.status(400).json({ error: 'Current mobile is missing on this record' });
+  }
+  if (action === 'getDomainList'){
+    if (!Number(body.countrylinkid)) return res.status(400).json({ error: 'countrylinkid required' });
   }
 
   const built = builder(body);
