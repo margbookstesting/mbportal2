@@ -356,20 +356,14 @@ const COUNTRIES = [
 
 // 'key' har case me same rehti hai (account key). Domain select karne par
 // 'istesting' (domain ki value) aur 'version' change hote hain.
+// DOMAINS ab live API se fetch hoti hai (see loadDomains below) — pehle
+// hardcoded thi jo out-of-sync ho gayi thi (books1 aur books6 ki istesting
+// values swapped ho gayi thin, causing moves to wrong backend).
 const MOVE_KEY = '74287673';   // constant — zaroorat ho to badal dena
-const DOMAINS = [
-  {label:'books.margbooks.com  (v4.2)',           istesting:1,  version:'4.2'},
-  {label:'books1.margbooks.com  (v4.2)',          istesting:0,  version:'4.2'},
-  {label:'books3.margbooks.com  (v3.2)',          istesting:2,  version:'3.2'},
-  {label:'books4.margbooks.com  (v4.2)',          istesting:4,  version:'4.2'},
-  {label:'books5.margbooks.com  (v4.2)',          istesting:5,  version:'4.2'},
-  {label:'books6.margbooks.com  (v4.2)',          istesting:6,  version:'4.2'},
-  {label:'books10.margbooks.com  (v4.2)',         istesting:11, version:'4.2'},
-  {label:'enterprise2.margbooks.com:7033 (v3.1)', istesting:3,  version:'3.1'},
-  {label:'app.dynamics360.co  (v3.3)',            istesting:8,  version:'3.3'},
-  {label:'app1.dynamics360.co  (v3.3)',           istesting:9,  version:'3.3'},
-  {label:'app5.dynamics360.co  (v3.3)',           istesting:10, version:'3.3'},
-];
+let CM_DOMAINS = [];             // currently loaded domains for the selected country
+let CM_DOMAIN_CACHE = {};        // { countrylinkid: domains[] } — avoid re-fetching
+let CM_DOMAIN_LOADING = false;   // guard against concurrent country switches
+let CM_LOAD_TOKEN = 0;           // increments per fetch; used to discard stale responses
 
 const SETTINGS = [
   {label:'Move Client',                iscrv:0},
@@ -463,6 +457,18 @@ function gciFindRecords(resp){
   return [resp];
 }
 
+// Clear all fetched-record state + wipe the results panel from the DOM.
+// Called on "no customer found" or on fetch error so stale layout (pinned
+// buttons, action cards, half-populated Details) doesn't linger from a
+// previous successful search.
+function gciClearResults(){
+  GCI_REC = null;
+  GCI_RAW = null;
+  GCI_RECORDS = [];
+  const el = document.getElementById('gciResults');
+  if(el) el.innerHTML = '';
+}
+
 // action -> real column names (Marg returns dummy col1,col2,...)
 const GCI_COLMAP={
   viewTransaction:['month_name','dataType','savebill','deletebills'],
@@ -512,16 +518,23 @@ async function gciGetDetails(){
     const out=await gciApi({action:'getDetails', emailid:q});
     GCI_RAW=out.result;
     const gerr=gciResultError(GCI_RAW);
-    if(gerr){ gciToast(gerr,'err'); return; }
+    if(gerr){ gciClearResults(); gciToast(gerr,'err'); return; }
     const recs=gciFindRecords(GCI_RAW).filter(r=>r&&typeof r==='object');
     GCI_RECORDS=recs;
     if(recs.length>1){ gciSelectDialog(recs); gciToast(recs.length+' customers found — select one','ok'); }
     else {
       const r0=recs[0]||GCI_RAW;
-      if(!gciPick(r0,['emailid','email','dbinfolinkid','userlinkid'])){ gciToast('No customer found for "'+q+'"','err'); return; }
+      // Require a real customer identifier — dbinfolinkid (used by every action)
+      // or userlinkid. NOT emailid alone, because Marg's "not found" response
+      // often echoes the queried email in the payload, causing false positives.
+      if(!gciPick(r0,['dbinfolinkid','userlinkid'])){
+        gciClearResults();
+        gciToast('No customer found for "'+q+'"','err');
+        return;
+      }
       gciMapRecord(r0); gciToast('Customer details loaded','ok');
     }
-  }catch(e){ gciToast(e.message||'Failed','err'); }
+  }catch(e){ gciClearResults(); gciToast(e.message||'Failed','err'); }
   finally{ btn.disabled=false; gciHideLoader(); }
 }
 function gciSelectDialog(recs){
@@ -568,9 +581,12 @@ async function gciRefresh(){
   try{
     const out=await gciApi({action:'getDetails', emailid:GCI_REC.email});
     GCI_RAW=out.result;
+    const gerr=gciResultError(GCI_RAW);
+    if(gerr){ gciClearResults(); return; }
     const recs=gciFindRecords(GCI_RAW);
     const em=String(GCI_REC.email).toLowerCase();
     const rec=recs.find(r=>String(gciPick(r,['emailid','email'])||'').toLowerCase()===em)||recs[0]||GCI_RAW;
+    if(!gciPick(rec,['dbinfolinkid','userlinkid'])){ gciClearResults(); return; }
     gciMapRecord(rec);
   }catch(e){}
 }
@@ -878,7 +894,6 @@ function switchTool(tool){
 // ── Render Client Move form ──
 function renderClientMove(){
   const c = COUNTRIES.map((x,i)=>`<option value="${i}">${x.label}</option>`).join('');
-  const d = DOMAINS.map((x,i)=>`<option value="${i}">${x.label}</option>`).join('');
   const s = SETTINGS.map((x,i)=>`<option value="${i}">${x.label}</option>`).join('');
 
   document.getElementById('toolArea').innerHTML = `
@@ -887,11 +902,11 @@ function renderClientMove(){
     <div class="grid">
       <div class="fg">
         <label>Country Server</label>
-        <select id="cmCountry">${c}</select>
+        <select id="cmCountry" onchange="onCmCountryChange()">${c}</select>
       </div>
       <div class="fg">
         <label>Domain Name</label>
-        <select id="cmDomain"><option value="">Select Domain Name</option>${d}</select>
+        <select id="cmDomain"><option value="">Loading domains…</option></select>
       </div>
       <div class="fg">
         <label>Setting</label>
@@ -923,6 +938,79 @@ function renderClientMove(){
     </div>
     <div class="result" id="cmResult"></div>
   `;
+  // Auto-fire domain fetch for the default (first) country on mount so user
+  // immediately sees the correct dropdown values without an extra click.
+  loadDomains(COUNTRIES[0].key);
+}
+
+// Country dropdown change → re-fetch domains for that country
+window.onCmCountryChange = function(){
+  const ci = document.getElementById('cmCountry').value;
+  const country = COUNTRIES[+ci];
+  if(!country) return;
+  loadDomains(country.key);
+};
+
+// Fetch domain list for the given countrylinkid; populate #cmDomain dropdown.
+// Uses in-memory cache — re-selecting same country won't re-fire the API.
+// Handles concurrent switches via CM_LOAD_TOKEN so a stale response can't
+// overwrite a newer one.
+async function loadDomains(countryKey){
+  const sel = document.getElementById('cmDomain');
+  if(!sel) return;
+
+  // Cached path — instant.
+  if(CM_DOMAIN_CACHE[countryKey]){
+    CM_DOMAINS = CM_DOMAIN_CACHE[countryKey];
+    renderCmDomainSelect();
+    return;
+  }
+
+  // Fetch path — placeholder while loading, track token to discard stale responses
+  const myToken = ++CM_LOAD_TOKEN;
+  sel.innerHTML = '<option value="">Loading domains…</option>';
+  sel.disabled = true;
+  CM_DOMAIN_LOADING = true;
+
+  try{
+    const out = await gciApi({action:'getDomainList', countrylinkid: countryKey});
+    if(myToken !== CM_LOAD_TOKEN) return;   // stale — a newer country switch superseded us
+    const list = (out && out.result && Array.isArray(out.result.data)) ? out.result.data : [];
+    CM_DOMAINS = list.map(d => {
+      // d.url looks like "https://books.margbooks.com||4.2" — split on "||"
+      const raw = String(d.url||'').replace(/^https?:\/\//, '');
+      const parts = raw.split('||');
+      const host = (parts[0]||'').trim();
+      const ver  = (parts[1]||'').trim();
+      const version = String(d.apiversion || ver || '').trim();
+      return {
+        label:     `${host}  (v${version||'?'})`,
+        host,
+        version,
+        istesting: Number(d.istesting),
+      };
+    });
+    CM_DOMAIN_CACHE[countryKey] = CM_DOMAINS;
+    renderCmDomainSelect();
+  }catch(e){
+    if(myToken !== CM_LOAD_TOKEN) return;
+    sel.innerHTML = '<option value="">Failed to load — retry country</option>';
+    sel.disabled = false;
+  }finally{
+    if(myToken === CM_LOAD_TOKEN) CM_DOMAIN_LOADING = false;
+  }
+}
+
+function renderCmDomainSelect(){
+  const sel = document.getElementById('cmDomain');
+  if(!sel) return;
+  sel.disabled = false;
+  if(!CM_DOMAINS.length){
+    sel.innerHTML = '<option value="">No domains available</option>';
+    return;
+  }
+  const opts = CM_DOMAINS.map((x,i)=>`<option value="${i}">${gciEsc(x.label)}</option>`).join('');
+  sel.innerHTML = `<option value="">Select Domain Name</option>${opts}`;
 }
 
 window.toggleBy = function(){
@@ -937,7 +1025,7 @@ function gather(){
   const si = document.getElementById('cmSetting').value;
   const by = document.querySelector('input[name="cmBy"]:checked').value;
   const country = COUNTRIES[+ci];
-  const domain  = di==='' ? null : DOMAINS[+di];
+  const domain  = di==='' ? null : CM_DOMAINS[+di];
   const setting = SETTINGS[+si];
   const email   = document.getElementById('cmEmail').value.trim();
   const dblink  = document.getElementById('cmDb').value.trim();
@@ -1003,6 +1091,12 @@ window.doSubmit = async function(){
   const btn = document.getElementById('confirmBtn');
   btn.disabled=true; btn.textContent='Submitting…';
   LAST_ISCRV = g.setting.iscrv;
+  // Special-case: Marg's move API treats istesting=0 as null/no-selection.
+  // The domain whose real istesting IS 0 (currently books6.margbooks.com)
+  // must be signalled with -1 instead. Transform right before API call.
+  // Use strict equality — Number(null) would spuriously become 0 → -1.
+  const rawIstesting = g.domain.istesting;
+  const submitIstesting = (rawIstesting === 0 || rawIstesting === '0') ? -1 : rawIstesting;
   try{
     const {data:{session}} = await sb.auth.getSession();
     if(!session) throw new Error('Session expired — please sign in again');
@@ -1013,7 +1107,7 @@ window.doSubmit = async function(){
         countrykey: g.country.key,
         key: MOVE_KEY,
         version: g.domain.version,
-        istesting: g.domain.istesting,
+        istesting: submitIstesting,
         iscrv: g.setting.iscrv,
         moveBy: g.by,
         emailid: g.email,
