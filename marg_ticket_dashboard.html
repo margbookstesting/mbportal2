@@ -2240,6 +2240,21 @@ const DISP_FALLBACK_ORDER = [
   'Inprogress_Disp','Ack_Disp','TransferToIT_Disp'
 ];
 
+// ── Recognized dispositions for the Bug/Dev/Improve/Data-Upd buckets ─────────
+// Used by the category-aware `ld` walk below: while walking stages reverse-
+// chronologically we SKIP any disposition that is not one of these six, so a
+// ticket only lands in "Others" when NO stage ever had a recognized value.
+// Patterns mirror isBug/isDev/isImprovement/isDataUpdation exactly
+// (strict for Bug/Dev, contains for Improvement/Data Updation).
+function isRecognizedDisp(v){
+  const s = String(v==null?'':v).trim();
+  if(!s) return false;
+  if(/^\s*(bug|bug\s*urgent|development|development\s*urgent)\s*$/i.test(s)) return true;
+  if(/improvement/i.test(s)) return true;
+  if(/data\s*updation/i.test(s)) return true;
+  return false;
+}
+
 function parseAPIRecord(r){
   const rec = {};
   if(r.TicketNo)              rec.n  = r.TicketNo;
@@ -2317,14 +2332,26 @@ function parseAPIRecord(r){
   rec.sc = STATUS_MAP_API[r.Status] || 'OT';
 
   // ── LAST DISPOSITION (ld) ──
-  // Primary: current stage's own disposition. Fallback: reverse-chronological walk.
+  // (1) Category-aware reverse-chronological walk: pick the LAST stage whose
+  //     disposition is one of the six recognized values (Bug / Bug Urgent /
+  //     Development / Development Urgent / Improvement / Data Updation).
+  //     Unrecognized values (e.g. "Bug Approved") are SKIPPED so earlier
+  //     stages still get a chance — "Others" only when nothing matches.
+  // (2) Fallback (no recognized disposition on any stage): old behaviour —
+  //     current stage's own disposition, then first non-empty reverse-chrono.
   let _ld = null;
-  const _primaryKey = STAGE_DISP_BY_SC[rec.sc];
-  if(_primaryKey && r[_primaryKey] && String(r[_primaryKey]).trim()){
-    _ld = String(r[_primaryKey]).trim();
-  } else {
-    for(const k of DISP_FALLBACK_ORDER){
-      if(r[k] && String(r[k]).trim()){ _ld = String(r[k]).trim(); break; }
+  for(const k of DISP_FALLBACK_ORDER){
+    const v = r[k];
+    if(v && String(v).trim() && isRecognizedDisp(v)){ _ld = String(v).trim(); break; }
+  }
+  if(!_ld){
+    const _primaryKey = STAGE_DISP_BY_SC[rec.sc];
+    if(_primaryKey && r[_primaryKey] && String(r[_primaryKey]).trim()){
+      _ld = String(r[_primaryKey]).trim();
+    } else {
+      for(const k of DISP_FALLBACK_ORDER){
+        if(r[k] && String(r[k]).trim()){ _ld = String(r[k]).trim(); break; }
+      }
     }
   }
   if(_ld) rec.ld = _ld;
