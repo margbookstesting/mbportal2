@@ -38,6 +38,21 @@ DISP_FALLBACK_ORDER = [
   'Inprogress_Disp','Ack_Disp','TransferToIT_Disp'
 ]
 
+# ── Recognized dispositions for the Bug/Dev/Improve/Data-Upd buckets ──────────
+# Used by the category-aware `ld` walk: while walking stages reverse-
+# chronologically we SKIP any disposition that is not one of these six, so a
+# ticket only lands in "Others" when NO stage ever had a recognized value.
+# Patterns mirror isBug/isDev/isImprovement/isDataUpdation in
+# marg_ticket_dashboard.html exactly (strict for Bug/Dev, contains for
+# Improvement/Data Updation).
+_RECOG_EXACT_RE = re.compile(r'^\s*(bug|bug\s*urgent|development|development\s*urgent)\s*$', re.I)
+def is_recognized_disp(v):
+    s = str(v)
+    if _RECOG_EXACT_RE.match(s): return True
+    if re.search(r'improvement', s, re.I): return True
+    if re.search(r'data\s*updation', s, re.I): return True
+    return False
+
 def parse_date(v):
     if not v or v == '1900-01-01T00:00:00': return None
     s = str(v).strip()
@@ -172,16 +187,27 @@ def parse_record(r):
     rec['sc'] = STATUS_MAP.get(r.get('Status',''), 'OT')
 
     # ── LAST DISPOSITION (ld) ──────────────────────────────────────────────
-    # Primary: current stage's own Disp field (per STAGE_DISP_BY_SC).
-    # Fallback: reverse-chronological walk through all *_Disp fields, picking
-    # the first non-empty one. Mirrors parseAPIRecord() in
-    # marg_ticket_dashboard.html so cache-loaded records match live-fetched.
+    # (1) Category-aware reverse-chronological walk: pick the LAST stage whose
+    #     disposition is one of the six recognized values (Bug / Bug Urgent /
+    #     Development / Development Urgent / Improvement / Data Updation).
+    #     Unrecognized values (e.g. "Bug Approved") are SKIPPED so earlier
+    #     stages still get a chance — "Others" only when nothing matches.
+    # (2) Fallback (no recognized disposition on any stage): old behaviour —
+    #     current stage's own Disp field, then first non-empty reverse-chrono.
+    # Mirrors parseAPIRecord() in marg_ticket_dashboard.html so cache-loaded
+    # records match live-fetched.
     _ld = None
-    _primary_key = STAGE_DISP_BY_SC.get(rec['sc'])
-    if _primary_key:
-        v = r.get(_primary_key)
-        if v is not None and str(v).strip():
+    for k in DISP_FALLBACK_ORDER:
+        v = r.get(k)
+        if v is not None and str(v).strip() and is_recognized_disp(str(v).strip()):
             _ld = str(v).strip()
+            break
+    if not _ld:
+        _primary_key = STAGE_DISP_BY_SC.get(rec['sc'])
+        if _primary_key:
+            v = r.get(_primary_key)
+            if v is not None and str(v).strip():
+                _ld = str(v).strip()
     if not _ld:
         for k in DISP_FALLBACK_ORDER:
             v = r.get(k)
