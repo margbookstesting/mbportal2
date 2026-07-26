@@ -1679,6 +1679,11 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-lic-close{height:30px;padding:0 12px;border-radius:8px;border:none;background:#fee2e2;color:#b91c1c;font-size:12px;
   font-weight:800;cursor:pointer;font-family:inherit}
 .ret-lic-body{overflow:auto;flex:1}
+/* sticky header while scrolling the license list */
+#tRetLic thead th{position:sticky;top:0;z-index:3;background:var(--s2);box-shadow:0 1.5px 0 var(--border)}
+.ret-lic-xls{height:30px;padding:0 12px;border-radius:8px;border:none;background:linear-gradient(135deg,#0d9488,#0891b2);
+  color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap}
+.ret-lic-xls:hover{opacity:.9}
 /* pagination (R11) */
 .ret-pager{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:10px 14px;border-top:1.5px solid var(--border)}
 .ret-pg{min-width:30px;height:30px;padding:0 9px;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface,#fff);
@@ -1753,6 +1758,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
     <div class="ret-lic-hdr">
       <div class="ret-lic-title" id="retLicTitle">Licenses</div>
       <input class="ret-lic-search" id="retLicSearch" placeholder="🔍 Search license / client…" oninput="retLicRender(true)" autocomplete="off">
+      <button class="ret-lic-xls" onclick="retLicExport()">↓ Export Excel</button>
       <button class="ret-lic-close" onclick="retLicClose()">✕ Close</button>
     </div>
     <div class="ret-lic-body tbl-wrap"><table id="tRetLic">
@@ -5407,6 +5413,30 @@ function retLicRender(resetPage){
   }
 }
 function retLicPage(p){ if(p<1) p=1; _retModalPage=p; retLicRender(false); }
+
+// Excel export of the CURRENT list (all pages, honours modal search filter)
+const RET_XL={
+  lic:    x=>[x.L.lic,x.nm,retFmtDate(x.L.af),x.L.atBlank?'Blank':retFmtDate(x.L.at),x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.tks.length],
+  expired:x=>[x.L.lic,x.nm,retFmtDate(x.L.at),-x.L.daysToExpiry,x.L.lb?retFmtDate(x.L.lb):'Never',x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  soon:   x=>[x.L.lic,x.nm,retFmtDate(x.L.at),x.L.daysToExpiry,x.L.lb?retFmtDate(x.L.lb):'Never',x.oldest!=null?x.oldest:'',x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  nobill: x=>[x.L.lic,x.nm,x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.L.atBlank?'Blank':retFmtDate(x.L.at),x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  blank:  x=>[x.L.lic,x.nm,retFmtDate(x.L.af),x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.tks.length],
+};
+function retLicExport(){
+  const q=(document.getElementById('retLicSearch')?.value||'').trim().toUpperCase();
+  let rows=_retModalRows;
+  if(q) rows=rows.filter(x=>x.L.lic.includes(q)||x.nm.toUpperCase().includes(q));
+  if(!rows.length){ showToast('No rows to export'); return; }
+  const header=RET_COLS[_retModalMode].filter(c=>c!=='#').map(c=>c.startsWith('r:')?c.slice(2):c);
+  const out=[header];
+  rows.forEach(x=>out.push(RET_XL[_retModalMode](x)));
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(out);
+  ws['!cols']=header.map(h=>({wch:Math.max(14,h.length+2)}));
+  XLSX.utils.book_append_sheet(wb,ws,'Licenses');
+  const fname=(_retModalTitle||'Licenses').replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_').slice(0,40);
+  XLSX.writeFile(wb, fname+'.xlsx');
+}
 
 // License row click → pending ticket list (reuses main ticket modal → ticket detail)
 function retLicModalTickets(i){
