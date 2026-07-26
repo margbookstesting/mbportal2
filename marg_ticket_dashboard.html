@@ -5260,19 +5260,12 @@ if(!window._retDDBound){
   });
 }
 function retYearRange(){
-  // distinct years spanned by license data (activefrom..activeto), clamped sane
-  let lo=9999, hi=0;
-  (RET_LIC||[]).forEach(L=>{
-    if(L.af) lo=Math.min(lo,L.af.getFullYear());
-    const ey=L.at?L.at.getFullYear():0;
-    if(ey&&ey<2099) hi=Math.max(hi,ey);
-  });
+  // distinct ACTIVEFROM years present in license data
+  const set=new Set();
+  (RET_LIC||[]).forEach(L=>{ if(L.af) set.add(L.af.getFullYear()); });
   const now=new Date().getFullYear();
-  if(lo===9999) lo=now-3;
-  if(!hi) hi=now+3;
-  lo=Math.max(lo,2015); hi=Math.min(hi,now+6);
-  const out=[]; for(let y=lo;y<=hi;y++) out.push(y);
-  return out;
+  if(!set.size){ set.add(now); }
+  return [...set].sort((a,b)=>a-b);
 }
 function retDDBuild(){
   const pm=document.getElementById('retDDPanel_M');
@@ -5299,21 +5292,14 @@ function retSelClear(which){
   retDDBuild();
   if(RET_LIC) renderRetention();
 }
-// does license's active span overlap month m (0-11) of year y?
-function retMonthOverlap(L,m,y){
-  const ms=new Date(y,m,1), me=new Date(y,m+1,0,23,59,59);
-  const st=L.af||new Date(1900,0,1), en=L.at||new Date(2199,11,31);
-  return st<=me && en>=ms;
-}
+// Month/Year filter = ACTIVEFROM ka month/year direct match (user requirement):
+// Month selected → license ka activefrom us month me ho (kisi bhi selected/all year me);
+// Year selected → activefrom ka year match kare. Dono selected → dono match.
 function retActiveMatch(L){
-  const st=L.af||new Date(1900,0,1), en=L.at||new Date(2199,11,31);
-  const sy=st.getFullYear(), ey=en.getFullYear();
-  const M=[...RET_SEL_M], Y=[...RET_SEL_Y];
-  if(M.length&&Y.length) return Y.some(y=>M.some(m=>retMonthOverlap(L,m,y)));
-  if(Y.length) return Y.some(y=>sy<=y&&y<=ey);
-  // months only ("January all years"): span ≥ 1 saal → har month cover
-  if((en-st)/86400000>=365) return true;
-  return M.some(m=>{ for(let y=sy;y<=ey;y++){ if(retMonthOverlap(L,m,y)) return true; } return false; });
+  if(!L.af) return false; // activefrom hi nahi to match nahi
+  if(RET_SEL_M.size && !RET_SEL_M.has(L.af.getMonth())) return false;
+  if(RET_SEL_Y.size && !RET_SEL_Y.has(L.af.getFullYear())) return false;
+  return true;
 }
 
 function retInit(){
