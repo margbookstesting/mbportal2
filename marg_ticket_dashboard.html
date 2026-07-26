@@ -1739,8 +1739,10 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tab4{background:
   radial-gradient(1100px 260px at 18% -60px,rgba(13,148,136,.07),transparent),
   radial-gradient(900px 240px at 85% -80px,rgba(3,105,161,.05),transparent)}
-#tab4 .section{border-radius:18px;border:1px solid #e6e9f4;overflow:hidden;
+#tab4 .section{border-radius:18px;border:1px solid #e6e9f4;overflow:visible;
   box-shadow:0 1px 2px rgba(8,16,30,.04),0 10px 30px -18px rgba(8,16,30,.10)}
+/* hero gradient ke corners round rahen bina overflow:hidden ke (jo dropdown ko clip karta tha) */
+.ret-hero .sec-hdr{border-radius:17px 17px 0 0}
 #tab4 tbody tr:hover{background:#f0fdfa}
 .ret-hero .sec-hdr{background:linear-gradient(120deg,#0d9488,#0891b2 55%,#0369a1);border-bottom:none}
 .ret-hero .sec-title{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.12)}
