@@ -1833,7 +1833,12 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   <div class="ret-lic-modal">
     <div class="ret-lic-hdr">
       <div class="ret-lic-title" id="retLicTitle">Licenses</div>
-      <input class="ret-lic-search" id="retLicSearch" placeholder="🔍 Search license / client…" oninput="retLicRender(true)" autocomplete="off">
+      <div style="display:flex;gap:6px;margin-left:auto;align-items:center;flex-shrink:0">
+        <button class="ret-chip active" id="retLicExp_all"    onclick="retLicSetExp('all')">All</button>
+        <button class="ret-chip" id="retLicExp_exp"    onclick="retLicSetExp('exp')">Expired</button>
+        <button class="ret-chip" id="retLicExp_nonexp" onclick="retLicSetExp('nonexp')">Non-Expired</button>
+      </div>
+      <input class="ret-lic-search" id="retLicSearch" style="margin-left:0" placeholder="🔍 Search license / client…" oninput="retLicRender(true)" autocomplete="off">
       <button class="ret-lic-xls" onclick="retLicExport()">↓ Export Excel</button>
       <button class="ret-lic-close" onclick="retLicClose()">✕ Close</button>
     </div>
@@ -5197,7 +5202,7 @@ const RET_MONTHS=['January','February','March','April','May','June','July','Augu
 let _retBase=[], _retExpired=[], _retSoon=[], _retNoBill=[], _retBlank=[], _retMaps=null;
 let _retOnboard=[], _retStuck=[], _retPlanRows=[], _retCalMonths=[];
 const RET_ONBOARD_DAYS=60, RET_STUCK_DAYS=30;
-let _retModalRows=[], _retModalMode='lic', _retModalTitle='', _retModalPage=1;
+let _retModalRows=[], _retModalMode='lic', _retModalTitle='', _retModalPage=1, _retLicExp='all';
 
 function retEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function retNorm(s){return String(s==null?'':s).toLowerCase().replace(/[^a-z]/g,'');}
@@ -5585,13 +5590,13 @@ function retPlanOpen(i){
 // ── License modal: columns per list type ──
 const RET_COLS={
   lic:    ['#','License','Client','Mobile','Email','Plan','Active From','Active To','Last Bill','r:Days Since Bill','r:Pending'],
-  expired:['#','License','Client','Mobile','Email','Plan','Expired On','r:Days Since Expiry','Last Bill','r:Pending','r:🐞 Bugs','Risk'],
-  soon:   ['#','License','Client','Mobile','Email','Plan','Expiry Date','r:Days To Expiry','Last Bill','r:Oldest Pending (days)','r:Pending','r:🐞 Bugs','Risk'],
-  nobill: ['#','License','Client','Mobile','Email','Plan','Last Bill','r:Days Since Bill','License Expiry','r:Pending','r:🐞 Bugs','Risk'],
+  expired:['#','License','Client','Mobile','Email','Plan','Active From','Expired On','r:Days Since Expiry','Last Bill','r:Pending','r:🐞 Bugs','Risk'],
+  soon:   ['#','License','Client','Mobile','Email','Plan','Active From','Expiry Date','r:Days To Expiry','Last Bill','r:Oldest Pending (days)','r:Pending','r:🐞 Bugs','Risk'],
+  nobill: ['#','License','Client','Mobile','Email','Plan','Active From','Last Bill','r:Days Since Bill','License Expiry','r:Pending','r:🐞 Bugs','Risk'],
   blank:  ['#','License','Client','Mobile','Email','Plan','Active From','Last Bill','r:Days Since Bill','r:Pending'],
   onboard:['#','License','Client','Mobile','Email','Plan','Activated On','r:Days Since Activation','Active To','r:Pending','r:🐞 Bugs','Risk'],
-  stuck:  ['#','License','Client','Mobile','Email','Plan','Last Bill','r:Days Since Bill','Active To','r:Pending','r:🐞 Bugs','Risk'],
-  soon2:  ['#','License','Client','Mobile','Email','Plan','Expiry Date','r:Days To Expiry','Last Bill','r:Days Since Bill','r:Pending'],
+  stuck:  ['#','License','Client','Mobile','Email','Plan','Active From','Last Bill','r:Days Since Bill','Active To','r:Pending','r:🐞 Bugs','Risk'],
+  soon2:  ['#','License','Client','Mobile','Email','Plan','Active From','Expiry Date','r:Days To Expiry','Last Bill','r:Days Since Bill','r:Pending'],
 };
 const RET_MONO='style="font-family:\'JetBrains Mono\',monospace;font-size:11px"';
 function retATHtml(x){
@@ -5603,20 +5608,21 @@ function retCellLic(x){return `<td class="n-muted">${retEsc(x.L.lic)}</td><td cl
   +`<td style="font-family:'JetBrains Mono',monospace">${retEsc(x.mo)||'—'}</td>`
   +`<td class="rl-ell" title="${retEsc(x.em)}">${retEsc(x.em)||'—'}</td>`
   +`<td style="font-weight:600">${retEsc(x.pl)||'—'}</td>`;}
+function retCellAF(x){return `<td ${RET_MONO}>${retFmtDate(x.L.af)}</td>`;}
 function retCellLB(x){return `<td ${RET_MONO}>${x.L.lb?retFmtDate(x.L.lb):'<span style="color:#b91c1c;font-weight:700">Never</span>'}</td>`;}
 function retCellPend(x){return `<td class="r">${x.tks.length?`<span class="ret-pend-pill">🎫 ${x.tks.length}</span>`:'—'}</td>`;}
 const RET_CELLS={
   lic:x=>retCellLic(x)+`<td ${RET_MONO}>${retFmtDate(x.L.af)}</td>
     <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellLB(x)+`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>`+retCellPend(x),
-  expired:x=>retCellLic(x)+`<td ${RET_MONO.slice(0,-1)};color:#b91c1c">${retFmtDate(x.L.at)}</td>
+  expired:x=>retCellLic(x)+retCellAF(x)+`<td ${RET_MONO.slice(0,-1)};color:#b91c1c">${retFmtDate(x.L.at)}</td>
     <td class="r n-tot">${fmt(-x.L.daysToExpiry)}</td>`+retCellLB(x)+retCellPend(x)
     +`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk.html}</td>`,
-  soon:x=>retCellLic(x)+`<td ${RET_MONO}>${retFmtDate(x.L.at)}</td>
+  soon:x=>retCellLic(x)+retCellAF(x)+`<td ${RET_MONO}>${retFmtDate(x.L.at)}</td>
     <td class="r n-live">${fmt(x.L.daysToExpiry)}</td>`+retCellLB(x)
     +`<td class="r n-muted">${x.oldest!=null?fmt(x.oldest):'—'}</td>`+retCellPend(x)
     +`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk.html}</td>`,
-  nobill:x=>retCellLic(x)+retCellLB(x)
+  nobill:x=>retCellLic(x)+retCellAF(x)+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>
     <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellPend(x)+`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk.html}</td>`,
@@ -5626,11 +5632,11 @@ const RET_CELLS={
     <td class="r n-tot">${x.L.af?fmt(retDays(x.L.af,retMidnight())):'—'}</td>
     <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellPend(x)+`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk?x.risk.html:''}</td>`,
-  stuck:x=>retCellLic(x)+retCellLB(x)
+  stuck:x=>retCellLic(x)+retCellAF(x)+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>
     <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellPend(x)+`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk?x.risk.html:''}</td>`,
-  soon2:x=>retCellLic(x)+`<td ${RET_MONO}>${retATHtml(x)}</td>
+  soon2:x=>retCellLic(x)+retCellAF(x)+`<td ${RET_MONO}>${retATHtml(x)}</td>
     <td class="r n-live">${x.L.daysToExpiry!=null?fmt(x.L.daysToExpiry):'—'}</td>`+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>`+retCellPend(x),
 };
@@ -5666,6 +5672,11 @@ function retLicOpen(kind){
 // license modal ko rows/title/mode ke saath kholo (Phase 2 sections bhi use karte hain)
 function _retLicShow(rows,title,mode){
   _retModalRows=rows; _retModalMode=mode; _retModalTitle=title; _retModalPage=1;
+  _retLicExp='all';
+  ['all','exp','nonexp'].forEach(k=>{
+    const el=document.getElementById('retLicExp_'+k);
+    if(el) el.classList.toggle('active', k==='all');
+  });
   const s=document.getElementById('retLicSearch'); if(s) s.value='';
   const th=document.getElementById('retLicThead');
   if(th) th.innerHTML='<tr>'+RET_COLS[mode].map(c=>{
@@ -5676,14 +5687,29 @@ function _retLicShow(rows,title,mode){
   document.getElementById('retLicOverlay').classList.add('open');
 }
 function retLicClose(){ const o=document.getElementById('retLicOverlay'); if(o) o.classList.remove('open'); }
+function retLicSetExp(v){
+  _retLicExp=v;
+  ['all','exp','nonexp'].forEach(k=>{
+    const el=document.getElementById('retLicExp_'+k);
+    if(el) el.classList.toggle('active', k===v);
+  });
+  retLicRender(true);
+}
+// modal rows after Expired/Non-Expired chips + search (render + export dono use karte hain)
+function retLicFilteredRows(){
+  const q=(document.getElementById('retLicSearch')?.value||'').trim().toUpperCase();
+  let rows=_retModalRows;
+  if(_retLicExp==='exp')    rows=rows.filter(x=>retIsExpired(x.L));
+  if(_retLicExp==='nonexp') rows=rows.filter(x=>!retIsExpired(x.L));
+  if(q) rows=rows.filter(x=>x.L.lic.includes(q)||x.nm.toUpperCase().includes(q));
+  return rows;
+}
 
 // R11: paginated modal render (modal search + page numbers)
 function retLicRender(resetPage){
   const tb=document.querySelector('#tRetLic tbody'); if(!tb) return;
   if(resetPage) _retModalPage=1;
-  const q=(document.getElementById('retLicSearch')?.value||'').trim().toUpperCase();
-  let rows=_retModalRows;
-  if(q) rows=rows.filter(x=>x.L.lic.includes(q)||x.nm.toUpperCase().includes(q));
+  const rows=retLicFilteredRows();
   const nCols=RET_COLS[_retModalMode].length;
   const pages=Math.max(1,Math.ceil(rows.length/RET_PAGE_SIZE));
   if(_retModalPage>pages) _retModalPage=pages;
@@ -5693,7 +5719,7 @@ function retLicRender(resetPage){
   const t=document.getElementById('retLicTitle');
   if(t) t.textContent=`${_retModalTitle} (${fmt(rows.length)})`;
   if(!rows.length){
-    tb.innerHTML=`<tr><td colspan="${nCols}" class="ret-empty">${q?'No matching licenses':'✅ No clients in this list'}</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="${nCols}" class="ret-empty">${(_retModalRows.length&&rows.length===0)?'No matching licenses':'✅ No clients in this list'}</td></tr>`;
   } else {
     tb.innerHTML=slice.map((x,i)=>{
       const clickable=x.tks.length>0;
@@ -5730,18 +5756,16 @@ function retLicPage(p){ if(p<1) p=1; _retModalPage=p; retLicRender(false); }
 // Excel export of the CURRENT list (all pages, honours modal search filter)
 const RET_XL={
   lic:    x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),x.L.atBlank?'Blank':retFmtDate(x.L.at),x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.tks.length],
-  expired:x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.at),-x.L.daysToExpiry,x.L.lb?retFmtDate(x.L.lb):'Never',x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
-  soon:   x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.at),x.L.daysToExpiry,x.L.lb?retFmtDate(x.L.lb):'Never',x.oldest!=null?x.oldest:'',x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
-  nobill: x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.L.atBlank?'Blank':retFmtDate(x.L.at),x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  expired:x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),retFmtDate(x.L.at),-x.L.daysToExpiry,x.L.lb?retFmtDate(x.L.lb):'Never',x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  soon:   x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),retFmtDate(x.L.at),x.L.daysToExpiry,x.L.lb?retFmtDate(x.L.lb):'Never',x.oldest!=null?x.oldest:'',x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  nobill: x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.L.atBlank?'Blank':retFmtDate(x.L.at),x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
   blank:  x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.tks.length],
   onboard:x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),x.L.af?retDays(x.L.af,retMidnight()):'',x.L.atBlank?'Blank':retFmtDate(x.L.at),x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
-  stuck:  x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.L.atBlank?'Blank':retFmtDate(x.L.at),x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
-  soon2:  x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.at),x.L.daysToExpiry!=null?x.L.daysToExpiry:'',x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.tks.length],
+  stuck:  x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.L.atBlank?'Blank':retFmtDate(x.L.at),x.tks.length,x.bugs,x.risk?x.risk.html.replace(/<[^>]+>/g,''):''],
+  soon2:  x=>[x.L.lic,x.nm,x.mo,x.em,x.pl,retFmtDate(x.L.af),retFmtDate(x.L.at),x.L.daysToExpiry!=null?x.L.daysToExpiry:'',x.L.lb?retFmtDate(x.L.lb):'Never',x.L.daysSinceBill!=null?x.L.daysSinceBill:'',x.tks.length],
 };
 function retLicExport(){
-  const q=(document.getElementById('retLicSearch')?.value||'').trim().toUpperCase();
-  let rows=_retModalRows;
-  if(q) rows=rows.filter(x=>x.L.lic.includes(q)||x.nm.toUpperCase().includes(q));
+  const rows=retLicFilteredRows();
   if(!rows.length){ showToast('No rows to export'); return; }
   const header=RET_COLS[_retModalMode].filter(c=>c!=='#').map(c=>c.startsWith('r:')?c.slice(2):c);
   const out=[header];
