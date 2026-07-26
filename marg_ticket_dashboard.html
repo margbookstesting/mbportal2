@@ -1701,8 +1701,12 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-lic-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:340;display:none;
   align-items:center;justify-content:center;padding:22px}
 .ret-lic-overlay.open{display:flex}
-.ret-lic-modal{background:var(--surface,#fff);border-radius:18px;width:min(1100px,96vw);max-height:88vh;display:flex;flex-direction:column;
+.ret-lic-modal{background:var(--surface,#fff);border-radius:18px;width:min(1280px,96vw);height:86vh;display:flex;flex-direction:column;
   box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden}
+#tRetLic th,#tRetLic td{padding:7px 9px;font-size:11px}
+#tRetLic th{white-space:nowrap}
+#tRetLic .rl-ell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tRetLic td{white-space:nowrap}
 .ret-lic-hdr{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1.5px solid var(--border)}
 .ret-lic-title{font-size:14px;font-weight:800;color:var(--text)}
 .ret-lic-search{margin-left:auto;height:30px;border:1.5px solid var(--border2);border-radius:8px;padding:0 12px;font-size:12px;
@@ -1759,6 +1763,9 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
             <button class="ret-chip" onclick="retDDToggle('Y')">📆 Activation Year <span class="ret-dd-badge" id="retDDBadge_Y" style="display:none"></span> ▾</button>
             <div class="ret-dd-panel" id="retDDPanel_Y"></div>
           </div>
+          <button class="ret-chip active" id="retExpChip_all"    onclick="retSetExp('all')">All</button>
+          <button class="ret-chip" id="retExpChip_exp"    onclick="retSetExp('exp')">Expired</button>
+          <button class="ret-chip" id="retExpChip_nonexp" onclick="retSetExp('nonexp')">Non-Expired</button>
           <button class="ret-refresh" id="retSearchClear" onclick="retClearSearch()" style="display:none">✕ Clear</button>
           <span id="retFilterInfo" style="font-size:11px;font-weight:700;color:#0d9488"></span>
         </div>
@@ -5176,6 +5183,16 @@ const RET_PAGE_SIZE = 100;
 let RET_LIC=null, RET_LIC_TS=0, RET_WIN=30, RET_BUSY=false;
 let RET_Q_LIC='', RET_Q_TK='', _retQTimer=null;
 const RET_SEL_M=new Set(), RET_SEL_Y=new Set();   // Active Month/Year multi-select
+let RET_EXP_FILTER='all';                          // all | exp | nonexp
+function retIsExpired(L){ return !!(L.at && L.daysToExpiry!=null && L.daysToExpiry<0); }
+function retSetExp(v){
+  RET_EXP_FILTER=v;
+  ['all','exp','nonexp'].forEach(k=>{
+    const el=document.getElementById('retExpChip_'+k);
+    if(el) el.classList.toggle('active', k===v);
+  });
+  if(RET_LIC) renderRetention();
+}
 const RET_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _retBase=[], _retExpired=[], _retSoon=[], _retNoBill=[], _retBlank=[], _retMaps=null;
 let _retOnboard=[], _retStuck=[], _retPlanRows=[], _retCalMonths=[];
@@ -5296,7 +5313,9 @@ function retClearSearch(){
   RET_Q_LIC=''; RET_Q_TK='';
   RET_SEL_M.clear(); RET_SEL_Y.clear();
   retDDBuild();
-  if(RET_LIC) renderRetention();
+  retSetExp('all');
+  if(!RET_LIC) return;
+  renderRetention();
 }
 
 // ── Active Month / Active Year multi-select dropdowns ──
@@ -5391,13 +5410,16 @@ function renderRetention(){
     base=base.filter(L=>set.has(L.lic));
   }
   if(RET_SEL_M.size||RET_SEL_Y.size) base=base.filter(retActiveMatch);
+  if(RET_EXP_FILTER==='exp')    base=base.filter(retIsExpired);
+  if(RET_EXP_FILTER==='nonexp') base=base.filter(L=>!retIsExpired(L));
   _retBase=base;
-  const fOn=!!(RET_Q_LIC||RET_Q_TK||RET_SEL_M.size||RET_SEL_Y.size);
+  const fOn=!!(RET_Q_LIC||RET_Q_TK||RET_SEL_M.size||RET_SEL_Y.size||RET_EXP_FILTER!=='all');
   const fi=document.getElementById('retFilterInfo');
   if(fi){
     const bits=[];
     if(RET_SEL_M.size) bits.push([...RET_SEL_M].sort((x,z)=>x-z).map(i=>RET_MONTHS[i].slice(0,3)).join(','));
     if(RET_SEL_Y.size) bits.push([...RET_SEL_Y].sort().join(','));
+    if(RET_EXP_FILTER!=='all') bits.push(RET_EXP_FILTER==='exp'?'Expired':'Non-Expired');
     fi.textContent = fOn ? `Filtered: ${fmt(base.length)} of ${fmt(RET_LIC.length)} licenses${bits.length?' · '+bits.join(' · '):''}` : '';
   }
   const clr=document.getElementById('retSearchClear');
@@ -5437,15 +5459,17 @@ function renderRetention(){
   const sumT=a=>a.reduce((s,x)=>s+x.tks.length,0);
   const sumB=a=>a.reduce((s,x)=>s+x.bugs,0);
   const never=base.filter(L=>!L.lb).length;
+  const expOf=list=>list.filter(x=>retIsExpired(x.L!==undefined?x.L:x)).length;
+  const expTxt=n=>n?` · <span style="color:#b91c1c;font-weight:800">${fmt(n)} expired</span>`:'';
   const cards=[
-    {n:fmt(base.length),            ic:'📇', l:'Total Licenses',                     s:'all license records',                                              k:'all',     cls:''},
-    {n:fmt(never),                  ic:'💸', l:'Never Billed',                       s:'no bill ever generated',                                           k:'never',   cls:'never'},
+    {n:fmt(base.length),            ic:'📇', l:'Total Licenses',                     s:'all license records'+expTxt(base.filter(retIsExpired).length),       k:'all',     cls:''},
+    {n:fmt(never),                  ic:'💸', l:'Never Billed',                       s:'no bill ever generated'+expTxt(base.filter(L=>!L.lb&&retIsExpired(L)).length), k:'never',   cls:'never'},
     {n:fmt(_retExpired.length),     ic:'🔴', l:'Expired + Tickets Pending',          s:`${fmt(sumT(_retExpired))} tickets · ${fmt(sumB(_retExpired))} bugs`, k:'expired', cls:'danger'},
     {n:fmt(_retSoon.length),        ic:'⚠️', l:`Expiring ≤${RET_WIN}d + Pending`,     s:`${fmt(sumT(_retSoon))} tickets · ${fmt(sumB(_retSoon))} bugs`,     k:'soon',    cls:'warn'},
-    {n:fmt(_retNoBill.length),      ic:'🔶', l:'No Bill 90d+ + Pending',             s:`${fmt(sumT(_retNoBill))} tickets · ${fmt(sumB(_retNoBill))} bugs`,  k:'nobill',  cls:'warn'},
+    {n:fmt(_retNoBill.length),      ic:'🔶', l:'No Bill 90d+ + Pending',             s:`${fmt(sumT(_retNoBill))} tickets · ${fmt(sumB(_retNoBill))} bugs`+expTxt(expOf(_retNoBill)),  k:'nobill',  cls:'warn'},
     {n:fmt(_retBlank.length),       ic:'❔', l:'Blank Active-To',                    s:'no validity date in system',                                       k:'blank',   cls:''},
-    {n:fmt(_retOnboard.length),     ic:'🆕', l:'New Client + Pending',               s:`activated ≤${RET_ONBOARD_DAYS}d · ${fmt(sumT(_retOnboard))} tickets · ${fmt(sumB(_retOnboard))} bugs`, k:'onboard', cls:'warn'},
-    {n:fmt(_retStuck.length),       ic:'💰', l:'Billed Recently + Pending',          s:`billed ≤${RET_STUCK_DAYS}d · ${fmt(sumT(_retStuck))} tickets · ${fmt(sumB(_retStuck))} bugs`,   k:'stuck',   cls:'warn'},
+    {n:fmt(_retOnboard.length),     ic:'🆕', l:'New Client + Pending',               s:`activated ≤${RET_ONBOARD_DAYS}d · ${fmt(sumT(_retOnboard))} tickets · ${fmt(sumB(_retOnboard))} bugs`+expTxt(expOf(_retOnboard)), k:'onboard', cls:'warn'},
+    {n:fmt(_retStuck.length),       ic:'💰', l:'Billed Recently + Pending',          s:`billed ≤${RET_STUCK_DAYS}d · ${fmt(sumT(_retStuck))} tickets · ${fmt(sumB(_retStuck))} bugs`+expTxt(expOf(_retStuck)),   k:'stuck',   cls:'warn'},
   ];
   const st=document.getElementById('retStats');
   if(st) st.innerHTML=cards.map(c=>
@@ -5456,16 +5480,16 @@ function renderRetention(){
 
   // Billing overdue bucket cards (cumulative, from filtered base)
   const bks=RET_BUCKETS.map(b=>{
-    const c=base.filter(L=>L.daysSinceBill!=null && L.daysSinceBill>=b).length;
+    const inB=base.filter(L=>L.daysSinceBill!=null && L.daysSinceBill>=b);
     return `<div class="ret-card b${b}" onclick="retLicOpen(${b})" title="Click for details">
       <div class="rc-top"><span class="rc-ic">⏳</span><span class="rc-lbl">${b}+ days</span></div>
-      <div class="rc-num">${fmt(c)}</div>
-      <div class="rc-sub">last bill ${b}+ days ago</div></div>`;
+      <div class="rc-num">${fmt(inB.length)}</div>
+      <div class="rc-sub">last bill ${b}+ days ago${expTxt(inB.filter(retIsExpired).length)}</div></div>`;
   });
   bks.push(`<div class="ret-card never" onclick="retLicOpen('never')" title="Click for details">
     <div class="rc-top"><span class="rc-ic">💸</span><span class="rc-lbl">Never Billed</span></div>
     <div class="rc-num">${fmt(never)}</div>
-    <div class="rc-sub">no bill ever generated</div></div>`);
+    <div class="rc-sub">no bill ever generated${expTxt(base.filter(L=>!L.lb&&retIsExpired(L)).length)}</div></div>`);
   const cd=document.getElementById('retCards'); if(cd) cd.innerHTML=bks.join('');
 
   renderRetPhase2(base, today);
@@ -5554,15 +5578,20 @@ const RET_COLS={
   soon2:  ['#','License','Client','Mobile','Email','Plan','Expiry Date','r:Days To Expiry','Last Bill','r:Days Since Bill','r:Pending'],
 };
 const RET_MONO='style="font-family:\'JetBrains Mono\',monospace;font-size:11px"';
-function retCellLic(x){return `<td class="n-muted">${retEsc(x.L.lic)}</td><td style="font-weight:600">${retEsc(x.nm)}</td>`
-  +`<td style="font-size:11px;font-family:'JetBrains Mono',monospace;white-space:nowrap">${retEsc(x.mo)||'—'}</td>`
-  +`<td style="font-size:11px">${retEsc(x.em)||'—'}</td>`
-  +`<td style="font-size:11px;font-weight:600">${retEsc(x.pl)||'—'}</td>`;}
+function retATHtml(x){
+  if(x.L.atBlank) return '<span style="color:var(--muted2)">Blank</span>';
+  const d=retFmtDate(x.L.at);
+  return retIsExpired(x.L)?`<span style="color:#b91c1c;font-weight:700">${d}</span>`:d;
+}
+function retCellLic(x){return `<td class="n-muted">${retEsc(x.L.lic)}</td><td class="rl-ell" style="font-weight:600" title="${retEsc(x.nm)}">${retEsc(x.nm)}</td>`
+  +`<td style="font-family:'JetBrains Mono',monospace">${retEsc(x.mo)||'—'}</td>`
+  +`<td class="rl-ell" title="${retEsc(x.em)}">${retEsc(x.em)||'—'}</td>`
+  +`<td style="font-weight:600">${retEsc(x.pl)||'—'}</td>`;}
 function retCellLB(x){return `<td ${RET_MONO}>${x.L.lb?retFmtDate(x.L.lb):'<span style="color:#b91c1c;font-weight:700">Never</span>'}</td>`;}
 function retCellPend(x){return `<td class="r">${x.tks.length?`<span class="ret-pend-pill">🎫 ${x.tks.length}</span>`:'—'}</td>`;}
 const RET_CELLS={
   lic:x=>retCellLic(x)+`<td ${RET_MONO}>${retFmtDate(x.L.af)}</td>
-    <td ${RET_MONO}>${x.L.atBlank?'<span style="color:var(--muted2)">Blank</span>':retFmtDate(x.L.at)}</td>`
+    <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellLB(x)+`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>`+retCellPend(x),
   expired:x=>retCellLic(x)+`<td ${RET_MONO.slice(0,-1)};color:#b91c1c">${retFmtDate(x.L.at)}</td>
     <td class="r n-tot">${fmt(-x.L.daysToExpiry)}</td>`+retCellLB(x)+retCellPend(x)
@@ -5573,19 +5602,19 @@ const RET_CELLS={
     +`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk.html}</td>`,
   nobill:x=>retCellLic(x)+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>
-    <td ${RET_MONO}>${x.L.atBlank?'<span style="color:var(--muted2)">Blank</span>':retFmtDate(x.L.at)}</td>`
+    <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellPend(x)+`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk.html}</td>`,
   blank:x=>retCellLic(x)+`<td ${RET_MONO}>${retFmtDate(x.L.af)}</td>`+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>`+retCellPend(x),
   onboard:x=>retCellLic(x)+`<td ${RET_MONO}>${retFmtDate(x.L.af)}</td>
     <td class="r n-tot">${x.L.af?fmt(retDays(x.L.af,retMidnight())):'—'}</td>
-    <td ${RET_MONO}>${x.L.atBlank?'<span style="color:var(--muted2)">Blank</span>':retFmtDate(x.L.at)}</td>`
+    <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellPend(x)+`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk?x.risk.html:''}</td>`,
   stuck:x=>retCellLic(x)+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>
-    <td ${RET_MONO}>${x.L.atBlank?'<span style="color:var(--muted2)">Blank</span>':retFmtDate(x.L.at)}</td>`
+    <td ${RET_MONO}>${retATHtml(x)}</td>`
     +retCellPend(x)+`<td class="r n-tot" style="color:#b91c1c">${x.bugs||'—'}</td><td>${x.risk?x.risk.html:''}</td>`,
-  soon2:x=>retCellLic(x)+`<td ${RET_MONO}>${retFmtDate(x.L.at)}</td>
+  soon2:x=>retCellLic(x)+`<td ${RET_MONO}>${retATHtml(x)}</td>
     <td class="r n-live">${x.L.daysToExpiry!=null?fmt(x.L.daysToExpiry):'—'}</td>`+retCellLB(x)
     +`<td class="r n-tot">${x.L.daysSinceBill!=null?fmt(x.L.daysSinceBill):'—'}</td>`+retCellPend(x),
 };
@@ -5651,8 +5680,9 @@ function retLicRender(resetPage){
     tb.innerHTML=`<tr><td colspan="${nCols}" class="ret-empty">${q?'No matching licenses':'✅ No clients in this list'}</td></tr>`;
   } else {
     tb.innerHTML=slice.map((x,i)=>{
-      const click=x.tks.length?` onclick="retLicModalTickets(${i})" style="cursor:pointer" title="Click to view pending tickets"`:'';
-      return `<tr${click}><td class="n-muted">${start+i+1}</td>${RET_CELLS[_retModalMode](x)}</tr>`;
+      const clickable=x.tks.length>0;
+      const st=(clickable?'cursor:pointer;':'')+(retIsExpired(x.L)?'background:#fef2f2;':'');
+      return `<tr${clickable?` onclick="retLicModalTickets(${i})" title="Click to view pending tickets"`:''}${st?` style="${st}"`:''}><td class="n-muted">${start+i+1}</td>${RET_CELLS[_retModalMode](x)}</tr>`;
     }).join('');
   }
   // pager
