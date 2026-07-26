@@ -1695,8 +1695,12 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   color:var(--text2);cursor:pointer;user-select:none}
 .ret-dd-item:hover{background:#f0fdfa}
 .ret-dd-item input{accent-color:#0d9488;cursor:pointer}
-.ret-dd-clear{display:block;width:100%;margin-top:4px;padding:6px;border:none;border-top:1px solid var(--border);
-  background:none;font-size:11px;font-weight:800;color:#b91c1c;cursor:pointer;font-family:inherit}
+.ret-dd-clear{display:block;width:100%;margin-top:4px;padding:7px;border:none;border-top:1px solid var(--border);
+  background:var(--surface,#fff);font-size:11px;font-weight:800;color:#b91c1c;cursor:pointer;font-family:inherit;
+  position:sticky;bottom:-6px}
+.ret-dd-all{display:block;width:100%;margin-bottom:4px;padding:7px;border:none;border-bottom:1px solid var(--border);
+  background:var(--surface,#fff);font-size:11px;font-weight:800;color:#0d9488;cursor:pointer;font-family:inherit;
+  position:sticky;top:-6px;z-index:1}
 /* license-list modal */
 .ret-lic-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:340;display:none;
   align-items:center;justify-content:center;padding:22px}
@@ -5397,11 +5401,13 @@ function retYearRange(){
 }
 function retDDBuild(){
   const pm=document.getElementById('retDDPanel_M');
-  if(pm) pm.innerHTML=RET_MONTHS.map((m,i)=>
+  if(pm) pm.innerHTML=`<button class="ret-dd-all" onclick="retSelAll('M')">✓ Select all months</button>`
+    +RET_MONTHS.map((m,i)=>
     `<label class="ret-dd-item"><input type="checkbox" ${RET_SEL_M.has(i)?'checked':''} onchange="retSelChange('M',${i},this.checked)">${m}</label>`).join('')
     +`<button class="ret-dd-clear" onclick="retSelClear('M')">✕ Clear months</button>`;
   const py=document.getElementById('retDDPanel_Y');
-  if(py) py.innerHTML=retYearRange().map(y=>
+  if(py) py.innerHTML=`<button class="ret-dd-all" onclick="retSelAll('Y')">✓ Select all years</button>`
+    +retYearRange().map(y=>
     `<label class="ret-dd-item"><input type="checkbox" ${RET_SEL_Y.has(y)?'checked':''} onchange="retSelChange('Y',${y},this.checked)">${y}</label>`).join('')
     +`<button class="ret-dd-clear" onclick="retSelClear('Y')">✕ Clear years</button>`;
   const bm=document.getElementById('retDDBadge_M');
@@ -5417,6 +5423,12 @@ function retSelChange(which,val,checked){
 }
 function retSelClear(which){
   (which==='M'?RET_SEL_M:RET_SEL_Y).clear();
+  retDDBuild();
+  if(RET_LIC) renderRetention();
+}
+function retSelAll(which){
+  if(which==='M'){ RET_SEL_M.clear(); for(let i=0;i<12;i++) RET_SEL_M.add(i); }
+  else { RET_SEL_Y.clear(); retYearRange().forEach(y=>RET_SEL_Y.add(y)); }
   retDDBuild();
   if(RET_LIC) renderRetention();
 }
@@ -5469,8 +5481,8 @@ function renderRetention(){
   const fi=document.getElementById('retFilterInfo');
   if(fi){
     const bits=[];
-    if(RET_SEL_M.size) bits.push([...RET_SEL_M].sort((x,z)=>x-z).map(i=>RET_MONTHS[i].slice(0,3)).join(','));
-    if(RET_SEL_Y.size) bits.push([...RET_SEL_Y].sort().join(','));
+    if(RET_SEL_M.size) bits.push(RET_SEL_M.size>4?RET_SEL_M.size+' months':[...RET_SEL_M].sort((x,z)=>x-z).map(i=>RET_MONTHS[i].slice(0,3)).join(','));
+    if(RET_SEL_Y.size) bits.push(RET_SEL_Y.size>4?RET_SEL_Y.size+' years':[...RET_SEL_Y].sort().join(','));
     if(RET_EXP_FILTER!=='all') bits.push(RET_EXP_FILTER==='exp'?'Expired':'Non-Expired');
     fi.textContent = fOn ? `Filtered: ${fmt(base.length)} of ${fmt(RET_LIC.length)} licenses${bits.length?' · '+bits.join(' · '):''}` : '';
   }
