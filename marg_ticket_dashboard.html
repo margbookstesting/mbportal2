@@ -1665,6 +1665,22 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-refresh{height:28px;padding:0 12px;border-radius:8px;border:1.5px solid var(--border2);background:var(--surface,#fff);
   font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
 .ret-refresh:hover{border-color:#0d9488;color:#0d9488}
+.ret-refresh{white-space:nowrap}
+/* multi-select dropdowns (Active Month / Active Year) */
+.ret-dd{position:relative}
+.ret-dd .ret-chip{white-space:nowrap}
+.ret-dd-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;
+  border-radius:9px;background:#0d9488;color:#fff;font-size:10px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.ret-dd-panel{position:absolute;top:36px;left:0;background:var(--surface,#fff);border:1.5px solid var(--border2);
+  border-radius:12px;box-shadow:0 14px 40px rgba(8,16,30,.18);padding:6px;z-index:60;display:none;
+  max-height:280px;overflow:auto;min-width:170px}
+.ret-dd-panel.open{display:block}
+.ret-dd-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;
+  color:var(--text2);cursor:pointer;user-select:none}
+.ret-dd-item:hover{background:#f0fdfa}
+.ret-dd-item input{accent-color:#0d9488;cursor:pointer}
+.ret-dd-clear{display:block;width:100%;margin-top:4px;padding:6px;border:none;border-top:1px solid var(--border);
+  background:none;font-size:11px;font-weight:800;color:#b91c1c;cursor:pointer;font-family:inherit}
 /* license-list modal */
 .ret-lic-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:340;display:none;
   align-items:center;justify-content:center;padding:22px}
@@ -1704,15 +1720,15 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
           <div class="sec-accent" style="background:linear-gradient(180deg,#0d9488,#0891b2)"></div>
           <div>
             <div class="sec-title">💚 Client Retention — Billing &amp; License Expiry</div>
-            <div class="sec-sub">License data: <b>gelliclist API</b> · Pending tickets: live ticket data (the date-range filter above does not apply to this tab). Click any card for full details with pagination.</div>
+            <div class="sec-sub">License data: <b>gelliclist API</b> · pending tickets are live (the date filter above does not apply here). Click any card for details.</div>
           </div>
         </div>
         <div class="ret-info">
-          <span id="retInfo">License data not loaded yet</span>
-          <button class="ret-refresh" onclick="retFetchLic(true)" title="Reload license/billing data">↺ Licenses</button>
+          <button class="ret-refresh" onclick="retFetchLic(true)" title="Reload license/billing data">↺ Reload Licenses</button>
         </div>
       </div>
-      <div style="padding:12px 20px 18px">
+      <div style="padding:10px 20px 18px">
+        <div id="retInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px">License data not loaded yet</div>
         <div class="ret-chips">
           <span class="ret-chip-label">Window:</span>
           <button class="ret-chip" id="retChip7"   onclick="retSetWin(7)">7 days</button>
@@ -1726,6 +1742,14 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
           <span class="ret-chip-label">Search:</span>
           <input class="ret-search" id="retSearchLic" placeholder="🪪 License / Client…" autocomplete="off" oninput="retSearchDebounce()">
           <input class="ret-search" id="retSearchTk" placeholder="🎫 Ticket No…" autocomplete="off" oninput="retSearchDebounce()">
+          <div class="ret-dd" id="retDD_M">
+            <button class="ret-chip" onclick="retDDToggle('M')">📅 Active Month <span class="ret-dd-badge" id="retDDBadge_M" style="display:none"></span> ▾</button>
+            <div class="ret-dd-panel" id="retDDPanel_M"></div>
+          </div>
+          <div class="ret-dd" id="retDD_Y">
+            <button class="ret-chip" onclick="retDDToggle('Y')">📆 Active Year <span class="ret-dd-badge" id="retDDBadge_Y" style="display:none"></span> ▾</button>
+            <div class="ret-dd-panel" id="retDDPanel_Y"></div>
+          </div>
           <button class="ret-refresh" id="retSearchClear" onclick="retClearSearch()" style="display:none">✕ Clear</button>
           <span id="retFilterInfo" style="font-size:11px;font-weight:700;color:#0d9488"></span>
         </div>
@@ -5103,6 +5127,8 @@ const RET_BUCKETS = [7,15,30,60,90,180];
 const RET_PAGE_SIZE = 100;
 let RET_LIC=null, RET_LIC_TS=0, RET_WIN=30, RET_BUSY=false;
 let RET_Q_LIC='', RET_Q_TK='', _retQTimer=null;
+const RET_SEL_M=new Set(), RET_SEL_Y=new Set();   // Active Month/Year multi-select
+const RET_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _retBase=[], _retExpired=[], _retSoon=[], _retNoBill=[], _retBlank=[], _retMaps=null;
 let _retModalRows=[], _retModalMode='lic', _retModalTitle='', _retModalPage=1;
 
@@ -5187,6 +5213,7 @@ async function retFetchLic(force){
   });
   RET_LIC=Array.from(map.values());
   RET_LIC_TS=Date.now();
+  retDDBuild();
   renderRetention();
 }
 
@@ -5210,7 +5237,83 @@ function retClearSearch(){
   const a=document.getElementById('retSearchLic'), b=document.getElementById('retSearchTk');
   if(a) a.value=''; if(b) b.value='';
   RET_Q_LIC=''; RET_Q_TK='';
+  RET_SEL_M.clear(); RET_SEL_Y.clear();
+  retDDBuild();
   if(RET_LIC) renderRetention();
+}
+
+// ── Active Month / Active Year multi-select dropdowns ──
+// "jo license us month me fall karega wo filter hoga": license ka active period
+// (activefrom → activeto) selected month/year ko overlap kare to match.
+function retDDToggle(which){
+  ['M','Y'].forEach(w=>{
+    const el=document.getElementById('retDDPanel_'+w);
+    if(el) el.classList.toggle('open', w===which ? !el.classList.contains('open') : false);
+  });
+}
+if(!window._retDDBound){
+  window._retDDBound=true;
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.ret-dd')) ['M','Y'].forEach(w=>{
+      const el=document.getElementById('retDDPanel_'+w); if(el) el.classList.remove('open');
+    });
+  });
+}
+function retYearRange(){
+  // distinct years spanned by license data (activefrom..activeto), clamped sane
+  let lo=9999, hi=0;
+  (RET_LIC||[]).forEach(L=>{
+    if(L.af) lo=Math.min(lo,L.af.getFullYear());
+    const ey=L.at?L.at.getFullYear():0;
+    if(ey&&ey<2099) hi=Math.max(hi,ey);
+  });
+  const now=new Date().getFullYear();
+  if(lo===9999) lo=now-3;
+  if(!hi) hi=now+3;
+  lo=Math.max(lo,2015); hi=Math.min(hi,now+6);
+  const out=[]; for(let y=lo;y<=hi;y++) out.push(y);
+  return out;
+}
+function retDDBuild(){
+  const pm=document.getElementById('retDDPanel_M');
+  if(pm) pm.innerHTML=RET_MONTHS.map((m,i)=>
+    `<label class="ret-dd-item"><input type="checkbox" ${RET_SEL_M.has(i)?'checked':''} onchange="retSelChange('M',${i},this.checked)">${m}</label>`).join('')
+    +`<button class="ret-dd-clear" onclick="retSelClear('M')">✕ Clear months</button>`;
+  const py=document.getElementById('retDDPanel_Y');
+  if(py) py.innerHTML=retYearRange().map(y=>
+    `<label class="ret-dd-item"><input type="checkbox" ${RET_SEL_Y.has(y)?'checked':''} onchange="retSelChange('Y',${y},this.checked)">${y}</label>`).join('')
+    +`<button class="ret-dd-clear" onclick="retSelClear('Y')">✕ Clear years</button>`;
+  const bm=document.getElementById('retDDBadge_M');
+  if(bm){ bm.textContent=RET_SEL_M.size; bm.style.display=RET_SEL_M.size?'':'none'; }
+  const by=document.getElementById('retDDBadge_Y');
+  if(by){ by.textContent=RET_SEL_Y.size; by.style.display=RET_SEL_Y.size?'':'none'; }
+}
+function retSelChange(which,val,checked){
+  const set=which==='M'?RET_SEL_M:RET_SEL_Y;
+  if(checked) set.add(val); else set.delete(val);
+  retDDBuild();
+  if(RET_LIC) renderRetention();
+}
+function retSelClear(which){
+  (which==='M'?RET_SEL_M:RET_SEL_Y).clear();
+  retDDBuild();
+  if(RET_LIC) renderRetention();
+}
+// does license's active span overlap month m (0-11) of year y?
+function retMonthOverlap(L,m,y){
+  const ms=new Date(y,m,1), me=new Date(y,m+1,0,23,59,59);
+  const st=L.af||new Date(1900,0,1), en=L.at||new Date(2199,11,31);
+  return st<=me && en>=ms;
+}
+function retActiveMatch(L){
+  const st=L.af||new Date(1900,0,1), en=L.at||new Date(2199,11,31);
+  const sy=st.getFullYear(), ey=en.getFullYear();
+  const M=[...RET_SEL_M], Y=[...RET_SEL_Y];
+  if(M.length&&Y.length) return Y.some(y=>M.some(m=>retMonthOverlap(L,m,y)));
+  if(Y.length) return Y.some(y=>sy<=y&&y<=ey);
+  // months only ("January all years"): span ≥ 1 saal → har month cover
+  if((en-st)/86400000>=365) return true;
+  return M.some(m=>{ for(let y=sy;y<=ey;y++){ if(retMonthOverlap(L,m,y)) return true; } return false; });
 }
 
 function retInit(){
@@ -5240,10 +5343,16 @@ function renderRetention(){
     (RAW||[]).forEach(r=>{ if(r.n && String(r.n).toUpperCase().includes(q) && r.l) set.add(retLicKey(r.l)); });
     base=base.filter(L=>set.has(L.lic));
   }
+  if(RET_SEL_M.size||RET_SEL_Y.size) base=base.filter(retActiveMatch);
   _retBase=base;
-  const fOn=!!(RET_Q_LIC||RET_Q_TK);
+  const fOn=!!(RET_Q_LIC||RET_Q_TK||RET_SEL_M.size||RET_SEL_Y.size);
   const fi=document.getElementById('retFilterInfo');
-  if(fi) fi.textContent = fOn ? `Filtered: ${fmt(base.length)} of ${fmt(RET_LIC.length)} licenses` : '';
+  if(fi){
+    const bits=[];
+    if(RET_SEL_M.size) bits.push([...RET_SEL_M].sort((x,z)=>x-z).map(i=>RET_MONTHS[i].slice(0,3)).join(','));
+    if(RET_SEL_Y.size) bits.push([...RET_SEL_Y].sort().join(','));
+    fi.textContent = fOn ? `Filtered: ${fmt(base.length)} of ${fmt(RET_LIC.length)} licenses${bits.length?' · '+bits.join(' · '):''}` : '';
+  }
   const clr=document.getElementById('retSearchClear');
   if(clr) clr.style.display = fOn ? '' : 'none';
 
