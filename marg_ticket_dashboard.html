@@ -1688,19 +1688,21 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-dd-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;
   border-radius:9px;background:#0d9488;color:#fff;font-size:10px;font-weight:800;font-family:'JetBrains Mono',monospace}
 .ret-dd-panel{position:absolute;top:36px;left:0;background:var(--surface,#fff);border:1.5px solid var(--border2);
-  border-radius:12px;box-shadow:0 14px 40px rgba(8,16,30,.18);padding:6px;z-index:60;display:none;
+  border-radius:12px;box-shadow:0 14px 40px rgba(8,16,30,.18);padding:0;z-index:60;display:none;
   max-height:280px;overflow:auto;min-width:170px}
 .ret-dd-panel.open{display:block}
-.ret-dd-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;
+.ret-dd-item{display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:12px;font-weight:600;
   color:var(--text2);cursor:pointer;user-select:none}
 .ret-dd-item:hover{background:#f0fdfa}
 .ret-dd-item input{accent-color:#0d9488;cursor:pointer}
-.ret-dd-clear{display:block;width:100%;margin-top:4px;padding:7px;border:none;border-top:1px solid var(--border);
+.ret-dd-clear{display:block;width:100%;margin:0;padding:8px;border:none;border-top:1px solid var(--border);
   background:var(--surface,#fff);font-size:11px;font-weight:800;color:#b91c1c;cursor:pointer;font-family:inherit;
-  position:sticky;bottom:-6px}
-.ret-dd-all{display:block;width:100%;margin-bottom:4px;padding:7px;border:none;border-bottom:1px solid var(--border);
+  position:sticky;bottom:0;z-index:1}
+.ret-dd-clear:hover{background:#fef2f2}
+.ret-dd-all{display:block;width:100%;margin:0;padding:8px;border:none;border-bottom:1px solid var(--border);
   background:var(--surface,#fff);font-size:11px;font-weight:800;color:#0d9488;cursor:pointer;font-family:inherit;
-  position:sticky;top:-6px;z-index:1}
+  position:sticky;top:0;z-index:1}
+.ret-dd-all:hover{background:#f0fdfa}
 /* license-list modal */
 .ret-lic-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:340;display:none;
   align-items:center;justify-content:center;padding:22px}
