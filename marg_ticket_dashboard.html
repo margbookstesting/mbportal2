@@ -1654,7 +1654,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-card .rc-ic{width:26px;height:26px;border-radius:8px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;background:var(--rcl)}
 .ret-card .rc-lbl{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;line-height:1.25}
 .ret-card .rc-num{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-1px}
-.ret-card .rc-sub{font-size:9px;color:var(--muted2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ret-card .rc-sub{font-size:9px;color:var(--muted2);margin-top:4px;line-height:1.5}
 .ret-card.danger{--rc:#dc2626;--rcl:#fef2f2}
 .ret-card.danger .rc-num{color:#b91c1c}
 .ret-card.never{--rc:#dc2626;--rcl:#fef2f2}
@@ -1797,8 +1797,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
         <div class="sec-title-wrap">
           <div class="sec-accent" style="background:var(--glv,#15803d)"></div>
           <div>
-            <div class="sec-title">📅 Renewal Calendar — Upcoming License Expiries</div>
-            <div class="sec-sub">Month-wise count of licenses expiring in the next 12 months (respects the filters above). Click a bar for license details.</div>
+            <div class="sec-title">📅 Renewal Calendar — License Expiries (Expired vs Active)</div>
+            <div class="sec-sub">Last 6 + next 12 months · <b style="color:#b91c1c">red = already expired</b>, <b style="color:#0f766e">teal = active (upcoming renewal)</b> · respects the filters above. Click a bar for license details.</div>
           </div>
         </div>
       </div>
@@ -5459,17 +5459,22 @@ function renderRetention(){
   const sumT=a=>a.reduce((s,x)=>s+x.tks.length,0);
   const sumB=a=>a.reduce((s,x)=>s+x.bugs,0);
   const never=base.filter(L=>!L.lb).length;
-  const expOf=list=>list.filter(x=>retIsExpired(x.L!==undefined?x.L:x)).length;
-  const expTxt=n=>n?` · <span style="color:#b91c1c;font-weight:800">${fmt(n)} expired</span>`:'';
+  const _L=x=>x.L!==undefined?x.L:x;
+  const expActTxt=list=>{
+    const e=list.filter(x=>retIsExpired(_L(x))).length;
+    const act=list.filter(x=>_L(x).at && !retIsExpired(_L(x))).length;
+    return `<span style="color:#b91c1c;font-weight:800">${fmt(e)} expired</span> · <span style="color:#15803d;font-weight:800">${fmt(act)} active</span>`;
+  };
+  const neverL=base.filter(L=>!L.lb);
   const cards=[
-    {n:fmt(base.length),            ic:'📇', l:'Total Licenses',                     s:'all license records'+expTxt(base.filter(retIsExpired).length),       k:'all',     cls:''},
-    {n:fmt(never),                  ic:'💸', l:'Never Billed',                       s:'no bill ever generated'+expTxt(base.filter(L=>!L.lb&&retIsExpired(L)).length), k:'never',   cls:'never'},
+    {n:fmt(base.length),            ic:'📇', l:'Total Licenses',                     s:expActTxt(base),                                                    k:'all',     cls:''},
+    {n:fmt(never),                  ic:'💸', l:'Never Billed',                       s:'no bill ever · '+expActTxt(neverL),                                k:'never',   cls:'never'},
     {n:fmt(_retExpired.length),     ic:'🔴', l:'Expired + Tickets Pending',          s:`${fmt(sumT(_retExpired))} tickets · ${fmt(sumB(_retExpired))} bugs`, k:'expired', cls:'danger'},
     {n:fmt(_retSoon.length),        ic:'⚠️', l:`Expiring ≤${RET_WIN}d + Pending`,     s:`${fmt(sumT(_retSoon))} tickets · ${fmt(sumB(_retSoon))} bugs`,     k:'soon',    cls:'warn'},
-    {n:fmt(_retNoBill.length),      ic:'🔶', l:'No Bill 90d+ + Pending',             s:`${fmt(sumT(_retNoBill))} tickets · ${fmt(sumB(_retNoBill))} bugs`+expTxt(expOf(_retNoBill)),  k:'nobill',  cls:'warn'},
+    {n:fmt(_retNoBill.length),      ic:'🔶', l:'No Bill 90d+ + Pending',             s:`${fmt(sumT(_retNoBill))} tickets · ${fmt(sumB(_retNoBill))} bugs · `+expActTxt(_retNoBill),  k:'nobill',  cls:'warn'},
     {n:fmt(_retBlank.length),       ic:'❔', l:'Blank Active-To',                    s:'no validity date in system',                                       k:'blank',   cls:''},
-    {n:fmt(_retOnboard.length),     ic:'🆕', l:'New Client + Pending',               s:`activated ≤${RET_ONBOARD_DAYS}d · ${fmt(sumT(_retOnboard))} tickets · ${fmt(sumB(_retOnboard))} bugs`+expTxt(expOf(_retOnboard)), k:'onboard', cls:'warn'},
-    {n:fmt(_retStuck.length),       ic:'💰', l:'Billed Recently + Pending',          s:`billed ≤${RET_STUCK_DAYS}d · ${fmt(sumT(_retStuck))} tickets · ${fmt(sumB(_retStuck))} bugs`+expTxt(expOf(_retStuck)),   k:'stuck',   cls:'warn'},
+    {n:fmt(_retOnboard.length),     ic:'🆕', l:'New Client + Pending',               s:`activated ≤${RET_ONBOARD_DAYS}d · ${fmt(sumT(_retOnboard))} tickets · ${fmt(sumB(_retOnboard))} bugs · `+expActTxt(_retOnboard), k:'onboard', cls:'warn'},
+    {n:fmt(_retStuck.length),       ic:'💰', l:'Billed Recently + Pending',          s:`billed ≤${RET_STUCK_DAYS}d · ${fmt(sumT(_retStuck))} tickets · ${fmt(sumB(_retStuck))} bugs · `+expActTxt(_retStuck),   k:'stuck',   cls:'warn'},
   ];
   const st=document.getElementById('retStats');
   if(st) st.innerHTML=cards.map(c=>
@@ -5481,15 +5486,15 @@ function renderRetention(){
   // Billing overdue bucket cards (cumulative, from filtered base)
   const bks=RET_BUCKETS.map(b=>{
     const inB=base.filter(L=>L.daysSinceBill!=null && L.daysSinceBill>=b);
-    return `<div class="ret-card b${b}" onclick="retLicOpen(${b})" title="Click for details">
+    return `<div class="ret-card b${b}" onclick="retLicOpen(${b})" title="Last bill ${b}+ days ago — click for details">
       <div class="rc-top"><span class="rc-ic">⏳</span><span class="rc-lbl">${b}+ days</span></div>
       <div class="rc-num">${fmt(inB.length)}</div>
-      <div class="rc-sub">last bill ${b}+ days ago${expTxt(inB.filter(retIsExpired).length)}</div></div>`;
+      <div class="rc-sub">${expActTxt(inB)}</div></div>`;
   });
-  bks.push(`<div class="ret-card never" onclick="retLicOpen('never')" title="Click for details">
+  bks.push(`<div class="ret-card never" onclick="retLicOpen('never')" title="No bill ever generated — click for details">
     <div class="rc-top"><span class="rc-ic">💸</span><span class="rc-lbl">Never Billed</span></div>
     <div class="rc-num">${fmt(never)}</div>
-    <div class="rc-sub">no bill ever generated${expTxt(base.filter(L=>!L.lb&&retIsExpired(L)).length)}</div></div>`);
+    <div class="rc-sub">${expActTxt(neverL)}</div></div>`);
   const cd=document.getElementById('retCards'); if(cd) cd.innerHTML=bks.join('');
 
   renderRetPhase2(base, today);
@@ -5503,13 +5508,14 @@ function renderRetPhase2(base, today){
     if(!seen.has(x.L.lic)){ seen.add(x.L.lic); atRisk.push(x); }
   }));
 
-  // S8: renewal calendar — next 12 months expiry counts (clickable)
+  // S8: renewal calendar — pichhle 6 + agle 12 mahine, expired vs active split (clickable)
   _retCalMonths=[];
-  for(let i=0;i<12;i++){
+  for(let i=-6;i<12;i++){
     const d=new Date(today.getFullYear(), today.getMonth()+i, 1);
     const y=d.getFullYear(), m=d.getMonth();
     const rows=base.filter(L=>L.at && !L.atBlank && L.at.getFullYear()===y && L.at.getMonth()===m);
-    _retCalMonths.push({y, m, label:RET_MONTHS[m].slice(0,3)+' '+String(y).slice(2), rows});
+    const exp=rows.filter(retIsExpired).length;
+    _retCalMonths.push({y, m, label:RET_MONTHS[m].slice(0,3)+' '+String(y).slice(2), rows, exp, act:rows.length-exp});
   }
   const cv=document.getElementById('retCalChart');
   if(cv && typeof Chart!=='undefined'){
@@ -5517,16 +5523,26 @@ function renderRetPhase2(base, today){
     window._retCalChart=new Chart(cv,{
       type:'bar',
       data:{ labels:_retCalMonths.map(x=>x.label),
-        datasets:[{ label:'Licenses expiring', data:_retCalMonths.map(x=>x.rows.length),
-          backgroundColor:'#0d9488', hoverBackgroundColor:'#0f766e',
-          maxBarThickness:24, borderWidth:0,
-          borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0} }] },
+        datasets:[
+          { label:'Expired', data:_retCalMonths.map(x=>x.exp),
+            backgroundColor:'#dc2626', hoverBackgroundColor:'#b91c1c',
+            maxBarThickness:24, borderWidth:0, stack:'s' },
+          { label:'Active', data:_retCalMonths.map(x=>x.act),
+            backgroundColor:'#0d9488', hoverBackgroundColor:'#0f766e',
+            maxBarThickness:24, borderWidth:0, stack:'s',
+            borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0} }
+        ] },
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{callbacks:{afterLabel:()=>'Click for details'}} },
+        plugins:{
+          legend:{display:true, position:'top', align:'end',
+            labels:{boxWidth:10, boxHeight:10, font:{size:10, weight:'700'}, color:'#6b7280'}},
+          tooltip:{callbacks:{
+            footer:items=>{ const c=_retCalMonths[items[0].dataIndex]; return `Total: ${fmt(c.rows.length)} · Click for details`; }
+          }} },
         scales:{
-          x:{ grid:{display:false}, border:{display:false},
+          x:{ stacked:true, grid:{display:false}, border:{display:false},
               ticks:{font:{size:10,weight:'600'},color:'#6b7280'} },
-          y:{ beginAtZero:true, ticks:{precision:0,font:{size:10},color:'#9ca3af'},
+          y:{ stacked:true, beginAtZero:true, ticks:{precision:0,font:{size:10},color:'#9ca3af'},
               grid:{color:'rgba(15,23,42,.05)'}, border:{display:false} } },
         onClick:(ev,els)=>{ if(els&&els.length){ retCalOpen(els[0].index); } } }
     });
