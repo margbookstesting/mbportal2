@@ -1638,22 +1638,32 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-search{height:32px;border:1.5px solid var(--border2);border-radius:9px;padding:0 12px;font-size:12px;
   font-family:inherit;outline:none;min-width:190px;background:var(--surface,#fff)}
 .ret-search:focus{border-color:#0d9488}
-.ret-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px}
-@media(max-width:1100px){.ret-stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.ret-stats{grid-template-columns:1fr}}
+.ret-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:2px}
+@media(max-width:1150px){.ret-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.ret-stats{grid-template-columns:1fr}}
 .ret-cards{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
 @media(max-width:1300px){.ret-cards{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:760px){.ret-cards{grid-template-columns:repeat(2,1fr)}}
-.ret-card{background:var(--surface,#fff);border:1.5px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:.15s;position:relative}
-.ret-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(13,148,136,.14);border-color:#5eead4}
-.ret-card.hot{border-color:#0d9488;box-shadow:0 0 0 1.5px #0d9488 inset}
-.ret-card .rc-num{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;color:var(--text);line-height:1}
-.ret-card .rc-lbl{font-size:11px;font-weight:800;color:var(--muted);margin-top:6px}
-.ret-card .rc-sub{font-size:9px;color:var(--muted2);margin-top:3px}
-.ret-card.never .rc-num{color:#b91c1c}
-.ret-card.danger{border-color:#fca5a5}
+.ret-card{--rc:#0d9488;--rcl:#f0fdfa;
+  background:var(--surface,#fff);border:1px solid var(--border);border-radius:13px;
+  padding:11px 13px 10px 15px;cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;
+  position:relative;overflow:hidden}
+.ret-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rc)}
+.ret-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(8,16,30,.12);border-color:var(--rc)}
+.ret-card .rc-top{display:flex;align-items:center;gap:7px;margin-bottom:7px;min-height:26px}
+.ret-card .rc-ic{width:26px;height:26px;border-radius:8px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;background:var(--rcl)}
+.ret-card .rc-lbl{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;line-height:1.25}
+.ret-card .rc-num{font-family:'JetBrains Mono',monospace;font-size:25px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-1px}
+.ret-card .rc-sub{font-size:9px;color:var(--muted2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ret-card.danger{--rc:#dc2626;--rcl:#fef2f2}
 .ret-card.danger .rc-num{color:#b91c1c}
+.ret-card.never{--rc:#dc2626;--rcl:#fef2f2}
+.ret-card.never .rc-num{color:#b91c1c}
+.ret-card.warn{--rc:#d97706;--rcl:#fffbeb}
 .ret-card.warn .rc-num{color:#b45309}
+.ret-card.b7{--rc:#fbbf24;--rcl:#fffbeb}.ret-card.b15{--rc:#f59e0b;--rcl:#fffbeb}
+.ret-card.b30{--rc:#d97706;--rcl:#fff7ed}.ret-card.b60{--rc:#b45309;--rcl:#fff7ed}
+.ret-card.b90{--rc:#92400e;--rcl:#fef3ec}.ret-card.b180{--rc:#7c2d12;--rcl:#fdf0e9}
 .ret-risk{display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:800}
 .ret-risk.hi{background:#fee2e2;color:#b91c1c}
 .ret-risk.md{background:#fef3c7;color:#92400e}
@@ -1666,6 +1676,12 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
 .ret-refresh:hover{border-color:#0d9488;color:#0d9488}
 .ret-refresh{white-space:nowrap}
+/* inline loader (license data fetch) */
+.ret-loader{display:flex;align-items:center;justify-content:center;gap:12px;padding:34px 0 30px}
+.ret-spin{width:34px;height:34px;border-radius:50%;border:3.5px solid #ccfbf1;border-top-color:#0d9488;
+  animation:retspin .8s linear infinite;flex-shrink:0}
+@keyframes retspin{to{transform:rotate(360deg)}}
+.ret-loader span{font-size:13px;font-weight:700;color:var(--muted)}
 /* multi-select dropdowns (Active Month / Active Year) */
 .ret-dd{position:relative}
 .ret-dd .ret-chip{white-space:nowrap}
@@ -1720,15 +1736,17 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
           <div class="sec-accent" style="background:linear-gradient(180deg,#0d9488,#0891b2)"></div>
           <div>
             <div class="sec-title">💚 Client Retention — Billing &amp; License Expiry</div>
-            <div class="sec-sub">License data: <b>gelliclist API</b> · pending tickets are live (the date filter above does not apply here). Click any card for details.</div>
           </div>
         </div>
         <div class="ret-info">
+          <span id="retInfo" style="font-size:11px;color:var(--muted)">License data not loaded yet</span>
           <button class="ret-refresh" onclick="retFetchLic(true)" title="Reload license/billing data">↺ Reload Licenses</button>
         </div>
       </div>
       <div style="padding:10px 20px 18px">
-        <div id="retInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px">License data not loaded yet</div>
+        <div class="ret-loader" id="retLoader" style="display:none">
+          <div class="ret-spin"></div><span id="retLoaderText">Loading license data…</span>
+        </div>
         <div class="ret-chips">
           <span class="ret-chip-label">Search:</span>
           <input class="ret-search" id="retSearchLic" placeholder="🪪 License / Client…" autocomplete="off" oninput="retSearchDebounce()">
@@ -1781,24 +1799,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
     </div>
   </div>
 
-  <!-- S3: RM ACCOUNTABILITY + S11: PLAN-WISE AT-RISK -->
-  <div class="grid-2">
-    <div class="section">
-      <div class="sec-hdr">
-        <div class="sec-title-wrap">
-          <div class="sec-accent" style="background:var(--ack,#0891b2)"></div>
-          <div>
-            <div class="sec-title">👤 RM Accountability — At-Risk Clients</div>
-            <div class="sec-sub">At-risk clients (expired / expiring ≤30d / no-bill 90d+) ke pending tickets, RM-wise. Click a row for the tickets.</div>
-          </div>
-        </div>
-        <div class="ret-info" id="retRMInfo"></div>
-      </div>
-      <div class="tbl-wrap"><table id="tRetRM">
-        <thead><tr><th style="width:30px">#</th><th>RM</th><th class="r">At-Risk Clients</th><th class="r">Pending</th><th class="r">🐞 Bugs</th></tr></thead>
-        <tbody></tbody>
-      </table></div>
-    </div>
+  <!-- S11: PLAN-WISE AT-RISK -->
+  <div class="grid-1">
     <div class="section">
       <div class="sec-hdr">
         <div class="sec-title-wrap">
@@ -2665,6 +2667,9 @@ function switchTab(n){
     const t=document.getElementById('tab'+i);    if(t) t.style.display = n===i ? '' : 'none';
     const b=document.getElementById('tabBtn'+i); if(b) b.classList.toggle('active', n===i);
   }
+  // Client Retention tab par upar wala ticket filter bar lagoo nahi hota — hide karo
+  const fb=document.querySelector('.filter-bar');    if(fb) fb.style.display = n===4 ? 'none' : '';
+  const sbn=document.querySelector('.search-banner');if(sbn) sbn.style.display = n===4 ? 'none' : '';
   if(n===2) renderSubdisp();
   if(n===3) aiInit();
   if(n===4) retInit();
@@ -5173,7 +5178,7 @@ let RET_Q_LIC='', RET_Q_TK='', _retQTimer=null;
 const RET_SEL_M=new Set(), RET_SEL_Y=new Set();   // Active Month/Year multi-select
 const RET_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _retBase=[], _retExpired=[], _retSoon=[], _retNoBill=[], _retBlank=[], _retMaps=null;
-let _retOnboard=[], _retStuck=[], _retRMRows=[], _retPlanRows=[], _retCalMonths=[];
+let _retOnboard=[], _retStuck=[], _retPlanRows=[], _retCalMonths=[];
 const RET_ONBOARD_DAYS=60, RET_STUCK_DAYS=30;
 let _retModalRows=[], _retModalMode='lic', _retModalTitle='', _retModalPage=1;
 
@@ -5235,6 +5240,7 @@ async function retFetchLic(force){
   RET_BUSY=true;
   const info=document.getElementById('retInfo');
   if(info) info.textContent='⏳ Loading license data…';
+  retLoaderShow(true);
   // Same-origin rewrite first (Vercel), direct URL as fallback
   const urls=['/api/liclist','https://dbwork.margbooks.com/api/Other/gelliclist'];
   let rows=null, lastErr=null;
@@ -5249,6 +5255,7 @@ async function retFetchLic(force){
     }catch(e){ lastErr=e; }
   }
   RET_BUSY=false;
+  retLoaderShow(false);
   if(!rows){
     if(info) info.textContent='❌ License API error: '+((lastErr&&lastErr.message)||'unknown');
     showToast('❌ License/billing data failed to load — retry with ↺ Licenses');
@@ -5267,12 +5274,10 @@ async function retFetchLic(force){
   });
   RET_LIC=Array.from(map.values());
   RET_LIC_TS=Date.now();
-  // default: current month + current year selected (pehli baar load par)
+  // default: sirf current month selected (year nahi) — pehli baar load par
   if(!window._retDefaultsApplied){
     window._retDefaultsApplied=true;
-    const now=new Date();
-    RET_SEL_M.add(now.getMonth());
-    RET_SEL_Y.add(now.getFullYear());
+    RET_SEL_M.add(new Date().getMonth());
   }
   retDDBuild();
   renderRetention();
@@ -5354,6 +5359,10 @@ function retActiveMatch(L){
   return true;
 }
 
+function retLoaderShow(on){
+  const ld=document.getElementById('retLoader'); if(ld) ld.style.display=on?'flex':'none';
+  const st=document.getElementById('retStats');  if(st) st.style.display=on?'none':'';
+}
 function retInit(){
   if(!RET_LIC){ retFetchLic(false); return; }
   renderRetention();
@@ -5429,30 +5438,33 @@ function renderRetention(){
   const sumB=a=>a.reduce((s,x)=>s+x.bugs,0);
   const never=base.filter(L=>!L.lb).length;
   const cards=[
-    {n:fmt(base.length),            l:'📇 Total Licenses',                    s:'all license records',                                              k:'all',     cls:''},
-    {n:fmt(never),                  l:'💸 Never Billed',                      s:'no bill ever generated',                                           k:'never',   cls:'never'},
-    {n:fmt(_retExpired.length),     l:'🔴 Expired + Tickets Pending',         s:`${fmt(sumT(_retExpired))} tickets · ${fmt(sumB(_retExpired))} bugs`, k:'expired', cls:'danger'},
-    {n:fmt(_retSoon.length),        l:`⚠️ Expiring ≤${RET_WIN} Days + Pending`, s:`${fmt(sumT(_retSoon))} tickets · ${fmt(sumB(_retSoon))} bugs`,     k:'soon',    cls:'warn'},
-    {n:fmt(_retNoBill.length),      l:'🔶 No Bill 90+ Days + Pending',        s:`${fmt(sumT(_retNoBill))} tickets · ${fmt(sumB(_retNoBill))} bugs`,  k:'nobill',  cls:'warn'},
-    {n:fmt(_retBlank.length),       l:'❔ Blank Active-To',                   s:'no validity date in system',                                       k:'blank',   cls:''},
-    {n:fmt(_retOnboard.length),     l:`🆕 New Client + Pending`,              s:`activated ≤${RET_ONBOARD_DAYS}d · ${fmt(sumT(_retOnboard))} tickets · ${fmt(sumB(_retOnboard))} bugs`, k:'onboard', cls:'warn'},
-    {n:fmt(_retStuck.length),       l:`💰 Billed Recently + Pending`,         s:`billed ≤${RET_STUCK_DAYS}d · ${fmt(sumT(_retStuck))} tickets · ${fmt(sumB(_retStuck))} bugs`,   k:'stuck',   cls:'warn'},
+    {n:fmt(base.length),            ic:'📇', l:'Total Licenses',                     s:'all license records',                                              k:'all',     cls:''},
+    {n:fmt(never),                  ic:'💸', l:'Never Billed',                       s:'no bill ever generated',                                           k:'never',   cls:'never'},
+    {n:fmt(_retExpired.length),     ic:'🔴', l:'Expired + Tickets Pending',          s:`${fmt(sumT(_retExpired))} tickets · ${fmt(sumB(_retExpired))} bugs`, k:'expired', cls:'danger'},
+    {n:fmt(_retSoon.length),        ic:'⚠️', l:`Expiring ≤${RET_WIN}d + Pending`,     s:`${fmt(sumT(_retSoon))} tickets · ${fmt(sumB(_retSoon))} bugs`,     k:'soon',    cls:'warn'},
+    {n:fmt(_retNoBill.length),      ic:'🔶', l:'No Bill 90d+ + Pending',             s:`${fmt(sumT(_retNoBill))} tickets · ${fmt(sumB(_retNoBill))} bugs`,  k:'nobill',  cls:'warn'},
+    {n:fmt(_retBlank.length),       ic:'❔', l:'Blank Active-To',                    s:'no validity date in system',                                       k:'blank',   cls:''},
+    {n:fmt(_retOnboard.length),     ic:'🆕', l:'New Client + Pending',               s:`activated ≤${RET_ONBOARD_DAYS}d · ${fmt(sumT(_retOnboard))} tickets · ${fmt(sumB(_retOnboard))} bugs`, k:'onboard', cls:'warn'},
+    {n:fmt(_retStuck.length),       ic:'💰', l:'Billed Recently + Pending',          s:`billed ≤${RET_STUCK_DAYS}d · ${fmt(sumT(_retStuck))} tickets · ${fmt(sumB(_retStuck))} bugs`,   k:'stuck',   cls:'warn'},
   ];
   const st=document.getElementById('retStats');
   if(st) st.innerHTML=cards.map(c=>
-    `<div class="ret-card ${c.cls}" onclick="retLicOpen('${c.k}')">
-      <div class="rc-num">${c.n}</div><div class="rc-lbl">${c.l}</div>
-      <div class="rc-sub">${c.s} · click for details</div></div>`).join('');
+    `<div class="ret-card ${c.cls}" onclick="retLicOpen('${c.k}')" title="Click for details">
+      <div class="rc-top"><span class="rc-ic">${c.ic}</span><span class="rc-lbl">${c.l}</span></div>
+      <div class="rc-num">${c.n}</div>
+      <div class="rc-sub">${c.s}</div></div>`).join('');
 
   // Billing overdue bucket cards (cumulative, from filtered base)
   const bks=RET_BUCKETS.map(b=>{
     const c=base.filter(L=>L.daysSinceBill!=null && L.daysSinceBill>=b).length;
-    return `<div class="ret-card" onclick="retLicOpen(${b})">
-      <div class="rc-num">${fmt(c)}</div><div class="rc-lbl">${b}+ days</div>
+    return `<div class="ret-card b${b}" onclick="retLicOpen(${b})" title="Click for details">
+      <div class="rc-top"><span class="rc-ic">⏳</span><span class="rc-lbl">${b}+ days</span></div>
+      <div class="rc-num">${fmt(c)}</div>
       <div class="rc-sub">last bill ${b}+ days ago</div></div>`;
   });
-  bks.push(`<div class="ret-card never" onclick="retLicOpen('never')">
-    <div class="rc-num">${fmt(never)}</div><div class="rc-lbl">Never Billed</div>
+  bks.push(`<div class="ret-card never" onclick="retLicOpen('never')" title="Click for details">
+    <div class="rc-top"><span class="rc-ic">💸</span><span class="rc-lbl">Never Billed</span></div>
+    <div class="rc-num">${fmt(never)}</div>
     <div class="rc-sub">no bill ever generated</div></div>`);
   const cd=document.getElementById('retCards'); if(cd) cd.innerHTML=bks.join('');
 
@@ -5482,28 +5494,19 @@ function renderRetPhase2(base, today){
       type:'bar',
       data:{ labels:_retCalMonths.map(x=>x.label),
         datasets:[{ label:'Licenses expiring', data:_retCalMonths.map(x=>x.rows.length),
-          backgroundColor:'rgba(13,148,136,.65)', borderColor:'#0d9488', borderWidth:1.5, borderRadius:6 }] },
+          backgroundColor:'#0d9488', hoverBackgroundColor:'#0f766e',
+          maxBarThickness:24, borderWidth:0,
+          borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0} }] },
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{callbacks:{afterLabel:()=>'Click for details'}} },
-        scales:{ y:{beginAtZero:true, ticks:{precision:0}} },
+        scales:{
+          x:{ grid:{display:false}, border:{display:false},
+              ticks:{font:{size:10,weight:'600'},color:'#6b7280'} },
+          y:{ beginAtZero:true, ticks:{precision:0,font:{size:10},color:'#9ca3af'},
+              grid:{color:'rgba(15,23,42,.05)'}, border:{display:false} } },
         onClick:(ev,els)=>{ if(els&&els.length){ retCalOpen(els[0].index); } } }
     });
   }
-
-  // S3: RM-wise — at-risk clients ke pending tickets group by RM
-  const rmMap=new Map();
-  atRisk.forEach(x=>x.tks.forEach(t=>{
-    const rm=(t.r||'').trim()||'(No RM)';
-    if(!rmMap.has(rm)) rmMap.set(rm,{rm, lics:new Set(), tks:[], bugs:0});
-    const g=rmMap.get(rm);
-    g.lics.add(x.L.lic); g.tks.push(t);
-    if(bugDevClass(t)==='Bug') g.bugs++;
-  }));
-  _retRMRows=[...rmMap.values()].sort((a,b)=>b.tks.length-a.tks.length);
-  retFillAggTable('tRetRM','retRMInfo',_retRMRows,'retRMOpen',g=>
-    `<td style="font-weight:700">${retEsc(g.rm)}</td><td class="r n-tot">${fmt(g.lics.size)}</td>
-     <td class="r"><span class="ret-pend-pill">🎫 ${g.tks.length}</span></td>
-     <td class="r n-tot" style="color:#b91c1c">${g.bugs||'—'}</td>`);
 
   // S11: plan-wise at-risk
   const plMap=new Map();
@@ -5522,7 +5525,7 @@ function renderRetPhase2(base, today){
 function retFillAggTable(tableId, infoId, rows, clickFn, cellsFn){
   const tb=document.querySelector('#'+tableId+' tbody'); if(!tb) return;
   const inf=document.getElementById(infoId);
-  if(inf) inf.textContent=fmt(rows.length)+(tableId==='tRetRM'?' RMs':' plans');
+  if(inf) inf.textContent=fmt(rows.length)+' plans';
   if(!rows.length){ tb.innerHTML='<tr><td colspan="5" class="ret-empty">✅ No at-risk clients</td></tr>'; return; }
   const cap=15, slice=rows.slice(0,cap);
   tb.innerHTML=slice.map((g,i)=>
@@ -5533,10 +5536,6 @@ function retCalOpen(i){
   const c=_retCalMonths[i]; if(!c || !c.rows.length) return;
   _retLicShow(c.rows.map(retEnrich).sort((a,b)=>a.L.at-b.L.at),
     `📅 Expiring in ${RET_MONTHS[c.m]} ${c.y} — License Details`, 'soon2');
-}
-function retRMOpen(i){
-  const g=_retRMRows[i]; if(!g || !g.tks.length) return;
-  _openSecModal(g.tks.slice(), `RM: ${g.rm} — At-Risk Pending Tickets`);
 }
 function retPlanOpen(i){
   const g=_retPlanRows[i]; if(!g || !g.rows.length) return;
