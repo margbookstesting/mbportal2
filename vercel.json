@@ -27,6 +27,10 @@
     {
       "source": "/getclientinfo",
       "destination": "/get_client_info.html"
+    },
+    {
+      "source": "/api/liclist",
+      "destination": "https://dbwork.margbooks.com/api/Other/gelliclist"
     }
   ]
 }
