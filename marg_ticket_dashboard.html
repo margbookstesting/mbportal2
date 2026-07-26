@@ -1729,15 +1729,56 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .ret-pg:disabled{opacity:.4;cursor:default}
 .ret-pg-dots{color:var(--muted2);font-size:12px;padding:0 2px}
 .ret-pg-info{font-size:11px;color:var(--muted);margin-left:10px;white-space:nowrap}
+
+/* ═══ world-class polish layer (tab4 + retention modal scoped) ═══ */
+#tab4{background:
+  radial-gradient(1100px 260px at 18% -60px,rgba(13,148,136,.07),transparent),
+  radial-gradient(900px 240px at 85% -80px,rgba(3,105,161,.05),transparent)}
+#tab4 .section{border-radius:18px;border:1px solid #e6e9f4;overflow:hidden;
+  box-shadow:0 1px 2px rgba(8,16,30,.04),0 10px 30px -18px rgba(8,16,30,.10)}
+#tab4 tbody tr:hover{background:#f0fdfa}
+.ret-hero .sec-hdr{background:linear-gradient(120deg,#0d9488,#0891b2 55%,#0369a1);border-bottom:none}
+.ret-hero .sec-title{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.12)}
+.ret-hero #retInfo{color:rgba(255,255,255,.88)!important}
+.ret-hero .ret-refresh{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:#fff}
+.ret-hero .ret-refresh:hover{background:rgba(255,255,255,.28);border-color:#fff;color:#fff}
+@keyframes retIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ret-card{border-radius:16px;animation:retIn .4s cubic-bezier(.2,.7,.3,1) both}
+.ret-stats .ret-card:nth-child(2),.ret-cards .ret-card:nth-child(2){animation-delay:.04s}
+.ret-stats .ret-card:nth-child(3),.ret-cards .ret-card:nth-child(3){animation-delay:.08s}
+.ret-stats .ret-card:nth-child(4),.ret-cards .ret-card:nth-child(4){animation-delay:.12s}
+.ret-stats .ret-card:nth-child(5),.ret-cards .ret-card:nth-child(5){animation-delay:.16s}
+.ret-stats .ret-card:nth-child(6),.ret-cards .ret-card:nth-child(6){animation-delay:.20s}
+.ret-stats .ret-card:nth-child(7),.ret-cards .ret-card:nth-child(7){animation-delay:.24s}
+.ret-stats .ret-card:nth-child(8){animation-delay:.28s}
+.ret-card::before{width:4px;background:linear-gradient(180deg,var(--rc),color-mix(in srgb,var(--rc) 45%,#fff))}
+.ret-card:hover{box-shadow:0 14px 30px -10px color-mix(in srgb,var(--rc) 32%,transparent),0 2px 6px rgba(8,16,30,.06)}
+.ret-card .rc-ic{background:linear-gradient(135deg,var(--rcl),#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rc) 22%,transparent)}
+.ret-card .rc-num{font-size:27px}
+.ret-chip,.ret-refresh,.ret-search,.ret-lic-search,.ret-pg{transition:box-shadow .15s,border-color .15s,background .15s,color .15s,transform .15s}
+.ret-search:focus,.ret-lic-search:focus{box-shadow:0 0 0 3px rgba(13,148,136,.18)}
+.ret-chip:active,.ret-pg:active{transform:scale(.96)}
+.ret-loader span{letter-spacing:.3px}
+/* modal */
+.ret-lic-overlay{background:rgba(8,16,30,.6);backdrop-filter:blur(6px)}
+@keyframes retModalIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+.ret-lic-modal{border-radius:20px;animation:retModalIn .22s cubic-bezier(.2,.7,.3,1)}
+.ret-lic-hdr{background:linear-gradient(180deg,#fbfcff,#fff)}
+.ret-lic-body::-webkit-scrollbar{width:10px;height:10px}
+.ret-lic-body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px;border:2px solid #fff}
+.ret-lic-body::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+#tRetLic tbody tr:hover{background:#f0fdfa}
+.ret-pg{border-radius:9px}
+.ret-pend-pill{box-shadow:inset 0 0 0 1px #dbeafe}
 </style>
 
 <main class="main" id="tab4" style="display:none">
 
   <div class="grid-1">
-    <div class="section">
+    <div class="section ret-hero">
       <div class="sec-hdr">
         <div class="sec-title-wrap">
-          <div class="sec-accent" style="background:linear-gradient(180deg,#0d9488,#0891b2)"></div>
+          <div class="sec-accent" style="background:rgba(255,255,255,.9)"></div>
           <div>
             <div class="sec-title">💚 Client Retention — Billing &amp; License Expiry</div>
           </div>
@@ -5244,6 +5285,12 @@ function retRisk(pendCnt,bugCnt,urgencyDays){
   return {score, html:`<span class="ret-risk ${cls}">${lbl}</span>`};
 }
 
+// Har list ki uniform indexing: expiry (activeto) ascending — jo sabse pehle
+// expire hua/hoga wo upar; blank activeto sabse niche; tie par Risk zyada upar.
+function retByExpiry(a,b){
+  const A=a.L.at?a.L.at.getTime():Infinity, B=b.L.at?b.L.at.getTime():Infinity;
+  return (A-B) || ((b.risk?b.risk.score:0)-(a.risk?a.risk.score:0));
+}
 // Join one license row with its pending tickets
 function retEnrich(L){
   const {pend,name,info}=_retMaps;
@@ -5433,11 +5480,11 @@ function renderRetention(){
   // build the four drill-down lists (already enriched + risk-sorted)
   _retExpired = base.filter(L=>L.at && L.daysToExpiry<0 && pend.has(L.lic)).map(retEnrich);
   _retExpired.forEach(x=>x.risk=retRisk(x.tks.length,x.bugs,0));
-  _retExpired.sort((a,b)=>b.risk.score-a.risk.score);
+  _retExpired.sort(retByExpiry);
 
   _retSoon = base.filter(L=>L.at && L.daysToExpiry>=0 && L.daysToExpiry<=RET_WIN && pend.has(L.lic)).map(retEnrich);
   _retSoon.forEach(x=>x.risk=retRisk(x.tks.length,x.bugs,x.L.daysToExpiry));
-  _retSoon.sort((a,b)=>b.risk.score-a.risk.score);
+  _retSoon.sort(retByExpiry);
 
   _retNoBill = base.filter(L=>{
     if(!pend.has(L.lic)) return false;
@@ -5445,7 +5492,7 @@ function renderRetention(){
     return !L.af || retDays(L.af,today)>=90; // never billed
   }).map(retEnrich);
   _retNoBill.forEach(x=>x.risk=retRisk(x.tks.length,x.bugs,x.L.daysToExpiry));
-  _retNoBill.sort((a,b)=>b.risk.score-a.risk.score);
+  _retNoBill.sort(retByExpiry);
 
   _retBlank = base.filter(L=>L.atBlank).map(retEnrich);
   _retBlank.sort((a,b)=>(b.tks.length-a.tks.length)||((b.L.daysSinceBill||0)-(a.L.daysSinceBill||0)));
@@ -5453,12 +5500,12 @@ function renderRetention(){
   // S6: naya client (activation ≤60 din) + pending — early churn risk
   _retOnboard = base.filter(L=>L.af && retDays(L.af,today)<=RET_ONBOARD_DAYS && retDays(L.af,today)>=0 && pend.has(L.lic)).map(retEnrich);
   _retOnboard.forEach(x=>x.risk=retRisk(x.tks.length,x.bugs,x.L.daysToExpiry));
-  _retOnboard.sort((a,b)=>b.risk.score-a.risk.score);
+  _retOnboard.sort(retByExpiry);
 
   // S7: recent billing (≤30 din) + pending — paying client stuck
   _retStuck = base.filter(L=>L.lb && L.daysSinceBill!=null && L.daysSinceBill<=RET_STUCK_DAYS && pend.has(L.lic)).map(retEnrich);
   _retStuck.forEach(x=>x.risk=retRisk(x.tks.length,x.bugs,x.L.daysToExpiry));
-  _retStuck.sort((a,b)=>b.risk.score-a.risk.score);
+  _retStuck.sort(retByExpiry);
 
   // R10: count cards (click → paginated license modal)
   const sumT=a=>a.reduce((s,x)=>s+x.tks.length,0);
@@ -5503,6 +5550,23 @@ function renderRetention(){
   const cd=document.getElementById('retCards'); if(cd) cd.innerHTML=bks.join('');
 
   renderRetPhase2(base, today);
+  retAnimateNums();
+}
+
+// hero numbers count-up (450ms ease-out) — world-class micro-interaction
+function retAnimateNums(){
+  document.querySelectorAll('#tab4 .rc-num').forEach(el=>{
+    const txt=el.textContent.trim();
+    const val=parseInt(txt.replace(/,/g,''),10);
+    if(isNaN(val)||val<=0||val>2000000) return;
+    const t0=performance.now(), dur=450;
+    const step=t=>{
+      const pr=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-pr,3);
+      el.textContent=fmt(Math.round(val*e));
+      if(pr<1) requestAnimationFrame(step); else el.textContent=fmt(val);
+    };
+    requestAnimationFrame(step);
+  });
 }
 
 // ═══ Phase 2: renewal calendar + RM accountability + plan-wise at-risk ═══
@@ -5540,10 +5604,13 @@ function renderRetPhase2(base, today){
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{
           legend:{display:true, position:'top', align:'end',
-            labels:{boxWidth:10, boxHeight:10, font:{size:10, weight:'700'}, color:'#6b7280'}},
-          tooltip:{callbacks:{
-            footer:items=>{ const c=_retCalMonths[items[0].dataIndex]; return `Total: ${fmt(c.rows.length)} · Click for details`; }
-          }} },
+            labels:{boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:'rectRounded', font:{size:10, weight:'700'}, color:'#6b7280'}},
+          tooltip:{backgroundColor:'#0f172a', padding:11, cornerRadius:10,
+            titleFont:{weight:'700', size:12}, bodyFont:{size:11}, footerFont:{size:10, weight:'600'},
+            footerColor:'#94a3b8', boxPadding:4,
+            callbacks:{
+              footer:items=>{ const c=_retCalMonths[items[0].dataIndex]; return `Total: ${fmt(c.rows.length)} · Click for details`; }
+            }} },
         scales:{
           x:{ stacked:true, grid:{display:false}, border:{display:false},
               ticks:{font:{size:10,weight:'600'},color:'#6b7280'} },
@@ -5579,12 +5646,12 @@ function retFillAggTable(tableId, infoId, rows, clickFn, cellsFn){
 }
 function retCalOpen(i){
   const c=_retCalMonths[i]; if(!c || !c.rows.length) return;
-  _retLicShow(c.rows.map(retEnrich).sort((a,b)=>a.L.at-b.L.at),
+  _retLicShow(c.rows.map(retEnrich).sort(retByExpiry),
     `📅 Expiring in ${RET_MONTHS[c.m]} ${c.y} — License Details`, 'soon2');
 }
 function retPlanOpen(i){
   const g=_retPlanRows[i]; if(!g || !g.rows.length) return;
-  _retLicShow(g.rows.slice(), `Plan: ${g.pl} — At-Risk License Details`, 'nobill');
+  _retLicShow(g.rows.slice().sort(retByExpiry), `Plan: ${g.pl} — At-Risk License Details`, 'nobill');
 }
 
 // ── License modal: columns per list type ──
@@ -5651,14 +5718,13 @@ function retLicOpen(kind){
   let rows, title, mode='lic';
   if(typeof kind==='number'){
     rows=base.filter(L=>L.daysSinceBill!=null && L.daysSinceBill>=kind).map(retEnrich)
-      .sort((a,b)=>(b.L.daysSinceBill||0)-(a.L.daysSinceBill||0));
+      .sort(retByExpiry);
     title=`Billing Overdue ${kind}+ days — License Details`;
   } else if(kind==='never'){
-    rows=base.filter(L=>!L.lb).map(retEnrich)
-      .sort((a,b)=>(b.tks.length-a.tks.length)||String(a.L.lic).localeCompare(String(b.L.lic)));
+    rows=base.filter(L=>!L.lb).map(retEnrich).sort(retByExpiry);
     title='Never Billed — License Details';
   } else if(kind==='all'){
-    rows=base.map(retEnrich).sort((a,b)=>String(a.L.lic).localeCompare(String(b.L.lic),undefined,{numeric:true}));
+    rows=base.map(retEnrich).sort(retByExpiry);
     title='All Licenses';
   } else if(kind==='expired'){ rows=_retExpired; mode='expired'; title='🔴 Expired — Tickets Pending (Win-back)';
   } else if(kind==='soon'){    rows=_retSoon;    mode='soon';    title=`⚠️ Expiring in Next ${RET_WIN} Days — With Pending Tickets`;
