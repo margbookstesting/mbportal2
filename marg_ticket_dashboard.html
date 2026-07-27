@@ -1613,6 +1613,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
       </div>
       <div class="ai-tools">
         <input class="ai-search" id="aiSearch" placeholder="🔍 Search keyword…" oninput="aiSearchApply()" autocomplete="off">
+        <button class="ai-atrisk" id="aiAtRiskBtn" onclick="aiToggleAtRisk()"
+          title="Sirf at-risk clients (expired / expiring ≤30d / no-bill 90d+) ki tickets cluster karo — ek common issue fix karne se kai at-risk clients bachte hain">💚 At-Risk Only</button>
         <div class="ai-modes" style="display:none">
           <button class="ai-mode" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
           <button class="ai-mode active" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
@@ -1777,6 +1779,35 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tRetLic tbody tr:hover{background:#f0fdfa}
 .ret-pg{border-radius:9px}
 .ret-pend-pill{box-shadow:inset 0 0 0 1px #dbeafe}
+/* ═══ compact density layer — tab4 only ═══ */
+#tab4 .grid-1{margin-bottom:10px}
+#tab4 .grid-2{gap:10px;margin-bottom:10px}
+#tab4 .sec-hdr{padding:10px 16px}
+#tab4 .sec-title{font-size:13px}
+#tab4 .sec-sub{font-size:10px;margin-top:2px}
+.ret-stats{gap:8px}
+.ret-cards{gap:8px}
+.ret-card{padding:8px 11px 8px 13px;border-radius:12px}
+.ret-card .rc-top{gap:6px;margin-bottom:5px;min-height:22px}
+.ret-card .rc-ic{width:22px;height:22px;border-radius:7px;font-size:11px}
+.ret-card .rc-lbl{font-size:9px;letter-spacing:.3px}
+.ret-card .rc-num{font-size:21px;letter-spacing:-.5px}
+.ret-card .rc-sub{font-size:8.5px;margin-top:3px}
+.ret-chips{gap:6px;margin-bottom:8px}
+.ret-chip{height:27px;padding:0 12px;font-size:11px}
+.ret-search{height:28px;min-width:170px;font-size:11px;padding:0 10px}
+.ret-refresh{height:26px;font-size:10px;padding:0 10px}
+.ret-chip-label{font-size:9px}
+#tab4 .section > div[style*="padding:10px 20px 18px"]{padding:8px 16px 12px!important}
+#tab4 .section > div[style*="padding:12px 20px 18px"]{padding:8px 16px 12px!important}
+#tab4 tbody td{padding:7px 12px;font-size:11px}
+#tab4 thead th{padding:7px 12px}
+#retInfo{margin-bottom:6px!important}
+/* S10: AI tab at-risk toggle */
+.ai-atrisk{height:34px;padding:0 14px;border-radius:10px;border:1.5px solid var(--border2);background:var(--surface,#fff);
+  font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s}
+.ai-atrisk:hover{border-color:#0d9488;color:#0d9488}
+.ai-atrisk.active{background:linear-gradient(135deg,#0d9488,#0891b2);border-color:transparent;color:#fff;box-shadow:0 4px 12px rgba(13,148,136,.3)}
 </style>
 
 <main class="main" id="tab4" style="display:none">
@@ -1850,7 +1881,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
           </div>
         </div>
       </div>
-      <div style="padding:12px 20px 16px;height:230px;position:relative"><canvas id="retCalChart"></canvas></div>
+      <div style="padding:8px 16px 12px;height:185px;position:relative"><canvas id="retCalChart"></canvas></div>
     </div>
   </div>
 
@@ -1874,6 +1905,24 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
     </div>
   </div>
 
+  <!-- S9: RETENTION TREND (daily snapshots) -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:var(--ip,#0f766e)"></div>
+          <div>
+            <div class="sec-title">📈 Retention Trend — Daily Snapshots</div>
+            <div class="sec-sub">Har din ka at-risk snapshot (dashboard kholne par auto-save hota hai). Trend batata hai retention effort kaam kar raha hai ya nahi.</div>
+          </div>
+        </div>
+        <div class="ret-info" id="retTrendInfo"></div>
+      </div>
+      <div id="retTrendNote" class="ret-empty" style="display:none"></div>
+      <div style="padding:8px 16px 12px;height:185px;position:relative"><canvas id="retTrendChart"></canvas></div>
+    </div>
+  </div>
+
 </main>
 
 <!-- CLIENT RETENTION: license-list modal (count card click) -->
@@ -1886,6 +1935,11 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
         <button class="ret-chip" id="retLicExp_exp"    onclick="retLicSetExp('exp')">Expired</button>
         <button class="ret-chip" id="retLicExp_nonexp" onclick="retLicSetExp('nonexp')">Non-Expired</button>
       </div>
+      <select class="ret-search" id="retLicPend" style="height:30px;min-width:150px;margin-left:0;font-weight:700" onchange="retLicRender(true)">
+        <option value="all">🎫 Pending: All</option>
+        <option value="with">With Pending Tickets</option>
+        <option value="without">Without Pending</option>
+      </select>
       <input class="ret-lic-search" id="retLicSearch" style="margin-left:0" placeholder="🔍 Search license / client…" oninput="retLicRender(true)" autocomplete="off">
       <button class="ret-lic-xls" onclick="retLicExport()">↓ Export Excel</button>
       <button class="ret-lic-close" onclick="retLicClose()">✕ Close</button>
@@ -2830,6 +2884,11 @@ function aiStageRows(){
   base.forEach(r=>{ if(!['IT','AK','IP'].includes(r.sc))return; const d=(r.desc||'').trim(); if(d.length<4)return;
     if((cf||ct) && typeof inRange==='function' && !inRange(dOf(r), cf, ct)) return;
     if(seen.has(r.n))return; seen.add(r.n); out.push(r); });
+  // S10: at-risk only mode — sirf un licenses ki tickets jo retention risk me hain
+  if(window._aiAtRiskOnly && typeof retAtRiskSet==='function'){
+    const set=retAtRiskSet();
+    return out.filter(r=>r.l && set.has(retLicKey(r.l)));
+  }
   return out;
 }
 function aiThrPair(){
@@ -5357,6 +5416,7 @@ async function retFetchLic(force){
   }
   retDDBuild();
   renderRetention();
+  retSnapshotSave().then(()=>retTrendLoad());
 }
 
 // ── R12: tab-level search (filters the whole tab) ──
@@ -5568,6 +5628,79 @@ function renderRetention(){
   retAnimateNums();
 }
 
+// ═══ S9: daily snapshot (Supabase retention_snapshots) + trend chart ═══
+// Table required (run retention_snapshots.sql once in Supabase SQL editor).
+async function retSnapshotSave(){
+  try{
+    if(!RET_LIC || !RAW || !RAW.length || window._retSnapSaved) return;
+    const {pend}=retBuildTicketMaps();
+    const today=retMidnight();
+    const soon=RET_LIC.filter(L=>L.at&&L.daysToExpiry>=0&&L.daysToExpiry<=30&&pend.has(L.lic));
+    const nobill=RET_LIC.filter(L=>{ if(!pend.has(L.lic)) return false;
+      if(L.lb) return L.daysSinceBill>=90; return !L.af||retDays(L.af,today)>=90; });
+    const d={
+      total:RET_LIC.length,
+      expired:RET_LIC.filter(retIsExpired).length,
+      never:RET_LIC.filter(L=>!L.lb).length,
+      expired_pending:RET_LIC.filter(L=>retIsExpired(L)&&pend.has(L.lic)).length,
+      soon_pending:soon.length,
+      nobill_pending:nobill.length,
+      pending_clients:pend.size,
+      pending_tickets:[...pend.values()].reduce((t,arr)=>t+arr.length,0),
+    };
+    const iso=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const {error}=await sb.from('retention_snapshots').upsert({snap_date:iso, data:d});
+    if(!error) window._retSnapSaved=true;
+  }catch(e){ /* snapshot best-effort — dashboard kabhi block nahi hota */ }
+}
+async function retTrendLoad(){
+  const note=document.getElementById('retTrendNote');
+  const cv=document.getElementById('retTrendChart');
+  const info=document.getElementById('retTrendInfo');
+  if(!cv) return;
+  let rows=null;
+  try{
+    const {data,error}=await sb.from('retention_snapshots')
+      .select('snap_date,data').order('snap_date',{ascending:true}).limit(90);
+    if(error) throw error;
+    rows=data||[];
+  }catch(e){
+    if(note){ note.style.display=''; note.textContent='Trend unavailable — Supabase me retention_snapshots table create karo (retention_snapshots.sql run karke).'; }
+    if(cv) cv.parentElement.style.display='none';
+    return;
+  }
+  if(rows.length<2){
+    if(note){ note.style.display=''; note.textContent='📸 Pehla snapshot save ho gaya — trend agle dino me snapshots jama hone par dikhega.'; }
+    if(cv) cv.parentElement.style.display='none';
+    if(info) info.textContent=rows.length+' snapshot';
+    return;
+  }
+  if(note) note.style.display='none';
+  cv.parentElement.style.display='';
+  if(info) info.textContent=`${fmt(rows.length)} snapshots · ${rows[0].snap_date} → ${rows[rows.length-1].snap_date}`;
+  if(typeof Chart==='undefined') return;
+  if(window._retTrendChart){ try{window._retTrendChart.destroy();}catch(e){} }
+  const g=k=>rows.map(r=>(r.data&&r.data[k])||0);
+  window._retTrendChart=new Chart(cv,{
+    type:'line',
+    data:{ labels:rows.map(r=>r.snap_date.slice(5)),
+      datasets:[
+        {label:'Expired + Pending',      data:g('expired_pending'), borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,.08)', borderWidth:2, pointRadius:2.5, tension:.25, fill:true},
+        {label:'No-Bill 90d+ + Pending', data:g('nobill_pending'),  borderColor:'#d97706', backgroundColor:'rgba(217,119,6,.07)', borderWidth:2, pointRadius:2.5, tension:.25, fill:true},
+        {label:'Expiring ≤30d + Pending',data:g('soon_pending'),    borderColor:'#0d9488', backgroundColor:'rgba(13,148,136,.07)',borderWidth:2, pointRadius:2.5, tension:.25, fill:true},
+      ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'top', align:'end',
+          labels:{boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:'circle', font:{size:10,weight:'700'}, color:'#6b7280'}},
+        tooltip:{backgroundColor:'#0f172a', padding:10, cornerRadius:10, titleFont:{weight:'700'}} },
+      scales:{
+        x:{ grid:{display:false}, border:{display:false}, ticks:{font:{size:9},color:'#9ca3af',maxTicksLimit:15} },
+        y:{ beginAtZero:true, ticks:{precision:0,font:{size:10},color:'#9ca3af'},
+            grid:{color:'rgba(15,23,42,.05)'}, border:{display:false} } } }
+  });
+}
+
 // hero numbers count-up (450ms ease-out) — world-class micro-interaction
 function retAnimateNums(){
   document.querySelectorAll('#tab4 .rc-num').forEach(el=>{
@@ -5759,6 +5892,7 @@ function _retLicShow(rows,title,mode){
     if(el) el.classList.toggle('active', k==='all');
   });
   const s=document.getElementById('retLicSearch'); if(s) s.value='';
+  const pf=document.getElementById('retLicPend'); if(pf) pf.value='all';
   const th=document.getElementById('retLicThead');
   if(th) th.innerHTML='<tr>'+RET_COLS[mode].map(c=>{
     const r=c.startsWith('r:'); const t=r?c.slice(2):c;
@@ -5779,9 +5913,12 @@ function retLicSetExp(v){
 // modal rows after Expired/Non-Expired chips + search (render + export dono use karte hain)
 function retLicFilteredRows(){
   const q=(document.getElementById('retLicSearch')?.value||'').trim().toUpperCase();
+  const pf=document.getElementById('retLicPend')?.value||'all';
   let rows=_retModalRows;
   if(_retLicExp==='exp')    rows=rows.filter(x=>retIsExpired(x.L));
   if(_retLicExp==='nonexp') rows=rows.filter(x=>!retIsExpired(x.L));
+  if(pf==='with')    rows=rows.filter(x=>x.tks.length>0);
+  if(pf==='without') rows=rows.filter(x=>!x.tks.length);
   if(q) rows=rows.filter(x=>x.L.lic.includes(q)||x.nm.toUpperCase().includes(q));
   return rows;
 }
@@ -5865,6 +6002,36 @@ function retLicModalTickets(i){
   if(!x || !x.tks.length) return;
   retLicClose();
   _openSecModal(x.tks.slice(), `${x.nm!=='—'?x.nm+' ':''}(${x.L.lic}) — Pending Tickets`);
+}
+
+// ═══ S10: AI tab cross-link — at-risk licenses ka set (full data par, filters se independent) ═══
+function retAtRiskSet(){
+  if(!RET_LIC) return new Set();
+  if(window._retRiskSet && window._retRiskSetTs===RET_LIC_TS) return window._retRiskSet;
+  const {pend}=retBuildTicketMaps();
+  const today=retMidnight();
+  const set=new Set();
+  RET_LIC.forEach(L=>{
+    if(!pend.has(L.lic)) return;
+    if(retIsExpired(L)){ set.add(L.lic); return; }
+    if(L.at && L.daysToExpiry>=0 && L.daysToExpiry<=30){ set.add(L.lic); return; }
+    if(L.lb ? (L.daysSinceBill>=90) : (!L.af || retDays(L.af,today)>=90)) set.add(L.lic);
+  });
+  window._retRiskSet=set; window._retRiskSetTs=RET_LIC_TS;
+  return set;
+}
+window._aiAtRiskOnly=false;
+async function aiToggleAtRisk(){
+  const btn=document.getElementById('aiAtRiskBtn');
+  if(!window._aiAtRiskOnly && !RET_LIC){
+    showToast('⏳ License data load ho raha hai (at-risk filter ke liye)…');
+    await retFetchLic(false);
+    if(!RET_LIC){ showToast('❌ License data nahi mila — ↺ retry karo'); return; }
+  }
+  window._aiAtRiskOnly=!window._aiAtRiskOnly;
+  if(btn) btn.classList.toggle('active', window._aiAtRiskOnly);
+  showToast(window._aiAtRiskOnly?'💚 At-Risk Only: sirf at-risk clients ki tickets cluster ho rahi hain':'At-Risk filter off — saari tickets');
+  aiRun();
 }
 
 async function init(){
