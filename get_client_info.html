@@ -576,18 +576,34 @@ function cselOpen(id){
   // absolutely-positioned menu inside an overflow:auto modal was forcing an
   // unwanted scrollbar on the whole popup whenever the list opened).
   const r=btn.getBoundingClientRect();
+  const margin=8;
   menu.style.left=r.left+'px';
   menu.style.width=r.width+'px';
-  menu.style.top=(r.bottom+6)+'px';   // default: open downward
+  menu.style.maxHeight='none';
+  menu.style.overflowY='visible';
+  menu.style.top=(r.bottom+6)+'px';
   menu.classList.add('open');
   btn.classList.add('open');
-  // No internal scroll anymore (every option shows at once), so a long list
-  // can be tall — flip it to open upward when there isn't room below but
-  // there is above, instead of letting it run off the bottom of the screen.
-  const mh=menu.offsetHeight;
-  const spaceBelow=window.innerHeight-r.bottom-6;
-  const spaceAbove=r.top-6;
-  if(mh>spaceBelow && spaceAbove>spaceBelow) menu.style.top=Math.max(6,r.top-mh-6)+'px';
+
+  // Show every option uncapped whenever the screen actually has room for
+  // that (the common case) — pick whichever side (above/below the trigger)
+  // has more space, and if the full list fits there, no scroll at all.
+  // Only when it genuinely doesn't fit either direction (a short/small
+  // window) do we cap height and allow scrolling — sized to the room that
+  // exists, not an arbitrary fixed number — so options never render
+  // off-screen with no way to reach them.
+  const spaceBelow=window.innerHeight-r.bottom-margin;
+  const spaceAbove=r.top-margin;
+  const mh=menu.offsetHeight;   // natural, uncapped content height
+  const openUp=spaceAbove>spaceBelow;
+  const room=openUp?spaceAbove:spaceBelow;
+  if(mh<=room){
+    menu.style.top = openUp ? (r.top-mh-6)+'px' : (r.bottom+6)+'px';
+  } else {
+    menu.style.maxHeight = Math.max(120,room)+'px';
+    menu.style.overflowY = 'auto';
+    menu.style.top = openUp ? margin+'px' : (r.bottom+6)+'px';
+  }
 }
 function cselClose(id){
   const menu=document.getElementById(id+'Menu'); const btn=document.getElementById(id+'Btn');
