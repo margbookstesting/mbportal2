@@ -229,10 +229,19 @@ body.gci-fixed #gciResults{flex:1;min-height:0;display:flex;flex-direction:colum
 .gci-pinned-wrap{flex-shrink:0;margin-bottom:11px}
 .gci-pinned-row{display:flex;flex-wrap:wrap;gap:9px}
 
-.gci-grid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
-body.gci-fixed .gci-grid{min-height:0}
+.gci-grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
+/* Desktop/fixed mode: the grid must be given a REAL, bounded height (not just
+   min-height:0) so its columns can actually stretch-and-clip to it — otherwise
+   align-items:stretch has nothing definite to stretch to, the row auto-sizes
+   to its tallest column's content, and that content silently overflows past
+   #gciResults's overflow:hidden with no scrollbar anywhere (the bug reported
+   after adding URL/API URL rows). grid-template-rows:minmax(0,1fr) forces the
+   single row to cap at the available flex space; each column's own
+   overflow:auto (below) then kicks in ONLY if its content doesn't fit —
+   nothing is ever invisibly cut off or unreachable. */
+body.gci-fixed .gci-grid{min-height:0;flex:1 1 0;grid-template-rows:minmax(0,1fr)}
 .gci-detail{min-width:0;background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:11px 13px;overflow:auto;display:flex;flex-direction:column}
-.gci-dhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.gci-dhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;position:sticky;top:0;background:#f8fafc;padding-top:1px;z-index:1}
 .gci-dhead span{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2)}
 .dp-list{display:flex;flex-direction:column}
 .dp-row{padding:4px 2px;border-bottom:1px solid #e6ebf1}
@@ -281,7 +290,9 @@ body.gci-fixed .gci-grid{min-height:0}
   body.gci-fixed .main{overflow:auto}
   body.gci-fixed .content,body.gci-fixed #gciResults,.gci-view{overflow:visible}
   .gci-grid{grid-template-columns:1fr}
-  body.gci-fixed .gci-grid{overflow:visible}
+  body.gci-fixed .gci-grid{overflow:visible;flex:0 1 auto;grid-template-rows:none;min-height:0}
+  .gci-detail,.gci-actions{overflow:visible}
+  .gci-dhead{position:static}
 }
 </style>
 </head>
