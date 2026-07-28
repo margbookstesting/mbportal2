@@ -134,7 +134,7 @@ input[type=text]:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 
 .csel-btn .csel-val.ph{color:#94a3b8}
 .csel-btn .csel-arrow{flex-shrink:0;color:var(--muted2);font-size:10px;transition:transform .15s;margin-left:6px}
 .csel-btn.open .csel-arrow{transform:rotate(180deg)}
-.csel-menu{position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-m);max-height:230px;overflow:auto;z-index:300;display:none;padding:5px}
+.csel-menu{position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-m);overflow:visible;z-index:300;display:none;padding:5px}
 .csel-menu.open{display:block}
 .csel-opt{padding:9px 11px;border-radius:7px;font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .csel-opt:hover{background:#f0fdfa}
@@ -577,10 +577,17 @@ function cselOpen(id){
   // unwanted scrollbar on the whole popup whenever the list opened).
   const r=btn.getBoundingClientRect();
   menu.style.left=r.left+'px';
-  menu.style.top=(r.bottom+6)+'px';
   menu.style.width=r.width+'px';
+  menu.style.top=(r.bottom+6)+'px';   // default: open downward
   menu.classList.add('open');
   btn.classList.add('open');
+  // No internal scroll anymore (every option shows at once), so a long list
+  // can be tall — flip it to open upward when there isn't room below but
+  // there is above, instead of letting it run off the bottom of the screen.
+  const mh=menu.offsetHeight;
+  const spaceBelow=window.innerHeight-r.bottom-6;
+  const spaceAbove=r.top-6;
+  if(mh>spaceBelow && spaceAbove>spaceBelow) menu.style.top=Math.max(6,r.top-mh-6)+'px';
 }
 function cselClose(id){
   const menu=document.getElementById(id+'Menu'); const btn=document.getElementById(id+'Btn');
@@ -602,18 +609,30 @@ window.addEventListener('scroll', e=>{
 window.addEventListener('resize', ()=>cselCloseAll());
 
 // Natural (alphanumeric-aware) comparator — "books10" sorts after "books9",
-// not between "books1" and "books2".
+// not between "books1" and "books2", and "books.margbooks.com" (no digits
+// at all) still sorts correctly next to "books1…"/"books4…" etc. A
+// pre-tokenize-then-zip-by-index approach breaks alignment whenever one
+// string has no digits at all (e.g. "books" vs "books4" — different chunk
+// counts), so this walks both strings char-by-char instead and only
+// special-cases runs where BOTH strings currently have a digit.
 function naturalCmp(a,b){
-  const ax=String(a).match(/(\d+|\D+)/g)||[];
-  const bx=String(b).match(/(\d+|\D+)/g)||[];
-  const len=Math.max(ax.length,bx.length);
-  for(let i=0;i<len;i++){
-    const as=ax[i]||'', bs=bx[i]||'';
-    const an=/^\d+$/.test(as), bn=/^\d+$/.test(bs);
-    if(an&&bn){ const d=Number(as)-Number(bs); if(d) return d; }
-    else { const d=as.localeCompare(bs); if(d) return d; }
+  a=String(a); b=String(b);
+  let i=0, j=0;
+  while(i<a.length && j<b.length){
+    const ca=a[i], cb=b[j];
+    const da=ca>='0'&&ca<='9', db=cb>='0'&&cb<='9';
+    if(da&&db){
+      const si=i, sj=j;
+      while(i<a.length && a[i]>='0'&&a[i]<='9') i++;
+      while(j<b.length && b[j]>='0'&&b[j]<='9') j++;
+      const na=parseInt(a.slice(si,i),10), nb=parseInt(b.slice(sj,j),10);
+      if(na!==nb) return na-nb;
+    } else {
+      if(ca!==cb) return ca<cb?-1:1;
+      i++; j++;
+    }
   }
-  return 0;
+  return (a.length-i)-(b.length-j);
 }
 
 /* ============================ MOVE / BULK MOVE ============================ */
