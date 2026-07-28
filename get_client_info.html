@@ -447,7 +447,10 @@ function statusPill(v){
 function urlVal(v){
   if(v==null||v==='') return '';
   const s=String(v);
-  if(/^https?:\/\//i.test(s)) return `<a href="${esc(s)}" target="_blank" rel="noopener" style="color:var(--brand);word-break:break-all">${esc(s)}</a>`;
+  // single-line + ellipsis (not word-break wrap) — long URLs wrapping to
+  // 2 lines pushed the panel taller than intended. Full value is still
+  // available via title-tooltip and the click-through link itself.
+  if(/^https?:\/\//i.test(s)) return `<a href="${esc(s)}" target="_blank" rel="noopener" title="${esc(s)}" style="color:var(--brand);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s)}</a>`;
   return esc(s);
 }
 

@@ -727,7 +727,11 @@ function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-sty
 function gciUrlVal(v){
   if(v==null||v==='') return gciNA(v);
   const s=String(v);
-  if(/^https?:\/\//i.test(s)) return `<a href="${gciEsc(s)}" target="_blank" rel="noopener" style="color:var(--brand);word-break:break-all">${gciEsc(s)}</a>`;
+  // single-line + ellipsis (not word-break wrap) — these URLs are long
+  // enough that wrapping them to 2 lines was pushing the Details panel
+  // past its fixed height, forcing an internal scroll. Full value is still
+  // available via title-tooltip and the click-through link itself.
+  if(/^https?:\/\//i.test(s)) return `<a href="${gciEsc(s)}" target="_blank" rel="noopener" title="${gciEsc(s)}" style="color:var(--brand);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${gciEsc(s)}</a>`;
   return gciEsc(s);
 }
 function gciRenderResults(){
