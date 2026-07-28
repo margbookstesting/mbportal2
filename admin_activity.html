@@ -226,10 +226,6 @@ body.gci-fixed #gciResults{flex:1;min-height:0;display:flex;flex-direction:colum
 .gci-grplabel .ti{font-size:12px}
 .gci-grplabel .lite{font-weight:600;text-transform:none;letter-spacing:0;color:var(--danger);font-size:10px}
 
-.gci-pinned-wrap{flex-shrink:0;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px}
-.gci-pinned-wrap .gci-grplabel{margin-bottom:0;flex-shrink:0}
-.gci-pinned-row{display:flex;flex-wrap:wrap;gap:9px;flex:1 1 auto;justify-content:flex-end}
-
 .gci-grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
 /* Desktop/fixed mode: the grid must be given a REAL, bounded height (not just
    min-height:0) so its columns can actually stretch-and-clip to it — otherwise
@@ -256,12 +252,10 @@ body.gci-fixed .gci-grid{min-height:0;flex:1 1 0;grid-template-rows:minmax(0,1fr
 
 /* pill layout override (premium) */
 .gci-pillgrid{gap:8px}
-.gci-pillgrid .abtn,.gci-pinned-row .abtn{min-height:0;border-width:1.5px;padding:7px 11px;font-size:12px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.05)}
-.gci-pillgrid .abtn:hover:not(:disabled),.gci-pinned-row .abtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 14px rgba(16,24,40,.10)}
-.gci-pillgrid .abtn:active:not(:disabled),.gci-pinned-row .abtn:active:not(:disabled){transform:translateY(0) scale(.985)}
-.gci-pillgrid .abtn .ic,.gci-pinned-row .abtn .ic{font-size:15px}
-.gci-pinned-row .abtn.big{padding:8px 14px;font-size:12px}
-.gci-pinned-row .abtn.big .ic{font-size:16px}
+.gci-pillgrid .abtn{min-height:0;border-width:1.5px;padding:7px 11px;font-size:12px;font-weight:700;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+.gci-pillgrid .abtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 14px rgba(16,24,40,.10)}
+.gci-pillgrid .abtn:active:not(:disabled){transform:translateY(0) scale(.985)}
+.gci-pillgrid .abtn .ic{font-size:15px}
 /* premium page loader (overlay) */
 .page-loader{position:fixed;inset:0;background:rgba(15,23,42,.34);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:80}
 .page-loader.show{display:flex}
@@ -729,7 +723,7 @@ function gciTopBarHtml(){
   else { acts.push(gciDef('activate')); acts.push(gciDef('deactivate')); }
   acts.push(gciDef('changeEmail'));
   acts.push(gciDef('changeMobile'));
-  return `<div class="gci-pinned-row">`+acts.map(b=>`<button class="abtn pl-${b.color} big" id="gtop_${b.id}" onclick="gciOnAction('${b.id}')">
+  return `<div class="gci-pillgrid">`+acts.map(b=>`<button class="abtn pl-${b.color}" id="gtop_${b.id}" onclick="gciOnAction('${b.id}')">
     <i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('')+`</div>`;
 }
 function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-style:italic">Not Available</span>':gciEsc(v); }
@@ -758,10 +752,6 @@ function gciRenderResults(){
   const btns=arr=>arr.map(b=>`<button class="abtn pl-${b.color}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
   const missing=(R.dbinfolinkid==null||R.dbinfolinkid==='');
   document.getElementById('gciResults').innerHTML=`
-    <div class="gci-pinned-wrap">
-      <div class="gci-grplabel"><i class="ti ti-pin"></i> Pinned</div>
-      ${gciTopBarHtml()}
-    </div>
     <div class="gci-grid">
       <aside class="gci-detail">
         <div class="gci-dhead"><span>Details</span> ${gciDbBadge(R.status)}</div>
@@ -770,7 +760,9 @@ function gciRenderResults(){
         ${missing?'<div class="gci-warn">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
       </aside>
       <div class="gci-actions">
-        <div class="gci-grplabel"><i class="ti ti-transfer"></i> Move To Other Server</div>
+        <div class="gci-grplabel"><i class="ti ti-pin"></i> Pinned</div>
+        ${gciTopBarHtml()}
+        <div class="gci-grplabel" style="margin-top:12px"><i class="ti ti-transfer"></i> Move To Other Server</div>
         <div class="gci-pillgrid">${gciMoveBtns()}</div>
         <div class="gci-grplabel" style="margin-top:12px">Quick Actions</div>
         <div class="gci-pillgrid">${btns(gciQuickList())}</div>
