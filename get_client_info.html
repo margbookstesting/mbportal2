@@ -170,6 +170,7 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
           <input type="text" id="q" placeholder="e.g. customer@gmail.com  or  9876543210" autocomplete="off"/>
         </div>
         <button class="btn" id="getBtn" onclick="getDetails()">🔎 Get Details</button>
+        <button class="btn" id="bulkMoveBtn" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)" onclick="openBulkMove()">📦 Bulk Move</button>
       </div>
     </div>
 
@@ -210,12 +211,62 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
   </div>
 </div>
 
+<!-- Bulk Move popup -->
+<div class="overlay" id="bulkMoveOverlay">
+  <div class="modal wide">
+    <div class="modal-h"><h3>📦 Bulk Move To Other Server</h3><p>Choose Country, Domain &amp; Setting, then paste DB Info Link IDs to run in bulk.</p></div>
+    <div class="modal-b">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div class="fg">
+          <label>Country Server</label>
+          <select id="bmCountry" class="modal-input" style="margin-top:0" onchange="bmCountryChange()"></select>
+        </div>
+        <div class="fg">
+          <label>Domain Name</label>
+          <select id="bmDomain" class="modal-input" style="margin-top:0"><option value="">Loading domains…</option></select>
+        </div>
+        <div class="fg">
+          <label>Setting</label>
+          <select id="bmSetting" class="modal-input" style="margin-top:0"></select>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:16px">
+        <label>DB InfoLinkID</label>
+        <textarea id="bmIds" class="modal-input" style="min-height:110px;resize:vertical" placeholder="Enter Link IDs. For multiple, separate with commas, e.g. 7093352202982, 7093352202983"></textarea>
+        <div style="font-size:11px;color:var(--muted2);margin-top:4px">Separate multiple Link IDs with commas (,). No length limit.</div>
+      </div>
+      <div id="bmResult" style="margin-top:14px;font-size:13px;white-space:pre-wrap;word-break:break-word"></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn-ghost" onclick="closeBulkMove()">Cancel</button>
+      <button class="btn-cta" id="bmSubmit" onclick="submitBulkMove()">Submit</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 
 <script>
 const SUPA_URL='https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,storage:window.sessionStorage}});
+
+/* ===== Client Move config (same as admin_activity.html's Client Move tool) ===== */
+const COUNTRIES = [
+  {label:'India', key:'107574564'},
+  {label:'UAE',   key:'472608846'},
+  {label:'Nepal', key:'132182423'},
+];
+const MOVE_KEY = '74287673';
+const SETTINGS = [
+  {label:'Move Client',                iscrv:0},
+  {label:'Control room setting reset', iscrv:1},
+  {label:'Remove caching',             iscrv:2},
+  {label:'Only Repair DB',             iscrv:3},
+];
+let MV_DOMAIN_CACHE = {};   // { countrylinkid: domains[] }
+let MV_DOMAINS = [];        // domains currently loaded into whichever select is open
+let MV_LOAD_TOKEN = 0;
 
 let REC=null;           // loaded record (mapped)
 let RAW=null;           // raw getDetails response
@@ -337,6 +388,11 @@ function renderResults(){
       ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field mapping confirm karni pad sakti hai.</div>':''}
     </div>
     <div class="card">
+      <div class="card-title">🔁 Move To Other Server</div>
+      <div class="card-desc">Country &amp; Domain select karke customer ko is server par run karo.</div>
+      <div class="btn-grid">${moveBtns()}</div>
+    </div>
+    <div class="card">
       <div class="card-title">⚡ Quick Actions</div>
       <div class="card-desc">Account &amp; user operations.</div>
       <div class="btn-grid">${btns(QUICK)}</div>
@@ -436,10 +492,209 @@ function openOut(title,desc,html){ document.getElementById('outTitle').innerHTML
 function closeOut(){ document.getElementById('outOverlay').classList.remove('show'); }
 function showRaw(){ openOut('🧾 Raw getDetails response', REC.email||'', `<pre class="raw">${esc(JSON.stringify(RAW,null,2))}</pre>`); }
 
+/* ============================ MOVE / BULK MOVE ============================ */
+const MOVE_UI=[
+  {iscrv:0, ic:'🔁', v:'v-info'},
+  {iscrv:1, ic:'⚙️', v:'v-warning'},
+  {iscrv:2, ic:'🧹', v:'v-warning'},
+  {iscrv:3, ic:'🛠️', v:'v-danger'},
+];
+function moveBtns(){
+  return MOVE_UI.map(m=>{
+    const s=SETTINGS.find(x=>x.iscrv===m.iscrv);
+    return `<button class="abtn ${m.v}" id="mv_${m.iscrv}" onclick="openMoveSingle(${m.iscrv})"><span class="ic">${m.ic}</span><span class="lbl">${esc(s.label)}</span></button>`;
+  }).join('');
+}
+
+// Domain loader, generalized to any <select> id.
+async function loadDomainsInto(selId, countryKey){
+  const sel=document.getElementById(selId); if(!sel) return;
+  if(MV_DOMAIN_CACHE[countryKey]){
+    MV_DOMAINS=MV_DOMAIN_CACHE[countryKey];
+    renderDomainSelectInto(selId, MV_DOMAINS);
+    return;
+  }
+  const myToken=++MV_LOAD_TOKEN;
+  sel.innerHTML='<option value="">Loading domains…</option>';
+  sel.disabled=true;
+  try{
+    const out=await api({action:'getDomainList', countrylinkid: countryKey});
+    if(myToken!==MV_LOAD_TOKEN) return;
+    const list=(out&&out.result&&Array.isArray(out.result.data))?out.result.data:[];
+    const domains=list.map(d=>{
+      const raw=String(d.url||'').replace(/^https?:\/\//,'');
+      const parts=raw.split('||');
+      const host=(parts[0]||'').trim();
+      const ver=(parts[1]||'').trim();
+      const version=String(d.apiversion||ver||'').trim();
+      return {label:`${host}  (v${version||'?'})`, host, version, istesting:Number(d.istesting)};
+    });
+    MV_DOMAIN_CACHE[countryKey]=domains;
+    MV_DOMAINS=domains;
+    renderDomainSelectInto(selId, domains);
+  }catch(e){
+    if(myToken!==MV_LOAD_TOKEN) return;
+    sel.innerHTML='<option value="">Failed to load — retry country</option>';
+    sel.disabled=false;
+  }
+}
+function renderDomainSelectInto(selId, domains){
+  const sel=document.getElementById(selId); if(!sel) return;
+  sel.disabled=false;
+  if(!domains.length){ sel.innerHTML='<option value="">No domains available</option>'; return; }
+  const opts=domains.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
+  sel.innerHTML=`<option value="">Select Domain Name</option>${opts}`;
+}
+
+// Shared /api/client-move caller (istesting=0 → -1 quirk kept identical to
+// the dedicated Client Move Activity tool).
+async function moveApi({countrykey, version, istesting, iscrv, moveBy, emailid, dbinfolinkidstr}){
+  const submitIstesting = (istesting===0||istesting==='0') ? -1 : istesting;
+  const res=await fetch('/api/client-move',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${await token()}`},
+    body: JSON.stringify({ countrykey, key: MOVE_KEY, version, istesting: submitIstesting, iscrv, moveBy, emailid: emailid||'', dbinfolinkidstr: dbinfolinkidstr||'' })
+  });
+  let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
+  if(!res.ok||out.error) throw new Error(out.error||('HTTP '+res.status));
+  return out;
+}
+
+const ACTION_MSG = {
+  0:{ok:'Moved',                  fail:'Not moved'},
+  1:{ok:'Control room reset done',fail:'Control room reset failed'},
+  2:{ok:'Caching removed',        fail:'Caching removal failed'},
+  3:{ok:'DB repaired',            fail:'DB repair failed'},
+};
+let LAST_ISCRV=0;
+function itemOk(it){
+  const remark=String(it.remark||'').toLowerCase();
+  const bad=/fail|error|invalid|not found|wrong|denied|unable|exception/.test(remark);
+  if(bad) return false;
+  if(LAST_ISCRV===0) return Number(it.status)===200;
+  return true;
+}
+function formatResult(out){
+  const a=ACTION_MSG[LAST_ISCRV]||{ok:'Done',fail:'Failed'};
+  const r=out&&out.result;
+  if(r&&Array.isArray(r.data)&&r.data.length){
+    return r.data.map(it=>{
+      const id=it.emailid||((it.dbinfolinkid!=null&&it.dbinfolinkid!==0)?('LinkID '+it.dbinfolinkid):'Record');
+      const ok=itemOk(it);
+      return (ok?'✅ ':'❌ ')+id+' — '+(ok?a.ok:(a.fail+(it.remark?(': '+it.remark):'')));
+    }).join('\n');
+  }
+  return (out&&out.ok)?('✅ '+a.ok):('❌ '+a.fail);
+}
+
+// ── Single-customer Move (reuses the generic confirm modal) ──
+function openMoveSingle(iscrv){
+  if(!REC||!REC.email){ toast('Pehle "Get Details" chalao','err'); return; }
+  const setting=SETTINGS.find(s=>s.iscrv===iscrv); if(!setting) return;
+  const cOpts=COUNTRIES.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
+  document.getElementById('cfTitle').innerHTML='🔁 '+esc(setting.label);
+  document.getElementById('cfDesc').textContent='Select Country & Domain, then submit to run this on the loaded customer.';
+  document.getElementById('cfBody').innerHTML=`
+    <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${esc(REC.email||'')}</span></div>
+    <div class="sum-row"><span class="sum-k">Action</span><span class="sum-v">${esc(setting.label)}</span></div>
+    <div style="margin-top:12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text)">Country Server</div>
+    <select class="modal-input" id="mvCountry" onchange="mvCountryChange()">${cOpts}</select>
+    <div style="margin-top:12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text)">Domain Name</div>
+    <select class="modal-input" id="mvDomain"><option value="">Loading domains…</option></select>`;
+  const btn=document.getElementById('cfBtn');
+  btn.className='btn-cta'+(setting.iscrv===3?' danger':'');
+  btn.textContent='Submit';
+  btn.onclick=()=>submitMoveSingle(setting);
+  document.getElementById('confirmOverlay').classList.add('show');
+  loadDomainsInto('mvDomain', COUNTRIES[0].key);
+}
+window.mvCountryChange=function(){
+  const ci=document.getElementById('mvCountry').value;
+  const country=COUNTRIES[+ci]; if(!country) return;
+  loadDomainsInto('mvDomain', country.key);
+};
+async function submitMoveSingle(setting){
+  const di=document.getElementById('mvDomain').value;
+  const domain= di===''?null:MV_DOMAINS[+di];
+  if(!domain){ toast('Please select a Domain','err'); return; }
+  const ci=document.getElementById('mvCountry').value;
+  const country=COUNTRIES[+ci];
+  const btn=document.getElementById('cfBtn');
+  btn.disabled=true; const old=btn.textContent; btn.textContent='Submitting…';
+  LAST_ISCRV=setting.iscrv;
+  try{
+    const out=await moveApi({ countrykey:country.key, version:domain.version, istesting:domain.istesting, iscrv:setting.iscrv, moveBy:'email', emailid:REC.email });
+    closeConfirm();
+    const items=(out.result&&Array.isArray(out.result.data))?out.result.data:[];
+    const allOk = items.length===0?true:items.every(itemOk);
+    toast(setting.label+' — '+(allOk?'Done':'Failed'), allOk?'ok':'err');
+    openOut((allOk?'✅ ':'❌ ')+setting.label, REC.email||'', `<pre class="raw">${esc(formatResult(out))}</pre>`);
+    if(setting.iscrv===0) await getDetails();   // server actually changed — reload
+  }catch(e){
+    toast(setting.label+' — '+(e.message||'failed'),'err');
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
+
+// ── Bulk Move popup + top-bar button visibility ──
+function toggleBulkBtn(){
+  const q=document.getElementById('q');
+  const b=document.getElementById('bulkMoveBtn');
+  if(!q||!b) return;
+  b.style.display = q.value.trim() ? 'none' : '';
+}
+function openBulkMove(){
+  const cOpts=COUNTRIES.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
+  const sOpts=SETTINGS.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
+  document.getElementById('bmCountry').innerHTML=cOpts;
+  document.getElementById('bmSetting').innerHTML=sOpts;
+  document.getElementById('bmIds').value='';
+  document.getElementById('bmResult').textContent='';
+  document.getElementById('bulkMoveOverlay').classList.add('show');
+  loadDomainsInto('bmDomain', COUNTRIES[0].key);
+}
+window.bmCountryChange=function(){
+  const ci=document.getElementById('bmCountry').value;
+  const country=COUNTRIES[+ci]; if(!country) return;
+  loadDomainsInto('bmDomain', country.key);
+};
+function closeBulkMove(){ document.getElementById('bulkMoveOverlay').classList.remove('show'); }
+async function submitBulkMove(){
+  const ci=document.getElementById('bmCountry').value;
+  const di=document.getElementById('bmDomain').value;
+  const si=document.getElementById('bmSetting').value;
+  const ids=(document.getElementById('bmIds').value||'').trim();
+  const resEl=document.getElementById('bmResult');
+  const country=COUNTRIES[+ci];
+  const domain= di===''?null:MV_DOMAINS[+di];
+  const setting=SETTINGS[+si];
+  if(!domain){ resEl.style.color='#b91c1c'; resEl.textContent='Please select a Domain.'; return; }
+  if(!ids){ resEl.style.color='#b91c1c'; resEl.textContent='Please enter DB InfoLinkID(s).'; return; }
+  const btn=document.getElementById('bmSubmit');
+  btn.disabled=true; const old=btn.textContent; btn.textContent='Submitting…';
+  LAST_ISCRV=setting.iscrv;
+  try{
+    const out=await moveApi({ countrykey:country.key, version:domain.version, istesting:domain.istesting, iscrv:setting.iscrv, moveBy:'dblink', dbinfolinkidstr:ids });
+    const items=(out.result&&Array.isArray(out.result.data))?out.result.data:[];
+    const allOk = items.length===0?true:items.every(itemOk);
+    resEl.style.color=allOk?'#166534':'#b91c1c';
+    resEl.textContent=formatResult(out);
+  }catch(e){
+    resEl.style.color='#b91c1c';
+    resEl.textContent='❌ '+(e.message||'Fail');
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
+
 // enter-to-search + overlay click close
 document.getElementById('q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); getDetails(); } });
+document.getElementById('q').addEventListener('input', toggleBulkBtn);
+toggleBulkBtn();
 document.getElementById('confirmOverlay').addEventListener('click',e=>{ if(e.target.id==='confirmOverlay') closeConfirm(); });
 document.getElementById('outOverlay').addEventListener('click',e=>{ if(e.target.id==='outOverlay') closeOut(); });
+document.getElementById('bulkMoveOverlay').addEventListener('click',e=>{ if(e.target.id==='bulkMoveOverlay') closeBulkMove(); });
 </script>
 </body>
 </html>

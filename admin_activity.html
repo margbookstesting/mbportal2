@@ -330,6 +330,39 @@ body.gci-fixed .gci-grid{min-height:0}
   </div>
 </div>
 
+<!-- Get Client Info: Bulk Move popup -->
+<div class="overlay" id="gciBulkMove">
+  <div class="modal wide">
+    <div class="modal-h"><h3>📦 Bulk Move To Other Server</h3><p>Choose Country, Domain &amp; Setting, then paste DB Info Link IDs to run in bulk.</p></div>
+    <div class="modal-b">
+      <div class="grid">
+        <div class="fg">
+          <label>Country Server</label>
+          <select id="gciBmCountry" onchange="gciBmCountryChange()"></select>
+        </div>
+        <div class="fg">
+          <label>Domain Name</label>
+          <select id="gciBmDomain"><option value="">Loading domains…</option></select>
+        </div>
+        <div class="fg">
+          <label>Setting</label>
+          <select id="gciBmSetting"></select>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:16px">
+        <label>DB InfoLinkID</label>
+        <textarea id="gciBmIds" placeholder="Enter Link IDs. For multiple, separate with commas, e.g. 7093352202982, 7093352202983"></textarea>
+        <div class="hint">Separate multiple Link IDs with commas (,). No length limit.</div>
+      </div>
+      <div class="result" id="gciBmResult"></div>
+    </div>
+    <div class="modal-f">
+      <button class="btn-ghost" onclick="gciCloseBulkMove()">Cancel</button>
+      <button class="btn-cta" id="gciBmSubmit" onclick="gciSubmitBulkMove()">Submit</button>
+    </div>
+  </div>
+</div>
+
 <div id="gciToasts"></div>
 
 <!-- Premium page loader -->
@@ -404,6 +437,7 @@ const GET_INFO_HTML = `
         <input type="text" id="gciQ" placeholder="e.g. customer@gmail.com  or  9876543210" autocomplete="off"/>
       </div>
       <button class="btn" id="gciGetBtn" onclick="gciGetDetails()"><i class="ti ti-search"></i> Get Details</button>
+      <button class="btn" id="gciBulkBtn" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)" onclick="gciOpenBulkMove()"><i class="ti ti-transfer"></i> Bulk Move</button>
     </div>
   </div>
   <div id="gciResults">
@@ -683,12 +717,32 @@ function gciRenderResults(){
         ${missing?'<div class="gci-warn">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
       </aside>
       <div class="gci-actions">
-        <div class="gci-grplabel">Quick Actions</div>
+        <div class="gci-grplabel"><i class="ti ti-transfer"></i> Move To Other Server</div>
+        <div class="gci-pillgrid">${gciMoveBtns()}</div>
+        <div class="gci-grplabel" style="margin-top:12px">Quick Actions</div>
         <div class="gci-pillgrid">${btns(gciQuickList())}</div>
         <div class="gci-grplabel" style="margin-top:12px">Database Operations <span class="lite">· destructive ask confirm</span></div>
         <div class="gci-pillgrid">${btns(gciDbopsList())}</div>
       </div>
     </div>`;
+}
+
+// ── Move To Other Server (from Get Client Info) ──
+// Reuses the same COUNTRIES / SETTINGS / MOVE_KEY config and /api/client-move
+// endpoint as the "Client Move To Other Server" tool — just scoped to the
+// single loaded customer (moveBy='email'), asking only Country + Domain
+// since the Setting is fixed per button.
+const GCI_MOVE_UI = [
+  {iscrv:0, icon:'ti-arrows-right-left', color:'blue'},
+  {iscrv:1, icon:'ti-settings',          color:'amber'},
+  {iscrv:2, icon:'ti-eraser',            color:'purple'},
+  {iscrv:3, icon:'ti-tool',              color:'red'},
+];
+function gciMoveBtns(){
+  return GCI_MOVE_UI.map(m=>{
+    const s=SETTINGS.find(x=>x.iscrv===m.iscrv);
+    return `<button class="abtn pl-${m.color}" id="gmv_${m.iscrv}" onclick="gciOpenMoveSingle(${m.iscrv})"><i class="ti ${m.icon} ic"></i><span class="lbl">${gciEsc(s.label)}</span></button>`;
+  }).join('');
 }
 
 function gciOnAction(id){
@@ -868,6 +922,163 @@ function gciOpenOut(title,desc,html){ document.getElementById('gciOutTitle').inn
 function gciCloseOut(){ document.getElementById('gciOut').classList.remove('show'); }
 function gciShowRaw(){ gciOpenOut('🧾 Raw getDetails response', GCI_REC.email||'', `<pre class="raw">${gciEsc(JSON.stringify(GCI_RAW,null,2))}</pre>`); }
 
+/* ============================ MOVE / BULK MOVE (shared by Get Client Info) ============================ */
+// Domain list loader, generalized to target any <select> id (used by the
+// single-customer Move modal and the Bulk Move popup). Shares
+// CM_DOMAIN_CACHE with the main Client Move tool so a country already
+// fetched there won't be re-fetched here.
+let GCI_MV_DOMAINS = [];
+let GCI_MV_LOAD_TOKEN = 0;
+async function gciLoadDomainsInto(selId, countryKey){
+  const sel=document.getElementById(selId); if(!sel) return;
+  if(CM_DOMAIN_CACHE[countryKey]){
+    GCI_MV_DOMAINS = CM_DOMAIN_CACHE[countryKey];
+    gciRenderDomainSelectInto(selId, GCI_MV_DOMAINS);
+    return;
+  }
+  const myToken=++GCI_MV_LOAD_TOKEN;
+  sel.innerHTML='<option value="">Loading domains…</option>';
+  sel.disabled=true;
+  try{
+    const out=await gciApi({action:'getDomainList', countrylinkid: countryKey});
+    if(myToken!==GCI_MV_LOAD_TOKEN) return;   // stale — a newer country switch superseded us
+    const list=(out&&out.result&&Array.isArray(out.result.data))?out.result.data:[];
+    const domains=list.map(d=>{
+      const raw=String(d.url||'').replace(/^https?:\/\//,'');
+      const parts=raw.split('||');
+      const host=(parts[0]||'').trim();
+      const ver=(parts[1]||'').trim();
+      const version=String(d.apiversion||ver||'').trim();
+      return {label:`${host}  (v${version||'?'})`, host, version, istesting:Number(d.istesting)};
+    });
+    CM_DOMAIN_CACHE[countryKey]=domains;
+    GCI_MV_DOMAINS=domains;
+    gciRenderDomainSelectInto(selId, domains);
+  }catch(e){
+    if(myToken!==GCI_MV_LOAD_TOKEN) return;
+    sel.innerHTML='<option value="">Failed to load — retry country</option>';
+    sel.disabled=false;
+  }
+}
+function gciRenderDomainSelectInto(selId, domains){
+  const sel=document.getElementById(selId); if(!sel) return;
+  sel.disabled=false;
+  if(!domains.length){ sel.innerHTML='<option value="">No domains available</option>'; return; }
+  const opts=domains.map((x,i)=>`<option value="${i}">${gciEsc(x.label)}</option>`).join('');
+  sel.innerHTML=`<option value="">Select Domain Name</option>${opts}`;
+}
+
+// Shared /api/client-move caller (same endpoint + istesting=0→-1 quirk as the
+// main Client Move Activity tool's doSubmit()).
+async function gciMoveApi({countrykey, version, istesting, iscrv, moveBy, emailid, dbinfolinkidstr}){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session) throw new Error('Session expired — please sign in again');
+  const submitIstesting = (istesting===0||istesting==='0') ? -1 : istesting;
+  const res = await fetch('/api/client-move', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
+    body: JSON.stringify({ countrykey, key: MOVE_KEY, version, istesting: submitIstesting, iscrv, moveBy, emailid: emailid||'', dbinfolinkidstr: dbinfolinkidstr||'' })
+  });
+  let out; try{ out=await res.json(); }catch{ out={error:'Server error ('+res.status+')'}; }
+  if(!res.ok||out.error) throw new Error(out.error||('HTTP '+res.status));
+  return out;
+}
+
+// ── Single-customer Move (Move Client / Control room reset / Remove caching / Only Repair DB) ──
+function gciOpenMoveSingle(iscrv){
+  if(!GCI_REC || !GCI_REC.email){ gciToast('Pehle "Get Details" chalao','err'); return; }
+  const setting=SETTINGS.find(s=>s.iscrv===iscrv);
+  if(!setting) return;
+  const cOpts=COUNTRIES.map((x,i)=>`<option value="${i}">${gciEsc(x.label)}</option>`).join('');
+  document.getElementById('gciCfTitle').innerHTML='🔁 '+gciEsc(setting.label);
+  document.getElementById('gciCfDesc').textContent='Select Country & Domain, then submit to run this on the loaded customer.';
+  document.getElementById('gciCfBody').innerHTML=`
+    <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'')}</span></div>
+    <div class="sum-row"><span class="sum-k">Action</span><span class="sum-v">${gciEsc(setting.label)}</span></div>
+    <div style="margin-top:12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text)">Country Server</div>
+    <select class="modal-input" id="gciMvCountry" onchange="gciMvCountryChange()">${cOpts}</select>
+    <div style="margin-top:12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text)">Domain Name</div>
+    <select class="modal-input" id="gciMvDomain"><option value="">Loading domains…</option></select>`;
+  const btn=document.getElementById('gciCfBtn');
+  btn.className='btn-cta'+(setting.iscrv===3?' danger':'');
+  btn.textContent='Submit';
+  btn.onclick=()=>gciSubmitMoveSingle(setting);
+  document.getElementById('gciConfirm').classList.add('show');
+  gciLoadDomainsInto('gciMvDomain', COUNTRIES[0].key);
+}
+window.gciMvCountryChange=function(){
+  const ci=document.getElementById('gciMvCountry').value;
+  const country=COUNTRIES[+ci]; if(!country) return;
+  gciLoadDomainsInto('gciMvDomain', country.key);
+};
+async function gciSubmitMoveSingle(setting){
+  const di=document.getElementById('gciMvDomain').value;
+  const domain= di===''?null:GCI_MV_DOMAINS[+di];
+  if(!domain){ gciToast('Please select a Domain','err'); return; }
+  const ci=document.getElementById('gciMvCountry').value;
+  const country=COUNTRIES[+ci];
+  const btn=document.getElementById('gciCfBtn');
+  btn.disabled=true; const old=btn.textContent; btn.textContent='Submitting…';
+  LAST_ISCRV=setting.iscrv;
+  try{
+    const out=await gciMoveApi({ countrykey:country.key, version:domain.version, istesting:domain.istesting, iscrv:setting.iscrv, moveBy:'email', emailid:GCI_REC.email });
+    gciCloseConfirm();
+    const items=(out.result&&Array.isArray(out.result.data))?out.result.data:[];
+    const allOk = items.length===0?true:items.every(itemOk);
+    gciToast(setting.label+' — '+(allOk?'Done':'Failed'), allOk?'ok':'err');
+    gciOpenOut((allOk?'✅ ':'❌ ')+setting.label, GCI_REC.email||'', `<pre class="raw">${gciEsc(formatResult(out))}</pre>`);
+    if(setting.iscrv===0) await gciRefresh();   // server actually changed — refresh loaded record
+  }catch(e){
+    gciToast(setting.label+' — '+(e.message||'failed'),'err');
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
+
+// ── Bulk Move popup ──
+function gciOpenBulkMove(){
+  const cOpts=COUNTRIES.map((x,i)=>`<option value="${i}">${gciEsc(x.label)}</option>`).join('');
+  const sOpts=SETTINGS.map((x,i)=>`<option value="${i}">${gciEsc(x.label)}</option>`).join('');
+  document.getElementById('gciBmCountry').innerHTML=cOpts;
+  document.getElementById('gciBmSetting').innerHTML=sOpts;
+  document.getElementById('gciBmIds').value='';
+  const resEl=document.getElementById('gciBmResult'); resEl.className='result'; resEl.textContent='';
+  document.getElementById('gciBulkMove').classList.add('show');
+  gciLoadDomainsInto('gciBmDomain', COUNTRIES[0].key);
+}
+window.gciBmCountryChange=function(){
+  const ci=document.getElementById('gciBmCountry').value;
+  const country=COUNTRIES[+ci]; if(!country) return;
+  gciLoadDomainsInto('gciBmDomain', country.key);
+};
+function gciCloseBulkMove(){ document.getElementById('gciBulkMove').classList.remove('show'); }
+async function gciSubmitBulkMove(){
+  const ci=document.getElementById('gciBmCountry').value;
+  const di=document.getElementById('gciBmDomain').value;
+  const si=document.getElementById('gciBmSetting').value;
+  const ids=(document.getElementById('gciBmIds').value||'').trim();
+  const resEl=document.getElementById('gciBmResult');
+  const country=COUNTRIES[+ci];
+  const domain= di===''?null:GCI_MV_DOMAINS[+di];
+  const setting=SETTINGS[+si];
+  if(!domain){ resEl.className='result err'; resEl.textContent='Please select a Domain.'; return; }
+  if(!ids){ resEl.className='result err'; resEl.textContent='Please enter DB InfoLinkID(s).'; return; }
+  const btn=document.getElementById('gciBmSubmit');
+  btn.disabled=true; const old=btn.textContent; btn.textContent='Submitting…';
+  LAST_ISCRV=setting.iscrv;
+  try{
+    const out=await gciMoveApi({ countrykey:country.key, version:domain.version, istesting:domain.istesting, iscrv:setting.iscrv, moveBy:'dblink', dbinfolinkidstr:ids });
+    const items=(out.result&&Array.isArray(out.result.data))?out.result.data:[];
+    const allOk = items.length===0?true:items.every(itemOk);
+    resEl.className='result '+(allOk?'ok':'err');
+    resEl.textContent=formatResult(out);
+  }catch(e){
+    resEl.className='result err';
+    resEl.textContent='❌ '+(e.message||'Fail');
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
 
 /* ============================ TOOL SWITCHER ============================ */
 function switchTool(tool){
@@ -886,8 +1097,22 @@ function switchTool(tool){
     GCI_REC=null; GCI_RAW=null;
     root.innerHTML=GET_INFO_HTML;
     const q=document.getElementById('gciQ');
-    if(q) q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); gciGetDetails(); } });
+    if(q){
+      q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); gciGetDetails(); } });
+      q.addEventListener('input', gciToggleBulkBtn);
+    }
+    gciToggleBulkBtn();
   }
+}
+
+// Bulk Move button sirf tab dikhta hai jab search box khaali ho — ek specific
+// email/mobile type karte hi (single-customer lookup ka intent) hide ho jata
+// hai, sirf "Get Details" bachta hai.
+function gciToggleBulkBtn(){
+  const q=document.getElementById('gciQ');
+  const b=document.getElementById('gciBulkBtn');
+  if(!q||!b) return;
+  b.style.display = q.value.trim() ? 'none' : '';
 }
 
 
