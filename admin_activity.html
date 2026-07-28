@@ -1018,7 +1018,15 @@ function cselClose(id){
 function cselCloseAll(){ Object.keys(CSEL).forEach(cselClose); }
 function cselValue(id){ const st=CSEL[id]; return st? st.value : null; }
 document.addEventListener('click', e=>{ if(!e.target.closest('.csel')) cselCloseAll(); });
-window.addEventListener('scroll', ()=>cselCloseAll(), true);
+// Close dropdowns when the PAGE/MODAL scrolls (so an open menu doesn't stay
+// glued to a stale on-screen position) — but NOT when the scroll happened
+// inside the dropdown's own list (its internal overflow:auto), otherwise
+// scrolling the option list itself would immediately close it.
+window.addEventListener('scroll', e=>{
+  const t=e.target;
+  if(t && t.nodeType===1 && t.closest && t.closest('.csel-menu')) return;
+  cselCloseAll();
+}, true);
 window.addEventListener('resize', ()=>cselCloseAll());
 
 // Natural (alphanumeric-aware) comparator — "books10" sorts after "books9",
