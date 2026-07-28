@@ -122,6 +122,24 @@ input[type=text]:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 
 .btn-cta:disabled{opacity:.6;cursor:not-allowed}
 .modal-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;margin-top:10px;background:#f8fafc}
 .modal-input:focus{border-color:var(--brand);background:#fff;outline:none;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+
+/* ── Custom dropdown (replaces native <select> for Country/Domain/Setting pickers in modals) ── */
+.csel{position:relative;margin-top:10px}
+.csel:first-child{margin-top:0}
+.csel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;color:var(--text);background:#f8fafc;cursor:pointer;text-align:left;transition:.15s}
+.csel-btn:hover{background:#fff}
+.csel-btn.open{border-color:var(--brand);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.1)}
+.csel-btn:disabled{opacity:.6;cursor:not-allowed}
+.csel-btn .csel-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csel-btn .csel-val.ph{color:#94a3b8}
+.csel-btn .csel-arrow{flex-shrink:0;color:var(--muted2);font-size:10px;transition:transform .15s;margin-left:6px}
+.csel-btn.open .csel-arrow{transform:rotate(180deg)}
+.csel-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-m);max-height:230px;overflow:auto;z-index:200;display:none;padding:5px}
+.csel-menu.open{display:block}
+.csel-opt{padding:9px 11px;border-radius:7px;font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csel-opt:hover{background:#f0fdfa}
+.csel-opt.sel{background:#f0fdfa;color:#0f766e;font-weight:700}
+.csel-empty{padding:12px;text-align:center;color:var(--muted);font-size:12px}
 pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-size:12px;font-family:'JetBrains Mono',ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;max-height:52vh;overflow:auto;line-height:1.5}
 .sum-row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px dashed var(--border)}
 .sum-row:last-child{border-bottom:none}
@@ -219,15 +237,24 @@ pre.raw{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-si
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
         <div class="fg">
           <label>Country Server</label>
-          <select id="bmCountry" class="modal-input" style="margin-top:0" onchange="bmCountryChange()"></select>
+          <div class="csel" id="bmCountry">
+            <button type="button" class="csel-btn" id="bmCountryBtn" onclick="cselToggle('bmCountry')"><span class="csel-val ph" id="bmCountryVal">Select Country</span><span class="csel-arrow">▾</span></button>
+            <div class="csel-menu" id="bmCountryMenu"></div>
+          </div>
         </div>
         <div class="fg">
           <label>Domain Name</label>
-          <select id="bmDomain" class="modal-input" style="margin-top:0"><option value="">Loading domains…</option></select>
+          <div class="csel" id="bmDomain">
+            <button type="button" class="csel-btn" id="bmDomainBtn" onclick="cselToggle('bmDomain')"><span class="csel-val ph" id="bmDomainVal">Loading domains…</span><span class="csel-arrow">▾</span></button>
+            <div class="csel-menu" id="bmDomainMenu"></div>
+          </div>
         </div>
         <div class="fg">
           <label>Setting</label>
-          <select id="bmSetting" class="modal-input" style="margin-top:0"></select>
+          <div class="csel" id="bmSetting">
+            <button type="button" class="csel-btn" id="bmSettingBtn" onclick="cselToggle('bmSetting')"><span class="csel-val ph" id="bmSettingVal">Select Setting</span><span class="csel-arrow">▾</span></button>
+            <div class="csel-menu" id="bmSettingMenu"></div>
+          </div>
         </div>
       </div>
       <div class="fg" style="margin-top:16px">
@@ -492,12 +519,88 @@ function openOut(title,desc,html){ document.getElementById('outTitle').innerHTML
 function closeOut(){ document.getElementById('outOverlay').classList.remove('show'); }
 function showRaw(){ openOut('🧾 Raw getDetails response', REC.email||'', `<pre class="raw">${esc(JSON.stringify(RAW,null,2))}</pre>`); }
 
+/* ============================ Custom dropdown (csel) ============================ */
+// Small reusable listbox that replaces native <select> for the Country /
+// Domain / Setting pickers inside modals. The native OS popup looked plain
+// and — since Marg returns domains in DB-insert order, not host order —
+// listed them out of sequence (books, books1, books3, enterprise2, books4…).
+// This widget gives full control over both look and item order.
+const CSEL = {};   // { id: {items:[{label,value}], value, placeholder, onChange} }
+function cselHtml(id, placeholder){
+  return `<div class="csel" id="${id}">
+    <button type="button" class="csel-btn" id="${id}Btn" onclick="cselToggle('${id}')"><span class="csel-val ph" id="${id}Val">${esc(placeholder)}</span><span class="csel-arrow">▾</span></button>
+    <div class="csel-menu" id="${id}Menu"></div>
+  </div>`;
+}
+function cselSet(id, items, placeholder, onChange){
+  CSEL[id] = { items: items||[], value:null, placeholder: placeholder||'Select…', onChange };
+  cselRenderMenu(id);
+  cselRenderVal(id);
+}
+function cselLoading(id, text){
+  if(!CSEL[id]) CSEL[id]={items:[],value:null,placeholder:'Select…'};
+  const val=document.getElementById(id+'Val'); if(val){ val.textContent=text||'Loading…'; val.classList.add('ph'); }
+  const btn=document.getElementById(id+'Btn'); if(btn) btn.disabled=true;
+  const menu=document.getElementById(id+'Menu'); if(menu) menu.innerHTML='';
+}
+function cselEnable(id){ const btn=document.getElementById(id+'Btn'); if(btn) btn.disabled=false; }
+function cselRenderMenu(id){
+  const st=CSEL[id]; const menu=document.getElementById(id+'Menu'); if(!st||!menu) return;
+  if(!st.items.length){ menu.innerHTML='<div class="csel-empty">No options</div>'; return; }
+  menu.innerHTML = st.items.map(it=>`<div class="csel-opt${st.value===it.value?' sel':''}" onclick="cselChoose('${id}','${it.value}')">${esc(it.label)}</div>`).join('');
+}
+function cselRenderVal(id){
+  const st=CSEL[id]; const val=document.getElementById(id+'Val'); if(!st||!val) return;
+  const it = st.items.find(x=>x.value===st.value);
+  val.textContent = it ? it.label : st.placeholder;
+  val.classList.toggle('ph', !it);
+}
+function cselChoose(id, value){
+  const st=CSEL[id]; if(!st) return;
+  st.value=value;
+  cselRenderMenu(id); cselRenderVal(id);
+  cselClose(id);
+  if(st.onChange) st.onChange(value);
+}
+function cselToggle(id){
+  const menu=document.getElementById(id+'Menu');
+  const isOpen = menu && menu.classList.contains('open');
+  cselCloseAll();
+  if(!isOpen) cselOpen(id);
+}
+function cselOpen(id){
+  const menu=document.getElementById(id+'Menu'); const btn=document.getElementById(id+'Btn');
+  if(menu) menu.classList.add('open');
+  if(btn) btn.classList.add('open');
+}
+function cselClose(id){
+  const menu=document.getElementById(id+'Menu'); const btn=document.getElementById(id+'Btn');
+  if(menu) menu.classList.remove('open');
+  if(btn) btn.classList.remove('open');
+}
+function cselCloseAll(){ Object.keys(CSEL).forEach(cselClose); }
+function cselValue(id){ const st=CSEL[id]; return st? st.value : null; }
+document.addEventListener('click', e=>{ if(!e.target.closest('.csel')) cselCloseAll(); });
+
+// Natural (alphanumeric-aware) comparator — "books10" sorts after "books9",
+// not between "books1" and "books2".
+function naturalCmp(a,b){
+  const ax=String(a).match(/(\d+|\D+)/g)||[];
+  const bx=String(b).match(/(\d+|\D+)/g)||[];
+  const len=Math.max(ax.length,bx.length);
+  for(let i=0;i<len;i++){
+    const as=ax[i]||'', bs=bx[i]||'';
+    const an=/^\d+$/.test(as), bn=/^\d+$/.test(bs);
+    if(an&&bn){ const d=Number(as)-Number(bs); if(d) return d; }
+    else { const d=as.localeCompare(bs); if(d) return d; }
+  }
+  return 0;
+}
+
 /* ============================ MOVE / BULK MOVE ============================ */
 const MOVE_UI=[
   {iscrv:0, ic:'🔁', v:'v-info'},
   {iscrv:1, ic:'⚙️', v:'v-warning'},
-  {iscrv:2, ic:'🧹', v:'v-warning'},
-  {iscrv:3, ic:'🛠️', v:'v-danger'},
 ];
 function moveBtns(){
   return MOVE_UI.map(m=>{
@@ -506,17 +609,15 @@ function moveBtns(){
   }).join('');
 }
 
-// Domain loader, generalized to any <select> id.
-async function loadDomainsInto(selId, countryKey){
-  const sel=document.getElementById(selId); if(!sel) return;
+// Domain loader, generalized to any csel id.
+async function loadDomainsInto(id, countryKey){
   if(MV_DOMAIN_CACHE[countryKey]){
     MV_DOMAINS=MV_DOMAIN_CACHE[countryKey];
-    renderDomainSelectInto(selId, MV_DOMAINS);
+    renderDomainCsel(id, MV_DOMAINS);
     return;
   }
   const myToken=++MV_LOAD_TOKEN;
-  sel.innerHTML='<option value="">Loading domains…</option>';
-  sel.disabled=true;
+  cselLoading(id, 'Loading domains…');
   try{
     const out=await api({action:'getDomainList', countrylinkid: countryKey});
     if(myToken!==MV_LOAD_TOKEN) return;
@@ -531,19 +632,21 @@ async function loadDomainsInto(selId, countryKey){
     });
     MV_DOMAIN_CACHE[countryKey]=domains;
     MV_DOMAINS=domains;
-    renderDomainSelectInto(selId, domains);
+    renderDomainCsel(id, domains);
   }catch(e){
     if(myToken!==MV_LOAD_TOKEN) return;
-    sel.innerHTML='<option value="">Failed to load — retry country</option>';
-    sel.disabled=false;
+    cselSet(id, [], 'Failed to load — retry country');
+    cselEnable(id);
   }
 }
-function renderDomainSelectInto(selId, domains){
-  const sel=document.getElementById(selId); if(!sel) return;
-  sel.disabled=false;
-  if(!domains.length){ sel.innerHTML='<option value="">No domains available</option>'; return; }
-  const opts=domains.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
-  sel.innerHTML=`<option value="">Select Domain Name</option>${opts}`;
+// domains sorted host-naturally for display (books, books1, books3, books4…
+// instead of Marg's DB-insert order) — the option 'value' stays the
+// ORIGINAL array index so MV_DOMAINS[+value] lookups at submit time still
+// resolve to the right domain regardless of display order.
+function renderDomainCsel(id, domains){
+  const items = domains.map((x,i)=>({label:x.label, value:String(i), host:x.host})).sort((a,b)=>naturalCmp(a.host,b.host));
+  cselSet(id, items, domains.length?'Select Domain Name':'No domains available');
+  cselEnable(id);
 }
 
 // Shared /api/client-move caller (istesting=0 → -1 quirk kept identical to
@@ -591,33 +694,31 @@ function formatResult(out){
 function openMoveSingle(iscrv){
   if(!REC||!REC.email){ toast('Pehle "Get Details" chalao','err'); return; }
   const setting=SETTINGS.find(s=>s.iscrv===iscrv); if(!setting) return;
-  const cOpts=COUNTRIES.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
   document.getElementById('cfTitle').innerHTML='🔁 '+esc(setting.label);
   document.getElementById('cfDesc').textContent='Select Country & Domain, then submit to run this on the loaded customer.';
   document.getElementById('cfBody').innerHTML=`
     <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${esc(REC.email||'')}</span></div>
     <div class="sum-row"><span class="sum-k">Action</span><span class="sum-v">${esc(setting.label)}</span></div>
     <div style="margin-top:12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text)">Country Server</div>
-    <select class="modal-input" id="mvCountry" onchange="mvCountryChange()">${cOpts}</select>
+    ${cselHtml('mvCountry','Select Country')}
     <div style="margin-top:12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text)">Domain Name</div>
-    <select class="modal-input" id="mvDomain"><option value="">Loading domains…</option></select>`;
+    ${cselHtml('mvDomain','Loading domains…')}`;
   const btn=document.getElementById('cfBtn');
   btn.className='btn-cta'+(setting.iscrv===3?' danger':'');
   btn.textContent='Submit';
   btn.onclick=()=>submitMoveSingle(setting);
   document.getElementById('confirmOverlay').classList.add('show');
-  loadDomainsInto('mvDomain', COUNTRIES[0].key);
+  const countryItems=COUNTRIES.map((x,i)=>({label:x.label, value:String(i)}));
+  cselSet('mvCountry', countryItems, 'Select Country', val=>{
+    const country=COUNTRIES[+val]; if(country) loadDomainsInto('mvDomain', country.key);
+  });
+  cselChoose('mvCountry','0');   // default to first country (India), matches old behaviour
 }
-window.mvCountryChange=function(){
-  const ci=document.getElementById('mvCountry').value;
-  const country=COUNTRIES[+ci]; if(!country) return;
-  loadDomainsInto('mvDomain', country.key);
-};
 async function submitMoveSingle(setting){
-  const di=document.getElementById('mvDomain').value;
-  const domain= di===''?null:MV_DOMAINS[+di];
+  const di=cselValue('mvDomain');
+  const domain= di==null?null:MV_DOMAINS[+di];
   if(!domain){ toast('Please select a Domain','err'); return; }
-  const ci=document.getElementById('mvCountry').value;
+  const ci=cselValue('mvCountry');
   const country=COUNTRIES[+ci];
   const btn=document.getElementById('cfBtn');
   btn.disabled=true; const old=btn.textContent; btn.textContent='Submitting…';
@@ -645,31 +746,29 @@ function toggleBulkBtn(){
   b.style.display = q.value.trim() ? 'none' : '';
 }
 function openBulkMove(){
-  const cOpts=COUNTRIES.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
-  const sOpts=SETTINGS.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
-  document.getElementById('bmCountry').innerHTML=cOpts;
-  document.getElementById('bmSetting').innerHTML=sOpts;
   document.getElementById('bmIds').value='';
   document.getElementById('bmResult').textContent='';
   document.getElementById('bulkMoveOverlay').classList.add('show');
-  loadDomainsInto('bmDomain', COUNTRIES[0].key);
+  const countryItems=COUNTRIES.map((x,i)=>({label:x.label, value:String(i)}));
+  cselSet('bmCountry', countryItems, 'Select Country', val=>{
+    const country=COUNTRIES[+val]; if(country) loadDomainsInto('bmDomain', country.key);
+  });
+  const settingItems=SETTINGS.map((x,i)=>({label:x.label, value:String(i)}));
+  cselSet('bmSetting', settingItems, 'Select Setting');
+  cselChoose('bmCountry','0');
 }
-window.bmCountryChange=function(){
-  const ci=document.getElementById('bmCountry').value;
-  const country=COUNTRIES[+ci]; if(!country) return;
-  loadDomainsInto('bmDomain', country.key);
-};
 function closeBulkMove(){ document.getElementById('bulkMoveOverlay').classList.remove('show'); }
 async function submitBulkMove(){
-  const ci=document.getElementById('bmCountry').value;
-  const di=document.getElementById('bmDomain').value;
-  const si=document.getElementById('bmSetting').value;
+  const di=cselValue('bmDomain');
+  const si=cselValue('bmSetting');
   const ids=(document.getElementById('bmIds').value||'').trim();
   const resEl=document.getElementById('bmResult');
+  const ci=cselValue('bmCountry');
   const country=COUNTRIES[+ci];
-  const domain= di===''?null:MV_DOMAINS[+di];
-  const setting=SETTINGS[+si];
+  const domain= di==null?null:MV_DOMAINS[+di];
+  const setting= si==null?null:SETTINGS[+si];
   if(!domain){ resEl.style.color='#b91c1c'; resEl.textContent='Please select a Domain.'; return; }
+  if(!setting){ resEl.style.color='#b91c1c'; resEl.textContent='Please select a Setting.'; return; }
   if(!ids){ resEl.style.color='#b91c1c'; resEl.textContent='Please enter DB InfoLinkID(s).'; return; }
   const btn=document.getElementById('bmSubmit');
   btn.disabled=true; const old=btn.textContent; btn.textContent='Submitting…';
