@@ -134,7 +134,7 @@ input[type=text]:focus{border-color:var(--brand);background:#fff;box-shadow:0 0 
 .csel-btn .csel-val.ph{color:#94a3b8}
 .csel-btn .csel-arrow{flex-shrink:0;color:var(--muted2);font-size:10px;transition:transform .15s;margin-left:6px}
 .csel-btn.open .csel-arrow{transform:rotate(180deg)}
-.csel-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-m);max-height:230px;overflow:auto;z-index:200;display:none;padding:5px}
+.csel-menu{position:fixed;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh-m);max-height:230px;overflow:auto;z-index:300;display:none;padding:5px}
 .csel-menu.open{display:block}
 .csel-opt{padding:9px 11px;border-radius:7px;font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .csel-opt:hover{background:#f0fdfa}
@@ -570,8 +570,17 @@ function cselToggle(id){
 }
 function cselOpen(id){
   const menu=document.getElementById(id+'Menu'); const btn=document.getElementById(id+'Btn');
-  if(menu) menu.classList.add('open');
-  if(btn) btn.classList.add('open');
+  if(!menu||!btn) return;
+  // position:fixed + rect-computed placement — keeps the popup anchored to
+  // the trigger without ever inflating the modal's own scroll area (an
+  // absolutely-positioned menu inside an overflow:auto modal was forcing an
+  // unwanted scrollbar on the whole popup whenever the list opened).
+  const r=btn.getBoundingClientRect();
+  menu.style.left=r.left+'px';
+  menu.style.top=(r.bottom+6)+'px';
+  menu.style.width=r.width+'px';
+  menu.classList.add('open');
+  btn.classList.add('open');
 }
 function cselClose(id){
   const menu=document.getElementById(id+'Menu'); const btn=document.getElementById(id+'Btn');
@@ -581,6 +590,8 @@ function cselClose(id){
 function cselCloseAll(){ Object.keys(CSEL).forEach(cselClose); }
 function cselValue(id){ const st=CSEL[id]; return st? st.value : null; }
 document.addEventListener('click', e=>{ if(!e.target.closest('.csel')) cselCloseAll(); });
+window.addEventListener('scroll', ()=>cselCloseAll(), true);
+window.addEventListener('resize', ()=>cselCloseAll());
 
 // Natural (alphanumeric-aware) comparator — "books10" sorts after "books9",
 // not between "books1" and "books2".
@@ -755,6 +766,7 @@ function openBulkMove(){
   });
   const settingItems=SETTINGS.map((x,i)=>({label:x.label, value:String(i)}));
   cselSet('bmSetting', settingItems, 'Select Setting');
+  cselChoose('bmSetting','0');   // default to "Move Client"
   cselChoose('bmCountry','0');
 }
 function closeBulkMove(){ document.getElementById('bulkMoveOverlay').classList.remove('show'); }
