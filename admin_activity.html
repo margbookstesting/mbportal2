@@ -631,6 +631,7 @@ function gciMapRecord(rec){
     apiversion:   gciPick(R,['apiversion','apiver']),
     status:       gciPick(R,['dbstatus','databasestatus','accountstatus','activestatus','isactive','active']),
     url:          gciPick(R,['url','loginurl']),
+    apiurl:       gciPick(R,['apiurl','apiurlstr']),
     pwd:          gciPick(R,['pwd','password']),
     pwd2:         gciPick(R,['pwd2','password2','secondpassword']),
   };
@@ -720,14 +721,24 @@ function gciTopBarHtml(){
     <i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('')+`</div>`;
 }
 function gciNA(v){ return (v==null||v==='')?'<span style="color:#94a3b8;font-style:italic">Not Available</span>':gciEsc(v); }
+// Same as gciNA, but renders http(s) values as a clickable link (used for
+// the URL / API URL detail rows so the customer's login/API host is one
+// click away instead of only visible inside "View raw response").
+function gciUrlVal(v){
+  if(v==null||v==='') return gciNA(v);
+  const s=String(v);
+  if(/^https?:\/\//i.test(s)) return `<a href="${gciEsc(s)}" target="_blank" rel="noopener" style="color:var(--brand);word-break:break-all">${gciEsc(s)}</a>`;
+  return gciEsc(s);
+}
 function gciRenderResults(){
   const R=GCI_REC;
   const info=[
     ['Email',R.email],['Mobile',R.mobile],['License No',R.licenceno],
     ['User Link ID',R.userlinkid],['DB Info Link ID',R.dbinfolinkid],['Schema',R.schema],['Database Name',R.dbname],
     ['DB Server',R.dbserver],['DB Version',R.dbversion||R.mobdbversion],['API Version',R.apiversion],
+    ['URL',R.url],['API URL',R.apiurl],
   ];
-  const infoHtml=info.map(([k,v])=>`<div class="dp-row"><span class="dp-k2">${gciEsc(k)}</span><span class="dp-v2">${gciNA(v)}</span></div>`).join('');
+  const infoHtml=info.map(([k,v])=>`<div class="dp-row"><span class="dp-k2">${gciEsc(k)}</span><span class="dp-v2">${gciUrlVal(v)}</span></div>`).join('');
   const btns=arr=>arr.map(b=>`<button class="abtn pl-${b.color}" id="gab_${b.id}" onclick="gciOnAction('${b.id}')"><i class="ti ${b.icon} ic"></i><span class="lbl">${gciEsc(b.label)}</span></button>`).join('');
   const missing=(R.dbinfolinkid==null||R.dbinfolinkid==='');
   document.getElementById('gciResults').innerHTML=`
