@@ -75,6 +75,7 @@ def compact_tat(v):
 def parse_record(r):
     rec = {}
     for k,v in [('n','TicketNo'),('l','LicNo'),('q','Ack_Disp'),('t','TransferTo'),
+                ('tia','TransfertoITAgents'),
                 ('ta','AcknowledgebyAgents'),('ti','InProgressByAgent'),
                 ('ts','TransferTosupportBy'),('eb','ReadyToGoLiveBy')]:
         if r.get(v): rec[k] = r[v]
