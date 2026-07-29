@@ -1096,6 +1096,37 @@ td.grp-l { border-left:1px solid var(--border); }
   <!-- KPI STRIP -->
   <div class="kpi-strip" id="kpiRow"></div>
 
+  <!-- AGENT-WISE TRANSFER TO IT BREAKDOWN -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--it),var(--ack))"></div>
+          <div>
+            <div class="sec-title">Transfer To IT — Agent-wise Breakdown</div>
+            <div class="sec-sub">Har agent ke transfer-kiye-hue tickets ka current stage — click a row for ticket details.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table id="tAgentIT">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th class="r" style="color:#0d9488">Transfer to IT</th>
+              <th class="r" style="color:#d97706">Acknowledge</th>
+              <th class="r" style="color:#0891b2">In Progress</th>
+              <th class="r" style="color:#0284c7">Ready For Testing</th>
+              <th class="r" style="color:#7c3aed">Transfer to Support</th>
+              <th class="r">Total</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- CHARTS ROW -->
   <div class="charts-row" id="chartsRow">
     <div class="chart-card" style="grid-column:1 / -1">
@@ -1855,6 +1886,10 @@ function parseAPIRecord(r){
   if(r.Ack_Disp)              rec.q  = r.Ack_Disp;
   if(r.RM&&r.RM.trim())       rec.r  = r.RM.trim();
   if(r.TransferTo)            rec.t  = r.TransferTo;
+  // Distinct from TransferTo (rec.t = tester's name). TransfertoITAgents is
+  // the SUPPORT-TEAM agent who transferred the ticket to IT — used only by
+  // the "Transfer To IT — Agent-wise Breakdown" section.
+  if(r.TransfertoITAgents)    rec.tia = r.TransfertoITAgents;
   if(r.AcknowledgebyAgents)   rec.ta = r.AcknowledgebyAgents;
   if(r.InProgressByAgent)     rec.ti = r.InProgressByAgent;
   if(r.TransferTosupportBy)   rec.ts = r.TransferTosupportBy;
@@ -2098,6 +2133,50 @@ function renderKPIs(){
      <div class="kpi-row">${cards.join('')}</div>`;
 }
 
+// ===== TRANSFER TO IT — AGENT-WISE BREAKDOWN =====
+// Rows = every distinct SUPPORT-TEAM agent found in TransfertoITAgents (r.tia)
+// across the current filtered VIEW — i.e. everyone who has transferred a
+// ticket to IT at some point, even if none of their tickets currently sit in
+// the IT stage anymore. NOT the same as r.t (TransferTo) — that's the
+// tester's name, used elsewhere (Tester filter, TransferTo-wise chart, etc.)
+// and intentionally left untouched by this section.
+// Columns = current-stage counts for that agent's tickets (IT/ACK/IP/RFT/SUP
+// only — Pending/Closed/etc. aren't broken out as columns here, but still
+// count toward Total since Total = ALL of that agent's tickets regardless of
+// current status).
+let _agentITRows = [];
+function renderAgentIT(){
+  const tbody=document.querySelector('#tAgentIT tbody'); if(!tbody) return;
+  const blank={it:0,ack:0,ip:0,rft:0,sup:0,tot:0};
+  const map={};
+  VIEW.forEach(r=>{
+    const agent=(r.tia && r.tia.trim())?r.tia.trim():null;
+    if(!agent) return;
+    if(!map[agent]) map[agent]={...blank};
+    map[agent].tot++;
+    const cc=stage6(r);
+    if(cc && map[agent][cc]!==undefined) map[agent][cc]++;
+  });
+  const rows=Object.entries(map).map(([agent,v])=>({agent,...v})).sort((a,b)=>b.tot-a.tot);
+  _agentITRows=rows;
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">No data in selected range</td></tr>';
+    return;
+  }
+  const T=rows.reduce((a,r)=>{['it','ack','ip','rft','sup','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
+  tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openAgentITTickets(${i})" style="cursor:pointer" title="Click for tickets">
+    <td><strong>${sdEsc(r.agent)}</strong></td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td><td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.rft,'#0284c7')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td>
+    <td class="r dc"><strong>${fmt(r.tot)}</strong></td>
+  </tr>`).join('')
+  + `<tr class="total-row"><td><strong>Grand Total</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td><td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.rft)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td>
+    <td class="r dc"><strong>${fmt(T.tot)}</strong></td></tr>`;
+}
+function openAgentITTickets(i){
+  const row=_agentITRows[i]; if(!row) return;
+  const data=VIEW.filter(r=> (r.tia && r.tia.trim())===row.agent);
+  _openSupModal(data, 'Agent: '+row.agent+' — Ticket Details');
+}
 
 function renderDisp(){
   const DISPS=['Bug','Bug Urgent','Bug Approved','Development','Development Urgent','Others'];
@@ -2561,6 +2640,7 @@ function injectChartBtns(){
 function renderAll(){
   const safe=(fn,name)=>{ try{ fn(); }catch(e){ console.error('render '+name+' error', e); } };
   safe(renderKPIs,'KPIs');
+  safe(renderAgentIT,'AgentIT');
   safe(renderCharts,'Charts');
   safe(renderDisp,'Disp');
   safe(renderKeyLic,'KeyLic');
