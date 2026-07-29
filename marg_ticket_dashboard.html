@@ -842,6 +842,27 @@ tbody td.r { text-align:right; }
   justify-content:center;
 }
 
+/* ── CLIENT TICKET TREND (Ticket Volume % / Client Reach % vs Active Client Base) ── */
+.ctt-cards {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  padding:0 20px 14px;
+}
+@media(max-width:960px){.ctt-cards{grid-template-columns:repeat(2,1fr);}}
+.ctt-mc { background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:10px 12px; }
+.ctt-mc-lbl { font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2); }
+.ctt-mc-val { font-size:18px;font-weight:800;color:var(--navy);margin-top:2px;font-family:'JetBrains Mono',monospace; }
+.ctt-mc-val.down { color:var(--sup); }
+.ctt-mc-val.up   { color:var(--glv); }
+.ctt-mc-sub { font-size:10px;color:var(--muted);margin-top:1px; }
+.ctt-note {
+  margin:0 20px 14px;background:var(--it-l);border:1.5px solid var(--it-m);color:#0f5c54;
+  font-size:11px;font-weight:600;border-radius:9px;padding:9px 13px;line-height:1.5;
+}
+.ctt-pct-down { color:var(--sup)!important;font-weight:800; }
+.ctt-pct-up   { color:var(--glv)!important;font-weight:800; }
+.ctt-na { color:var(--muted2)!important;font-weight:500; }
+.ctt-chart-body { padding:6px 20px 18px;height:270px;position:relative; }
+
 .donut-center {
   position:absolute;
   text-align:center;
@@ -1242,6 +1263,54 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 
   <!-- KPI STRIP -->
   <div class="kpi-strip" id="kpiRow"></div>
+
+  <!-- CLIENT TICKET TREND: Ticket Volume % vs Active Client Base -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--it),var(--ack))"></div>
+          <div>
+            <div class="sec-title">Ticket Volume vs Active Client Base — Month-wise %</div>
+            <div class="sec-sub">Total Active Clients = us month ke end tak active licenses (activation ho chuka, expire nahi hua) &middot; Last 12 months</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctt-note" id="ctt1Note">💡 % neeche jaana normally ek accha sign hai — support load client-base growth se slow badh raha hai, product/IT efficiently scale ho raha hai.</div>
+      <div class="ctt-cards" id="ctt1Cards"></div>
+      <div class="ctt-chart-body"><canvas id="ctt1Canvas"></canvas></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Month</th><th class="r">Total Active Clients</th><th class="r">IT Tickets</th><th class="r">Ticket %</th><th class="r">3-Mo Avg %</th></tr></thead>
+          <tbody id="ctt1Tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENT REACH: % Active Clients Who Raised a Ticket -->
+  <div class="grid-1">
+    <div class="section">
+      <div class="sec-hdr">
+        <div class="sec-title-wrap">
+          <div class="sec-accent" style="background:linear-gradient(180deg,var(--sup),var(--ack))"></div>
+          <div>
+            <div class="sec-title">Client Reach — % Active Clients Who Raised a Ticket</div>
+            <div class="sec-sub">Har month kitne unique active clients ne kam se kam ek ticket "Transfer to IT" kiya &middot; Last 12 months</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctt-note" id="ctt2Note">💡 Ye bhi girta hua % — client base ke against jitna % clients IT ko contact kar rahe hain wo kam ho raha hai.</div>
+      <div class="ctt-cards" id="ctt2Cards"></div>
+      <div class="ctt-chart-body"><canvas id="ctt2Canvas"></canvas></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Month</th><th class="r">Total Active Clients</th><th class="r">Clients w/ &ge;1 Ticket</th><th class="r">Reach %</th><th class="r">3-Mo Avg %</th><th class="r">Avg Tickets/Client</th></tr></thead>
+          <tbody id="ctt2Tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <!-- CHARTS ROW -->
   <div class="charts-row" id="chartsRow">
@@ -4520,6 +4589,135 @@ function injectChartBtns(){
   });
 }
 
+// ═══════════════ CLIENT TICKET TREND (Ticket Volume % / Client Reach % vs Active Client Base) ═══════════════
+// Total Active Clients (month M) = RET_LIC (license API) records jinka activation
+// (af) month M ke "as of" date tak ho chuka hai, AUR expiry (at) khali hai ya us
+// date se aage hai — sirf ACTIVE licenses, expired/cancelled exclude.
+// IT Tickets (month M) = RAW tickets jinki TransferToIT date (r.a) us month me hai
+// (jin tickets ka r.a hi missing/blank hai wo dono sections se automatically
+// exclude ho jaate hain — data-quality guard).
+// Distinct Clients w/ Ticket (month M) = un tickets ke unique License No. (r.l).
+function cttActiveAsOf(asOf){
+  if(!RET_LIC) return 0;
+  let n=0;
+  for(const L of RET_LIC){
+    if(!L.af || L.af>asOf) continue;      // activate nahi hua tha is date tak
+    if(L.at && L.at<=asOf) continue;      // expire ho chuka tha is date tak
+    n++;
+  }
+  return n;
+}
+function cttLast12Months(){
+  const today=new Date();
+  const months=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(today.getFullYear(), today.getMonth()-i, 1);
+    const y=d.getFullYear(), m=d.getMonth();
+    const monthEndDate=new Date(y,m+1,0);
+    const asOf = monthEndDate<today ? monthEndDate : today;   // current month: aaj tak hi
+    months.push({y,m,key:y+'-'+String(m+1).padStart(2,'0'),
+      label:d.toLocaleString('en-IN',{month:'short'})+' '+String(y).slice(2), asOf});
+  }
+  return months;
+}
+function cttRolling3(arr,i){
+  if(i<2) return null;
+  return +(((arr[i]||0)+(arr[i-1]||0)+(arr[i-2]||0))/3).toFixed(2);
+}
+function cttMcHtml(cards){
+  return cards.map(c=>`<div class="ctt-mc"><div class="ctt-mc-lbl">${c.lbl}</div><div class="ctt-mc-val ${c.cls||''}">${c.val}</div><div class="ctt-mc-sub">${c.sub}</div></div>`).join('');
+}
+function cttRenderChart(canvasId, storeKey, labels, pct, roll, totals, color, pctLabel){
+  const cv=document.getElementById(canvasId);
+  if(!cv || typeof Chart==='undefined') return;
+  if(window[storeKey]){ try{ window[storeKey].destroy(); }catch(e){} }
+  window[storeKey]=new Chart(cv,{
+    type:'line',
+    data:{ labels, datasets:[
+      { label:pctLabel, data:pct, borderColor:color, backgroundColor:color+'1a', yAxisID:'y', tension:.3, fill:true, pointRadius:3, borderWidth:2 },
+      { label:'3-Mo Avg', data:roll, borderColor:color, borderDash:[3,3], yAxisID:'y', tension:.3, pointRadius:0, borderWidth:1.5, spanGaps:true },
+      { label:'Total Active Clients', data:totals, borderColor:'#9ca3af', borderDash:[5,4], yAxisID:'y1', tension:.3, pointRadius:2.5, borderWidth:1.5 },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'bottom', labels:{boxWidth:9,boxHeight:9,usePointStyle:true,pointStyle:'circle',font:{size:10,weight:'700'},color:'#6b7280'}},
+        tooltip:{backgroundColor:'#0f172a', padding:10, cornerRadius:10, titleFont:{weight:'700'}} },
+      scales:{
+        y:{ position:'left', ticks:{font:{size:9},color:'#9ca3af'}, grid:{color:'rgba(15,23,42,.05)'}, border:{display:false} },
+        y1:{ position:'right', grid:{drawOnChartArea:false}, ticks:{font:{size:9},color:'#9ca3af'}, border:{display:false} },
+        x:{ grid:{display:false}, border:{display:false}, ticks:{font:{size:9},color:'#9ca3af'} } } }
+  });
+}
+let _cttRows=null;
+function renderClientTrend(){
+  const c1=document.getElementById('ctt1Cards'), c2=document.getElementById('ctt2Cards');
+  if(!c1 || !c2) return; // sections not present on this page (safety)
+  if(!RET_LIC){
+    const loading='<div style="padding:16px;text-align:center;color:var(--muted);grid-column:1/-1;font-size:11.5px">⏳ Loading license data…</div>';
+    c1.innerHTML=loading; c2.innerHTML=loading;
+    if(!RET_BUSY) retFetchLic(false).then(()=>{ try{ renderClientTrend(); }catch(e){ console.error('renderClientTrend',e); } });
+    return;
+  }
+  if(!RAW || !RAW.length) return;
+
+  const months = cttLast12Months();
+  const byMonth = new Map();
+  months.forEach(mo=>byMonth.set(mo.key,{tickets:0, clients:new Set()}));
+  RAW.forEach(r=>{
+    if(!r.a) return;                              // TransferToIT date missing → exclude (data-quality guard)
+    const bucket = byMonth.get(String(r.a).slice(0,7));
+    if(!bucket) return;                            // outside the last-12-months window
+    bucket.tickets++;
+    const lic = String(r.l||'').trim();
+    if(lic) bucket.clients.add(lic);
+  });
+
+  const rows = months.map(mo=>{
+    const b = byMonth.get(mo.key);
+    const total = cttActiveAsOf(mo.asOf);
+    const tickets = b.tickets, clients = b.clients.size;
+    return { ...mo, total, tickets, clients,
+      pct1: total ? +(tickets/total*100).toFixed(2) : 0,
+      pct2: total ? +(clients/total*100).toFixed(2) : 0,
+      avgTix: clients ? +(tickets/clients).toFixed(2) : 0 };
+  });
+  const pct1arr=rows.map(r=>r.pct1), pct2arr=rows.map(r=>r.pct2);
+  const roll1 = rows.map((r,i)=>cttRolling3(pct1arr,i));
+  const roll2 = rows.map((r,i)=>cttRolling3(pct2arr,i));
+  _cttRows = rows;
+
+  const last = rows.length-1;
+  const delta1 = +(rows[last].pct1-rows[0].pct1).toFixed(2);
+  const delta2 = +(rows[last].pct2-rows[0].pct2).toFixed(2);
+  const growthPct = rows[0].total ? (((rows[last].total/rows[0].total)-1)*100).toFixed(1) : '—';
+
+  c1.innerHTML = cttMcHtml([
+    { lbl:'Latest Month', val: rows[last].pct1+'%', sub: fmt(rows[last].tickets)+' tickets / '+fmt(rows[last].total)+' active clients' },
+    { lbl:'3-Mo Rolling Avg', val:(roll1[last]==null?'—':roll1[last]+'%'), sub:'smoothed, last 3 months' },
+    { lbl:'Change (vs 12mo ago)', val:(delta1<=0?'▼ ':'▲ ')+Math.abs(delta1)+' pts', cls: delta1<=0?'down':'up', sub: rows[0].pct1+'% ('+rows[0].label+')' },
+    { lbl:'Active Client Growth (12mo)', val:'▲ '+growthPct+'%', cls:'up', sub: fmt(rows[0].total)+' → '+fmt(rows[last].total) },
+  ]);
+  c2.innerHTML = cttMcHtml([
+    { lbl:'Latest Month', val: rows[last].pct2+'%', sub: fmt(rows[last].clients)+' clients / '+fmt(rows[last].total)+' active total' },
+    { lbl:'3-Mo Rolling Avg', val:(roll2[last]==null?'—':roll2[last]+'%'), sub:'smoothed, last 3 months' },
+    { lbl:'Change (vs 12mo ago)', val:(delta2<=0?'▼ ':'▲ ')+Math.abs(delta2)+' pts', cls: delta2<=0?'down':'up', sub: rows[0].pct2+'% ('+rows[0].label+')' },
+    { lbl:'Avg Tickets / Engaged Client', val: rows[last].avgTix, sub: fmt(rows[last].tickets)+' tickets / '+fmt(rows[last].clients)+' engaged clients (latest month)' },
+  ]);
+
+  document.getElementById('ctt1Tbody').innerHTML = rows.map((r,i)=>
+    `<tr><td>${r.label}</td><td class="r">${fmt(r.total)}</td><td class="r">${fmt(r.tickets)}</td>
+      <td class="r ${i>0&&r.pct1<rows[i-1].pct1?'ctt-pct-down':'ctt-pct-up'}">${r.pct1}%</td>
+      <td class="r ${roll1[i]==null?'ctt-na':''}">${roll1[i]==null?'—':roll1[i]+'%'}</td></tr>`).join('');
+  document.getElementById('ctt2Tbody').innerHTML = rows.map((r,i)=>
+    `<tr><td>${r.label}</td><td class="r">${fmt(r.total)}</td><td class="r">${fmt(r.clients)}</td>
+      <td class="r ${i>0&&r.pct2<rows[i-1].pct2?'ctt-pct-down':'ctt-pct-up'}">${r.pct2}%</td>
+      <td class="r ${roll2[i]==null?'ctt-na':''}">${roll2[i]==null?'—':roll2[i]+'%'}</td>
+      <td class="r">${r.avgTix}</td></tr>`).join('');
+
+  cttRenderChart('ctt1Canvas','_cttChart1', rows.map(r=>r.label), pct1arr, roll1, rows.map(r=>r.total), '#0d9488','Ticket %');
+  cttRenderChart('ctt2Canvas','_cttChart2', rows.map(r=>r.label), pct2arr, roll2, rows.map(r=>r.total), '#dc2626','Reach %');
+}
+
 function renderAll(){
   renderKPIs();
   renderCharts();
@@ -4532,6 +4730,7 @@ function renderAll(){
   renderClients();
   renderPlan();
   injectChartBtns();
+  try{ renderClientTrend(); }catch(e){ console.error('renderClientTrend failed', e); }
 }
 
 // ===== MODAL =====
