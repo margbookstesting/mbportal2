@@ -1305,7 +1305,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
       <div class="ctt-chart-body"><canvas id="ctt2Canvas"></canvas></div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>Month</th><th class="r">Total Active Clients</th><th class="r">Clients w/ &ge;1 Ticket</th><th class="r">Reach %</th><th class="r">3-Mo Avg %</th><th class="r">Avg Tickets/Client</th></tr></thead>
+          <thead><tr><th>Month</th><th class="r">Total Active Clients</th><th class="r">IT Tickets</th><th class="r">Clients w/ &ge;1 Ticket</th><th class="r">Reach %</th><th class="r">3-Mo Avg %</th><th class="r">Avg Tickets/Client</th></tr></thead>
           <tbody id="ctt2Tbody"></tbody>
         </table>
       </div>
@@ -4709,7 +4709,7 @@ function renderClientTrend(){
       <td class="r ${i>0&&r.pct1<rows[i-1].pct1?'ctt-pct-down':'ctt-pct-up'}">${r.pct1}%</td>
       <td class="r ${roll1[i]==null?'ctt-na':''}">${roll1[i]==null?'—':roll1[i]+'%'}</td></tr>`).join('');
   document.getElementById('ctt2Tbody').innerHTML = rows.map((r,i)=>
-    `<tr><td>${r.label}</td><td class="r">${fmt(r.total)}</td><td class="r">${fmt(r.clients)}</td>
+    `<tr><td>${r.label}</td><td class="r">${fmt(r.total)}</td><td class="r">${fmt(r.tickets)}</td><td class="r">${fmt(r.clients)}</td>
       <td class="r ${i>0&&r.pct2<rows[i-1].pct2?'ctt-pct-down':'ctt-pct-up'}">${r.pct2}%</td>
       <td class="r ${roll2[i]==null?'ctt-na':''}">${roll2[i]==null?'—':roll2[i]+'%'}</td>
       <td class="r">${r.avgTix}</td></tr>`).join('');
