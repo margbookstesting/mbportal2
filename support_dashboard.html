@@ -2157,7 +2157,13 @@ function renderAgentIT(){
     const cc=stage6(r);
     if(cc && map[agent][cc]!==undefined) map[agent][cc]++;
   });
-  const rows=Object.entries(map).map(([agent,v])=>({agent,...v})).sort((a,b)=>b.tot-a.tot);
+  // Agar agent ke 5 dikhaye-jaane-wale stage columns (IT/ACK/IP/RFT/SUP) sab
+  // 0 hain — bhale hi uska Total (sab statuses milaake) 0 na ho, jaise saare
+  // tickets Closed/Pending mein chale gaye hon — to us agent ki row hi mat
+  // dikhao. "—" bhara hua row confusing tha.
+  const rows=Object.entries(map).map(([agent,v])=>({agent,...v}))
+    .filter(r=> (r.it+r.ack+r.ip+r.rft+r.sup)>0)
+    .sort((a,b)=>b.tot-a.tot);
   _agentITRows=rows;
   if(!rows.length){
     tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">No data in selected range</td></tr>';
