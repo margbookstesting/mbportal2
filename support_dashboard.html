@@ -689,6 +689,57 @@ tbody td.r { text-align:right; }
 .ms-out   { background:var(--sup-l);color:var(--sup);border:1px solid var(--sup-m); }
 .ms-na    { background:#f8fafc;color:var(--muted);border:1px solid var(--border); }
 
+/* ── Multi-select dropdown (Tester/RM/Developer/Status) — ported verbatim
+   from marg_ticket_dashboard.html so the ticket-detail modal here matches
+   that dashboard's filter UI/UX. ── */
+.ms-drop-wrap { position:relative; display:inline-flex; align-items:center; flex-shrink:0; }
+.ms-drop-btn {
+  height:26px; padding:0 8px 0 10px; font-size:10px; font-family:inherit;
+  color:var(--text); background:#fff; cursor:pointer;
+  border:1px solid var(--border); border-radius:14px;
+  display:inline-flex; align-items:center; gap:4px;
+  max-width:180px; white-space:nowrap;
+  transition:all .12s;
+}
+.ms-drop-btn:hover { border-color:var(--muted); }
+.ms-drop-btn[data-active="1"] {
+  background:#ecfeff; border-color:#0891b2; color:#075985; font-weight:700;
+}
+.ms-drop-btn-lbl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-drop-caret { color:var(--muted); font-size:9px; }
+.ms-drop-panel {
+  position:absolute; top:30px; left:0; z-index:2000;
+  background:#fff; border:1px solid var(--border); border-radius:10px;
+  box-shadow:0 10px 30px rgba(8,16,30,.14);
+  min-width:220px; max-width:300px; padding:8px;
+  display:none;
+}
+.ms-drop-search {
+  width:100%; height:26px; padding:0 8px; font-size:11px; font-family:inherit;
+  border:1px solid var(--border); border-radius:6px; margin-bottom:6px;
+  box-sizing:border-box;
+}
+.ms-drop-list { max-height:220px; overflow-y:auto; padding:2px 0; }
+.ms-drop-item {
+  display:flex; align-items:center; gap:8px; padding:5px 8px;
+  cursor:pointer; border-radius:5px; font-size:11px; color:var(--text);
+}
+.ms-drop-item:hover { background:var(--s2); }
+.ms-drop-item input[type=checkbox] { margin:0; cursor:pointer; flex-shrink:0; }
+.ms-drop-item span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-drop-footer {
+  display:flex; justify-content:space-between; gap:8px;
+  border-top:1px solid var(--border); margin-top:6px; padding-top:8px;
+}
+.ms-drop-btn2 {
+  height:24px; padding:0 12px; font-size:10px; border-radius:6px; cursor:pointer;
+  font-family:inherit; font-weight:700; letter-spacing:.3px;
+}
+.ms-drop-clear { background:#fff; color:var(--muted); border:1px solid var(--border); }
+.ms-drop-clear:hover { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+.ms-drop-apply { background:#0d9488; color:#fff; border:0; box-shadow:0 2px 5px rgba(13,148,136,.28); }
+.ms-drop-apply:hover { background:#0f766e; }
+
 .modal-body { overflow-y:auto;flex:1;overflow-x:auto; }
 
 /* ── LOADER ── */
@@ -2684,8 +2735,105 @@ function renderModalTable(rows){
 }
 
 function _mfTesterVal(r){ return (r.t||r.eb||'').trim(); }
-let _mfTester='', _mfRM='', _mfDev='';
-function onModalDrop(type,val){ if(type==='tester')_mfTester=val; else if(type==='rm')_mfRM=val; else if(type==='dev')_mfDev=val; applyModalFilters(); }
+// Multi-select filter state (Sets — empty Set = no filter, matches everything).
+// Ported from marg_ticket_dashboard.html's _smf*/_msDrop* component so this
+// modal's Tester/RM/Developer/Status filters behave the same way there:
+// checkbox multi-select with search + Apply/Clear, instead of a single-value
+// native <select>.
+let _mfTester=new Set(), _mfRM=new Set(), _mfDev=new Set(), _mfStatus=new Set();
+// Draft state while a dropdown panel is open — nothing is applied until Apply.
+let _mfDraft = { tester:null, rm:null, dev:null, status:null };
+function _msDropCommittedSet(type){
+  return type==='tester' ? _mfTester
+       : type==='rm'     ? _mfRM
+       : type==='dev'    ? _mfDev
+       : type==='status' ? _mfStatus
+       : null;
+}
+function _msDropSetCommitted(type, newSet){
+  if(type==='tester')      _mfTester = newSet;
+  else if(type==='rm')     _mfRM     = newSet;
+  else if(type==='dev')    _mfDev    = newSet;
+  else if(type==='status') _mfStatus = newSet;
+}
+function toggleMsDrop(type){
+  const wrap = document.querySelector(`[data-msdrop="${type}"]`);
+  if(!wrap) return;
+  const panel = wrap.querySelector('.ms-drop-panel');
+  const isOpen = panel.style.display === 'block';
+  document.querySelectorAll('.ms-drop-panel').forEach(p => {
+    p.style.display = 'none';
+    p.style.left = ''; p.style.right = '';
+  });
+  if(!isOpen){
+    _mfDraft[type] = new Set(_msDropCommittedSet(type));
+    panel.style.display = 'block';
+    requestAnimationFrame(()=>{
+      const rect = panel.getBoundingClientRect();
+      if(rect.right > window.innerWidth - 12){
+        panel.style.left  = 'auto';
+        panel.style.right = '0';
+      }
+    });
+    setTimeout(()=>wrap.querySelector('.ms-drop-search')?.focus(), 30);
+  }
+}
+function onMsDropToggle(type, value, checked){
+  if(!_mfDraft[type]) _mfDraft[type] = new Set(_msDropCommittedSet(type));
+  if(checked) _mfDraft[type].add(value);
+  else        _mfDraft[type].delete(value);
+}
+function filterMsDrop(input){
+  const list = input.parentElement.querySelector('.ms-drop-list');
+  const q = input.value.toLowerCase();
+  list.querySelectorAll('label').forEach(lb=>{
+    lb.style.display = lb.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
+  });
+}
+function clearMsDrop(type){
+  _mfDraft[type] = new Set();
+  const wrap = document.querySelector(`[data-msdrop="${type}"]`);
+  wrap?.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+}
+function applyMsDrop(type){
+  const draft = _mfDraft[type] || new Set();
+  _msDropSetCommitted(type, new Set(draft));
+  const wrap = document.querySelector(`[data-msdrop="${type}"]`);
+  const panel = wrap?.querySelector('.ms-drop-panel');
+  if(panel) panel.style.display = 'none';
+  document.getElementById('modalStats').innerHTML = supModalStats(_modalData);
+  applyModalFilters();
+}
+document.addEventListener('click', function(e){
+  if(e.target.closest('.ms-drop-wrap')) return;
+  document.querySelectorAll('.ms-drop-panel').forEach(p => p.style.display = 'none');
+}, true);
+function _msDrop(type, labelPrefix, vals){
+  const committed = _msDropCommittedSet(type);
+  const btnLbl = committed.size === 0
+    ? `${labelPrefix} (all)`
+    : committed.size === 1 ? `${labelPrefix}: ${[...committed][0]}`
+    : `${labelPrefix}: ${committed.size} selected`;
+  const items = vals.map(v=>{
+    const safeV = String(v).replace(/"/g,'&quot;');
+    const isChecked = committed.has(String(v)) ? 'checked' : '';
+    return `<label class="ms-drop-item"><input type="checkbox" value="${safeV}" ${isChecked} onchange="onMsDropToggle('${type}', this.value, this.checked)"><span>${sdEsc(String(v))}</span></label>`;
+  }).join('');
+  const activeAttr = committed.size > 0 ? 'data-active="1"' : '';
+  return `<div class="ms-drop-wrap" data-msdrop="${type}">
+    <button class="ms-drop-btn" ${activeAttr} onclick="toggleMsDrop('${type}')" type="button">
+      <span class="ms-drop-btn-lbl">${sdEsc(btnLbl)}</span><span class="ms-drop-caret">▾</span>
+    </button>
+    <div class="ms-drop-panel">
+      <input class="ms-drop-search" placeholder="Search…" oninput="filterMsDrop(this)">
+      <div class="ms-drop-list">${items || '<div style="padding:8px;color:var(--muted);font-size:11px;text-align:center">No options</div>'}</div>
+      <div class="ms-drop-footer">
+        <button class="ms-drop-btn2 ms-drop-clear" onclick="clearMsDrop('${type}')" type="button">Clear All</button>
+        <button class="ms-drop-btn2 ms-drop-apply" onclick="applyMsDrop('${type}')" type="button">Apply</button>
+      </div>
+    </div>
+  </div>`;
+}
 function applyModalFilters(){
   let rows=_modalData.slice();
   const f=_modalFilter;
@@ -2693,9 +2841,10 @@ function applyModalFilters(){
   else if(f==='dev') rows=rows.filter(isDev);
   else if(f==='others') rows=rows.filter(r=>!isBug(r)&&!isDev(r));
   else if(f && f.indexOf('st:')===0){ const key=f.slice(3); rows=rows.filter(r=>statusKeyOf(r)===key); }
-  if(_mfTester) rows=rows.filter(r=>_mfTesterVal(r)===_mfTester);
-  if(_mfRM)     rows=rows.filter(r=>(r.r||'').trim()===_mfRM);
-  if(_mfDev)    rows=rows.filter(r=>(r.dev||'').trim()===_mfDev);
+  if(_mfTester.size) rows=rows.filter(r=>_mfTester.has(_mfTesterVal(r)));
+  if(_mfRM.size)     rows=rows.filter(r=>_mfRM.has((r.r||'').trim()));
+  if(_mfDev.size)    rows=rows.filter(r=>_mfDev.has((r.dev||'').trim()));
+  if(_mfStatus.size) rows=rows.filter(r=>_mfStatus.has(statusLabelOf(r)));
   window._modalShown=rows;
   const lbl=document.getElementById('modalFilterLabel');
   if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
@@ -2715,26 +2864,29 @@ function setModalFilter(f){
 
 function supModalStats(data){
   const bug=data.filter(isBug).length, dev=data.filter(isDev).length, oth=data.length-bug-dev;
-  const stCount={}; data.forEach(r=>{ const k=statusKeyOf(r); stCount[k]=(stCount[k]||0)+1; });
-  const stChips=SUP_STATUSES.filter(d=>stCount[d.key]).map(d=>
-    `<span class="ms ms-btn" data-f="st:${d.key}" onclick="setModalFilter('st:${d.key}')" style="cursor:pointer;border:1px solid var(--border)">${d.label}: ${fmt(stCount[d.key])}</span>`).join('');
   const uniq=(arr)=>[...new Set(arr.filter(v=>v&&String(v).trim()).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
   const testers=uniq(data.map(r=>_mfTesterVal(r)));
   const rms=uniq(data.map(r=>r.r));
   const devs=uniq(data.map(r=>r.dev));
-  const drop=(type,label,vals)=>`<select onchange="onModalDrop('${type}',this.value)" style="height:26px;border:1px solid var(--border);border-radius:14px;padding:0 8px;font-size:10px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;max-width:140px">
-    <option value="">${label} (all)</option>${vals.map(v=>`<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('')}</select>`;
+  const statusLabels=uniq(data.map(r=>statusLabelOf(r)));
+  // Drop stale selections whose values no longer exist in this modal's data.
+  if(_mfTester.size) _mfTester = new Set([..._mfTester].filter(v=>testers.includes(v)));
+  if(_mfRM.size)     _mfRM     = new Set([..._mfRM].filter(v=>rms.includes(v)));
+  if(_mfDev.size)    _mfDev    = new Set([..._mfDev].filter(v=>devs.includes(v)));
+  if(_mfStatus.size) _mfStatus = new Set([..._mfStatus].filter(v=>statusLabels.includes(v)));
   return `<span class="ms ms-total ms-btn" data-f="all" onclick="setModalFilter('all')" style="cursor:pointer">Total: ${fmt(data.length)}</span>
     <span class="ms ms-btn" data-f="bug" onclick="setModalFilter('bug')" style="cursor:pointer;color:#b91c1c">🐞 Bug: ${fmt(bug)}</span>
     <span class="ms ms-btn" data-f="dev" onclick="setModalFilter('dev')" style="cursor:pointer;color:#1d4ed8">⚙️ Development: ${fmt(dev)}</span>
     <span class="ms ms-btn" data-f="others" onclick="setModalFilter('others')" style="cursor:pointer;color:#6b7280">📋 Others: ${fmt(oth)}</span>
-    ${stChips ? '<span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>'+stChips : ''}
     <span style="width:1px;height:18px;background:var(--border);margin:0 2px;align-self:center"></span>
-    ${drop('tester','Tester',testers)} ${drop('rm','RM',rms)} ${drop('dev','Developer',devs)}
+    ${_msDrop('tester','Tester',testers)} ${_msDrop('rm','RM',rms)} ${_msDrop('dev','Developer',devs)} ${_msDrop('status','Status',statusLabels)}
     <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>`;
 }
 function _openSupModal(data, title){
-  _modalKey=null; _modalData=data; _modalFilter='all'; _mfTester=''; _mfRM=''; _mfDev=''; window._modalShown=data;
+  _modalKey=null; _modalData=data; _modalFilter='all';
+  _mfTester=new Set(); _mfRM=new Set(); _mfDev=new Set(); _mfStatus=new Set();
+  _mfDraft = { tester:null, rm:null, dev:null, status:null };
+  window._modalShown=data;
   document.getElementById('modalTitle').textContent=title;
   document.getElementById('modalStats').innerHTML=supModalStats(data);
   renderModalTable(data);
