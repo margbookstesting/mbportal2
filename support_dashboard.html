@@ -2212,9 +2212,11 @@ function renderAgentIT(){
   // 0 hain — bhale hi uska Total (sab statuses milaake) 0 na ho, jaise saare
   // tickets Closed/Pending mein chale gaye hon — to us agent ki row hi mat
   // dikhao. "—" bhara hua row confusing tha.
+  // Sorted by the "Transfer to Support" column, highest to lowest (ties
+  // broken by Total) — as requested, instead of sorting by Total.
   const rows=Object.entries(map).map(([agent,v])=>({agent,...v}))
     .filter(r=> (r.it+r.ack+r.ip+r.rft+r.sup)>0)
-    .sort((a,b)=>b.tot-a.tot);
+    .sort((a,b)=> b.sup-a.sup || b.tot-a.tot);
   _agentITRows=rows;
   if(!rows.length){
     tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">No data in selected range</td></tr>';
