@@ -10,6 +10,17 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SHARED SUPERSET TICKET PARSER — single source of truth (see file header) -->
+<!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
+     purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
+     400 deta hai. -->
+<script src="/assets/ticket-parser.js?v=2"></script>
+<script>
+/* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
+   saaf error, warna sab kuch "no data" jaisa dikhega. */
+if(typeof mbParseTicket !== 'function')
+  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+</script>
 <!-- AUTH GUARD: login + per-dashboard permission check -->
 <script>
 (async function(){
@@ -1874,89 +1885,20 @@ function buildFiltered(from, to){
   }
   currentFrom = from; currentTo = to;
 }
-const API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail';
+const API_URL = MB_API_URL;
 
-function getTATFlag(v){ if(!v) return null; const s=String(v); return s.includes('InTAT')?'I':s.includes('OutTAT')?'O':null; }
-function compactTATStr(v){
-  if(!v) return null;
-  const m = String(v).match(/(\d+)\s+days?\s+(\d+)\s+hours?/);
-  return m ? `${m[1]}d ${m[2]}h` : null;
-}
-function parseAPIDate(v){
-  if(!v || v==='1900-01-01T00:00:00') return null;
-  const s = String(v).trim();
-  // DD-MM-YYYY format (e.g. "16-06-2026") — convert to YYYY-MM-DD
-  const ddmmyyyy = s.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if(ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
-  // ISO or YYYY-MM-DD format
-  return s.split('T')[0];
-}
-
-const STATUS_MAP_API = {
-  'Transfer To IT':'IT','Acknowledge':'AK','In Progress':'IP',
-  'Ready To Go Live':'LV','Transfer To Support':'SP','Closed':'CL',
-  'Return To Support':'RS','Ready For Testing':'RT','Ready For UAT':'RU',
-  'Return to Support':'RS','Ready for Testing':'RT','Ready for UAT':'RU'
-};
-
-function parseAPIRecord(r){
-  const rec = {};
-  if(r.TicketNo)              rec.n  = r.TicketNo;
-  if(r.LicNo)                 rec.l  = r.LicNo;
-  if(r.UserName&&r.UserName.trim()) rec.u = r.UserName.trim();
-  if(r.subscriptionPlan&&r.subscriptionPlan.trim()) rec.p = r.subscriptionPlan.trim();
-  if(r.Ack_Disp)              rec.q  = r.Ack_Disp;
-  if(r.RM&&r.RM.trim())       rec.r  = r.RM.trim();
-  if(r.TransferTo)            rec.t  = r.TransferTo;
-  if(r.AcknowledgebyAgents)   rec.ta = r.AcknowledgebyAgents;
-  if(r.InProgressByAgent)     rec.ti = r.InProgressByAgent;
-  if(r.TransferTosupportBy)   rec.ts = r.TransferTosupportBy;
-  if(r.ReadyToGoLiveBy)       rec.eb = r.ReadyToGoLiveBy;
-  if(r.Description&&r.Description.trim())     rec.desc    = r.Description.trim();
-  if(r.Remarks&&r.Remarks.trim())             rec.remarks = r.Remarks.trim();
-  if(r.SubDisposition&&r.SubDisposition.trim()) rec.subDisp = r.SubDisposition.trim();
-  if(r.MainDisposition&&r.MainDisposition.trim()) rec.mainDisp = r.MainDisposition.trim();
-  if(r.Problemtype&&r.Problemtype.trim())     rec.probType = r.Problemtype.trim();
-  if(r.Mobile&&String(r.Mobile).trim())       rec.mobile   = String(r.Mobile).trim();
-  if(r.Emailid&&r.Emailid.trim())             rec.email    = r.Emailid.trim();
-  if(r.Assignto&&r.Assignto.trim())           rec.assignto = r.Assignto.trim();
-  if(r.Developer&&r.Developer.trim())         rec.dev      = r.Developer.trim();
-  const tld = parseAPIDate(r.TimeLineDate);
-  if(tld) rec.tld = tld;
-  const tc = parseAPIDate(r.TicketCreatedDate);
-  if(tc) rec.tc = tc;
-
-  const a = parseAPIDate(r.TransfertoITDate);
-  const b = parseAPIDate(r.AcknowledgeDate);
-  const c = parseAPIDate(r.InProgressDate);
-  const d = parseAPIDate(r.TransferTosupportDate);
-  const e = parseAPIDate(r.ReadyToGoLiveDate);
-
-  if(a){ rec.a=a;
-    const at=getTATFlag(r.TransferToIT_TATDetails);   if(at) rec.at=at;
-    const av=compactTATStr(r.TransferToIT_TATDetails);if(av) rec.av=av;
-    if(r.TransferToIT_TatDuration) rec.ad=String(r.TransferToIT_TatDuration); }
-  if(b){ rec.b=b;
-    const bt=getTATFlag(r.Ack_TATDetails);   if(bt) rec.bt=bt;
-    const bv=compactTATStr(r.Ack_TATDetails);if(bv) rec.bv=bv;
-    if(r.Ack_TatDuration) rec.bd=String(r.Ack_TatDuration); }
-  if(c){ rec.c=c;
-    const ct=getTATFlag(r.InProgress_TATDetails);   if(ct) rec.ct=ct;
-    const cv=compactTATStr(r.InProgress_TATDetails);if(cv) rec.cv=cv;
-    if(r.InProgress_TatDuration) rec.cd=String(r.InProgress_TatDuration); }
-  if(d){ rec.d=d;
-    const dt=getTATFlag(r.TransfertoSupport_TATDetails);   if(dt) rec.dt=dt;
-    const dv=compactTATStr(r.TransfertoSupport_TATDetails);if(dv) rec.dv=dv;
-    if(r.TransferToSupport_TatDuration) rec.dd=String(r.TransferToSupport_TatDuration); }
-  if(e){ rec.e=e;
-    const et=getTATFlag(r.ReadyToGoLive_TATDetails);   if(et) rec.et=et;
-    const ev=compactTATStr(r.ReadyToGoLive_TATDetails);if(ev) rec.ev=ev; }
-
-  if(r.Status && String(r.Status).trim()) rec.st = String(r.Status).trim();
-  rec.sc = STATUS_MAP_API[r.Status] || 'OT';
-  const statusOnlyOk = ['RS','RT','RU'].includes(rec.sc);
-  return (a||b||c||d||e||statusOnlyOk||rec.st) ? rec : null;
-}
+/* ── PARSER: assets/ticket-parser.js se aata hai (shared superset) ──────────
+ * Pehle har dashboard ka apna parseAPIRecord tha aur sabka field set alag,
+ * isliye jis page se Refresh hota wo baaki pages ke fields cache se uda deta.
+ * Ab sab wahi ek parser use karte hain. Naya field chahiye to
+ * assets/ticket-parser.js me add karo (aur .github/scripts/fetch_tickets.py
+ * me bhi), yahan kuch nahi. Ye aliases sirf isliye hain ki neeche ke call
+ * sites chhune na padein. */
+const getTATFlag       = mbTATFlag;
+const compactTATStr    = mbCompactTAT;
+const parseAPIDate     = mbParseDate;
+const parseAPIRecord   = mbParseTicket;
+const STATUS_MAP_API   = MB_STATUS_MAP;
 
 async function fetchData(from, to){
   showLoader(`Fetching data ${from} → ${to}`, 20, 'Connecting to API…');
@@ -3524,7 +3466,10 @@ function showEmptyState(){
 // Data Supabase DB mein save hota hai — sab devices par same data milta hai
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+// Session sessionStorage me rehti hai (index.html + is page ka auth guard).
+// Data client bhi WAHI storage use kare, warna sb.auth.getSession() null deta
+// hai aur /api/ticket-cache ko bhejne ke liye access token hi nahi milta.
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
 
 function cacheAgeLabel(ts){
   const d = new Date(ts);
@@ -3534,81 +3479,58 @@ function cacheAgeLabel(ts){
 }
 
 // Supabase se latest cached data load karo
+// Is page ka writer id — /api/ticket-cache validation + audit ke liye
+const MB_WRITER = 'api-dashboard';
+
 async function cacheLoad(){
   try{
-    // Saari rows fetch karo — matrix run mein har saal ki alag row hoti hai
-    const { data, error } = await sb.from('ticket_cache').select('id, data, fetched_at, total_count, date_from, date_to');
+    // Saari rows fetch karo — matrix run me har saal ki alag row hoti hai.
+    // select('*') deliberately: naye columns (schema_version, field_counts,
+    // writer) missing hon to bhi query fail na ho.
+    const { data, error } = await sb.from('ticket_cache').select('*');
     if(error){ console.warn('Supabase cacheLoad error:', error.message); return null; }
     if(!data || data.length === 0) return null;
 
-    let allTickets = [];
-    let absoluteMinDate = null;
-    let absoluteMaxDate = null;
-    let latestFetchedAt = null;
+    // Merge shared helper se (assets/ticket-parser.js). Ek ticket kai
+    // year-rows me aa sakta hai; pehle blind last-wins tha aur rows ka order
+    // undefined tha, to ek purani ADHOORI row nayi POORI row ko overwrite kar
+    // sakti thi. Ab jyada fields wala record jeetta hai, tie par naya fetched_at.
+    const merged = mbMergeCacheRows(data);
+    console.log(`Loaded & Merged: ${merged.tickets.length} unique tickets from ${merged.rowCount} rows (schema v${merged.minSchema})`);
+    if(!merged.tickets.length) return null;
 
-    // Saari rows ka data merge karo
-    data.forEach(row => {
-      if(row.data && Array.isArray(row.data)){
-        allTickets = allTickets.concat(row.data);
-      }
-      if(row.date_from && (!absoluteMinDate || row.date_from < absoluteMinDate))
-        absoluteMinDate = row.date_from;
-      if(row.date_to && (!absoluteMaxDate || row.date_to > absoluteMaxDate))
-        absoluteMaxDate = row.date_to;
-      if(row.fetched_at && (!latestFetchedAt || row.fetched_at > latestFetchedAt))
-        latestFetchedAt = row.fetched_at;
-    });
-
-    // Duplicate tickets filter karo
-    const uniqueMap = {};
-    allTickets.forEach(t => { if(t && t.n) uniqueMap[t.n] = t; });
-    const finalTickets = Object.values(uniqueMap);
-
-    console.log(`Loaded & Merged: ${finalTickets.length} unique tickets from ${data.length} rows`);
-    if(!finalTickets.length) return null;
+    if(merged.minSchema < MB_SCHEMA_VERSION){
+      window._mbStaleSchema = merged.minSchema;
+      console.warn(`ticket_cache me purana schema hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — kuch sections adhoore ho sakte hain. "↺ Refresh Data" chalao ya nightly job run karo.`);
+      if(typeof showToast === 'function')
+        setTimeout(()=>showToast(`⚠️ Cache purane format (v${merged.minSchema}) me hai — "↺ Refresh Data" dabao`), 1200);
+    }
 
     return {
-      raw: finalTickets,
-      ts: latestFetchedAt ? new Date(latestFetchedAt).getTime() : Date.now(),
-      date_from: absoluteMinDate,
-      date_to: absoluteMaxDate
+      raw: merged.tickets,
+      ts: merged.fetchedAt ? new Date(merged.fetchedAt).getTime() : Date.now(),
+      date_from: merged.dateFrom,
+      date_to: merged.dateTo
     };
   } catch(e){ console.warn('Supabase cacheLoad failed:', e); return null; }
 }
 
 // Refresh ke baad sirf current year ki row update karo
 // (Baaki saal ki rows GitHub Actions se aati hain — unhe mat chhuo)
-async function cacheSave(raw){
-  try{
-    const today = new Date().toISOString().split('T')[0];
-    const currentYear = new Date().getFullYear().toString();
-    const yearStart = `${currentYear}-01-01`;
-
-    // Sirf current year ke tickets filter karo
-    const yearRaw = raw.filter(r => {
-      const d = r.a || r.b || r.c || r.d || r.e || r.tld || r.tc || '';
-      return d.startsWith(currentYear);
-    });
-
-    // Current year ki purani row delete karo
-    try{
-      await sb.from('ticket_cache')
-        .delete()
-        .eq('date_from', yearStart);
-    }catch(_){}
-
-    // Current year ki nai row insert karo
-    const { error } = await sb.from('ticket_cache').insert({
-      data: yearRaw.length ? yearRaw : raw, // fallback to all if filter empty
-      total_count: (yearRaw.length ? yearRaw : raw).length,
-      date_from: yearStart,
-      date_to: today,
-      fetched_at: new Date().toISOString()
-    });
-    if(error) console.warn('Supabase save error:', error.message);
-    else console.log('✅ Saved to Supabase:', (yearRaw.length||raw.length), 'tickets for', currentYear);
-  } catch(e){ console.warn('cacheSave failed:', e); }
-}
+// Refresh ke baad current year ki row update karo.
+// Browser ab ticket_cache me SEEDHA nahi likhta — /api/ticket-cache se likhta
+// hai, jo schema_version + required fields + count sanity validate karta hai.
+// (sql/2026-08-ticket-cache-hardening.sql me anon ko read-only kar diya gaya
+// hai — naye env ke liye setup.sql me bhi — isliye direct write ab
+// possible bhi nahi.) Adhoora payload reject hota hai aur cache safe rehta hai.
+// NOTE: pehle yahan ek `cacheSave(raw)` function tha jo KABHI CALL NAHI hota
+// tha (dead code, main branch me bhi aisa hi tha). Hata diya, kyunki wo ek
+// trap tha: usme `const payload = yearRaw.length ? yearRaw : raw` likha tha —
+// year filter khali nikalne par SAARE saalon ka data current-year row me chala
+// jaata. Uske baad agla sahi refresh (sirf current year ka data) purane count
+// se 50%+ chhota hota aur /api/ticket-cache use REJECT kar deta — yaani row
+// permanently stuck. Cache write ab sirf backgroundFetch() se hota hai, jo
+// per-year mbCacheWrite() call karta hai.
 
 // ===== BACKGROUND FETCH with live timer loader =====
 let _timerInterval = null;
@@ -3714,20 +3636,20 @@ async function backgroundFetch(){
         yearData.forEach(r=>{ if(r.n) allTicketsMap.set(r.n, r); });
         console.log(`Year ${label}: ${yearData.length} tickets`);
 
-        // Save this year to Supabase immediately
+        // Is saal ki row validating writer se save karo (/api/ticket-cache).
+        // Pehle yahan anon key se seedha delete+insert hota tha — isi se ek
+        // dashboard ka Refresh doosre dashboard ke fields uda deta tha.
         const yearStart2 = year === 2023 ? '2023-04-01' : `${year}-01-01`;
-        try{
-          await sb.from('ticket_cache').delete().eq('date_from', yearStart2);
-          await sb.from('ticket_cache').insert({
-            data: yearData,
-            total_count: yearData.length,
-            date_from: yearStart2,
-            date_to: end,
-            fetched_at: new Date().toISOString()
-          });
-          console.log(`✅ Year ${label} saved to Supabase`);
-        }catch(saveErr){
-          console.warn(`Save failed for ${label}:`, saveErr.message);
+        if(yearData.length){
+          try{
+            await mbCacheWrite(sb, { writer: MB_WRITER, dateFrom: yearStart2, dateTo: end, data: yearData });
+            console.log(`✅ Year ${label} saved to Supabase`);
+          }catch(saveErr){
+            console.warn(`Save failed for ${label}:`, saveErr.message);
+            showToast(`⚠️ ${label} cache save: ${saveErr.message}`);
+          }
+        } else {
+          console.warn(`Year ${label}: 0 tickets — cache write skipped (purani row safe hai)`);
         }
 
       }catch(yearErr){

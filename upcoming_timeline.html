@@ -565,6 +565,17 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SHARED SUPERSET TICKET PARSER — cache merge helper ke liye -->
+<!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
+     purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
+     400 deta hai. -->
+<script src="/assets/ticket-parser.js?v=2"></script>
+<script>
+/* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
+   saaf error, warna sab kuch "no data" jaisa dikhega. */
+if(typeof mbParseTicket !== 'function')
+  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+</script>
 <!-- AUTH GUARD: login + per-dashboard permission check -->
 <script>
 (async function(){
@@ -587,7 +598,10 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 <script>
 const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+// Session sessionStorage me rehti hai (index.html + is page ka auth guard).
+// Data client bhi WAHI storage use kare, warna sb.auth.getSession() null deta
+// hai aur /api/ticket-cache ko bhejne ke liye access token hi nahi milta.
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
 
 const STAGE_LABELS = {
   IT:'Transfer to IT', AK:'Acknowledge', IP:'In Progress',
@@ -722,8 +736,7 @@ async function loadData(){
   startLoaderTimer();
   try{
     document.getElementById('loaderBar').style.width = '30%';
-    const { data, error } = await sb.from('ticket_cache')
-      .select('data, fetched_at, date_from, date_to');
+    const { data, error } = await sb.from('ticket_cache').select('*');
     if(error) throw new Error(error.message || error.details || error.hint || JSON.stringify(error));
     if(!data || !data.length) throw new Error('No data in Supabase — please run the GitHub Action first');
 
@@ -731,17 +744,14 @@ async function loadData(){
     document.getElementById('loaderStep').textContent = 'PROCESSING TICKETS';
     document.getElementById('loadingMsg').textContent = `Processing ${data.length} record(s)...`;
 
-    let allTickets = [];
-    data.forEach(row=>{
-      if(row.data && Array.isArray(row.data)) allTickets = allTickets.concat(row.data);
-      if(row.fetched_at && (!latestFetchedAt || row.fetched_at > latestFetchedAt))
-        latestFetchedAt = row.fetched_at;
-    });
-
-    // Deduplicate
-    const map = {};
-    allTickets.forEach(t=>{ if(t&&t.n) map[t.n]=t; });
-    RAW = Object.values(map);
+    // Merge shared helper se (assets/ticket-parser.js). Pehle blind last-wins
+    // tha aur rows ka order undefined, to purani adhoori row nayi poori row ko
+    // overwrite kar sakti thi. Ab jyada fields wala record jeetta hai.
+    const merged = mbMergeCacheRows(data);
+    RAW = merged.tickets;
+    latestFetchedAt = merged.fetchedAt;
+    if(merged.minSchema < MB_SCHEMA_VERSION)
+      console.warn(`ticket_cache purane schema me hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — TAT/Support dashboard se "Refresh Data" chalao.`);
 
     // Filter only tickets with tld (timeline date)
     RAW = RAW.filter(r => r.tld);
