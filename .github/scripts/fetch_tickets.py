@@ -8,6 +8,14 @@ API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail
 SUPA_URL = os.environ['SUPABASE_URL']
 SUPA_KEY = os.environ['SUPABASE_SERVICE_KEY']
 
+# ── CACHE SCHEMA ──────────────────────────────────────────────────────────────
+# assets/ticket-parser.js ke MB_SCHEMA_VERSION / MB_REQUIRED_FIELDS aur
+# api/ticket-cache.js ke REQUIRED_SCHEMA / REQUIRED_FIELDS ke saath in-sync
+# rakhna zaroori hai. Yahan koi naya field add karo to teeno jagah bump karo.
+SCHEMA_VERSION = 2
+REQUIRED_FIELDS = ['tia', 'ld', 'rtd', 'st']
+WRITER = 'nightly'
+
 STATUS_MAP = {
   'Transfer To IT':'IT','Acknowledge':'AK','In Progress':'IP',
   'Ready To Go Live':'LV','Transfer To Support':'SP','Closed':'CL',
@@ -83,8 +91,19 @@ def parse_record(r):
                 ('desc','Description'),('remarks','Remarks'),('dev','Developer'),
                 ('subDisp','SubDisposition'),('mainDisp','MainDisposition'),
                 ('probType','Problemtype'),('assignto','Assignto')]:
-        if str(r.get(v,'')).strip(): rec[k] = str(r[v]).strip()
-        
+        # NULL GUARD: pehle yahan `str(r.get(v,'')).strip()` tha. Marg API jab
+        # JSON `null` bhejta hai to str(None) == 'None' — non-empty string! —
+        # to rec[k] me literal "None" chala jaata tha. Dashboard par customer
+        # name / developer / RM sab "None" dikhte the, aur field PRESENT hone
+        # ki wajah se koi required-field guard bhi ise pakad nahi sakta tha.
+        # JS parser (`r.UserName && r.UserName.trim()`) null ko correctly drop
+        # karta hai — ab dono match karte hain. tests/test_parity.py isko lock
+        # karta hai.
+        _v = r.get(v)
+        if _v is not None and str(_v).strip():
+            rec[k] = str(_v).strip()
+
+
     if r.get('Mobile'): rec['mobile'] = str(r['Mobile']).strip()
     
     # SAFE FIX: Check for None or non-string object types before stripping email
@@ -308,9 +327,18 @@ for i, (fdate, todate) in enumerate(chunks, 1):
 RAW = list(ticket_map.values())
 print(f"\nTotal unique tickets in this chunk: {len(RAW)}", flush=True)
 
-if not RAW:
-    print("No records found in this range. Exiting.", flush=True)
+if not chunks:
+    # START_DATE aaj se aage hai (jaise matrix me agla saal pehle se add kar
+    # diya ho). Karne ko kuch nahi hai — ye GENUINE no-op hai, failure nahi.
+    print(f"⏭️  {START_DATE} abhi future me hai — kuch fetch karne ko nahi, skip.", flush=True)
     exit(0)
+
+if not RAW:
+    # Pehle yahan exit(0) tha — job GREEN dikhti thi aur purani (possibly
+    # adhoori) row waisi hi padi rehti thi, kisi ko pata bhi nahi chalta.
+    # Ab loud failure: purani row CHHEDI NAHI jaati, par job RED hoti hai.
+    print("❌ No records found in this range — cache unchanged, failing loudly.", flush=True)
+    exit(1)
 
 # ── Supabase Integration ──────────────────────────────────────────────────────
 supa_headers = {
@@ -320,19 +348,89 @@ supa_headers = {
     'Prefer': 'return=minimal'
 }
 
+# Field coverage summary — api/ticket-cache.js isi se check karta hai ki koi
+# writer kisi field ko >0 se 0 par na gira de. Yahan bhi wahi guard.
+field_counts = {'total': len(RAW)}
+for _f in REQUIRED_FIELDS:
+    field_counts[_f] = sum(1 for r in RAW if r.get(_f) not in (None, ''))
+print(f"Field coverage: {field_counts}", flush=True)
+
+# ── REGRESSION GUARD ─────────────────────────────────────────────────────────
+# Pehle yahan blunt check tha: `if field_counts[f] == 0: exit(1)`.
+# Wo GALAT tha — REQUIRED_FIELDS me `rtd` (ReadyForTestingDate) aur `tia` hain,
+# aur ye stages purane saalon (2023/2024) ke workflow me kabhi use hi nahi hue
+# ho sakte. Us case me un matrix jobs ka coverage legitimately 0 hota, aur wo
+# HAMESHA ke liye RED ho jaati — refresh band, aur failure aisa dikhta jaise
+# Marg API toot gaya ho.
+#
+# Sahi sawaal "field 0 hai kya?" nahi, "field pehle tha aur ab GAYAB ho gaya
+# kya?" hai. To ab maujooda row se compare karte hain — bilkul waise hi jaise
+# api/ticket-cache.js karta hai. Isse dono writers ka behaviour same rehta hai.
+prev_counts, prev_total = None, 0
+try:
+    _pr = requests.get(
+        f"{SUPA_URL}/rest/v1/ticket_cache"
+        f"?date_from=eq.{START_DATE}&select=field_counts,total_count",
+        headers={'apikey': SUPA_KEY, 'Authorization': f'Bearer {SUPA_KEY}'},
+        timeout=60,
+    )
+    if _pr.ok and isinstance(_pr.json(), list) and _pr.json():
+        _row = _pr.json()[0]
+        prev_counts = _row.get('field_counts') or None
+        prev_total = _row.get('total_count') or 0
+except Exception as _e:
+    # Guard best-effort hai. Compare na ho paye to write block nahi karte —
+    # warna ek Supabase blip poori nightly rok deta.
+    print(f"⚠️  Purani row nahi padh paye ({_e}) — regression guard skip.", flush=True)
+
+if prev_counts:
+    lost = [f for f in REQUIRED_FIELDS
+            if (prev_counts.get(f) or 0) > 0 and field_counts[f] == 0]
+    if lost:
+        print(f"❌ Ye fields cache me hain par is fetch me nahi: {lost}", flush=True)
+        print(f"   purana: {prev_counts}", flush=True)
+        print(f"   naya  : {field_counts}", flush=True)
+        print("   Marg API ne field names badal diye lagte hain. Cache UNCHANGED.", flush=True)
+        exit(1)
+
+    if prev_total > 0 and len(RAW) < prev_total * 0.5:
+        print(f"❌ Ticket count {prev_total} → {len(RAW)} (>50% drop) — adhoori fetch "
+              f"lagti hai. Cache UNCHANGED.", flush=True)
+        exit(1)
+else:
+    # Pehli baar likh rahe hain (ya purani row me field_counts NULL hai).
+    # Compare karne ko kuch nahi — sirf report karo, block mat karo, warna
+    # bootstrap hi possible nahi hoga.
+    zero = [f for f in REQUIRED_FIELDS if field_counts[f] == 0]
+    if zero:
+        print(f"ℹ️  Baseline row nahi mili. In fields ka coverage 0 hai: {zero} — "
+              f"is window ke liye normal ho sakta hai (purane saalon me wo stage "
+              f"use hi nahi hota tha). Aage badh rahe hain; agli baar se ye "
+              f"baseline ban jayega aur regression pakda jayega.", flush=True)
+
 payload = {
     'data': RAW,
     'total_count': len(RAW),
     'date_from': START_DATE,
     'date_to': today.strftime('%Y-%m-%d'),
-    'fetched_at': datetime.now(timezone.utc).isoformat()
+    'fetched_at': datetime.now(timezone.utc).isoformat(),
+    'schema_version': SCHEMA_VERSION,
+    'field_counts': field_counts,
+    'writer': WRITER,
 }
 
-# Target-delete stale range entries so parallel matrix jobs don't clobber each other
-print(f"Cleaning existing database entry for row range {START_DATE} to {today}...", flush=True)
-requests.delete(f"{SUPA_URL}/rest/v1/ticket_cache?date_from=eq.{START_DATE}", headers=supa_headers, timeout=60)
-
-print("Saving payload to Supabase...", flush=True)
-r = requests.post(f"{SUPA_URL}/rest/v1/ticket_cache", json=payload, headers=supa_headers, timeout=120)
+# ATOMIC UPSERT (date_from par unique constraint — setup.sql).
+# Pehle delete-then-insert tha: beech me ek window rehti thi jisme us saal ki
+# row missing hoti thi, aur insert fail ho jaata to data agli raat tak gayab.
+# on_conflict + merge-duplicates se ek hi statement me replace hota hai.
+print(f"Upserting {len(RAW)} tickets for {START_DATE} → {today}...", flush=True)
+r = requests.post(
+    f"{SUPA_URL}/rest/v1/ticket_cache?on_conflict=date_from",
+    json=payload,
+    headers={**supa_headers, 'Prefer': 'resolution=merge-duplicates,return=minimal'},
+    timeout=180,
+)
+if not r.ok:
+    print(f"❌ Upsert failed (HTTP {r.status_code}): {r.text[:500]}", flush=True)
 r.raise_for_status()
-print(f"✅ Successfully saved {len(RAW)} tickets data to Supabase!", flush=True)
+print(f"✅ Successfully saved {len(RAW)} tickets (schema v{SCHEMA_VERSION}) to Supabase!", flush=True)
