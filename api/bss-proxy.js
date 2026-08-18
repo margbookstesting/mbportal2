@@ -259,12 +259,42 @@ module.exports = async function handler(req, res) {
   const me = await supa('/auth/v1/user', { token, key: ANON_KEY });
   if (!me.ok || !me.data || !me.data.id) return res.status(401).json({ error: 'Invalid session' });
 
-  const prof = await supa(`/rest/v1/users?id=eq.${me.data.id}&select=role,dashboards,bss_user_id,name,email`);
+  // Profile read. `bss_user_id` column tabhi hota hai jab
+  // sql/2026-08-bss-dashboard.sql chal chuki ho. Na ho to PostgREST poori
+  // query fail kar deta hai — pehle wo "No profile" 403 ban jata tha, jo
+  // bilkul misleading tha (asli wajah: migration nahi chali).
+  // Ab: column ke bina bhi READ-ONLY dashboard chalna chahiye; sirf update
+  // block ho, saaf message ke saath.
+  let prof = await supa(`/rest/v1/users?id=eq.${me.data.id}&select=role,dashboards,bss_user_id,name,email`);
+  let migrationMissing = false;
+
+  if (!prof.ok) {
+    const msg = JSON.stringify(prof.data || '');
+    if (/bss_user_id/.test(msg)) {
+      migrationMissing = true;
+      prof = await supa(`/rest/v1/users?id=eq.${me.data.id}&select=role,dashboards,name,email`);
+    }
+    if (!prof.ok)
+      return res.status(500).json({
+        error: 'Profile read failed: ' + (prof.data && (prof.data.message || prof.data.hint) || ('HTTP ' + prof.status)),
+      });
+  }
+
   const p = Array.isArray(prof.data) ? prof.data[0] : null;
-  if (!p) return res.status(403).json({ error: 'No profile — access denied' });
+  if (!p)
+    return res.status(403).json({
+      error: 'Aapka profile public.users table me nahi mila (auth user to hai). ' +
+             'Admin se apna user record banwao.',
+    });
+  if (migrationMissing) p.bss_user_id = null;
 
   const allowed = p.role === 'admin' || (Array.isArray(p.dashboards) && p.dashboards.includes(DASH_ID));
-  if (!allowed) return res.status(403).json({ error: 'BSS Dashboard ka access nahi hai' });
+  if (!allowed)
+    return res.status(403).json({
+      error: `"${DASH_ID}" ka access nahi hai. Admin → Users → apne user par BSS Dashboard permission tick karwao.`,
+      role: p.role || null,
+      dashboards: Array.isArray(p.dashboards) ? p.dashboards : [],
+    });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -312,6 +342,11 @@ module.exports = async function handler(req, res) {
 
     // ── update ─────────────────────────────────────────────────────────────
     if (action === 'update') {
+      if (migrationMissing)
+        return res.status(500).json({
+          error: 'DB migration pending: users.bss_user_id column nahi hai. ' +
+                 'Supabase SQL Editor me sql/2026-08-bss-dashboard.sql chalao, phir update kaam karega.',
+        });
       if (!p.bss_user_id)
         return res.status(400).json({
           error: 'Aapke account par BSS User ID map nahi hai. Admin → Users me set karwao. ' +
