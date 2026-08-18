@@ -373,7 +373,12 @@ var BSS_READ_ALIASES = {
   description:     ['Description'],         // read-only, update endpoint me hai hi nahi
 
   jiraId:          ['JiraID'],
-  assignedTo:      ['Assignto'],
+  /* Tester do jagah ho sakta hai. MB - 036736 par `Assignto` = "" hai par
+   * `TransferTo` = "Preeti Lavanya" — aur portal (Support/TAT dashboards) bhi
+   * tester ko `TransferTo` se hi padhta hai (`rec.t`). Isliye Assignto pehle,
+   * khali ho to TransferTo. Dono UpdateTicketStatus ke `AssignedTo` (AssignTo
+   * list) me hi jaate hain. */
+  assignedTo:      ['Assignto', 'TransferTo'],
   rm:              ['RM'],
   developer:       ['Developer'],
   remarks:         ['Remarks'],
