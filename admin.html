@@ -359,9 +359,9 @@ nav{
              UpdatedByUser isi se jaata hai (server-side; client jo bheje ignore
              hota hai). Blank = ye user BSS update nahi kar sakta, sirf view. -->
         <div class="modal-field">
-          <label>BSS User ID <span style="font-weight:400;opacity:.7">(BSS Dashboard update ke liye)</span></label>
-          <select id="eBssUser"><option value="">— not mapped (update disabled) —</option></select>
-          <div class="pass-hint" id="eBssHint">BindDropDown ki Users list se map karo. Blank chhodoge to ye user BSS ticket update nahi kar payega.</div>
+          <label>BSS User ID <span style="font-weight:400;opacity:.7">(required for BSS Dashboard updates)</span></label>
+          <select id="eBssUser"><option value="">— not mapped (updates disabled) —</option></select>
+          <div class="pass-hint" id="eBssHint">Map this to an entry from the BindDropDown Users list. Leave blank and this user cannot update BSS tickets.</div>
         </div>
       </div>
       <div id="tabContent-perms" style="display:none"><div id="permBody"></div></div>
@@ -417,7 +417,7 @@ const ALL_DASHBOARDS = [
   {id:'tat-dashboard',      title:'Marg TAT Dashboard',      desc:'TAT + Stage-wise pending summary',         icon:'📊', tag:'Analytics'},
   {id:'support-dashboard',  title:'Support Dashboard',       desc:'Current status-wise counts + disposition breakdown', icon:'🛟', tag:'Support'},
   {id:'upcoming-dashboard', title:'Marg Upcoming Deadlines', desc:'Upcoming deadlines 1-7, 8-15, 16-30, 31-60 days', icon:'📅', tag:'Planning'},
-  {id:'bss-dashboard',      title:'BSS Dashboard',           desc:'Status KPIs + tester/developer/RM sections. INCLUDES BSS ticket update.', icon:'🎛️', tag:'Operations'},
+  {id:'bss-dashboard',      title:'BSS Dashboard',           desc:'Status KPIs + tester/developer/RM sections. Includes BSS ticket update.', icon:'🎛️', tag:'Operations'},
   {id:'admin-activity',     title:'Admin Activity',          desc:'Client move, control-room reset, caching & DB repair tools', icon:'🛠️', tag:'Admin'},
   {id:'tat-disposition',    title:'Disposition Wise (TAT)',  desc:'Disposition-Wise tab inside Marg TAT Dashboard', icon:'🧩', tag:'TAT Tab'},
   {id:'tat-ai-analysis',    title:'AI Analysis (TAT)',       desc:'AI Bug Analysis tab inside Marg TAT Dashboard', icon:'🤖', tag:'TAT Tab'},
@@ -533,23 +533,23 @@ async function fillBssUsers(current){
   const sel=document.getElementById('eBssUser'), hint=document.getElementById('eBssHint');
   if(!sel) return;
   const cur=(current===null||current===undefined)?'':String(current);
-  sel.innerHTML='<option value="">— not mapped (update disabled) —</option>'
+  sel.innerHTML='<option value="">— not mapped (updates disabled) —</option>'
     + (cur?`<option value="${cur}" selected>Loading… (current: ${cur})</option>`:'');
   const list=await loadBssUsers();
   if(!list){
-    sel.innerHTML='<option value="">— not mapped (update disabled) —</option>'
-      + (cur?`<option value="${cur}" selected>ID ${cur} (current — list load nahi hui)</option>`:'');
-    if(hint) hint.textContent='⚠️ BSS users list load nahi hui (proxy/Marg down). Maujooda mapping safe hai; badalne ke liye baad me try karo.';
+    sel.innerHTML='<option value="">— not mapped (updates disabled) —</option>'
+      + (cur?`<option value="${cur}" selected>ID ${cur} (current — list unavailable)</option>`:'');
+    if(hint) hint.textContent='⚠️ Could not load the BSS users list (proxy or Marg unavailable). The existing mapping is safe — try again later to change it.';
     return;
   }
   /* Duplicate names master data me hain (jaise "Preeti Lavanya" 4008 aur 4282)
      — isliye har option par ID bhi dikha rahe hain, warna admin galat chun lega. */
   const opts=list.slice().sort((a,b)=>String(a.Name).localeCompare(String(b.Name)));
-  sel.innerHTML='<option value="">— not mapped (update disabled) —</option>'
+  sel.innerHTML='<option value="">— not mapped (updates disabled) —</option>'
     + opts.map(o=>`<option value="${o.ID}" ${String(o.ID)===cur?'selected':''}>${o.Name} · #${o.ID}</option>`).join('');
   if(cur&&!opts.some(o=>String(o.ID)===cur))
-    sel.insertAdjacentHTML('beforeend',`<option value="${cur}" selected>ID ${cur} (current — BSS list me nahi mila)</option>`);
-  if(hint) hint.textContent='BindDropDown ki Users list se map karo. Blank chhodoge to ye user BSS ticket update nahi kar payega.';
+    sel.insertAdjacentHTML('beforeend',`<option value="${cur}" selected>ID ${cur} (current — not found in the BSS list)</option>`);
+  if(hint) hint.textContent='Map this to an entry from the BindDropDown Users list. Leave blank and this user cannot update BSS tickets.';
 }
 
 window.openEditModal = function(uid){
