@@ -338,3 +338,27 @@ Ye JAANBUJHKAR hai. `q` ko conditionally patch karna (sirf jab stage Acknowledge
 ho) wahan conditional logic add karta jahan galti hone par GALAT stage ki field
 patch ho jati — wo stale count se kahin mehenga bug hota. Asli data Marg me
 hamesha sahi rehta hai aur nightly refresh sab theek kar deti hai.
+
+
+## Duplicate names — parent-scoped resolution
+
+Master data me ek hi naam kai parents ke neeche repeat hota hai. Example:
+```
+"Exta page printing issue "  ID 3078 -> parent 609 (Template Management)
+                             ID 3082 -> parent 801 (Invoice Template)
+                             ID 3086 -> parent 802 (Invoice Designer)
+```
+Naam se ID nikaalte waqt agar poori list me dhoondho to teeno match karte hain
+aur "ambiguous" flag lag jata hai — jabki parent pata hone par jawab bilkul
+unique hai.
+
+Isliye cascade fields (Problem Type, Sub-Problem Type) ka reverse lookup ab
+PARENT ke andar hota hai (`bssIdByNameInParent`). `bssReadTicket` do pass me
+chalta hai: pehle non-cascade fields, phir cascade — taaki child resolve karte
+waqt parent ki ID pehle se maujood ho.
+
+Ambiguity warning ab SIRF tab aati hai jab wo asli ho:
+- parent khud resolve na hua ho (to scoping possible hi nahi), ya
+- ek hi parent ke neeche do same naam hon (Marg master data ka issue)
+
+Guess kabhi nahi hota — dono case me user ko khud select karna padta hai.
