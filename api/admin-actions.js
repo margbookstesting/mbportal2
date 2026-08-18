@@ -97,13 +97,24 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'update') {
-      const { id, name, email, role: uRole, dashboards, password } = payload;
+      const { id, name, email, role: uRole, dashboards, password, bss_user_id } = payload;
       if (!id) return res.status(400).json({ error: 'Missing id' });
+
+      const patch = { name, email, role: uRole, dashboards };
+
+      // bss_user_id — BSS Dashboard ke update ke liye (UpdatedByUser).
+      // `undefined` ka matlab "is form ne ye field bheja hi nahi" → chhedo mat.
+      // Khali string ka matlab "mapping hata do" → NULL.
+      if (bss_user_id !== undefined) {
+        if (bss_user_id === null || bss_user_id === '') patch.bss_user_id = null;
+        else if (/^\d+$/.test(String(bss_user_id))) patch.bss_user_id = Number(bss_user_id);
+        else return res.status(400).json({ error: 'bss_user_id must be a numeric id' });
+      }
 
       const upd = await sb(`/rest/v1/users?id=eq.${id}`, {
         method: 'PATCH',
         prefer: 'return=minimal',
-        body: { name, email, role: uRole, dashboards },
+        body: patch,
       });
       if (!upd.ok) throw new Error(errMsg(upd.data, 'Update failed'));
 
