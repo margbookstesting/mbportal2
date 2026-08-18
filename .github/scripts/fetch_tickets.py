@@ -12,7 +12,7 @@ SUPA_KEY = os.environ['SUPABASE_SERVICE_KEY']
 # assets/ticket-parser.js ke MB_SCHEMA_VERSION / MB_REQUIRED_FIELDS aur
 # api/ticket-cache.js ke REQUIRED_SCHEMA / REQUIRED_FIELDS ke saath in-sync
 # rakhna zaroori hai. Yahan koi naya field add karo to teeno jagah bump karo.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 REQUIRED_FIELDS = ['tia', 'ld', 'rtd', 'st']
 WRITER = 'nightly'
 
@@ -236,6 +236,27 @@ def parse_record(r):
                 break
     if _ld:
         rec['ld'] = _ld
+
+    # ── CURRENT-STAGE DISPOSITION (cd) — schema v3 ──
+    # `ld` recognized-first walk hai (sirf 6 values), jo Bug/Dev analytics ke
+    # liye sahi hai. Par BSS UI ka "Disposition" dropdown ticket ke CURRENT
+    # stage ki disposition dikhata hai — recognized ho ya na ho.
+    # MB - 037392: status Acknowledge, Ack_Disp = "Future Development",
+    # TransferToIT_Disp = "Bug"  ->  ld = "Bug", BSS UI = "Future Development".
+    # BSS Dashboard ko `cd` chahiye, warna wo galat value dikha kar user se
+    # overwrite karwa dega. assets/ticket-parser.js me bilkul yahi logic hai —
+    # tests/test_parity.py dono ko sync me rakhta hai.
+    _cd = None
+    _cur = STAGE_DISP_BY_SC.get(rec['sc'])
+    if _cur and str(r.get(_cur) or '').strip():
+        _cd = str(r[_cur]).strip()
+    else:
+        for k in DISP_FALLBACK_ORDER:
+            if str(r.get(k) or '').strip():
+                _cd = str(r[k]).strip()
+                break
+    if _cd:
+        rec['cd'] = _cd
 
     # Keep a record if it reached any stage (main OR sub-stage), OR is in a
     # status-only stage, OR simply carries a status label (so Pending / Reopen
