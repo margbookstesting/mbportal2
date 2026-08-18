@@ -85,6 +85,16 @@ BEGIN
   RAISE NOTICE 'BSS Dashboard setup OK — users.bss_user_id + bss_update_log ready.';
 END $$;
 
+-- ── 3b. PostgREST schema cache reload ──────────────────────────────────────
+-- ZAROORI. PostgREST (Supabase ka REST layer) table schema ko MEMORY me cache
+-- karta hai. Naya column add karne ke baad wo cache purana reh sakta hai, aur
+-- har API call ye deti hai:
+--     Could not find the 'bss_user_id' column of 'users' in the schema cache
+-- Column DB me maujood hota hai, phir bhi. Supabase aam taur par apne aap
+-- reload karta hai, par kabhi-kabhi late hota hai — ye NOTIFY use turant
+-- force kar deta hai.
+NOTIFY pgrst, 'reload schema';
+
 -- ── 4. Verify ──────────────────────────────────────────────────────────────
 -- Kis-kis user par BSS id map hai:
 --   select name, email, role, bss_user_id, dashboards from public.users order by name;
