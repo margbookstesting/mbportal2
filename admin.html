@@ -355,6 +355,14 @@ nav{
           </div>
         </div>
         <div class="modal-field"><label>Email</label><input id="eEmail" type="email" placeholder="email@company.com" autocomplete="off"/></div>
+        <!-- BSS User ID — BSS Dashboard se ticket update karne ke liye zaroori.
+             UpdatedByUser isi se jaata hai (server-side; client jo bheje ignore
+             hota hai). Blank = ye user BSS update nahi kar sakta, sirf view. -->
+        <div class="modal-field">
+          <label>BSS User ID <span style="font-weight:400;opacity:.7">(BSS Dashboard update ke liye)</span></label>
+          <select id="eBssUser"><option value="">— not mapped (update disabled) —</option></select>
+          <div class="pass-hint" id="eBssHint">BindDropDown ki Users list se map karo. Blank chhodoge to ye user BSS ticket update nahi kar payega.</div>
+        </div>
       </div>
       <div id="tabContent-perms" style="display:none"><div id="permBody"></div></div>
       <div id="tabContent-pass" style="display:none">
@@ -409,6 +417,7 @@ const ALL_DASHBOARDS = [
   {id:'tat-dashboard',      title:'Marg TAT Dashboard',      desc:'TAT + Stage-wise pending summary',         icon:'📊', tag:'Analytics'},
   {id:'support-dashboard',  title:'Support Dashboard',       desc:'Current status-wise counts + disposition breakdown', icon:'🛟', tag:'Support'},
   {id:'upcoming-dashboard', title:'Marg Upcoming Deadlines', desc:'Upcoming deadlines 1-7, 8-15, 16-30, 31-60 days', icon:'📅', tag:'Planning'},
+  {id:'bss-dashboard',      title:'BSS Dashboard',           desc:'Status KPIs + tester/developer/RM sections. INCLUDES BSS ticket update.', icon:'🎛️', tag:'Operations'},
   {id:'admin-activity',     title:'Admin Activity',          desc:'Client move, control-room reset, caching & DB repair tools', icon:'🛠️', tag:'Admin'},
   {id:'tat-disposition',    title:'Disposition Wise (TAT)',  desc:'Disposition-Wise tab inside Marg TAT Dashboard', icon:'🧩', tag:'TAT Tab'},
   {id:'tat-ai-analysis',    title:'AI Analysis (TAT)',       desc:'AI Bug Analysis tab inside Marg TAT Dashboard', icon:'🤖', tag:'TAT Tab'},
@@ -496,6 +505,53 @@ window.deleteUser = async function(id,name){
   }catch(e){ toast(e.message,'err'); }
 };
 
+/* ── BSS user mapping ──────────────────────────────────────────────────────
+ * BSS Dashboard se ticket update karne ke liye portal user ko BSS ke apne
+ * user ID se map karna padta hai — UpdateTicketStatus ka `UpdatedByUser`.
+ * List /api/bss-proxy (BindDropDown) se aati hai; browser Marg ko seedha call
+ * nahi kar sakta (CORS + token).
+ *
+ * List load na ho (proxy down / env var missing) to field ko TODNA nahi hai:
+ * maujooda value ek option ke roop me dikhate hain, taaki save karne par wo
+ * chup-chaap ud na jaye. */
+let _bssUsers=null;
+async function loadBssUsers(){
+  if(_bssUsers) return _bssUsers;
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session) return null;
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'dropdowns'})});
+    const j=await r.json();
+    if(!r.ok||j.error){console.warn('BSS users load:',j.error);return null;}
+    _bssUsers=(j.dropdowns&&j.dropdowns.Users)||[];
+    return _bssUsers;
+  }catch(e){console.warn('BSS users load failed:',e);return null;}
+}
+async function fillBssUsers(current){
+  const sel=document.getElementById('eBssUser'), hint=document.getElementById('eBssHint');
+  if(!sel) return;
+  const cur=(current===null||current===undefined)?'':String(current);
+  sel.innerHTML='<option value="">— not mapped (update disabled) —</option>'
+    + (cur?`<option value="${cur}" selected>Loading… (current: ${cur})</option>`:'');
+  const list=await loadBssUsers();
+  if(!list){
+    sel.innerHTML='<option value="">— not mapped (update disabled) —</option>'
+      + (cur?`<option value="${cur}" selected>ID ${cur} (current — list load nahi hui)</option>`:'');
+    if(hint) hint.textContent='⚠️ BSS users list load nahi hui (proxy/Marg down). Maujooda mapping safe hai; badalne ke liye baad me try karo.';
+    return;
+  }
+  /* Duplicate names master data me hain (jaise "Preeti Lavanya" 4008 aur 4282)
+     — isliye har option par ID bhi dikha rahe hain, warna admin galat chun lega. */
+  const opts=list.slice().sort((a,b)=>String(a.Name).localeCompare(String(b.Name)));
+  sel.innerHTML='<option value="">— not mapped (update disabled) —</option>'
+    + opts.map(o=>`<option value="${o.ID}" ${String(o.ID)===cur?'selected':''}>${o.Name} · #${o.ID}</option>`).join('');
+  if(cur&&!opts.some(o=>String(o.ID)===cur))
+    sel.insertAdjacentHTML('beforeend',`<option value="${cur}" selected>ID ${cur} (current — BSS list me nahi mila)</option>`);
+  if(hint) hint.textContent='BindDropDown ki Users list se map karo. Blank chhodoge to ye user BSS ticket update nahi kar payega.';
+}
+
 window.openEditModal = function(uid){
   currentUID=uid;
   const user=allUsers.find(u=>u.id===uid);
@@ -506,6 +562,7 @@ window.openEditModal = function(uid){
   document.getElementById('eRole').value=user.role||'user';
   document.getElementById('ePass').value='';
   document.getElementById('ePass2').value='';
+  fillBssUsers(user.bss_user_id);
   const assigned=user.dashboards||[];
   const isAdmU=user.role==='admin';
   document.getElementById('permBody').innerHTML=ALL_DASHBOARDS.map(d=>{
@@ -544,7 +601,9 @@ window.saveUser=async function(){
   if(checks.length>0){dashboards=[...checks].filter(c=>c.checked).map(c=>c.dataset.id);}
   else{const eu=allUsers.find(u=>u.id===currentUID);dashboards=eu?.dashboards||[];}
   try{
-    await adminCall('update',{id:currentUID, name, email, role, dashboards, password: pass || undefined});
+    const bssSel=document.getElementById('eBssUser');
+    const bss_user_id = bssSel ? bssSel.value : undefined;   // '' = mapping hatao
+    await adminCall('update',{id:currentUID, name, email, role, dashboards, password: pass || undefined, bss_user_id});
     toast('✅ User updated successfully!','ok');
     closeEditModal();loadUsers();
   }catch(e){toast(e.message,'err');}

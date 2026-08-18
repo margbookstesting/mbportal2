@@ -21,6 +21,10 @@
       "destination": "/support_dashboard.html"
     },
     {
+      "source": "/bss",
+      "destination": "/bss_dashboard.html"
+    },
+    {
       "source": "/upcoming",
       "destination": "/upcoming_timeline.html"
     },
