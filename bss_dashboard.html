@@ -106,6 +106,20 @@ select.inp{cursor:pointer}
 .card-t{font-size:13px;font-weight:700}
 .card-s{font-size:10.5px;color:var(--muted)}
 .tw{overflow:auto;max-height:420px}
+/* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
+   list dikhni chahiye, page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
+   overflow visible hone par sticky ka nearest scroll container page ban jata
+   hai, aur header page ke apne sticky header ke neeche chipak kar overlap
+   karta hai. */
+.tw-full{overflow:visible;max-height:none}
+.tw-full th{position:static}
+/* Totals row */
+tfoot td{
+  padding:9px 10px;border-top:2px solid var(--border2);background:var(--s2);
+  font-weight:800;color:var(--text);position:sticky;bottom:0;
+}
+tfoot td.r{text-align:right}
+tfoot .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 table{width:100%;border-collapse:collapse;font-size:11.5px}
 th{background:var(--s2);color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;text-align:left;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border2);white-space:nowrap}
 td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
@@ -195,13 +209,13 @@ th.r,td.r{text-align:right}
   <div class="kpi-row" id="kpis"></div>
 
   <div class="sec-h"><span class="sec-t">👤 Tester-wise</span><span class="sec-l"></span></div>
-  <div class="card"><div class="tw"><table id="tblTester"></table></div></div>
+  <div class="card"><div class="tw tw-full"><table id="tblTester"></table></div></div>
 
   <div class="sec-h"><span class="sec-t">💻 Developer-wise</span><span class="sec-l"></span></div>
-  <div class="card"><div class="tw"><table id="tblDev"></table></div></div>
+  <div class="card"><div class="tw tw-full"><table id="tblDev"></table></div></div>
 
   <div class="sec-h"><span class="sec-t">🤝 RM-wise</span><span class="sec-l"></span></div>
-  <div class="card"><div class="tw"><table id="tblRM"></table></div></div>
+  <div class="card"><div class="tw tw-full"><table id="tblRM"></table></div></div>
 </div>
 
 <!-- ── Ticket list modal ── -->
@@ -256,7 +270,7 @@ const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
    hota to getSession() null deta aur /api/bss-proxy ko token hi na milta. */
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,storage:window.sessionStorage}});
 
-let RAW=[], VIEW=[], DD=null, ME=null, LIST_ROWS=[], LIST_TITLE='', EDIT=null;
+let RAW=[], VIEW=[], DD=null, DD_ERR=null, ME=null, LIST_ROWS=[], LIST_TITLE='', EDIT=null;
 
 const fmt=n=>Number(n||0).toLocaleString('en-IN');
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -360,7 +374,14 @@ async function loadDropdowns(force){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
       body:JSON.stringify({action:'dropdowns',force:!!force})});
     const j=await r.json();
-    if(!r.ok||j.error){console.warn('dropdowns:',j.error);return null;}
+    if(!r.ok||j.error){
+      /* Asli server message yaad rakho — modal me "console dekho" likhna
+         bekaar hai, user ko wahi batao jo karna hai. */
+      DD_ERR = (j && j.error) ? j.error : ('HTTP '+r.status);
+      console.warn('dropdowns:',DD_ERR, j);
+      return null;
+    }
+    DD_ERR=null;
     DD=j.dropdowns;
     /* Master data me cascade toota hua hai — kuch Problem Types aise parent ko
        refer karte hain jo Main Disposition list me hai hi nahi. Wo cascade se
@@ -448,16 +469,49 @@ function agentTable(getter,label){
     const k=statusKeyOf(r); e.by[k]=(e.by[k]||0)+1;
   });
   const rows=[...map.values()].sort((a,b)=>b.total-a.total);
+
+  /* 16 statuses me se ye 8 columns dikhte hain. Baaki ko "Other" me jodte hain
+     — warna row ka Total dikhaye gaye columns ke sum se match nahi karta aur
+     tickets gayab lagte hain (jaise DC-JHA: total 1001, columns ka sum 929). */
   const cols=['pending','it','ack','ip','rft','rfu','sp','closed'];
+  const otherOf=e=>{
+    let shown=0; cols.forEach(c=>shown+=(e.by[c]||0));
+    return e.total-shown;
+  };
+
   const head=`<thead><tr><th>${esc(label)}</th><th class="r">Total</th>`+
-    cols.map(c=>`<th class="r">${esc(STATUSES.find(s=>s.key===c).label)}</th>`).join('')+`</tr></thead>`;
-  if(!rows.length) return head+`<tbody><tr><td colspan="${cols.length+2}"><div class="empty">Koi data nahi</div></td></tr></tbody>`;
-  const body=rows.map(e=>`<tr>
+    cols.map(c=>`<th class="r">${esc(STATUSES.find(s=>s.key===c).label)}</th>`).join('')+
+    `<th class="r" title="Baaki saare statuses: Reopen, Reopend from Testing, Code Review, Merging, Return to Support, Future Development, Rejected">Other</th></tr></thead>`;
+
+  const span=cols.length+3;
+  if(!rows.length) return head+`<tbody><tr><td colspan="${span}"><div class="empty">Koi data nahi</div></td></tr></tbody>`;
+
+  const body=rows.map(e=>{
+    const oth=otherOf(e);
+    return `<tr>
      <td style="font-weight:600">${esc(e.name)}</td>
      <td class="r"><span class="badge" style="cursor:pointer" data-agent-kind="${esc(label)}" data-agent-name="${esc(e.name)}">${fmt(e.total)}</span></td>
      ${cols.map(c=>`<td class="r ${e.by[c]?'':'muted'}">${fmt(e.by[c]||0)}</td>`).join('')}
-   </tr>`).join('');
-  return head+`<tbody>${body}</tbody>`;
+     <td class="r ${oth?'':'muted'}">${fmt(oth)}</td>
+   </tr>`;
+  }).join('');
+
+  /* TOTALS — har column ka sum. Grand total = sum of shown + Other, to ye row
+     hamesha reconcile karta hai. */
+  const tot={total:0,other:0,by:{}};
+  rows.forEach(e=>{
+    tot.total+=e.total;
+    tot.other+=otherOf(e);
+    cols.forEach(c=>tot.by[c]=(tot.by[c]||0)+(e.by[c]||0));
+  });
+  const foot=`<tfoot><tr>
+     <td><span class="lbl">Total · ${fmt(rows.length)} ${esc(label.toLowerCase())}${rows.length===1?'':'s'}</span></td>
+     <td class="r">${fmt(tot.total)}</td>
+     ${cols.map(c=>`<td class="r">${fmt(tot.by[c])}</td>`).join('')}
+     <td class="r">${fmt(tot.other)}</td>
+   </tr></tfoot>`;
+
+  return head+`<tbody>${body}</tbody>`+foot;
 }
 function renderAgents(){
   document.getElementById('tblTester').innerHTML=agentTable(testerOf,'Tester');
@@ -524,8 +578,22 @@ async function openEdit(ticketNo){
 
   if(!DD){ await loadDropdowns(); }
   if(!DD){
+    /* Server ne jo bataya wahi dikhao, aur uske hisaab se next step. */
+    const msg = DD_ERR || 'Pata nahi chala (network?)';
+    let fix = '';
+    if(/migration|bss_user_id/i.test(msg))
+      fix = 'Supabase SQL Editor me <b>sql/2026-08-bss-dashboard.sql</b> chalao.';
+    else if(/access nahi|permission/i.test(msg))
+      fix = 'Admin → Users → apne user par <b>BSS Dashboard</b> permission tick karwao.';
+    else if(/profile/i.test(msg))
+      fix = 'Admin se apna user record <b>public.users</b> me banwao.';
+    else if(/not configured|MARG_LOGIN/i.test(msg))
+      fix = 'Vercel me <b>MARG_LOGIN_EMAIL</b> / <b>MARG_LOGIN_PASSWORD</b> env vars set karo.';
+    else
+      fix = '/api/bss-proxy deploy ho chuka hai? Network tab me response dekho.';
     document.getElementById('edBody').innerHTML=
-      '<div class="note err">Dropdown master load nahi hua. /api/bss-proxy reachable hai? Console dekho.</div>';
+      `<div class="note err"><b>Dropdown master load nahi hua.</b><br>
+         <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${esc(msg)}</span><br><br>${fix}</div>`;
     return;
   }
   try{
