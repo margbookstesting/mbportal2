@@ -72,7 +72,7 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 /* ── Filters ── */
 .wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
 .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-.inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:8px 11px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
+.inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
 .inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
 select.inp{cursor:pointer}
 .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
@@ -134,24 +134,27 @@ th.r,td.r{text-align:right}
 .ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
 .ov.on{display:flex}
 .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
-.mdl.sm{max-width:1080px}
-.mdl-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
+.mdl.sm{max-width:1260px}
+.mdl-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
 .mdl-t{font-size:15px;font-weight:700}
 .mdl-b{overflow:auto;padding:0}
-.mdl-b.pad{padding:16px 18px}
-.mdl-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
+.mdl-b.pad{padding:14px 18px}
+.mdl-f{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
 
 /* ── Edit form ── */
-.fgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
-@media(max-width:760px){.fgrid{grid-template-columns:1fr}}
-.fld label{display:block;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+/* 12 updatable fields. 2 columns me 6 rows banti thi aur modal scroll karta
+   tha; 3 columns me 4 rows — normal laptop par sab kuch bina scroll dikhta hai. */
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
+@media(max-width:1100px){.fgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.fgrid{grid-template-columns:1fr}}
+.fld label{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .fld .inp{width:100%}
 .fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
 .fld .e{color:#dc2626;font-size:10.5px;margin-top:3px;display:none}
 .fld.err .e{display:block}
 .req{color:#dc2626}
-.hint{font-size:10px;color:var(--muted2);margin-top:3px}
-.note{border-radius:var(--r2);padding:9px 12px;font-size:11.5px;margin-bottom:13px;line-height:1.55}
+.hint{font-size:9.5px;color:var(--muted2);margin-top:2px;line-height:1.3}
+.note{border-radius:var(--r2);padding:8px 11px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
 .note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
 .note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
 .note.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
@@ -159,8 +162,10 @@ th.r,td.r{text-align:right}
 .kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
 .kv .k{color:var(--muted);font-weight:600}
 .kv .v{color:var(--text);font-weight:500;word-break:break-word}
-.desc-box{
-  white-space:pre-wrap;line-height:1.55;max-height:150px;overflow:auto;
+.meta-row{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:11.5px;align-items:center}
+.meta-row b{color:var(--muted);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;margin-right:3px}
+.desc-box{margin-top:8px;
+  white-space:pre-wrap;line-height:1.5;max-height:88px;overflow:auto;
   background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);
   padding:8px 10px;font-weight:400;font-size:11.5px;color:var(--text2);
 }
@@ -673,16 +678,15 @@ function renderEditForm(){
      Par update karne wale ko ticket ka context chahiye, isliye yahan dikha
      rahe hain. Lamba ho sakta hai, to scroll ke saath. */
   const desc = rd.values.description ? String(rd.values.description).trim() : '';
+  /* Meta ek hi row me (pehle 3 alag rows leti thi) — modal ki height bachane
+     ke liye, taaki saare fields bina scroll ke aa jayein. */
   const cur=`<div class="note ok" style="background:var(--s2);border-color:var(--border2);color:var(--text2)">
-    <div class="kv">
-      <div class="k">Ticket No</div><div class="v mono">${esc(rd.values.ticketNo||EDIT.ticketNo)}</div>
-      <div class="k">Created</div><div class="v">${esc(rd.values.createdDate?String(rd.values.createdDate).slice(0,10):'—')}</div>
-      <div class="k">Current Status</div><div class="v">${esc(rd.values.currentStatus||'—')}</div>
-      <div class="k">Description</div>
-      <div class="v">${desc
-        ? `<div class="desc-box">${esc(desc)}</div>`
-        : '<span style="color:var(--muted2)">—</span>'}</div>
-    </div></div>`;
+    <div class="meta-row">
+      <span><b>Ticket</b> <span class="mono">${esc(rd.values.ticketNo||EDIT.ticketNo)}</span></span>
+      <span><b>Created</b> ${esc(rd.values.createdDate?String(rd.values.createdDate).slice(0,10):'—')}</span>
+      <span><b>Status</b> ${esc(rd.values.currentStatus||'—')}</span>
+    </div>
+    ${desc ? `<div class="desc-box">${esc(desc)}</div>` : ''}</div>`;
 
   const fields=BSS_CROSSWALK.map(f=>{
     const val=EDIT.form[f.key];
