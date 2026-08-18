@@ -103,6 +103,17 @@ END $$;
 -- authenticated dono ke liye wo automatically DENY hain.
 ALTER TABLE public.ticket_cache ENABLE ROW LEVEL SECURITY;
 
+-- Purani policies hatao. Ye list live DB (mb-dashboards) se verify ki gayi hai
+-- 2026-08-17 par — wahan 4 WRITE policies mili hui thi, aur SAB `{public}` role
+-- par, yaani anon key se koi bhi ticket_cache insert/delete kar sakta tha.
+-- Do ke naam "Service role can ..." the par roles `{public}` hi tha — naam
+-- dhoka de raha tha. service_role RLS bypass karta hai, isliye inhe drop karna
+-- safe hai: nightly job aur /api/ticket-cache dono service key use karte hain.
+DROP POLICY IF EXISTS "Anyone can delete cache"          ON public.ticket_cache;
+DROP POLICY IF EXISTS "Service role can delete"          ON public.ticket_cache;
+DROP POLICY IF EXISTS "Anyone can insert cache"          ON public.ticket_cache;
+DROP POLICY IF EXISTS "Service role can insert"          ON public.ticket_cache;
+DROP POLICY IF EXISTS "Anyone can read cache"            ON public.ticket_cache;
 DROP POLICY IF EXISTS "ticket_cache read for all"        ON public.ticket_cache;
 DROP POLICY IF EXISTS "ticket_cache: read only for app"  ON public.ticket_cache;
 
@@ -111,6 +122,31 @@ CREATE POLICY "ticket_cache: read only for app"
   FOR SELECT
   TO public              -- anon + authenticated dono
   USING (true);
+
+-- ── 4b. Self-check: koi ANJAAN write policy bachi hai kya? ─────────────────
+-- Upar ki DROP list naam se chalti hai. Agar kisi ne aage koi nayi policy
+-- alag naam se bana di, to wo yahan pakdi jayegi — chup-chaap security hole
+-- rehne se behtar hai loud error.
+DO $$
+DECLARE bad text;
+BEGIN
+  SELECT string_agg(policyname || ' (' || cmd || ')', ', ')
+    INTO bad
+    FROM pg_policies
+   WHERE tablename = 'ticket_cache' AND cmd <> 'SELECT';
+
+  IF bad IS NOT NULL THEN
+    RAISE EXCEPTION
+      'ticket_cache par ab bhi write policies hain: %. Inhe DROP karo — browser ko sirf SELECT chahiye.', bad;
+  END IF;
+
+  IF (SELECT count(*) FROM pg_policies
+       WHERE tablename = 'ticket_cache' AND cmd = 'SELECT') <> 1 THEN
+    RAISE WARNING 'ticket_cache par ek se zyada SELECT policy hai — duplicate hata do.';
+  END IF;
+
+  RAISE NOTICE 'RLS OK: ticket_cache browser ke liye read-only hai.';
+END $$;
 
 -- ── 5. Verify — ye chala kar dekh lo ───────────────────────────────────────
 -- Har row me schema_version 2 aur tia/ld/rtd ke counts > 0 hone chahiye.
