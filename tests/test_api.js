@@ -5,6 +5,7 @@ const fs = require('fs');
 const vm = require('vm');
 const zlib = require('zlib');
 
+const SCHEMA = require('/home/claude/work/assets/ticket-parser.js').MB_SCHEMA_VERSION;
 const PASS = []; const FAIL = [];
 const ok = m => { PASS.push(m); console.log('  PASS:', m); };
 const no = (m, d) => { FAIL.push(m); console.log('  FAIL:', m, d === undefined ? '' : '→ ' + d); };
@@ -125,7 +126,7 @@ browser.fetch = async (url, opts) => {
   eq(db['2026-01-01'].data.length, 12000, 'DB row holds all 12000 records after gunzip');
   eq(db['2026-01-01'].data[0].n, data5000[0].n, 'first record survived round-trip intact');
   eq(JSON.stringify(db['2026-01-01'].data) === JSON.stringify(data5000), true, 'payload byte-identical after gzip round-trip');
-  eq(db['2026-01-01'].schema_version, 2, 'schema_version written');
+  eq(db['2026-01-01'].schema_version, SCHEMA, `schema_version written (v${SCHEMA})`);
   eq(db['2026-01-01'].writer, 'marg-dashboard', 'writer recorded');
   eq(db['2026-01-01'].field_counts.tia > 0, true, 'field_counts.tia > 0');
   eq(db['2026-01-01'].field_counts.rtd > 0, true, 'field_counts.rtd > 0');
@@ -135,28 +136,28 @@ browser.fetch = async (url, opts) => {
   const small = parse(50);
   let r = await callApi(JSON.stringify({
     writer: 'support-dashboard', date_from: '2026-01-01', date_to: '2026-08-17',
-    schema_version: 2, data: small,
+    schema_version: SCHEMA, data: small,
   }));
   eq(r._s, 200, 'raw data path accepted');
   eq(db['2026-01-01'].data.length, 50, 'raw data stored');
 
   console.log('\n== 3. gz abuse / corruption rejected ==');
   db = {};
-  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, gz: 'not-valid-gzip!!' }));
+  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, gz: 'not-valid-gzip!!' }));
   eq(r._s, 400, 'corrupt gz rejected with 400');
-  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, gz: zlib.gzipSync('{not json').toString('base64') }));
+  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, gz: zlib.gzipSync('{not json').toString('base64') }));
   eq(r._s, 400, 'gz decompressing to invalid JSON rejected');
   r = await callApi(JSON.stringify({
-    writer: 'nightly', date_from: '2026-01-01', schema_version: 2,
+    writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA,
     gz: zlib.gzipSync(JSON.stringify(parse(10))).toString('base64'), count: 999,
   }));
   eq(r._s, 400, 'count mismatch (truncated upload) rejected');
-  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, gz: 'x', data: [{n:'1'}] }));
+  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, gz: 'x', data: [{n:'1'}] }));
   eq(r._s, 400, 'sending both gz and data rejected');
   // Compression bomb: 200MB of zeros compresses tiny
   const bomb = zlib.gzipSync(Buffer.alloc(200 * 1024 * 1024, 0x20)).toString('base64');
   ok(`compression bomb: 200MB payload → ${(Buffer.byteLength(bomb)/1024).toFixed(0)}KB body`);
-  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, gz: bomb }));
+  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, gz: bomb }));
   eq(r._s, 400, 'compression bomb rejected by maxOutputLength (not OOM)');
   eq(Object.keys(db).length, 0, 'cache untouched by every rejected request');
 
@@ -188,16 +189,16 @@ browser.fetch = async (url, opts) => {
 
   console.log('\n== 5. auth + schema guards ==');
   db = {};
-  const body = JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, data: parse(10) });
+  const body = JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, data: parse(10) });
   eq((await callApi(body, 'bad-token'))._s, 401, 'invalid session → 401');
   eq((await callApi(body, ''))._s, 401, 'missing token → 401');
-  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 1, data: parse(10) }));
-  eq(r._s, 400, 'stale schema_version v1 → 400');
+  r = await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA - 1, data: parse(10) }));
+  eq(r._s, 400, 'stale schema_version → 400');
   eq(/hard-refresh/i.test(r._j.error), true, 'mismatch error tells user to hard-refresh');
-  eq((await callApi(JSON.stringify({ writer: 'evil', date_from: '2026-01-01', schema_version: 2, data: parse(10) })))._s, 400, 'unknown writer rejected');
-  eq((await callApi(JSON.stringify({ writer: 'nightly', date_from: 'garbage', schema_version: 2, data: parse(10) })))._s, 400, 'bad date_from rejected');
-  eq((await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, data: [] })))._s, 400, 'empty payload rejected');
-  eq((await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: 2, data: [{ l: 'no-ticket-no' }] })))._s, 400, 'record without ticket no rejected');
+  eq((await callApi(JSON.stringify({ writer: 'evil', date_from: '2026-01-01', schema_version: SCHEMA, data: parse(10) })))._s, 400, 'unknown writer rejected');
+  eq((await callApi(JSON.stringify({ writer: 'nightly', date_from: 'garbage', schema_version: SCHEMA, data: parse(10) })))._s, 400, 'bad date_from rejected');
+  eq((await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, data: [] })))._s, 400, 'empty payload rejected');
+  eq((await callApi(JSON.stringify({ writer: 'nightly', date_from: '2026-01-01', schema_version: SCHEMA, data: [{ l: 'no-ticket-no' }] })))._s, 400, 'record without ticket no rejected');
   eq(Object.keys(db).length, 0, 'cache untouched by all rejected requests');
 
   console.log('\nAPI RESULTS: ' + PASS.length + ' passed, ' + FAIL.length + ' failed');

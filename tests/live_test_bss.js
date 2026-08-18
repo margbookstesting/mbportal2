@@ -56,6 +56,8 @@ if (!BASE || !EMAIL || !PASSWORD) {
 }
 
 const F = require('../assets/bss-fields.js');
+const P = require('../assets/ticket-parser.js');
+global.MB_STATUS_MAP = P.MB_STATUS_MAP;   // bssReadTicket isse status code nikalta hai
 
 const PASS = [], FAIL = [], WARN = [];
 const ok   = m => { PASS.push(m); console.log('  \x1b[32mPASS\x1b[0m ', m); };
@@ -139,7 +141,7 @@ async function readTicket() {
     else         warn(`${a.field.padEnd(18)} NOT FOUND (aliases: ${(F.BSS_READ_ALIASES[a.field] || []).join(', ')})`);
   });
 
-  const parsed = F.bssReadTicket(before, DD);
+  const parsed = F.bssReadTicket(before, DD, P.MB_STAGE_DISP_BY_SC, P.MB_DISP_FALLBACK_ORDER);
   if (parsed.ambiguous.length)
     parsed.ambiguous.forEach(a => warn(`"${a.name}" (${a.field}) master list me ${a.ids.length} baar hai → IDs ${a.ids.join(', ')}`));
 
@@ -184,6 +186,12 @@ async function readTicket() {
 
   const results = [];
   for (const f of F.BSS_CROSSWALK) {
+    if (f.key === 'bssComment') {
+      // Append-only comment log — read endpoint ise wapas nahi deta, aur har
+      // test ek nayi comment row bana dega. Isliye per-field loop se skip.
+      warn('BSS Comment skipped: it appends to the comment log, it cannot be read back');
+      continue;
+    }
     const form = Object.assign({}, base);
     let testVal;
 
@@ -220,7 +228,7 @@ async function readTicket() {
 
     await sleep(700);                       // Marg ko commit hone do
     const after = await readTicket();
-    const back = F.bssReadTicket(after, DD);
+    const back = F.bssReadTicket(after, DD, P.MB_STAGE_DISP_BY_SC, P.MB_DISP_FALLBACK_ORDER);
 
     let got, matched;
     if (f.type === 'text' || f.type === 'date') {
@@ -259,7 +267,7 @@ async function readTicket() {
     else {
       await sleep(900);
       const after = await readTicket();
-      const back = F.bssReadTicket(after, DD);
+      const back = F.bssReadTicket(after, DD, P.MB_STAGE_DISP_BY_SC, P.MB_DISP_FALLBACK_ORDER);
       const gotStatusName = back.names.subDisposition || after.Status || '';
       const gotCatName    = back.names.disposition || '';
 
@@ -316,7 +324,7 @@ async function readTicket() {
   } else {
     await sleep(900);
     const fin = await readTicket();
-    const finP = F.bssReadTicket(fin, DD);
+    const finP = F.bssReadTicket(fin, DD, P.MB_STAGE_DISP_BY_SC, P.MB_DISP_FALLBACK_ORDER);
     let diffs = [];
     F.BSS_CROSSWALK.forEach(f => {
       const was = parsed.values[f.key], now = finP.values[f.key];

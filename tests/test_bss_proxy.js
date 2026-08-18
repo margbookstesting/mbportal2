@@ -1,6 +1,7 @@
 // api/bss-proxy.js ke tests — ASLI handler load hota hai, Marg aur Supabase
 // dono mocked. Yahan wo cheezein cover ho rahi hain jo live test me pakadna
 // mehenga padta: auth bypass, payload injection, token retry, cache patch.
+const SCHEMA = require('/home/claude/work/assets/ticket-parser.js').MB_SCHEMA_VERSION;
 const PASS = []; const FAIL = [];
 const ok = m => { PASS.push(m); console.log('  PASS:', m); };
 const no = (m, d) => { FAIL.push(m); console.log('  FAIL:', m, d === undefined ? '' : '→ ' + d); };
@@ -12,6 +13,7 @@ process.env.MARG_LOGIN_PASSWORD = 'secret';
 
 // ── Mock world ──
 let db, margCalls, loginCount, margUpdateResponse, margDetailRecords, tokenValid;
+let MIGRATION_MISSING = false, USERS_DOWN = false, NO_PROFILE = false;
 
 function jwt(expSec) {
   const p = Buffer.from(JSON.stringify({ exp: expSec })).toString('base64');
@@ -37,6 +39,7 @@ function reset() {
     bss_update_log: [],
   };
   margCalls = []; loginCount = 0; tokenValid = true;
+  MIGRATION_MISSING = false; USERS_DOWN = false; NO_PROFILE = false;
   margUpdateResponse = { Status: 'success', Message: 'Ticket status updated successfully.' };
   margDetailRecords = [{ TicketNo: 'MB - 036939', Status: 'Pending', JiraID: '1213', Developer: 'Ashish Sharma' }];
   loadHandler();
@@ -52,6 +55,11 @@ global.fetch = async (url, opts = {}) => {
   }
   // Supabase users
   if (url.includes('/rest/v1/users')) {
+    // Migration na chali ho to PostgREST poori query fail karta hai
+    if (MIGRATION_MISSING && /bss_user_id/.test(url))
+      return resp(400, { code: '42703', message: 'column users.bss_user_id does not exist' });
+    if (USERS_DOWN) return resp(500, { message: 'db unavailable' });
+    if (NO_PROFILE) return resp(200, []);   // auth user hai, public.users me row nahi
     const m = url.match(/id=eq\.([^&]+)/);
     const u = m && db.users[m[1]];
     return resp(200, u ? [u] : []);
@@ -131,7 +139,7 @@ const GOOD = {
   eq((await call({ action: 'dropdowns' }, 'nobody'))._s, 401, 'invalid session → 401');
   let r = await call({ action: 'dropdowns' }, 'other-uid');
   eq(r._s, 403, 'user without bss-dashboard permission → 403');
-  eq(/access nahi/.test(r._j.error), true, 'refusal explains why');
+  eq(/do not have access/.test(r._j.error), true, 'refusal explains why');
   eq((await call({ action: 'dropdowns' }, 'admin-uid'))._s, 200, 'admin allowed without explicit permission');
   eq((await call({ action: 'dropdowns' }, 'user-uid'))._s, 200, 'user with bss-dashboard allowed');
   const req = { method: 'GET', headers: {}, body: '' }; const rr = mkRes(); await handler(req, rr);
@@ -310,6 +318,40 @@ const GOOD = {
   await call({ action: 'update', payload: { ...GOOD, Remarks: '  hello  ' } });
   sent = margCalls.find(c => c.kind === 'update').body;
   eq(sent.Remarks, 'hello', 'text fields trimmed before sending');
+
+  console.log('\n== 8d. auth diagnostics (403 debugging) ==');
+  reset();
+  // Migration nahi chali: read-only kaam karna chahiye, update saaf fail
+  MIGRATION_MISSING = true;
+  r = await call({ action: 'dropdowns' });
+  eq(r._s, 200, 'dropdowns still work without the bss_user_id column (read-only degrades gracefully)');
+  r = await call({ action: 'ticket', ticketNo: 'MB - 036939' });
+  eq(r._s, 200, 'ticket read still works without the migration');
+  r = await call({ action: 'update', payload: GOOD });
+  eq(r._s, 500, 'update blocked when the migration is missing');
+  eq(/2026-08-bss-dashboard\.sql/.test(r._j.error), true, 'error names the exact SQL file to run');
+  eq(margCalls.filter(c => c.kind === 'update').length, 0, 'nothing sent to Marg');
+
+  reset();
+  // Permission missing → error must say what to do, and echo what they DO have
+  r = await call({ action: 'dropdowns' }, 'other-uid');
+  eq(r._s, 403, 'no permission → 403');
+  eq(/BSS Dashboard permission/.test(r._j.error), true, 'error says how to fix it');
+  eq(r._j.dashboards, ['support-dashboard'], 'response echoes the permissions the user actually has');
+  eq(r._j.role, 'user', 'response echoes the role');
+
+  reset();
+  // Auth session valid, par public.users me row hi nahi
+  NO_PROFILE = true;
+  r = await call({ action: 'dropdowns' });
+  eq(r._s, 403, 'auth ok but no profile row → 403');
+  eq(/public\.users/.test(r._j.error), true, 'error explains the profile is missing, not "access denied"');
+
+  reset();
+  USERS_DOWN = true;
+  r = await call({ action: 'dropdowns' });
+  eq(r._s, 500, 'profile read failure → 500 (not a misleading 403)');
+  eq(/Profile read failed/.test(r._j.error), true, 'surfaces the DB error');
 
   console.log('\n== 9. misc ==');
   reset();

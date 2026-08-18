@@ -3,6 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 const { execSync } = require('child_process');
 
+const SCHEMA = require('/home/claude/work/assets/ticket-parser.js').MB_SCHEMA_VERSION;
 const PASS = []; const FAIL = [];
 const ok = m => { PASS.push(m); console.log('  PASS:', m); };
 const no = (m, d) => { FAIL.push(m); console.log('  FAIL:', m, d === undefined ? '' : '→ ' + d); };
@@ -40,7 +41,7 @@ console.log('\n== 2. every page: wiring intact ==');
 for (const p of PAGES) {
   const html = fs.readFileSync(`${WORK}/${p}.html`, 'utf8');
   const tag = html.match(/<script src="([^"]*ticket-parser[^"]*)"/);
-  eq(tag && tag[1], '/assets/ticket-parser.js?v=2', `${p}: absolute, cache-busted script tag`);
+  eq(tag && tag[1], `/assets/ticket-parser.js?v=${SCHEMA}`, `${p}: absolute, cache-busted script tag`);
   // No direct browser writes to ticket_cache may remain
   const writes = (html.match(/ticket_cache'\)\.(insert|delete|upsert|update)/g) || []);
   eq(writes.length, 0, `${p}: zero direct ticket_cache writes`);

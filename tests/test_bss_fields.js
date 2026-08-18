@@ -184,46 +184,138 @@ eq(h.orphanParents, [64, 109], 'orphan parent ids detected (unreachable Problem 
 eq(h.orphanProblemTypes, 2, 'counted the orphaned Problem Types');
 eq(h.emptyParents, [118], 'parent with zero children detected');
 
-console.log('\n== 9. read-side resolution ==');
-// Case A: Marg returns IDs (best case) — exact pre-select, no guessing
-let t = F.bssReadTicket({
-  TicketNo: 'MB - 036939', TicketCreatedDate: '2026-06-29T00:00:00',
-  Status: 'In Progress', TimeLineDate: '2026-06-29',
-  DispositionID: 3, SubDispositionID: 10, BSSMainDispositionID: 46,
-  BSSProblemTypeID: 552, BSSSubProblemTypeID: 1960,
-  AssignedToID: 43, DeveloperID: 15, RMID: 4, JiraID: '1213',
-}, DD);
-eq(t.values.subDisposition, 3, 'status id read');
-eq(t.values.disposition, 10, 'category id read');
-eq(t.names.disposition, 'Bug', 'category id → name for display');
-eq(t.names.rm, 'Anil Tiwari', 'RM id → name');
-eq(t.values.jiraId, '1213', 'JiraID read');
-eq(t.ambiguous, [], 'no ambiguity when ids are provided');
+console.log('\n== 9. read-side resolution (CONFIRMED live mapping) ==');
+{
+  // Ye exactly MB - 037392 ka live response hai (relevant fields), aur uske
+  // saamne BSS UI screen ne jo dikhaya wo.
+  const LIVE = {
+    TicketNo: 'MB - 037392',
+    TicketCreatedDate: '2026-07-22T12:59:49.673',
+    Status: 'Acknowledge',                    // UI "Sub Disposition"
+    MainDisposition: 'DASHBOARD',             // UI "Main Disposition"
+    Problemtype: 'REFRESH DASHBOARD',         // UI "Problem Type"
+    SubDisposition: 'REFRESH DASHBOARD',      // UI "Sub-Problem Type"  <-- shifted
+    TransferToIT_Disp: 'Bug',
+    Ack_Disp: 'Future Development',           // UI "Disposition" (current stage)
+    RejectDisp: 'No Disposition',
+    JiraID: '',
+    TimeLineDate: '29-08-2026',               // DD-MM-YYYY on read
+    Remarks: 'Ticket status updated successfully.',
+    Assignto: 'IT Coordinator Care',
+    Developer: 'Ashish Sharma',
+    RM: 'Anil Tiwari',
+    SubStatus: 'No Disposition',
+    ProblemCategory: 'No Disposition',
+  };
+  const DDL = {
+    Dispostion: [{ ID: 2, Name: 'Acknowledge' }, { ID: 3, Name: 'In Progress' }],
+    BSSDisposition: [{ ID: 6, Name: 'Future Development' }, { ID: 10, Name: 'Bug' }, { ID: 21, Name: 'No Disposition' }],
+    SubDispostion: [{ ID: 47, Name: 'DASHBOARD' }, { ID: 46, Name: 'LOG-IN/SIGN-UP' }],
+    ProblemTypeMargBook: [{ ID: 554, Name: 'REFRESH DASHBOARD', Subdispositionid: 47 },
+                          { ID: 552, Name: 'SIGN-UP', Subdispositionid: 46 }],
+    SubProblemTypeMargBook: [{ ID: 1975, Name: 'REFRESH DASHBOARD', ProblemTypeID: 554 },
+                             { ID: 1960, Name: 'MOBILE NO.', ProblemTypeID: 552 }],
+    AssignTo: [{ ID: 43, Name: 'IT Coordinator Care' }],
+    Developers: [{ ID: 15, Name: 'Ashish Sharma' }],
+    Rm: [{ ID: 4, Name: 'Anil Tiwari' }],
+  };
+  // Stage maps parser se — duplicate nahi karte
+  const P = require('/home/claude/work/assets/ticket-parser.js');
+  global.MB_STATUS_MAP = P.MB_STATUS_MAP;
 
-// Case B: Marg returns only names — reverse lookup, ambiguity flagged
-t = F.bssReadTicket({
-  TicketNo: 'MB - 036939', Status: 'In Progress',
-  MainDisposition: 'Bug', Problemtype: 'SIGN-UP', Assignto: 'Teena Sharma', RM: 'Anil Tiwari',
-}, DD);
-eq(t.values.disposition, 10, 'category name → id');
-eq(t.values.assignedTo, 3976, 'assignee name → id');
-eq(t.values.rm, 4, 'RM name → id from the Rm list');
-eq(t.missing.includes('jiraId'), true, 'missing JiraID reported, not silently blank');
+  const t = F.bssReadTicket(LIVE, DDL, P.MB_STAGE_DISP_BY_SC, P.MB_DISP_FALLBACK_ORDER);
 
-// Case C: field genuinely absent everywhere
-t = F.bssReadTicket({ TicketNo: 'MB - 1' }, DD);
-eq(t.values.developer, null, 'absent field → null');
-eq(t.missing.includes('developer'), true, 'absent field listed in missing');
+  // Har field wahi dikhna chahiye jo BSS UI screen par tha
+  eq(t.names.subDisposition,  'Acknowledge',        'UI "Sub Disposition" reads from Status');
+  eq(t.values.subDisposition, 2,                    '  └ resolves to Dispostion ID 2');
+  eq(t.names.mainDisposition, 'DASHBOARD',          'UI "Main Disposition" reads from MainDisposition');
+  eq(t.values.mainDisposition, 47,                  '  └ resolves to SubDispostion ID 47');
+  eq(t.names.problemType,     'REFRESH DASHBOARD',  'UI "Problem Type" reads from Problemtype');
+  eq(t.values.problemType,    554,                  '  └ resolves to ProblemTypeMargBook ID 554');
+  eq(t.names.subProblemType,  'REFRESH DASHBOARD',  'UI "Sub-Problem Type" reads from SubDisposition (shifted)');
+  eq(t.values.subProblemType, 1975,                 '  └ resolves to SubProblemTypeMargBook ID 1975');
+  eq(t.names.disposition,     'Future Development', 'UI "Disposition" derived from the CURRENT stage (Ack_Disp)');
+  eq(t.values.disposition,    6,                    '  └ resolves to BSSDisposition ID 6');
+  eq(t.names.assignedTo,      'IT Coordinator Care','Assign To');
+  eq(t.values.developer,      15,                   'Developer');
+  eq(t.values.rm,             4,                    'RM');
+  eq(t.values.remarks,        'Ticket status updated successfully.', 'Remarks');
 
-console.log('\n== 10. read audit (used to fix aliases after the live test) ==');
-const audit = F.bssReadAudit({ TicketNo: 'MB - 036939', JiraId: 'X-9', Status: 'Closed' });
-const jira = audit.find(a => a.field === 'jiraId');
-eq(jira.found, true, 'audit finds JiraID under an alternate spelling');
-eq(jira.via, 'JiraId', 'audit reports WHICH alias matched');
-const dev = audit.find(a => a.field === 'developer');
-eq(dev.found, false, 'audit reports fields that were not found');
-eq(F.bssReadValue({ TimeLineDate: '1900-01-01T00:00:00' }, 'timelineDate').value, null,
-   'sentinel 1900 date treated as empty');
+  // Cascade chain must be internally valid, else the form rejects on save
+  eq(F.bssCascadeOptions(DDL, 'problemType', t.values.mainDisposition).some(o => o.ID === t.values.problemType), true,
+     'read Problem Type is valid under the read Main Disposition');
+  eq(F.bssCascadeOptions(DDL, 'subProblemType', t.values.problemType).some(o => o.ID === t.values.subProblemType), true,
+     'read Sub-Problem Type is valid under the read Problem Type');
+
+  // The whole read must validate — otherwise the user cannot save without re-picking everything
+  const form = {};
+  F.BSS_CROSSWALK.forEach(f => { if (t.values[f.key] != null) form[f.key] = t.values[f.key]; });
+  eq(F.bssValidate(form, DDL, 3923), [], 'the values read back form a VALID, submittable form');
+
+  console.log('\n  -- disposition must NOT be the analytics `ld` --');
+  const parsed = P.mbParseTicket(LIVE);
+  eq(parsed.ld, 'Bug', 'parser ld = Bug (recognized-first walk)');
+  eq(parsed.cd, 'Future Development', 'parser cd = Future Development (current stage)');
+  eq(t.names.disposition === parsed.cd, true, 'modal Disposition matches cd, not ld');
+  eq(t.names.disposition !== parsed.ld, true, 'and it is deliberately different from ld');
+
+  console.log('\n  -- date conversion --');
+  eq(t.values.timelineDate, '2026-08-29', 'TimeLineDate DD-MM-YYYY -> YYYY-MM-DD');
+  eq(F.bssToISODate('29-08-2026'), '2026-08-29', 'DD-MM-YYYY converted');
+  eq(F.bssToISODate('2026-08-29'), '2026-08-29', 'already-ISO passes through');
+  eq(F.bssToISODate('2026-08-29T00:00:00'), '2026-08-29', 'ISO datetime trimmed to date');
+  eq(F.bssToISODate('1900-01-01T00:00:00'), null, 'sentinel 1900 -> null');
+  eq(F.bssToISODate(''), null, 'empty -> null');
+  eq(F.bssToISODate(null), null, 'null -> null');
+  eq(F.bssToISODate('garbage'), null, 'garbage -> null (not a bad date)');
+  // The converted value must survive validation and round-trip into the payload
+  eq(F.bssValidate({ subDisposition: 2, disposition: 6, timelineDate: t.values.timelineDate }, DDL, 1), [],
+     'converted date passes validation');
+  eq(F.bssBuildPayload({ subDisposition: 2, disposition: 6, timelineDate: t.values.timelineDate }, 'T', 1).TimeLineDate,
+     '2026-08-29', 'converted date reaches the payload');
+
+  console.log('\n  -- BSS Comment is append-only, never pre-filled --');
+  eq(t.values.bssComment, null, 'bssComment is always null after a read');
+  eq('bssComment' in F.BSS_READ_ALIASES, false, 'no read alias defined for bssComment (by design)');
+  eq('BSSComment' in F.bssBuildPayload({ subDisposition: 2, disposition: 6 }, 'T', 1), false,
+     'an empty comment is not sent (no duplicate comment rows)');
+  eq(F.bssBuildPayload({ subDisposition: 2, disposition: 6, bssComment: 'new note' }, 'T', 1).BSSComment,
+     'new note', 'a typed comment IS sent');
+
+  console.log('\n  -- current-stage disposition across stages --');
+  const cur = (raw) => F.bssCurrentDisposition(raw, raw && P.MB_STATUS_MAP[raw.Status], P.MB_STAGE_DISP_BY_SC, P.MB_DISP_FALLBACK_ORDER);
+  eq(cur({ Status: 'In Progress', Inprogress_Disp: 'Development', Ack_Disp: 'Bug' }), 'Development',
+     'In Progress -> Inprogress_Disp');
+  eq(cur({ Status: 'Transfer To IT', TransferToIT_Disp: 'Bug', Ack_Disp: 'Improvement' }), 'Bug',
+     'Transfer To IT -> TransferToIT_Disp');
+  eq(cur({ Status: 'Closed', Ack_Disp: 'Bug' }), 'Bug',
+     'stage with no disp field falls back to the most recent non-empty');
+  eq(cur({ Status: 'Pending' }), null, 'nothing anywhere -> null');
+  eq(cur(null), null, 'null record -> null');
+  // Unrecognized values must NOT be filtered out (that is the whole point)
+  eq(cur({ Status: 'Acknowledge', Ack_Disp: 'Guidance Provided' }), 'Guidance Provided',
+     'unrecognized disposition is kept (no analytics filter)');
+}
+
+console.log('\n== 10. read audit ==');
+{
+  const audit = F.bssReadAudit({ TicketNo: 'MB - 1', Status: 'Closed', Problemtype: 'X' });
+  eq(audit.find(a => a.field === 'problemType').found, true, 'audit finds Problem Type');
+  eq(audit.find(a => a.field === 'problemType').via, 'Problemtype', 'audit reports the matching key');
+  eq(audit.find(a => a.field === 'developer').found, false, 'audit reports missing fields');
+  eq(F.bssReadValue({ TimeLineDate: '1900-01-01T00:00:00' }, 'timelineDate').value, null,
+     'sentinel 1900 date treated as empty');
+}
+
+console.log('\n== 11. all user-facing messages are English ==');
+{
+  const HINGLISH = /\b(nahi|karo|karwao|dabao|chalao|kholo|dekho|purana|khali|bheje|gaya|hua|rahe|padega|sakte|zaroori|theek|wapas|jaye|bahut|hai)\b/i;
+  let bad = [];
+  const src = require('fs').readFileSync('/home/claude/work/assets/bss-fields.js', 'utf8');
+  // sirf msg:'...' / Error('...') strings — comments Hinglish rehne diye gaye hain
+  [...src.matchAll(/msg\s*:\s*([^,\n]+)/g)].forEach(m => { if (HINGLISH.test(m[1])) bad.push(m[1].trim().slice(0, 60)); });
+  eq(bad, [], 'no Hinglish left in validation messages');
+}
 
 console.log('\nBSS FIELD RESULTS: ' + PASS.length + ' passed, ' + FAIL.length + ' failed');
 process.exit(FAIL.length ? 1 : 0);

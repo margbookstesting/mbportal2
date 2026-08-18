@@ -218,8 +218,10 @@ if all(fc.get(f, 0) > 0 for f in ('tia', 'ld', 'rtd', 'st')):
     ok(f'all required fields covered: {fc}')
 else:
     no('coverage gap', fc)
-if w.get('schema_version') == 2 and w.get('writer') == 'nightly':
-    ok('schema_version=2 and writer=nightly written')
+import re as _re
+_SV = int(_re.search(r'SCHEMA_VERSION\s*=\s*(\d+)', open(SCRIPT).read()).group(1))
+if w.get('schema_version') == _SV and w.get('writer') == 'nightly':
+    ok(f'schema_version={_SV} and writer=nightly written')
 else:
     no('metadata wrong', (w.get('schema_version'), w.get('writer')))
 if 'Upserting' in out and 'on_conflict' not in out:

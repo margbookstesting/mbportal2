@@ -7,6 +7,7 @@ const fs = require('fs');
 const vm = require('vm');
 const { execSync } = require('child_process');
 
+const SCHEMA = require('/home/claude/work/assets/ticket-parser.js').MB_SCHEMA_VERSION;
 const PASS = []; const FAIL = [];
 const ok = m => { PASS.push(m); console.log('  PASS:', m); };
 const no = (m, d) => { FAIL.push(m); console.log('  FAIL:', m, d === undefined ? '' : '→ ' + d); };
@@ -25,7 +26,7 @@ try { execSync('node --check /tmp/bsspage.js', { stdio: 'pipe' }); ok('no syntax
 catch (e) { no('syntax error', String(e.stderr).split('\n').slice(0, 3).join(' ')); }
 
 console.log('\n== 2. wiring ==');
-eq(/<script src="\/assets\/ticket-parser\.js\?v=2">/.test(html), true, 'ticket-parser loaded (absolute, cache-busted)');
+eq(new RegExp(`<script src="/assets/ticket-parser\\.js\\?v=${SCHEMA}">`).test(html), true, 'ticket-parser loaded (absolute, cache-busted)');
 eq(/<script src="\/assets\/bss-fields\.js\?v=1">/.test(html), true, 'bss-fields loaded (absolute, cache-busted)');
 eq(/const _DASH='bss-dashboard'/.test(html), true, 'auth guard checks the bss-dashboard permission');
 eq(/storage:window\.sessionStorage/.test(html.split('const sb=supabase.createClient')[1] || ''), true,
@@ -138,6 +139,92 @@ eq(Object.values(byKey).reduce((a, b) => a + b, 0), tickets.length,
    'sum of KPI counts equals total tickets (nothing dropped)');
 eq(Object.keys(byKey).every(k => ctx.STATUSES.some(s => s.key === k)), true,
    'every produced key has a KPI card to land on');
+
+console.log('\n== 9. agent sections: no inner scroll, totals reconcile ==');
+{
+  // Scroll: teeno section tables tw-full hone chahiye
+  ['tblTester','tblDev','tblRM'].forEach(id =>
+    eq(new RegExp(`class="tw tw-full"><table id="${id}"`).test(html), true, `${id} has no inner scroll`));
+  eq(/\.tw-full\{overflow:visible;max-height:none\}/.test(html), true, 'tw-full removes the height cap');
+  eq(/\.tw-full th\{position:static\}/.test(html), true, 'sticky header disabled in full mode (avoids overlap with page header)');
+  // Modal list ko scroll karna hi chahiye (wo bahut lamba ho sakta hai)
+  eq(/class="tw" style="max-height:none"/.test(html), true, 'modal list keeps its own sizing');
+
+  // agentTable ko asli page source se chalate hain
+  const atStart = html.indexOf('function agentTable');
+  const atEnd   = html.indexOf('function renderAgents');
+  const helpers = html.match(/const fmt=[\s\S]*?;\n/)[0] + html.match(/const esc=[\s\S]*?;\n/)[0];
+  const logicSrc = html.slice(html.indexOf('function _normSt'), html.indexOf('];', html.indexOf('const MON=[')) + 2);
+
+  const mkCtx = (view) => {
+    const c = { console, VIEW: view };
+    vm.createContext(c);
+    vm.runInContext(helpers + logicSrc + html.slice(atStart, atEnd) + '\nthis.agentTable=agentTable;', c);
+    return c;
+  };
+
+  // Deliberately include statuses that are NOT among the 8 shown columns,
+  // so "Other" has to absorb them.
+  const view = [
+    { n:'1', assignto:'A', st:'Pending' },
+    { n:'2', assignto:'A', st:'Closed' },
+    { n:'3', assignto:'A', st:'Reopen' },              // not a shown column
+    { n:'4', assignto:'A', st:'Future Development' },  // not shown
+    { n:'5', assignto:'A', st:'Ready For Merging' },   // not shown
+    { n:'6', assignto:'B', st:'In Progress' },
+    { n:'7', assignto:'B', st:'Approval Pending' },    // unmapped → pending bucket
+    { n:'8', assignto:'',  st:'Closed' },              // no agent → excluded
+  ];
+  const c = mkCtx(view);
+  const out = c.agentTable(r => (r.assignto||'').trim(), 'Tester');
+
+  eq(/<tfoot>/.test(out), true, 'totals row rendered');
+  eq(/>Other</.test(out), true, 'Other column present');
+
+  // Parse the numbers back out
+  const rowsHtml = out.slice(out.indexOf('<tbody>'), out.indexOf('</tbody>'));
+  const footHtml = out.slice(out.indexOf('<tfoot>'));
+  const nums = frag => [...frag.matchAll(/<td class="r[^"]*">([\d,]+)<\/td>/g)].map(m => Number(m[1].replace(/,/g,'')));
+  const badgeNums = frag => [...frag.matchAll(/data-agent-name="[^"]*">([\d,]+)</g)].map(m => Number(m[1].replace(/,/g,'')));
+
+  const trs = rowsHtml.split('<tr>').slice(1);
+  let allReconcile = true, detail = [];
+  trs.forEach(tr => {
+    const total = badgeNums(tr)[0];
+    const cells = nums(tr);                 // 8 shown + Other
+    const sum = cells.reduce((a,b)=>a+b,0);
+    if (sum !== total) { allReconcile = false; detail.push(`row total ${total} vs cells ${sum}`); }
+  });
+  eq(allReconcile, true, 'EVERY row: shown columns + Other === Total' + (detail.length ? ' | ' + detail.join('; ') : ''));
+
+  // Agent A: 5 tickets (Pending, Closed, Reopen, Future Dev, Merging)
+  //  → shown: pending 1, closed 1 ; Other must be 3
+  const rowA = trs.find(t => t.includes('>A<'));
+  const cellsA = nums(rowA);
+  eq(badgeNums(rowA)[0], 5, 'agent A total = 5');
+  eq(cellsA[cellsA.length-1], 3, 'agent A Other = 3 (Reopen + Future Dev + Merging)');
+
+  // Footer must equal the sum of all rows, and match the filtered ticket count
+  const footCells = nums(footHtml);
+  const footTotal = footCells[0];
+  const footRest  = footCells.slice(1).reduce((a,b)=>a+b,0);
+  eq(footTotal, 7, 'footer Total = 7 (the 8th ticket has no agent, correctly excluded)');
+  eq(footRest, footTotal, 'footer: shown columns + Other === footer Total');
+
+  const rowTotals = trs.map(t => badgeNums(t)[0]).reduce((a,b)=>a+b,0);
+  eq(rowTotals, footTotal, 'footer Total === sum of all row totals');
+  eq(/2 testers/.test(footHtml), true, 'footer labels the agent count');
+
+  // Empty view must not crash and must not show a bogus total
+  const c2 = mkCtx([]);
+  const empty = c2.agentTable(r => (r.assignto||'').trim(), 'Tester');
+  eq(/No data/.test(empty), true, 'empty view shows the empty state');
+  eq(/<tfoot>/.test(empty), false, 'no totals row when there is no data');
+
+  // Single agent → singular label
+  const c3 = mkCtx([{ n:'1', assignto:'Solo', st:'Closed' }]);
+  eq(/1 tester</.test(c3.agentTable(r => (r.assignto||'').trim(), 'Tester')), true, 'singular label for one agent');
+}
 
 console.log('\nBSS PAGE RESULTS: ' + PASS.length + ' passed, ' + FAIL.length + ' failed');
 process.exit(FAIL.length ? 1 : 0);
