@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGQ5NDg4Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDg5MWIyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1CPC90ZXh0Pjwvc3ZnPg=="/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MARG · BSS Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SHARED SUPERSET TICKET PARSER — single source of truth (see file header) -->
+<script src="/assets/ticket-parser.js?v=2"></script>
+<!-- BSS FIELD CROSSWALK — Disposition/SubDisposition swap yahin handle hota hai -->
+<script src="/assets/bss-fields.js?v=1"></script>
+<script>
+if(typeof mbParseTicket !== 'function')
+  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega.');
+if(typeof bssBuildPayload !== 'function')
+  console.error('assets/bss-fields.js load nahi hua — update form kaam nahi karega.');
+</script>
+<!-- AUTH GUARD: login + per-dashboard permission -->
+<script>
+(async function(){
+  const _SU='https://xsxchyqhhyfvuxbofxna.supabase.co';
+  const _SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+  const _DASH='bss-dashboard';
+  for(let i=0;i<60 && !(window.supabase&&window.supabase.createClient);i++){await new Promise(r=>setTimeout(r,50));}
+  if(!(window.supabase&&window.supabase.createClient)){location.replace('index.html');return;}
+  const _g=window.supabase.createClient(_SU,_SK,{auth:{persistSession:true,storage:window.sessionStorage}});
+  const {data:{session}}=await _g.auth.getSession();
+  if(!session){location.replace('index.html');return;}
+  try{
+    const {data:_p}=await _g.from('users').select('role,dashboards').eq('id',session.user.id).single();
+    const _ok=_p&&(_p.role==='admin'||(_p.dashboards||[]).includes(_DASH));
+    if(!_ok){location.replace('portal.html');return;}
+  }catch(e){/* profile read fail -> logged-in user allowed */}
+})();
+</script>
+<style>
+:root{
+  --bg:#f0f2f9; --surface:#fff; --s2:#f7f8fd; --border:#e8eaf4; --border2:#d4d8ec;
+  --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
+  --it:#0d9488; --ack:#0891b2; --ip:#0f766e; --tst:#b45309; --uat:#0284c7;
+  --glv:#15803d; --cl:#475569; --oth:#b45309; --sup:#dc2626; --ret:#0891b2;
+  --sh-s:0 1px 3px rgba(8,16,30,.06),0 1px 2px rgba(8,16,30,.04);
+  --sh-m:0 4px 16px rgba(8,16,30,.08),0 1px 3px rgba(8,16,30,.04);
+  --sh-l:0 12px 48px rgba(8,16,30,.12),0 4px 8px rgba(8,16,30,.06);
+  --r:12px; --r2:7px; --r3:5px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── Header ── */
+.hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
+.hdr h1{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.hdr .sub{font-size:10.5px;opacity:.72;margin-top:1px}
+.hdr .sp{flex:1}
+.btn{border:none;border-radius:var(--r2);padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:rgba(255,255,255,.12);color:#fff}
+.btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.22)}
+.btn-red{background:#dc2626;color:#fff}
+.btn-teal{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff}
+.btn-teal:hover:not(:disabled){filter:brightness(1.08)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+.dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
+
+/* ── Filters ── */
+.wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+.filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:8px 11px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
+.inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+select.inp{cursor:pointer}
+.f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
+.f-grp{display:flex;flex-direction:column}
+
+/* ── KPI cards ── */
+.sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+.sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.sec-l{flex:1;height:1px;background:var(--border2)}
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
+@media(max-width:1400px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:1000px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.kpi-row{grid-template-columns:1fr}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+.kpi-top{height:4px}
+.kpi-b{padding:10px 13px 9px}
+.kpi-s{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
+.kpi-n{font-size:25px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
+.kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+.kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:var(--r3);padding:4px 3px;text-align:center}
+.kpi-sp .l{font-size:8px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
+.kpi-sp .v{font-size:12px;font-weight:700;color:var(--text2);margin-top:1px}
+.kpi-f{border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
+.lnk{font-size:10.5px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
+.lnk:hover{background:rgba(13,148,136,.1)}
+
+/* ── Tables ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
+.card-h{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-t{font-size:13px;font-weight:700}
+.card-s{font-size:10.5px;color:var(--muted)}
+.tw{overflow:auto;max-height:420px}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{background:var(--s2);color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;text-align:left;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border2);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+tbody tr:hover{background:var(--s2)}
+th.r,td.r{text-align:right}
+.tno{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0d9488;cursor:pointer;white-space:nowrap}
+.tno:hover{text-decoration:underline}
+.muted{color:var(--muted2)}
+.badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--s2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
+
+/* ── Modals ── */
+.ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
+.ov.on{display:flex}
+.mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.mdl.sm{max-width:820px}
+.mdl-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
+.mdl-t{font-size:15px;font-weight:700}
+.mdl-b{overflow:auto;padding:0}
+.mdl-b.pad{padding:16px 18px}
+.mdl-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
+
+/* ── Edit form ── */
+.fgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
+@media(max-width:760px){.fgrid{grid-template-columns:1fr}}
+.fld label{display:block;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.fld .inp{width:100%}
+.fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+.fld .e{color:#dc2626;font-size:10.5px;margin-top:3px;display:none}
+.fld.err .e{display:block}
+.req{color:#dc2626}
+.hint{font-size:10px;color:var(--muted2);margin-top:3px}
+.note{border-radius:var(--r2);padding:9px 12px;font-size:11.5px;margin-bottom:13px;line-height:1.55}
+.note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+.note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
+.note.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.note.info{background:#f0f9ff;border:1px solid #bae6fd;color:#075985}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
+.kv .k{color:var(--muted);font-weight:600}
+.kv .v{color:var(--text);font-weight:500;word-break:break-word}
+.spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:44px 20px;text-align:center;color:var(--muted)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:400;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>MARG · BSS Dashboard</h1>
+    <div class="sub">Current status · Tester / Developer / RM · BSS ticket update</div>
+  </div>
+  <a href="portal.html" class="btn btn-ghost">← Portal</a>
+  <button class="btn btn-red" onclick="signOut()">Sign Out</button>
+  <div class="sp"></div>
+  <div class="pill"><span class="dot" id="dot"></span><span id="metaTxt">Loading…</span></div>
+  <button class="btn btn-ghost" id="btnRefresh" onclick="refreshCache()">↺ Refresh Data</button>
+  <button class="btn btn-teal" onclick="exportAll()">↓ Export</button>
+</div>
+
+<div class="wrap">
+
+  <div class="filters">
+    <div class="f-grp"><span class="f-lab">Ticket No</span>
+      <input class="inp" id="fTicket" placeholder="🔍 MB - 036939" style="width:170px" onkeydown="if(event.key==='Enter')applyFilters()"></div>
+    <div class="f-grp"><span class="f-lab">License</span>
+      <input class="inp" id="fLic" placeholder="🎫 License…" style="width:150px" onkeydown="if(event.key==='Enter')applyFilters()"></div>
+    <div class="f-grp"><span class="f-lab">Status</span>
+      <select class="inp" id="fStatus" style="width:180px"><option value="">All statuses</option></select></div>
+    <div class="f-grp"><span class="f-lab">Tester</span>
+      <select class="inp" id="fTester" style="width:160px"><option value="">All testers</option></select></div>
+    <div class="f-grp"><span class="f-lab">RM</span>
+      <select class="inp" id="fRM" style="width:150px"><option value="">All RMs</option></select></div>
+    <div class="f-grp"><span class="f-lab">Developer</span>
+      <select class="inp" id="fDev" style="width:160px"><option value="">All developers</option></select></div>
+    <div class="f-grp"><span class="f-lab">&nbsp;</span>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-teal" onclick="applyFilters()">Apply</button>
+        <button class="btn btn-ghost" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="clearFilters()">Clear</button>
+      </div></div>
+    <div class="sp" style="flex:1"></div>
+    <div style="font-size:11px;color:var(--muted)" id="filterInfo"></div>
+  </div>
+
+  <div class="sec-h"><span class="sec-t">⚡ Current Status — Ticket Count</span><span class="sec-l"></span></div>
+  <div class="kpi-row" id="kpis"></div>
+
+  <div class="sec-h"><span class="sec-t">👤 Tester-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw"><table id="tblTester"></table></div></div>
+
+  <div class="sec-h"><span class="sec-t">💻 Developer-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw"><table id="tblDev"></table></div></div>
+
+  <div class="sec-h"><span class="sec-t">🤝 RM-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw"><table id="tblRM"></table></div></div>
+</div>
+
+<!-- ── Ticket list modal ── -->
+<div class="ov" id="ovList" onclick="if(event.target===this)closeList()">
+  <div class="mdl">
+    <div class="mdl-h">
+      <div class="mdl-t" id="listTitle">Ticket Details</div>
+      <span class="badge" id="listCount"></span>
+      <div class="sp" style="flex:1"></div>
+      <button class="btn btn-teal btn-sm" onclick="exportList()">↓ Export Excel</button>
+      <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeList()">✕ Close</button>
+    </div>
+    <div class="mdl-b"><div class="tw" style="max-height:none"><table id="tblList"></table></div></div>
+  </div>
+</div>
+
+<!-- ── BSS update modal ── -->
+<div class="ov" id="ovEdit" onclick="if(event.target===this)closeEdit()">
+  <div class="mdl sm">
+    <div class="mdl-h">
+      <div class="mdl-t">Update Ticket · <span class="mono" id="edTicketNo"></span></div>
+      <div class="sp" style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeEdit()">✕ Close</button>
+    </div>
+    <div class="mdl-b pad" id="edBody"></div>
+    <div class="mdl-f">
+      <button class="btn btn-teal" id="edSave" onclick="submitUpdate()">💾 Update Ticket</button>
+      <button class="btn btn-ghost" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeEdit()">Cancel</button>
+      <div class="sp" style="flex:1"></div>
+      <span id="edStatus" style="font-size:11.5px;color:var(--muted)"></span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===========================================================================
+ * BSS DASHBOARD
+ * ---------------------------------------------------------------------------
+ * DATA SOURCES — jaanbujhkar do alag hain:
+ *   LIST / KPI  → ticket_cache (Supabase). Tez hai, 27k tickets client-side.
+ *   EDIT MODAL  → LIVE Marg API (/api/bss-proxy action:ticket). Cache se NAHI.
+ *
+ * Modal live kyun: (1) cache me kuch BSS fields hain hi nahi (JiraID,
+ * Sub-Problem Type), (2) cache nightly hai — user purani value dekh kar
+ * "update" karta to wo current value ko purani se overwrite kar deta.
+ * =========================================================================== */
+const SUPA_URL='https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+/* sessionStorage — auth guard bhi wahi use karta hai. Default localStorage
+   hota to getSession() null deta aur /api/bss-proxy ko token hi na milta. */
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,storage:window.sessionStorage}});
+
+let RAW=[], VIEW=[], DD=null, ME=null, LIST_ROWS=[], LIST_TITLE='', EDIT=null;
+
+const fmt=n=>Number(n||0).toLocaleString('en-IN');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
+async function signOut(){await sb.auth.signOut();location.replace('index.html');}
+
+/* ── Status defs — support_dashboard.html se identical, taaki dono dashboards
+   par ek hi ticket ka status same dikhe. Alag rakhne par drift ho jati. ── */
+function _normSt(s){return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim();}
+const STATUSES=[
+  {key:'pending',   label:'Pending',              c:'--oth'},
+  {key:'reopen',    label:'Reopen',               c:'--ret'},
+  {key:'it',        label:'Transferred To IT',    c:'--it'},
+  {key:'ack',       label:'Acknowledged',         c:'--ack'},
+  {key:'ip',        label:'In Progress',          c:'--ip'},
+  {key:'rft',       label:'Ready For Testing',    c:'--tst'},
+  {key:'reopentest',label:'Reopend from Testing', c:'--ret'},
+  {key:'rfcr',      label:'Ready For Code Review',c:'--uat'},
+  {key:'rfm',       label:'Ready For Merging',    c:'--uat'},
+  {key:'rfu',       label:'Ready For UAT',        c:'--uat'},
+  {key:'rgl',       label:'Ready to go Live',     c:'--glv'},
+  {key:'rts',       label:'Return to Support',    c:'--ret'},
+  {key:'sp',        label:'Transferred To Support',c:'--sup'},
+  {key:'future',    label:'Future Development',   c:'--oth'},
+  {key:'rejected',  label:'Rejected',             c:'--sup'},
+  {key:'closed',    label:'Closed',               c:'--cl'},
+];
+const MATCH={pending:['pending'],reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
+ ack:['acknowledge','acknowledged'],ip:['in progress','inprogress'],rft:['ready for testing'],
+ reopentest:['reopend from testing','reopen from testing','reopened from testing'],
+ rfcr:['ready for code review'],rfm:['ready for merging','ready for merge'],rfu:['ready for uat'],
+ rgl:['ready to go live'],rts:['return to support'],sp:['transfer to support','transferred to support'],
+ future:['future development'],rejected:['rejected','reject'],closed:['closed','close']};
+const SC2KEY={IT:'it',AK:'ack',IP:'ip',RT:'rft',RU:'rfu',LV:'rgl',SP:'sp',RS:'rts',CL:'closed'};
+
+function statusKeyOf(r){
+  const raw=_normSt(r.st);
+  if(raw){
+    for(const d of STATUSES) if((MATCH[d.key]||[]).includes(raw)) return d.key;
+    for(const d of STATUSES) if((MATCH[d.key]||[]).some(x=>raw.includes(x))) return d.key;
+  }
+  if(r.sc&&SC2KEY[r.sc]) return SC2KEY[r.sc];
+  return 'pending';
+}
+function statusLabelOf(r){const d=STATUSES.find(x=>x.key===statusKeyOf(r));return d?d.label:(r.st||'Other');}
+function stageDateOf(r){return r.e||r.d||r.c||r.b||r.a||'';}
+const testerOf=r=>(r.assignto||r.t||r.eb||'').trim();
+const devOf=r=>(r.dev||'').trim();
+const rmOf=r=>(r.r||'').trim();
+
+/* Month buckets. Basis = ticket CREATED date (r.tc), warna r.tld/stage date.
+   Jaanbujhkar created chuna hai kyunki detail table bhi "Created" dikhata hai —
+   dono ka basis same rehna chahiye, warna counts aur rows match nahi karenge. */
+function bucketOf(r){
+  const d=r.tc||r.tld||stageDateOf(r); if(!d) return 'older';
+  const now=new Date(), cm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const pm=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const pms=pm.getFullYear()+'-'+String(pm.getMonth()+1).padStart(2,'0');
+  const s=String(d).slice(0,7);
+  return s===cm?'cur':(s===pms?'prev':'older');
+}
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ── Cache load ── */
+async function cacheLoad(){
+  try{
+    const {data,error}=await sb.from('ticket_cache').select('*');
+    if(error){console.warn('cacheLoad:',error.message);return null;}
+    if(!data||!data.length) return null;
+    const m=mbMergeCacheRows(data);
+    if(m.minSchema<MB_SCHEMA_VERSION)
+      console.warn(`ticket_cache purane schema me hai (v${m.minSchema}) — Refresh Data chalao.`);
+    return m.tickets.length?m:null;
+  }catch(e){console.warn('cacheLoad failed:',e);return null;}
+}
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    const {data:p}=await sb.from('users').select('name,email,role,bss_user_id').eq('id',session.user.id).single();
+    ME=p||null;
+  }
+  const c=await cacheLoad();
+  if(!c){document.getElementById('metaTxt').textContent='No cached data';
+    document.getElementById('kpis').innerHTML='<div class="empty">Cache khali hai — "↺ Refresh Data" dabao.</div>';return;}
+  RAW=c.tickets; VIEW=RAW.slice();
+  const ts=c.fetchedAt?new Date(c.fetchedAt):null;
+  document.getElementById('metaTxt').textContent=
+    `${fmt(RAW.length)} tickets · Last fetched: ${ts?ts.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}):'—'}`;
+  if(ts&&(Date.now()-ts.getTime())>36*3600*1000) document.getElementById('dot').classList.add('stale');
+  buildFilterOptions(); render();
+  loadDropdowns();   /* background — modal turant khule */
+}
+
+/* ── Dropdowns (BindDropDown via proxy) ── */
+async function loadDropdowns(force){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session) return null;
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'dropdowns',force:!!force})});
+    const j=await r.json();
+    if(!r.ok||j.error){console.warn('dropdowns:',j.error);return null;}
+    DD=j.dropdowns;
+    /* Master data me cascade toota hua hai — kuch Problem Types aise parent ko
+       refer karte hain jo Main Disposition list me hai hi nahi. Wo cascade se
+       kabhi reachable nahi honge. Chup-chaap gayab hone se behtar hai console
+       me saaf batana. */
+    const h=bssDropdownHealth(DD);
+    if(h.orphanParents.length)
+      console.warn(`BindDropDown: ${h.orphanProblemTypes} Problem Types ke parent (${h.orphanParents.join(', ')}) Main Disposition list me nahi hain — wo cascade me nahi dikhenge. Marg master data ka issue hai.`);
+    Object.keys(h.duplicateNames||{}).forEach(k=>console.warn(`BindDropDown: "${k}" me duplicate names —`,h.duplicateNames[k]));
+    return DD;
+  }catch(e){console.warn('dropdowns failed:',e);return null;}
+}
+
+/* ── Filters ── */
+function buildFilterOptions(){
+  const st=document.getElementById('fStatus');
+  st.innerHTML='<option value="">All statuses</option>'+
+    STATUSES.map(d=>`<option value="${d.key}">${esc(d.label)}</option>`).join('');
+  const uniq=f=>[...new Set(RAW.map(f).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const fill=(id,label,vals)=>{document.getElementById(id).innerHTML=
+    `<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');};
+  fill('fTester','All testers',uniq(testerOf));
+  fill('fRM','All RMs',uniq(rmOf));
+  fill('fDev','All developers',uniq(devOf));
+}
+function applyFilters(){
+  const tn=document.getElementById('fTicket').value.trim().toLowerCase();
+  const lc=document.getElementById('fLic').value.trim().toLowerCase();
+  const sk=document.getElementById('fStatus').value;
+  const ts=document.getElementById('fTester').value, rm=document.getElementById('fRM').value, dv=document.getElementById('fDev').value;
+  VIEW=RAW.filter(r=>{
+    if(tn&&!String(r.n||'').toLowerCase().includes(tn)) return false;
+    if(lc&&!String(r.l||'').toLowerCase().includes(lc)) return false;
+    if(sk&&statusKeyOf(r)!==sk) return false;
+    if(ts&&testerOf(r)!==ts) return false;
+    if(rm&&rmOf(r)!==rm) return false;
+    if(dv&&devOf(r)!==dv) return false;
+    return true;
+  });
+  const on=[tn,lc,sk,ts,rm,dv].filter(Boolean).length;
+  document.getElementById('filterInfo').textContent=
+    on?`${fmt(VIEW.length)} of ${fmt(RAW.length)} tickets · ${on} filter${on>1?'s':''}`:`${fmt(RAW.length)} tickets`;
+  render();
+}
+function clearFilters(){
+  ['fTicket','fLic','fStatus','fTester','fRM','fDev'].forEach(id=>document.getElementById(id).value='');
+  VIEW=RAW.slice();document.getElementById('filterInfo').textContent=`${fmt(RAW.length)} tickets`;render();
+}
+
+/* ── Render ── */
+function render(){renderKPIs();renderAgents();}
+
+function renderKPIs(){
+  const now=new Date(), curL=MON[now.getMonth()], prevL=MON[(now.getMonth()+11)%12];
+  const by={}; STATUSES.forEach(d=>by[d.key]={t:0,cur:0,prev:0,older:0});
+  VIEW.forEach(r=>{const k=statusKeyOf(r);if(!by[k])return;by[k].t++;by[k][bucketOf(r)]++;});
+  document.getElementById('kpis').innerHTML=STATUSES.map(d=>{
+    const b=by[d.key];
+    return `<div class="kpi">
+      <div class="kpi-top" style="background:var(${d.c})"></div>
+      <div class="kpi-b">
+        <div class="kpi-s" style="color:var(${d.c})">${esc(d.label)}</div>
+        <div class="kpi-n">${fmt(b.t)}</div>
+        <div class="kpi-splits">
+          <div class="kpi-sp"><div class="l">${curL}</div><div class="v">${fmt(b.cur)}</div></div>
+          <div class="kpi-sp"><div class="l">${prevL}</div><div class="v">${fmt(b.prev)}</div></div>
+          <div class="kpi-sp"><div class="l">Older</div><div class="v">${fmt(b.older)}</div></div>
+        </div>
+      </div>
+      <div class="kpi-f">
+        <button class="lnk" onclick="openList('${d.key}')">🔍 View Details</button>
+        <button class="lnk" onclick="exportStatus('${d.key}')">↓ Excel</button>
+      </div></div>`;
+  }).join('');
+}
+
+/* Tester / Developer / RM sections — teeno ka shape same hai, isliye ek hi
+   builder. Har row par status-wise count + total, click par list modal. */
+function agentTable(getter,label){
+  const map=new Map();
+  VIEW.forEach(r=>{
+    const a=getter(r); if(!a) return;
+    if(!map.has(a)) map.set(a,{name:a,total:0,by:{}});
+    const e=map.get(a); e.total++;
+    const k=statusKeyOf(r); e.by[k]=(e.by[k]||0)+1;
+  });
+  const rows=[...map.values()].sort((a,b)=>b.total-a.total);
+  const cols=['pending','it','ack','ip','rft','rfu','sp','closed'];
+  const head=`<thead><tr><th>${esc(label)}</th><th class="r">Total</th>`+
+    cols.map(c=>`<th class="r">${esc(STATUSES.find(s=>s.key===c).label)}</th>`).join('')+`</tr></thead>`;
+  if(!rows.length) return head+`<tbody><tr><td colspan="${cols.length+2}"><div class="empty">Koi data nahi</div></td></tr></tbody>`;
+  const body=rows.map(e=>`<tr>
+     <td style="font-weight:600">${esc(e.name)}</td>
+     <td class="r"><span class="badge" style="cursor:pointer" data-agent-kind="${esc(label)}" data-agent-name="${esc(e.name)}">${fmt(e.total)}</span></td>
+     ${cols.map(c=>`<td class="r ${e.by[c]?'':'muted'}">${fmt(e.by[c]||0)}</td>`).join('')}
+   </tr>`).join('');
+  return head+`<tbody>${body}</tbody>`;
+}
+function renderAgents(){
+  document.getElementById('tblTester').innerHTML=agentTable(testerOf,'Tester');
+  document.getElementById('tblDev').innerHTML=agentTable(devOf,'Developer');
+  document.getElementById('tblRM').innerHTML=agentTable(rmOf,'RM');
+}
+
+/* ── Ticket list modal ── */
+/* Columns = BSS fields. `—` ka matlab: ye field cache me hai hi nahi
+   (JiraID, Sub-Problem Type) — ticket kholne par LIVE value dikhegi. */
+function listColumns(){
+  return [
+    /* data-attribute + event delegation, onclick me value interpolate NAHI.
+       Pehle `onclick="openEdit('${esc(r.n)}')"` tha — esc() apostrophe ko
+       &#39; kar deta hai, par browser attribute value ko DECODE karke JS
+       parse karta hai, to `MB - O'BRIEN` jaisa koi bhi naam handler tod deta
+       tha (SyntaxError, row click dead). Backslash bhi wahi karta tha. */
+    ['Ticket No',        r=>`<span class="tno" data-tno="${esc(r.n)}">${esc(r.n)}</span>`],
+    ['Created',          r=>esc(r.tc||'—')],
+    ['Current Status',   r=>esc(statusLabelOf(r))],
+    ['Timeline',         r=>esc(r.tld||'—')],
+    ['Disposition',      r=>esc(r.ld||'—')],
+    ['Main Disposition', r=>esc(r.mainDisp||'—')],
+    ['Problem Type',     r=>esc(r.probType||'—')],
+    ['Sub-Problem Type', r=>esc(r.subDisp||'—')],
+    ['Jira ID',          r=>r.jira?esc(r.jira):'<span class="muted" title="Cache me ye field nahi hai — ticket kholne par live value dikhegi">—</span>'],
+    ['Assign To (Tester)',r=>esc(testerOf(r)||'—')],
+    ['RM',               r=>esc(rmOf(r)||'—')],
+    ['Developer',        r=>esc(devOf(r)||'—')],
+    ['Client',           r=>esc(r.u||'—')],
+    ['License',          r=>esc(r.l||'—')],
+  ];
+}
+function renderList(rows,title){
+  LIST_ROWS=rows; LIST_TITLE=title;
+  document.getElementById('listTitle').textContent=title;
+  document.getElementById('listCount').textContent=`${fmt(rows.length)} tickets`;
+  const cols=listColumns();
+  const head=`<thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead>`;
+  const body=rows.length
+    ? rows.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}"><div class="empty">Koi ticket nahi</div></td></tr>`;
+  document.getElementById('tblList').innerHTML=head+`<tbody>${body}</tbody>`;
+  document.getElementById('ovList').classList.add('on');
+}
+function openList(key){
+  const d=STATUSES.find(x=>x.key===key);
+  renderList(VIEW.filter(r=>statusKeyOf(r)===key),`${d?d.label:key} — Ticket Details`);
+}
+function openAgentList(kind,name){
+  const g=kind==='Tester'?testerOf:kind==='Developer'?devOf:rmOf;
+  renderList(VIEW.filter(r=>g(r)===name),`${kind}: ${name} — Ticket Details`);
+}
+function closeList(){document.getElementById('ovList').classList.remove('on');}
+
+/* ── Edit modal ── */
+async function openEdit(ticketNo){
+  EDIT={ticketNo,raw:null,read:null,form:{}};
+  document.getElementById('edTicketNo').textContent=ticketNo;
+  document.getElementById('edStatus').textContent='';
+  document.getElementById('edSave').disabled=true;
+  document.getElementById('edBody').innerHTML='<div class="empty"><span class="spin"></span> Live ticket data load ho raha hai…</div>';
+  document.getElementById('ovEdit').classList.add('on');
+
+  if(!DD){ await loadDropdowns(); }
+  if(!DD){
+    document.getElementById('edBody').innerHTML=
+      '<div class="note err">Dropdown master load nahi hua. /api/bss-proxy reachable hai? Console dekho.</div>';
+    return;
+  }
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'ticket',ticketNo})});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+    EDIT.raw=j.ticket;
+    EDIT.read=bssReadTicket(j.ticket,DD);
+    /* Diagnostic: live response me kaun se BSS fields mile. Alias theek karne
+       ke liye — console me ek baar dekh lena kaafi hai. */
+    console.table(bssReadAudit(j.ticket));
+    renderEditForm();
+  }catch(e){
+    document.getElementById('edBody').innerHTML=
+      `<div class="note err"><b>Ticket load nahi hua:</b> ${esc(e.message||e)}</div>`;
+  }
+}
+function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
+
+function renderEditForm(){
+  const rd=EDIT.read, v=rd.values;
+  EDIT.form={};
+  bssSelectFields().forEach(f=>{ if(v[f.key]!=null) EDIT.form[f.key]=v[f.key]; });
+  ['timelineDate','jiraId','remarks','bssComment'].forEach(k=>{
+    if(v[k]!=null) EDIT.form[k]=k==='timelineDate'?String(v[k]).slice(0,10):String(v[k]);
+  });
+
+  let notes='';
+  if(!ME||!ME.bss_user_id)
+    notes+=`<div class="note err"><b>Update band hai.</b> Aapke account par BSS User ID map nahi hai.
+      Admin → Users me ise set karwao (BindDropDown ki Users list se). Tab tak sirf view kar sakte ho.</div>`;
+  if(rd.ambiguous.length)
+    notes+=`<div class="note warn"><b>Dhyan do:</b> ${rd.ambiguous.map(a=>
+      `"${esc(a.name)}" master list me ${a.ids.length} baar hai (IDs ${a.ids.join(', ')})`).join('; ')}.
+      In fields ko save karne se pehle KHUD dobara select karo — warna galat ID ja sakti hai.</div>`;
+  if(rd.missing.length)
+    notes+=`<div class="note info">Live response me ye fields nahi mile: <b>${rd.missing.map(esc).join(', ')}</b>.
+      Inhe khaali chhod doge to unchanged rahenge (payload me bheje hi nahi jaate).</div>`;
+
+  const cur=`<div class="note ok" style="background:var(--s2);border-color:var(--border2);color:var(--text2)">
+    <div class="kv">
+      <div class="k">Ticket No</div><div class="v mono">${esc(rd.values.ticketNo||EDIT.ticketNo)}</div>
+      <div class="k">Created</div><div class="v">${esc(rd.values.createdDate?String(rd.values.createdDate).slice(0,10):'—')}</div>
+      <div class="k">Current Status</div><div class="v">${esc(rd.values.currentStatus||'—')}</div>
+    </div></div>`;
+
+  const fields=BSS_CROSSWALK.map(f=>{
+    const val=EDIT.form[f.key];
+    if(f.type==='text'||f.type==='date'){
+      return `<div class="fld" id="fld-${f.key}">
+        <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+        <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
+               value="${esc(val==null?'':val)}" oninput="onFieldChange('${f.key}',this.value)">
+        <div class="e" id="er-${f.key}"></div></div>`;
+    }
+    return `<div class="fld" id="fld-${f.key}">
+      <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <select class="inp" id="in-${f.key}" onchange="onFieldChange('${f.key}',this.value)"></select>
+      ${f.type==='cascade'?`<div class="hint">${esc(bssField(f.parent).label)} pehle select karo</div>`:''}
+      <div class="e" id="er-${f.key}"></div></div>`;
+  }).join('');
+
+  document.getElementById('edBody').innerHTML=notes+cur+`<div class="fgrid">${fields}</div>`;
+  bssSelectFields().forEach(f=>fillSelect(f.key));
+  document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
+}
+
+function fillSelect(key){
+  const f=bssField(key), el=document.getElementById('in-'+key);
+  if(!el) return;
+  const opts=f.type==='cascade'
+    ? bssCascadeOptions(DD,key,EDIT.form[f.parent])
+    : bssOptions(DD,key);
+  const cur=EDIT.form[key];
+  /* Duplicate IDs (jaise AssignTo me 43 do baar) — dono dikhao, par value ek
+     hi hai. Chhupana galat hoga: user ko pata hona chahiye ki list me kya hai. */
+  el.innerHTML='<option value="">— select —</option>'+
+    opts.map((o,i)=>`<option value="${o.ID}" ${String(o.ID)===String(cur)&&opts.findIndex(x=>String(x.ID)===String(cur))===i?'selected':''}>${esc(o.Name)}</option>`).join('');
+  if(cur!=null&&!opts.some(o=>String(o.ID)===String(cur))){
+    /* Current value is list me nahi (cascade parent alag hai, ya master se hat
+       gaya). Silently drop karne ke bajaye dikhao — warna user ko lagega field
+       khali tha aur save par wo value ud jayegi. */
+    const nm=bssNameById(DD,key,cur);
+    el.insertAdjacentHTML('beforeend',`<option value="${esc(cur)}" selected>${esc(nm)} (current)</option>`);
+  }
+}
+function onFieldChange(key,val){
+  EDIT.form[key]=val===''?undefined:val;
+  /* Parent badla to children reset — warna invalid combo bach jayega */
+  BSS_CROSSWALK.filter(f=>f.parent===key).forEach(child=>{
+    EDIT.form[child.key]=undefined;
+    fillSelect(child.key);
+    BSS_CROSSWALK.filter(g=>g.parent===child.key).forEach(gc=>{EDIT.form[gc.key]=undefined;fillSelect(gc.key);});
+  });
+  const fl=document.getElementById('fld-'+key); if(fl) fl.classList.remove('err');
+}
+
+function showErrors(errs){
+  BSS_CROSSWALK.forEach(f=>{const e=document.getElementById('fld-'+f.key);if(e)e.classList.remove('err');});
+  errs.forEach(x=>{
+    const fl=document.getElementById('fld-'+x.field), er=document.getElementById('er-'+x.field);
+    if(fl)fl.classList.add('err'); if(er)er.textContent=x.msg;
+  });
+  const g=errs.filter(x=>!document.getElementById('fld-'+x.field));
+  if(g.length) toast(g[0].msg,6000);
+}
+
+async function submitUpdate(){
+  if(!EDIT) return;
+  const bssId=ME&&ME.bss_user_id;
+  const errs=bssValidate(EDIT.form,DD,bssId);
+  if(errs.length){showErrors(errs);toast('⚠️ '+errs.length+' field theek karo',4000);return;}
+  showErrors([]);
+
+  const btn=document.getElementById('edSave'), st=document.getElementById('edStatus');
+  btn.disabled=true; st.innerHTML='<span class="spin"></span> Updating…';
+  try{
+    const payload=bssBuildPayload(EDIT.form,EDIT.ticketNo,bssId);
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({
+        action:'update', payload,
+        before:EDIT.read?EDIT.read.values:null,
+        /* Cache patch: sirf wahi fields jo cache me dikhte hain. Status ka raw
+           label bhejte hain (st), kyunki KPI/list wahi padhte hain. */
+        cachePatch:{
+          st: bssNameById(DD,'subDisposition',EDIT.form.subDisposition)||undefined,
+          ld: bssNameById(DD,'disposition',EDIT.form.disposition)||undefined,
+          mainDisp: bssNameById(DD,'mainDisposition',EDIT.form.mainDisposition)||undefined,
+          probType: bssNameById(DD,'problemType',EDIT.form.problemType)||undefined,
+          subDisp: bssNameById(DD,'subProblemType',EDIT.form.subProblemType)||undefined,
+          assignto: bssNameById(DD,'assignedTo',EDIT.form.assignedTo)||undefined,
+          dev: bssNameById(DD,'developer',EDIT.form.developer)||undefined,
+          r: bssNameById(DD,'rm',EDIT.form.rm)||undefined,
+          tld: EDIT.form.timelineDate||undefined,
+        }
+      })});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+
+    st.textContent='';
+    toast('✅ '+EDIT.ticketNo+' update ho gaya'+(j.cache&&j.cache.patched?' (cache bhi)':''),4500);
+    if(j.cache&&!j.cache.patched)
+      console.warn('Cache patch nahi hua:',j.cache.reason,'— dashboard purana dikha sakta hai jab tak Refresh na karo.');
+
+    /* Local row bhi update karo taaki KPI/table turant sahi dikhe */
+    const patch=j.cache&&j.cache.patched?null:null;
+    const row=RAW.find(x=>x.n===EDIT.ticketNo);
+    if(row){
+      const s=bssNameById(DD,'subDisposition',EDIT.form.subDisposition); if(s) row.st=s;
+      const l=bssNameById(DD,'disposition',EDIT.form.disposition); if(l) row.ld=l;
+      const a=bssNameById(DD,'assignedTo',EDIT.form.assignedTo); if(a) row.assignto=a;
+      const dv=bssNameById(DD,'developer',EDIT.form.developer); if(dv) row.dev=dv;
+      const rr=bssNameById(DD,'rm',EDIT.form.rm); if(rr) row.r=rr;
+      if(EDIT.form.timelineDate) row.tld=EDIT.form.timelineDate;
+      delete row.sc;   /* st ab authoritative hai; purana short-code hata do */
+    }
+    closeEdit(); applyFilters();
+  }catch(e){
+    st.textContent='';
+    toast('❌ '+(e.message||e),8000);
+    console.error('update failed:',e);
+  }finally{
+    const b=document.getElementById('edSave'); if(b) b.disabled=!(ME&&ME.bss_user_id);
+  }
+}
+
+/* ── Refresh / export ── */
+async function refreshCache(){
+  toast('TAT ya Support Dashboard se "Refresh Data" chalao — wahi cache likhte hain.',6000);
+}
+function rowsToAOA(rows){
+  const cols=listColumns();
+  const head=cols.map(c=>c[0]);
+  const strip=h=>String(h).replace(/<[^>]*>/g,'').trim();
+  return [head].concat(rows.map(r=>cols.map(c=>strip(c[1](r)))));
+}
+function saveXLSX(rows,name){
+  if(!rows.length){toast('Export ke liye koi ticket nahi');return;}
+  const ws=XLSX.utils.aoa_to_sheet(rowsToAOA(rows));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tickets');
+  XLSX.writeFile(wb,name);
+}
+function exportList(){saveXLSX(LIST_ROWS,`bss_${LIST_TITLE.replace(/[^a-z0-9]+/gi,'_').slice(0,40)}.xlsx`);}
+function exportStatus(key){const d=STATUSES.find(x=>x.key===key);saveXLSX(VIEW.filter(r=>statusKeyOf(r)===key),`bss_${key}.xlsx`);}
+function exportAll(){saveXLSX(VIEW,'bss_all_tickets.xlsx');}
+
+/* ── Event delegation ──────────────────────────────────────────────────────
+ * Ticket no aur agent name inline onclick me NAHI jaate. Wo data-attributes
+ * me hain aur yahan padhe jaate hain. Isse quotes/backslash/HTML wale naam
+ * (jaise "Support agent's concern", O'Brien) handler nahi tod sakte —
+ * attribute value ko browser decode karta hai, to escaping se bacha nahi ja
+ * sakta tha. Delegation is poore class of bug ko khatam kar deta hai. */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tno]');
+  if(t){ openEdit(t.getAttribute('data-tno')); return; }
+  const a=e.target.closest('[data-agent-name]');
+  if(a){ openAgentList(a.getAttribute('data-agent-kind'),a.getAttribute('data-agent-name')); return; }
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(document.getElementById('ovEdit').classList.contains('on'))closeEdit();
+  else if(document.getElementById('ovList').classList.contains('on'))closeList();
+});
+init();
+</script>
+</body>
+</html>
