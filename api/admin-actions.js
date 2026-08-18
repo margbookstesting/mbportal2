@@ -116,7 +116,19 @@ module.exports = async function handler(req, res) {
         prefer: 'return=minimal',
         body: patch,
       });
-      if (!upd.ok) throw new Error(errMsg(upd.data, 'Update failed'));
+      if (!upd.ok) {
+        const raw = JSON.stringify(upd.data || '');
+        // PostgREST apne schema ko memory me cache karta hai. Migration chalne
+        // ke baad bhi cache purana ho to column "missing" dikhta hai. Generic
+        // "Update failed" se user ko pata hi nahi chalta ki karna kya hai.
+        if (/schema cache/i.test(raw) && /bss_user_id/i.test(raw))
+          throw new Error(
+            "The 'bss_user_id' column is not in PostgREST's schema cache. " +
+            "Either sql/2026-08-bss-dashboard.sql has not been run yet, or the cache is stale — " +
+            "run  NOTIFY pgrst, 'reload schema';  in the Supabase SQL Editor and try again."
+          );
+        throw new Error(errMsg(upd.data, 'Update failed'));
+      }
 
       const authUpdate = {};
       if (email) authUpdate.email = email;
