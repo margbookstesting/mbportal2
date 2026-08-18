@@ -21,7 +21,7 @@
 /* Cache payload schema version. Bump karo jab bhi field set badle.
  * api/ticket-cache.js isko validate karta hai; cacheLoad() purani rows par
  * warning deta hai. */
-var MB_SCHEMA_VERSION = 2;
+var MB_SCHEMA_VERSION = 3;
 
 /* Marg ticket API */
 var MB_API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail';
@@ -219,6 +219,35 @@ function mbParseTicket(r){
   }
   if(ld) rec.ld = ld;
 
+  /* ── CURRENT-STAGE DISPOSITION (cd) — schema v3 ──
+   * `ld` recognized-first walk hai: sirf 6 values (Bug / Bug Urgent /
+   * Development / Development Urgent / Improvement / Data Updation) leta hai,
+   * baaki SKIP karta hai. Wo Bug-vs-Dev analytics ke liye sahi hai.
+   *
+   * Par BSS UI ka "Disposition" dropdown ALAG cheez dikhata hai: ticket abhi
+   * jis stage par hai, USI stage ki disposition — chahe wo recognized ho ya
+   * na ho. Example (MB - 037392): status Acknowledge, Ack_Disp = "Future
+   * Development", TransferToIT_Disp = "Bug".
+   *     ld = "Bug"                 (recognized walk)
+   *     BSS UI = "Future Development"  (current stage)
+   * Isliye BSS Dashboard `ld` par bharosa nahi kar sakta — wo galat value
+   * dikhata aur user use overwrite kar deta.
+   *
+   * `cd` = current stage ki disposition, bina recognition filter ke.
+   * Current stage ki disp khali ho to reverse-chronological pehli non-empty
+   * (best-effort — modal waise bhi LIVE data se bharta hai). */
+  var cd = null;
+  var curKey = MB_STAGE_DISP_BY_SC[rec.sc];
+  if(curKey && r[curKey] && String(r[curKey]).trim()){
+    cd = String(r[curKey]).trim();
+  } else {
+    for(var z = 0; z < MB_DISP_FALLBACK_ORDER.length; z++){
+      var ck = MB_DISP_FALLBACK_ORDER[z];
+      if(r[ck] && String(r[ck]).trim()){ cd = String(r[ck]).trim(); break; }
+    }
+  }
+  if(cd) rec.cd = cd;
+
   /* Rakho agar koi bhi stage touch hua (main ya sub), ya status-only stage hai,
    * ya sirf ek status label carry karta hai (Pending/Reopen/Rejected na chhoote). */
   var statusOnlyOk = ['RS','RT','RU'].indexOf(rec.sc) >= 0;
@@ -330,7 +359,7 @@ async function mbGzipBase64(str){
     }
     return btoa(bin);
   } catch(e){
-    console.warn('gzip failed, uncompressed bhej rahe hain:', e);
+    console.warn('gzip failed, sending uncompressed:', e);
     return null;
   }
 }
@@ -339,7 +368,7 @@ async function mbCacheWrite(sbClient, opts){
   var res, out;
   var sess = await sbClient.auth.getSession();
   var token = sess && sess.data && sess.data.session ? sess.data.session.access_token : null;
-  if(!token) throw new Error('Session expired — sign in again');
+  if(!token) throw new Error('Session expired — please sign in again');
 
   var envelope = {
     writer:         opts.writer,
@@ -360,9 +389,9 @@ async function mbCacheWrite(sbClient, opts){
   var body = JSON.stringify(envelope);
   if(body.length > MB_MAX_BODY){
     throw new Error(
-      'Payload bahut bada (' + (body.length/1024/1024).toFixed(1) + 'MB' +
-      (gz ? ' compressed' : ' uncompressed — purana browser, gzip support nahi') +
-      '). Server limit ~4.5MB hai. Nightly job (GitHub Actions) se refresh karo.'
+      'Payload too large (' + (body.length/1024/1024).toFixed(1) + 'MB' +
+      (gz ? ' compressed' : ' uncompressed — this browser has no gzip support') +
+      '). The server limit is ~4.5MB. Use the nightly GitHub Actions job to refresh instead.'
     );
   }
 
@@ -374,4 +403,14 @@ async function mbCacheWrite(sbClient, opts){
   try { out = await res.json(); } catch(e) { out = { error: 'Server error (' + res.status + ')' }; }
   if(!res.ok || out.error) throw new Error(out.error || ('HTTP ' + res.status));
   return out;
+}
+
+/* Node (tests) ke liye export. Browser me `module` undefined hota hai, to
+ * ye block chalta hi nahi — page par sab kuch global hi rehta hai. */
+if(typeof module !== 'undefined' && module.exports){
+  module.exports = {
+    MB_SCHEMA_VERSION, MB_REQUIRED_FIELDS, MB_STATUS_MAP, MB_STAGE_DISP_BY_SC,
+    MB_DISP_FALLBACK_ORDER, MB_SUB_STAGES,
+    mbParseTicket, mbMergeCacheRows, mbIsRecognizedDisp, mbTATFlag, mbCompactTAT, mbParseDate,
+  };
 }

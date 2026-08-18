@@ -235,14 +235,14 @@ function bssValidate(form, dd, updatedByUser){
 
   if(!updatedByUser || !Number(updatedByUser))
     errors.push({ field:'updatedByUser',
-      msg:'Aapke account par BSS User ID map nahi hai. Admin → Users me ise set karwao, tab tak update nahi ho sakta.' });
+      msg:'Your account has no BSS User ID mapped. Ask an admin to set it in Admin → Users. Updates are disabled until then.' });
 
   BSS_CROSSWALK.forEach(function(f){
     var v = form[f.key];
     var empty = (v === undefined || v === null || v === '');
 
     if(f.required && empty){
-      errors.push({ field:f.key, msg:f.label + ' zaroori hai' });
+      errors.push({ field:f.key, msg:f.label + ' is required' });
       return;
     }
     if(empty) return;
@@ -250,7 +250,7 @@ function bssValidate(form, dd, updatedByUser){
     if(f.type === 'date'){
       var ds = String(v).trim();
       if(!/^\d{4}-\d{2}-\d{2}$/.test(ds)){
-        errors.push({ field:f.key, msg:f.label + ' ka format YYYY-MM-DD hona chahiye' });
+        errors.push({ field:f.key, msg:f.label + ' must be in YYYY-MM-DD format' });
         return;
       }
       /* Format sahi hone ka matlab date ka EXIST karna nahi. 2026-02-30 aur
@@ -259,14 +259,14 @@ function bssValidate(form, dd, updatedByUser){
       var pp = ds.split('-').map(Number);
       var dt = new Date(Date.UTC(pp[0], pp[1] - 1, pp[2]));
       if(dt.getUTCFullYear() !== pp[0] || dt.getUTCMonth() !== pp[1] - 1 || dt.getUTCDate() !== pp[2])
-        errors.push({ field:f.key, msg:f.label + ': ' + ds + ' aisi koi date hai hi nahi' });
+        errors.push({ field:f.key, msg:f.label + ': ' + ds + ' is not a real calendar date' });
       return;
     }
     if(f.type === 'text') return;
 
     /* select / cascade → ID us field ki APNI list me maujood ho */
     if(!/^\d+$/.test(String(v))){
-      errors.push({ field:f.key, msg:f.label + ' ki value numeric ID honi chahiye' });
+      errors.push({ field:f.key, msg:f.label + ' must be a numeric ID' });
       return;
     }
     if(dd){
@@ -277,10 +277,10 @@ function bssValidate(form, dd, updatedByUser){
         if(!ok){
           var pf = bssField(f.parent);
           errors.push({ field:f.key,
-            msg:f.label + ' is ' + (pf ? pf.label : f.parent) + ' ke andar valid nahi hai — dobara select karo' });
+            msg:f.label + ' is not valid under the selected ' + (pf ? pf.label : f.parent) + ' — please choose again' });
         }
       } else if(!bssOptionById(dd, f.key, v)){
-        errors.push({ field:f.key, msg:f.label + ' ki ID (' + v + ') master list me nahi mili' });
+        errors.push({ field:f.key, msg:f.label + ' ID (' + v + ') was not found in the master list' });
       }
     }
   });
@@ -300,32 +300,84 @@ function bssValidate(form, dd, updatedByUser){
  * `*Id` aliases isliye hain ki agar Marg read response me IDs bhi de de to
  * modal exact pre-select ho jaye (warna name→ID reverse karna padta hai, jo
  * duplicate names ki wajah se ambiguous hai). */
+/* CONFIRMED against a live GetMBTicketStatusDetail response for MB - 037392,
+ * cross-checked against the BSS UI screen for the same ticket.
+ *
+ * Read endpoint aur update payload ka naming ALAG hai — aur ye sirf swap nahi,
+ * SHIFT hai. Verified mapping:
+ *
+ *   BSS UI label      read field                update payload
+ *   ---------------------------------------------------------------
+ *   Main Disposition  MainDisposition           BSSMainDisposition
+ *   Problem Type      Problemtype               BSSProblemType
+ *   Sub-Problem Type  SubDisposition            BSSSubProblemType
+ *   Sub Disposition   Status                    Disposition
+ *   Disposition       <current stage>_Disp      SubDisposition
+ *
+ * "Disposition" ka koi dedicated read field NAHI hai — wo ticket jis stage par
+ * hai us stage ki disp hai (MB - 037392: status Acknowledge -> Ack_Disp =
+ * "Future Development"). Isliye neeche `disposition` ka koi alias nahi hai;
+ * use bssCurrentDisposition() derive karta hai. */
 var BSS_READ_ALIASES = {
   ticketNo:        ['TicketNo'],
   createdDate:     ['TicketCreatedDate'],
   currentStatus:   ['Status'],
   timelineDate:    ['TimeLineDate'],
-  subDisposition:  ['SubDisposition', 'Dispositions', 'CurrentDisposition'],
-  disposition:     ['BSSDisposition', 'MainDisposition', 'Disposition'],
-  mainDisposition: ['BSSMainDisposition', 'MainDisposition', 'SubDispositionName'],
-  problemType:     ['Problemtype', 'ProblemType', 'BSSProblemType'],
-  subProblemType:  ['SubProblemType', 'BSSSubProblemType', 'SubProblemTypeName'],
-  jiraId:          ['JiraID', 'JiraId', 'Jira_ID', 'JIRAID'],
-  assignedTo:      ['Assignto', 'AssignTo', 'AssignedTo'],
+
+  subDisposition:  ['Status'],              // UI "Sub Disposition" = ticket status
+  mainDisposition: ['MainDisposition'],
+  problemType:     ['Problemtype'],
+  subProblemType:  ['SubDisposition'],      // ⚠️ read `SubDisposition` = UI Sub-Problem Type
+
+  jiraId:          ['JiraID'],
+  assignedTo:      ['Assignto'],
   rm:              ['RM'],
   developer:       ['Developer'],
   remarks:         ['Remarks'],
-  bssComment:      ['BSSComment', 'BssComment'],
-
-  subDispositionId:  ['DispositionID', 'DispositionId'],
-  dispositionId:     ['SubDispositionID', 'SubDispositionId', 'BSSDispositionID'],
-  mainDispositionId: ['BSSMainDispositionID', 'MainDispositionID', 'SubdispositionID', 'Subdispositionid'],
-  problemTypeId:     ['BSSProblemTypeID', 'ProblemTypeID', 'ProblemTypeId'],
-  subProblemTypeId:  ['BSSSubProblemTypeID', 'SubProblemTypeID'],
-  assignedToId:      ['AssignedToID', 'AssignToID', 'AssigntoID'],
-  developerId:       ['DeveloperID', 'DeveloperId'],
-  rmId:              ['RMID', 'RmID', 'RMId'],
+  /* bssComment JAANBUJHKAR nahi hai — dekho bssReadTicket() ka note. */
 };
+
+/* Stage-wise disposition fields, reverse-chronological (baad ke stage pehle).
+ * assets/ticket-parser.js ke MB_DISP_FALLBACK_ORDER se match karta hai; page
+ * par wahi global pass hota hai, ye sirf standalone fallback hai. */
+var BSS_DISP_ORDER_FALLBACK = [
+  'RejectDisp','FutureDevelopmentDisp','ReopenDisp','TransferToSupportDisp',
+  'ReadyToGoLiveDisp','ReopendfromTesting_Disp','ReadyForUAT_Disp',
+  'ReadyForMerging_Disp','ReadyForCodeReview_Disp','ReadyForTesting_Disp',
+  'Inprogress_Disp','Ack_Disp','TransferToIT_Disp'
+];
+
+/* UI "Disposition" derive karo: ticket jis stage par hai, USI stage ki disp.
+ * Recognition filter NAHI lagate — parser ka `ld` sirf 6 recognized values
+ * leta hai, par BSS UI "Future Development" jaisi values bhi dikhata hai.
+ *
+ * stageMap / order page se aate hain (MB_STAGE_DISP_BY_SC / MB_DISP_FALLBACK_ORDER)
+ * taaki mapping duplicate na ho — wahi drift ka source banta hai. */
+function bssCurrentDisposition(raw, statusCode, stageMap, order){
+  if(!raw) return null;
+  var key = stageMap && statusCode ? stageMap[statusCode] : null;
+  if(key && raw[key] && String(raw[key]).trim()) return String(raw[key]).trim();
+  var list = order || BSS_DISP_ORDER_FALLBACK;
+  for(var i = 0; i < list.length; i++){
+    var v = raw[list[i]];
+    if(v && String(v).trim()) return String(v).trim();
+  }
+  return null;
+}
+
+/* Marg read me date DD-MM-YYYY aati hai ("29-08-2026"), par UpdateTicketStatus
+ * aur <input type="date"> dono YYYY-MM-DD maangte hain. Convert na karo to
+ * date field khali dikhega aur save par wo value ud jayegi. */
+function bssToISODate(v){
+  if(v === null || v === undefined) return null;
+  var t = String(v).trim();
+  if(!t || t.indexOf('1900-01-01') === 0) return null;
+  var m = t.match(/^(\d{2})-(\d{2})-(\d{4})$/);          // DD-MM-YYYY
+  if(m) return m[3] + '-' + m[2] + '-' + m[1];
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);               // YYYY-MM-DD (+ time)
+  if(m) return m[1] + '-' + m[2] + '-' + m[3];
+  return null;
+}
 
 function bssReadValue(raw, key){
   var aliases = BSS_READ_ALIASES[key] || [];
@@ -340,10 +392,10 @@ function bssReadValue(raw, key){
 /* Live raw record → modal ke liye normalized object.
  * IDs mile to unhe use karo; sirf name mila to reverse-lookup karo aur
  * ambiguous hone par flag karo (guess mat karo). */
-function bssReadTicket(raw, dd){
+function bssReadTicket(raw, dd, stageMap, dispOrder){
   var out = { values:{}, names:{}, resolved:{}, missing:[], ambiguous:[] };
 
-  ['ticketNo','createdDate','currentStatus','timelineDate','jiraId','remarks','bssComment']
+  ['ticketNo','createdDate','currentStatus','jiraId','remarks']
     .forEach(function(k){
       var r = bssReadValue(raw, k);
       out.values[k] = r.value;
@@ -351,14 +403,20 @@ function bssReadTicket(raw, dd){
       if(r.via === null) out.missing.push(k);
     });
 
+  /* Timeline date: DD-MM-YYYY -> YYYY-MM-DD */
+  var tl = bssReadValue(raw, 'timelineDate');
+  out.values.timelineDate = bssToISODate(tl.value);
+  out.resolved.timelineDate = tl.via;
+  if(out.values.timelineDate === null) out.missing.push('timelineDate');
+
+  /* BSS Comment JAANBUJHKAR blank rehta hai. Wo ek field nahi, append-only
+   * comment log hai — BSS UI me har update ek nayi Comments row banata hai.
+   * Pre-fill karne par har save duplicate comment bana deta. */
+  out.values.bssComment = null;
+  out.resolved.bssComment = null;
+
   bssSelectFields().forEach(function(f){
-    var idR = bssReadValue(raw, f.key + 'Id');
-    if(idR.value !== null){
-      out.values[f.key] = Number(idR.value);
-      out.resolved[f.key] = idR.via;
-      out.names[f.key] = bssNameById(dd, f.key, idR.value);
-      return;
-    }
+    if(f.key === 'disposition') return;   /* neeche derive hota hai */
     var nameR = bssReadValue(raw, f.key);
     if(nameR.value === null){ out.missing.push(f.key); out.values[f.key] = null; out.names[f.key] = ''; return; }
     out.names[f.key] = String(nameR.value).trim();
@@ -367,6 +425,21 @@ function bssReadTicket(raw, dd){
     out.values[f.key] = rev.id;
     if(rev.ambiguous) out.ambiguous.push({ field:f.key, name:String(nameR.value).trim(), ids:rev.matches.map(function(m){ return m.ID; }) });
   });
+
+  /* Disposition — current stage se derive (koi direct field nahi hai) */
+  var sc = null;
+  if(typeof MB_STATUS_MAP !== 'undefined' && raw && raw.Status)
+    sc = MB_STATUS_MAP[String(raw.Status).trim()] || null;
+  var dispName = bssCurrentDisposition(raw, sc, stageMap, dispOrder);
+  if(dispName === null){
+    out.values.disposition = null; out.names.disposition = ''; out.missing.push('disposition');
+  } else {
+    out.names.disposition = dispName;
+    out.resolved.disposition = 'derived from current stage';
+    var rv = bssIdByName(dd, 'disposition', dispName);
+    out.values.disposition = rv.id;
+    if(rv.ambiguous) out.ambiguous.push({ field:'disposition', name:dispName, ids:rv.matches.map(function(m){ return m.ID; }) });
+  }
 
   return out;
 }
@@ -388,5 +461,6 @@ if(typeof module !== 'undefined' && module.exports){
     bssField, bssSelectFields, bssOptions, bssCascadeOptions, bssOptionById,
     bssNameById, bssIdByName, bssDropdownHealth, bssBuildPayload, bssValidate,
     bssReadValue, bssReadTicket, bssReadAudit,
+    bssCurrentDisposition, bssToISODate, BSS_DISP_ORDER_FALLBACK,
   };
 }
