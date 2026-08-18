@@ -300,8 +300,15 @@ function bssValidate(form, dd, updatedByUser){
  * `*Id` aliases isliye hain ki agar Marg read response me IDs bhi de de to
  * modal exact pre-select ho jaye (warna name→ID reverse karna padta hai, jo
  * duplicate names ki wajah se ambiguous hai). */
-/* CONFIRMED against a live GetMBTicketStatusDetail response for MB - 037392,
- * cross-checked against the BSS UI screen for the same ticket.
+/* CONFIRMED against live GetMBTicketStatusDetail responses for MB - 037392 AND
+ * MB - 036741, each cross-checked against the BSS UI screen for that ticket.
+ *
+ * MB - 036741 ne decide kiya (037392 par dono naam same the, isliye us se
+ * farak pata nahi chalta tha):
+ *     BSS UI  Problem Type     = "Invoice Template"          -> read SubDisposition
+ *     BSS UI  Sub-Problem Type = "Exta page printing issue"  -> read Problemtype
+ * Proof: "Exta page printing issue" master data me SIRF SubProblemTypeMargBook
+ * me hai (ID 3082, parent 801), aur chain 98 -> 801 -> 3082 valid banti hai.
  *
  * Read endpoint aur update payload ka naming ALAG hai — aur ye sirf swap nahi,
  * SHIFT hai. Verified mapping:
@@ -309,8 +316,8 @@ function bssValidate(form, dd, updatedByUser){
  *   BSS UI label      read field                update payload
  *   ---------------------------------------------------------------
  *   Main Disposition  MainDisposition           BSSMainDisposition
- *   Problem Type      Problemtype               BSSProblemType
- *   Sub-Problem Type  SubDisposition            BSSSubProblemType
+ *   Problem Type      SubDisposition            BSSProblemType
+ *   Sub-Problem Type  Problemtype               BSSSubProblemType
  *   Sub Disposition   Status                    Disposition
  *   Disposition       <current stage>_Disp      SubDisposition
  *
@@ -326,8 +333,10 @@ var BSS_READ_ALIASES = {
 
   subDisposition:  ['Status'],              // UI "Sub Disposition" = ticket status
   mainDisposition: ['MainDisposition'],
-  problemType:     ['Problemtype'],
-  subProblemType:  ['SubDisposition'],      // ⚠️ read `SubDisposition` = UI Sub-Problem Type
+  problemType:     ['SubDisposition'],      // ⚠️ read `SubDisposition` = UI Problem Type
+  subProblemType:  ['Problemtype'],         // ⚠️ read `Problemtype`    = UI Sub-Problem Type
+
+  description:     ['Description'],         // read-only, update endpoint me hai hi nahi
 
   jiraId:          ['JiraID'],
   assignedTo:      ['Assignto'],
@@ -393,14 +402,23 @@ function bssReadValue(raw, key){
  * IDs mile to unhe use karo; sirf name mila to reverse-lookup karo aur
  * ambiguous hone par flag karo (guess mat karo). */
 function bssReadTicket(raw, dd, stageMap, dispOrder){
-  var out = { values:{}, names:{}, resolved:{}, missing:[], ambiguous:[] };
+  /* missing        = read response me field aaya hi nahi
+   * unresolved     = value AAYI par master list me match nahi hui
+   * parentMismatch = value resolve to hui, par uska parent selected parent se
+   *                  match nahi karta (cascade toot jayega)
+   *
+   * `unresolved` pehle nahi tha — us case me field chup-chaap blank ho jata
+   * tha aur user ko lagta ki BSS me kuch set hi nahi hai. Ab dono alag hain. */
+  var out = { values:{}, names:{}, resolved:{}, missing:[], unresolved:[], parentMismatch:[], ambiguous:[] };
 
-  ['ticketNo','createdDate','currentStatus','jiraId','remarks']
+  ['ticketNo','createdDate','currentStatus','jiraId','remarks','description']
     .forEach(function(k){
       var r = bssReadValue(raw, k);
       out.values[k] = r.value;
       out.resolved[k] = r.via;
-      if(r.via === null) out.missing.push(k);
+      /* description read-only hai (update endpoint me hai hi nahi), isliye
+         "missing" report karna bekaar shor hoga. */
+      if(r.via === null && k !== 'description') out.missing.push(k);
     });
 
   /* Timeline date: DD-MM-YYYY -> YYYY-MM-DD */
@@ -424,6 +442,28 @@ function bssReadTicket(raw, dd, stageMap, dispOrder){
     var rev = bssIdByName(dd, f.key, nameR.value);
     out.values[f.key] = rev.id;
     if(rev.ambiguous) out.ambiguous.push({ field:f.key, name:String(nameR.value).trim(), ids:rev.matches.map(function(m){ return m.ID; }) });
+    if(rev.id === null)
+      out.unresolved.push({ field:f.key, label:f.label, name:String(nameR.value).trim(), list:f.list, via:nameR.via });
+  });
+
+  /* Cascade sanity: child ka parent, parent field ki value se match karta hai? */
+  BSS_CROSSWALK.forEach(function(f){
+    if(f.type !== 'cascade') return;
+    var childId = out.values[f.key], parentId = out.values[f.parent];
+    if(childId === null || childId === undefined) return;
+    var opt = bssOptionById(dd, f.key, childId);
+    if(!opt) return;
+    var actual = opt[f.parentKey];
+    if(parentId === null || parentId === undefined || Number(actual) !== Number(parentId)){
+      var pf = bssField(f.parent);
+      out.parentMismatch.push({
+        field:f.key, label:f.label, name:String(opt.Name).trim(),
+        parentLabel: pf ? pf.label : f.parent,
+        expected: parentId === null || parentId === undefined ? null : Number(parentId),
+        actual: actual === null || actual === undefined ? null : Number(actual),
+        actualParentName: pf ? bssNameById(dd, f.parent, actual) : String(actual),
+      });
+    }
   });
 
   /* Disposition — current stage se derive (koi direct field nahi hai) */
