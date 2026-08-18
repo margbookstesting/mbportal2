@@ -133,8 +133,8 @@ th.r,td.r{text-align:right}
 /* ── Modals ── */
 .ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
 .ov.on{display:flex}
-.mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
-.mdl.sm{max-width:820px}
+.mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.mdl.sm{max-width:1080px}
 .mdl-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
 .mdl-t{font-size:15px;font-weight:700}
 .mdl-b{overflow:auto;padding:0}
@@ -159,6 +159,11 @@ th.r,td.r{text-align:right}
 .kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
 .kv .k{color:var(--muted);font-weight:600}
 .kv .v{color:var(--text);font-weight:500;word-break:break-word}
+.desc-box{
+  white-space:pre-wrap;line-height:1.55;max-height:150px;overflow:auto;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);
+  padding:8px 10px;font-weight:400;font-size:11.5px;color:var(--text2);
+}
 .spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .empty{padding:44px 20px;text-align:center;color:var(--muted)}
@@ -538,8 +543,12 @@ function listColumns(){
         ld="Bug" jabki BSS UI "Future Development" dikhata hai. */
     ['Disposition',      r=>r.cd?esc(r.cd):'<span class="muted" title="Not in cache yet — refresh the cache (schema v3) or open the ticket for the live value">—</span>'],
     ['Main Disposition', r=>esc(r.mainDisp||'—')],
-    ['Problem Type',     r=>esc(r.probType||'—')],
-    ['Sub-Problem Type', r=>esc(r.subDisp||'—')],
+    /* Parser raw keys store karta hai: subDisp = r.SubDisposition,
+       probType = r.Problemtype. Live data (MB - 036741) se confirmed:
+       SubDisposition = UI "Problem Type", Problemtype = UI "Sub-Problem Type".
+       Isliye ye jodi ULTI lagti hai par sahi hai. */
+    ['Problem Type',     r=>esc(r.subDisp||'—')],
+    ['Sub-Problem Type', r=>esc(r.probType||'—')],
     ['Jira ID',          r=>r.jira?esc(r.jira):'<span class="muted" title="Not stored in the cache — open the ticket to see the live value">—</span>'],
     ['Assign To (Tester)',r=>esc(testerOf(r)||'—')],
     ['RM',               r=>esc(rmOf(r)||'—')],
@@ -637,15 +646,42 @@ function renderEditForm(){
     notes+=`<div class="note warn"><b>Heads up:</b> ${rd.ambiguous.map(a=>
       `"${esc(a.name)}" appears ${a.ids.length} times in the master list (IDs ${a.ids.join(', ')})`).join('; ')}.
       Please re-select these fields yourself before saving, otherwise the wrong ID may be sent.</div>`;
-  if(rd.missing.length)
-    notes+=`<div class="note info">These fields were not returned by the live response: <b>${rd.missing.map(esc).join(', ')}</b>.
-      Leaving them blank keeps them unchanged (blank fields are not sent).</div>`;
+  /* "These fields were not returned…" note hata diya gaya hai. Live data se
+     confirm hua ki wo fields BSS me genuinely KHALI hote hain (MB - 036741:
+     Assignto/Developer/RM/JiraID/Remarks sab ""), to har ticket par ek warning
+     dikhana sirf shor tha. Asli problems (unresolved value, cascade mismatch)
+     neeche alag se report hoti hain. rd.missing ab bhi console audit me hai. */
 
+  /* Value AAYI par master list me match nahi hui. Pehle ye chup-chaap blank ho
+     jata tha aur dikhta tha jaise BSS me kuch set hi nahi hai. */
+  if(rd.unresolved.length)
+    notes+=`<div class="note warn"><b>Could not match these to the dropdown master:</b>
+      ${rd.unresolved.map(u=>`<b>${esc(u.label)}</b> = "${esc(u.name)}" (not found in <code>${esc(u.list)}</code>)`).join('; ')}.
+      BSS has a value here but it is not in the current master list, so the field shows blank.
+      Pick the correct option before saving, or leave the whole field alone.</div>`;
+
+  /* Cascade parent mismatch — child ki value valid hai par doosre parent ke
+     neeche. Aise me child dropdown khali dikhega aur wajah pata nahi chalti. */
+  if(rd.parentMismatch.length)
+    notes+=`<div class="note warn"><b>Cascade mismatch:</b>
+      ${rd.parentMismatch.map(m=>`<b>${esc(m.label)}</b> = "${esc(m.name)}" belongs to ${esc(m.parentLabel)}
+        "${esc(m.actualParentName||'—')}", not the one currently selected`).join('; ')}.
+      BSS stores it this way, but the two dropdowns disagree — re-select ${esc(rd.parentMismatch[0].parentLabel)}
+      and the fields under it before saving.</div>`;
+
+  /* Description read-only hai — UpdateTicketStatus me ye field hai hi nahi.
+     Par update karne wale ko ticket ka context chahiye, isliye yahan dikha
+     rahe hain. Lamba ho sakta hai, to scroll ke saath. */
+  const desc = rd.values.description ? String(rd.values.description).trim() : '';
   const cur=`<div class="note ok" style="background:var(--s2);border-color:var(--border2);color:var(--text2)">
     <div class="kv">
       <div class="k">Ticket No</div><div class="v mono">${esc(rd.values.ticketNo||EDIT.ticketNo)}</div>
       <div class="k">Created</div><div class="v">${esc(rd.values.createdDate?String(rd.values.createdDate).slice(0,10):'—')}</div>
       <div class="k">Current Status</div><div class="v">${esc(rd.values.currentStatus||'—')}</div>
+      <div class="k">Description</div>
+      <div class="v">${desc
+        ? `<div class="desc-box">${esc(desc)}</div>`
+        : '<span style="color:var(--muted2)">—</span>'}</div>
     </div></div>`;
 
   const fields=BSS_CROSSWALK.map(f=>{

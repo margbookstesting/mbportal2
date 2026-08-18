@@ -283,19 +283,36 @@ jata hai; kuch todta nahi.
 
 ## Read vs Update naming — CONFIRMED
 
-Live response (MB - 037392) aur BSS UI screen dono se verify kiya. Ye sirf swap
+Do tickets ke live response + unke BSS UI screen se verify kiya. Ye sirf swap
 nahi, **shift** hai — naam par bharosa mat karna:
 
 | BSS UI label | read field | update payload | BindDropDown list |
 |---|---|---|---|
 | Main Disposition | `MainDisposition` | `BSSMainDisposition` | `SubDispostion` |
-| Problem Type | `Problemtype` | `BSSProblemType` | `ProblemTypeMargBook` |
-| Sub-Problem Type | `SubDisposition` | `BSSSubProblemType` | `SubProblemTypeMargBook` |
+| Problem Type | `SubDisposition` | `BSSProblemType` | `ProblemTypeMargBook` |
+| Sub-Problem Type | `Problemtype` | `BSSSubProblemType` | `SubProblemTypeMargBook` |
 | Sub Disposition | `Status` | `Disposition` | `Dispostion` |
 | Disposition | *(current stage ka `*_Disp`)* | `SubDisposition` | `BSSDisposition` |
 
 Mapping sirf `assets/bss-fields.js` ke `BSS_CROSSWALK` + `BSS_READ_ALIASES` me
 hai. Kahin inline mat karna.
+
+**Problem Type / Sub-Problem Type kaise decide hua:** MB - 037392 par dono ka
+naam same tha ("REFRESH DASHBOARD"), isliye us se farak pata nahi chalta tha.
+MB - 036741 ne decide kiya —
+```
+BSS UI   Problem Type     = "Invoice Template"
+         Sub-Problem Type = "Exta page printing issue"
+read     SubDisposition   = "Invoice Template "
+         Problemtype      = "Exta page printing issue "
+```
+"Exta page printing issue" master data me SIRF `SubProblemTypeMargBook` me hai
+(ID 3082, parent 801), aur chain 98 -> 801 -> 3082 valid banti hai. Naam dekh kar
+`Problemtype` -> "Problem Type" maan lena GALAT hai.
+
+⚠️ Parser ke keys raw API naam se aate hain, isliye ye jodi ULTI lagti hai par
+sahi hai: `rec.subDisp` (= `SubDisposition`) me **Problem Type** hota hai, aur
+`rec.probType` (= `Problemtype`) me **Sub-Problem Type**.
 
 ## Aur do behaviours
 
