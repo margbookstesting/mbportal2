@@ -150,6 +150,40 @@ function bssIdByName(dd, key, name){
   return out;
 }
 
+/* Cascade field ka naam PARENT ke andar dhoondho, poori list me nahi.
+ * Master data me ek hi naam kai parents ke neeche repeat hota hai — jaise
+ * "Exta page printing issue " teen baar:
+ *     ID 3078 -> parent 609 (Template Management)
+ *     ID 3082 -> parent 801 (Invoice Template)
+ *     ID 3086 -> parent 802 (Invoice Designer)
+ * Global lookup teeno match karta tha aur "ambiguous" flag kar deta tha, jabki
+ * parent pata hone par jawab bilkul unique hai. Isliye pehle scoped lookup. */
+function bssIdByNameInParent(dd, key, name, parentId){
+  var out = { id:null, ambiguous:false, matches:[], scoped:true };
+  var f = bssField(key);
+  if(!f || f.type !== 'cascade') return bssIdByName(dd, key, name);
+  if(name === null || name === undefined) return out;
+  var want = String(name).trim().toLowerCase();
+  if(!want) return out;
+
+  var opts = bssCascadeOptions(dd, key, parentId);
+  for(var i = 0; i < opts.length; i++){
+    if(opts[i] && String(opts[i].Name).trim().toLowerCase() === want) out.matches.push(opts[i]);
+  }
+  if(out.matches.length === 1){ out.id = Number(out.matches[0].ID); return out; }
+  if(out.matches.length > 1){
+    /* Ek hi parent ke neeche do same naam — ye Marg master data ka issue hai,
+     * yahan guess karna theek nahi. */
+    out.ambiguous = true;
+    return out;
+  }
+  /* Is parent ke neeche mila hi nahi — global try karo, taaki neeche
+   * parentMismatch use pakad kar user ko wajah bata sake. */
+  var g = bssIdByName(dd, key, name);
+  g.scoped = false;
+  return g;
+}
+
 /* ── DROPDOWN HEALTH ──────────────────────────────────────────────────────
  * Master data me cascade toota hua hai: kuch ProblemType aise parent ko refer
  * karte hain jo SubDispostion list me hai hi nahi — wo cascade se kabhi
@@ -433,18 +467,28 @@ function bssReadTicket(raw, dd, stageMap, dispOrder){
   out.values.bssComment = null;
   out.resolved.bssComment = null;
 
-  bssSelectFields().forEach(function(f){
+  /* DO PASS. Cascade child ko resolve karne ke liye uska parent PEHLE resolve
+   * hona chahiye — warna scoping possible hi nahi. Pass 1: non-cascade.
+   * Pass 2: cascade, crosswalk order me (parent hamesha child se pehle hai). */
+  function resolveField(f, scoped){
     if(f.key === 'disposition') return;   /* neeche derive hota hai */
     var nameR = bssReadValue(raw, f.key);
     if(nameR.value === null){ out.missing.push(f.key); out.values[f.key] = null; out.names[f.key] = ''; return; }
     out.names[f.key] = String(nameR.value).trim();
     out.resolved[f.key] = nameR.via;
-    var rev = bssIdByName(dd, f.key, nameR.value);
+
+    var rev = scoped
+      ? bssIdByNameInParent(dd, f.key, nameR.value, out.values[f.parent])
+      : bssIdByName(dd, f.key, nameR.value);
+
     out.values[f.key] = rev.id;
     if(rev.ambiguous) out.ambiguous.push({ field:f.key, name:String(nameR.value).trim(), ids:rev.matches.map(function(m){ return m.ID; }) });
     if(rev.id === null)
       out.unresolved.push({ field:f.key, label:f.label, name:String(nameR.value).trim(), list:f.list, via:nameR.via });
-  });
+  }
+
+  bssSelectFields().forEach(function(f){ if(f.type !== 'cascade') resolveField(f, false); });
+  bssSelectFields().forEach(function(f){ if(f.type === 'cascade') resolveField(f, true);  });
 
   /* Cascade sanity: child ka parent, parent field ki value se match karta hai? */
   BSS_CROSSWALK.forEach(function(f){
@@ -501,6 +545,6 @@ if(typeof module !== 'undefined' && module.exports){
     bssField, bssSelectFields, bssOptions, bssCascadeOptions, bssOptionById,
     bssNameById, bssIdByName, bssDropdownHealth, bssBuildPayload, bssValidate,
     bssReadValue, bssReadTicket, bssReadAudit,
-    bssCurrentDisposition, bssToISODate, BSS_DISP_ORDER_FALLBACK,
+    bssCurrentDisposition, bssToISODate, BSS_DISP_ORDER_FALLBACK, bssIdByNameInParent,
   };
 }
