@@ -10,14 +10,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- SHARED SUPERSET TICKET PARSER — single source of truth (see file header) -->
-<script src="/assets/ticket-parser.js?v=2"></script>
+<script src="/assets/ticket-parser.js?v=3"></script>
 <!-- BSS FIELD CROSSWALK — Disposition/SubDisposition swap yahin handle hota hai -->
 <script src="/assets/bss-fields.js?v=1"></script>
 <script>
 if(typeof mbParseTicket !== 'function')
-  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega.');
+  console.error('assets/ticket-parser.js failed to load — the dashboard will not work correctly.');
 if(typeof bssBuildPayload !== 'function')
-  console.error('assets/bss-fields.js load nahi hua — update form kaam nahi karega.');
+  console.error('assets/bss-fields.js failed to load — the update form will not work.');
 </script>
 <!-- AUTH GUARD: login + per-dashboard permission -->
 <script>
@@ -342,7 +342,7 @@ async function cacheLoad(){
     if(!data||!data.length) return null;
     const m=mbMergeCacheRows(data);
     if(m.minSchema<MB_SCHEMA_VERSION)
-      console.warn(`ticket_cache purane schema me hai (v${m.minSchema}) — Refresh Data chalao.`);
+      console.warn(`ticket_cache is on an older schema (v${m.minSchema}) — run Refresh Data.`);
     return m.tickets.length?m:null;
   }catch(e){console.warn('cacheLoad failed:',e);return null;}
 }
@@ -355,7 +355,7 @@ async function init(){
   }
   const c=await cacheLoad();
   if(!c){document.getElementById('metaTxt').textContent='No cached data';
-    document.getElementById('kpis').innerHTML='<div class="empty">Cache khali hai — "↺ Refresh Data" dabao.</div>';return;}
+    document.getElementById('kpis').innerHTML='<div class="empty">Cache is empty — click “↺ Refresh Data”.</div>';return;}
   RAW=c.tickets; VIEW=RAW.slice();
   const ts=c.fetchedAt?new Date(c.fetchedAt):null;
   document.getElementById('metaTxt').textContent=
@@ -389,8 +389,8 @@ async function loadDropdowns(force){
        me saaf batana. */
     const h=bssDropdownHealth(DD);
     if(h.orphanParents.length)
-      console.warn(`BindDropDown: ${h.orphanProblemTypes} Problem Types ke parent (${h.orphanParents.join(', ')}) Main Disposition list me nahi hain — wo cascade me nahi dikhenge. Marg master data ka issue hai.`);
-    Object.keys(h.duplicateNames||{}).forEach(k=>console.warn(`BindDropDown: "${k}" me duplicate names —`,h.duplicateNames[k]));
+      console.warn(`BindDropDown: ${h.orphanProblemTypes} Problem Types reference parents (${h.orphanParents.join(', ')}) that are missing from the Main Disposition list — they will not appear in the cascade. This is a Marg master-data issue.`);
+    Object.keys(h.duplicateNames||{}).forEach(k=>console.warn(`BindDropDown: duplicate names in "${k}" —`,h.duplicateNames[k]));
     return DD;
   }catch(e){console.warn('dropdowns failed:',e);return null;}
 }
@@ -481,10 +481,10 @@ function agentTable(getter,label){
 
   const head=`<thead><tr><th>${esc(label)}</th><th class="r">Total</th>`+
     cols.map(c=>`<th class="r">${esc(STATUSES.find(s=>s.key===c).label)}</th>`).join('')+
-    `<th class="r" title="Baaki saare statuses: Reopen, Reopend from Testing, Code Review, Merging, Return to Support, Future Development, Rejected">Other</th></tr></thead>`;
+    `<th class="r" title="All remaining statuses: Reopen, Reopend from Testing, Code Review, Merging, Return to Support, Future Development, Rejected">Other</th></tr></thead>`;
 
   const span=cols.length+3;
-  if(!rows.length) return head+`<tbody><tr><td colspan="${span}"><div class="empty">Koi data nahi</div></td></tr></tbody>`;
+  if(!rows.length) return head+`<tbody><tr><td colspan="${span}"><div class="empty">No data</div></td></tr></tbody>`;
 
   const body=rows.map(e=>{
     const oth=otherOf(e);
@@ -533,11 +533,14 @@ function listColumns(){
     ['Created',          r=>esc(r.tc||'—')],
     ['Current Status',   r=>esc(statusLabelOf(r))],
     ['Timeline',         r=>esc(r.tld||'—')],
-    ['Disposition',      r=>esc(r.ld||'—')],
+    /* BSS UI ka "Disposition" = current stage ki disposition (`cd`, schema v3),
+        NOT `ld`. `ld` sirf 6 recognized values leta hai — MB - 037392 par
+        ld="Bug" jabki BSS UI "Future Development" dikhata hai. */
+    ['Disposition',      r=>r.cd?esc(r.cd):'<span class="muted" title="Not in cache yet — refresh the cache (schema v3) or open the ticket for the live value">—</span>'],
     ['Main Disposition', r=>esc(r.mainDisp||'—')],
     ['Problem Type',     r=>esc(r.probType||'—')],
     ['Sub-Problem Type', r=>esc(r.subDisp||'—')],
-    ['Jira ID',          r=>r.jira?esc(r.jira):'<span class="muted" title="Cache me ye field nahi hai — ticket kholne par live value dikhegi">—</span>'],
+    ['Jira ID',          r=>r.jira?esc(r.jira):'<span class="muted" title="Not stored in the cache — open the ticket to see the live value">—</span>'],
     ['Assign To (Tester)',r=>esc(testerOf(r)||'—')],
     ['RM',               r=>esc(rmOf(r)||'—')],
     ['Developer',        r=>esc(devOf(r)||'—')],
@@ -553,7 +556,7 @@ function renderList(rows,title){
   const head=`<thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead>`;
   const body=rows.length
     ? rows.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join('')}</tr>`).join('')
-    : `<tr><td colspan="${cols.length}"><div class="empty">Koi ticket nahi</div></td></tr>`;
+    : `<tr><td colspan="${cols.length}"><div class="empty">No tickets</div></td></tr>`;
   document.getElementById('tblList').innerHTML=head+`<tbody>${body}</tbody>`;
   document.getElementById('ovList').classList.add('on');
 }
@@ -573,26 +576,26 @@ async function openEdit(ticketNo){
   document.getElementById('edTicketNo').textContent=ticketNo;
   document.getElementById('edStatus').textContent='';
   document.getElementById('edSave').disabled=true;
-  document.getElementById('edBody').innerHTML='<div class="empty"><span class="spin"></span> Live ticket data load ho raha hai…</div>';
+  document.getElementById('edBody').innerHTML='<div class="empty"><span class="spin"></span> Loading live ticket data…</div>';
   document.getElementById('ovEdit').classList.add('on');
 
   if(!DD){ await loadDropdowns(); }
   if(!DD){
     /* Server ne jo bataya wahi dikhao, aur uske hisaab se next step. */
-    const msg = DD_ERR || 'Pata nahi chala (network?)';
+    const msg = DD_ERR || 'Unknown error (network?)';
     let fix = '';
     if(/migration|bss_user_id/i.test(msg))
-      fix = 'Supabase SQL Editor me <b>sql/2026-08-bss-dashboard.sql</b> chalao.';
+      fix = 'Run <b>sql/2026-08-bss-dashboard.sql</b> in the Supabase SQL Editor.';
     else if(/access nahi|permission/i.test(msg))
-      fix = 'Admin → Users → apne user par <b>BSS Dashboard</b> permission tick karwao.';
+      fix = 'Ask an admin to tick the <b>BSS Dashboard</b> permission in Admin → Users.';
     else if(/profile/i.test(msg))
-      fix = 'Admin se apna user record <b>public.users</b> me banwao.';
+      fix = 'Ask an admin to create your user record in <b>public.users</b>.';
     else if(/not configured|MARG_LOGIN/i.test(msg))
-      fix = 'Vercel me <b>MARG_LOGIN_EMAIL</b> / <b>MARG_LOGIN_PASSWORD</b> env vars set karo.';
+      fix = 'Set the <b>MARG_LOGIN_EMAIL</b> / <b>MARG_LOGIN_PASSWORD</b> env vars in Vercel.';
     else
-      fix = '/api/bss-proxy deploy ho chuka hai? Network tab me response dekho.';
+      fix = 'Is /api/bss-proxy deployed? Check the response in the Network tab.';
     document.getElementById('edBody').innerHTML=
-      `<div class="note err"><b>Dropdown master load nahi hua.</b><br>
+      `<div class="note err"><b>Could not load the dropdown master.</b><br>
          <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${esc(msg)}</span><br><br>${fix}</div>`;
     return;
   }
@@ -604,14 +607,16 @@ async function openEdit(ticketNo){
     const j=await r.json();
     if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
     EDIT.raw=j.ticket;
-    EDIT.read=bssReadTicket(j.ticket,DD);
+    /* Stage maps parser se pass kar rahe hain — bss-fields.js me duplicate
+       nahi karte, warna wahi drift ka bug wapas aa jayega. */
+    EDIT.read=bssReadTicket(j.ticket,DD,MB_STAGE_DISP_BY_SC,MB_DISP_FALLBACK_ORDER);
     /* Diagnostic: live response me kaun se BSS fields mile. Alias theek karne
        ke liye — console me ek baar dekh lena kaafi hai. */
     console.table(bssReadAudit(j.ticket));
     renderEditForm();
   }catch(e){
     document.getElementById('edBody').innerHTML=
-      `<div class="note err"><b>Ticket load nahi hua:</b> ${esc(e.message||e)}</div>`;
+      `<div class="note err"><b>Could not load ticket:</b> ${esc(e.message||e)}</div>`;
   }
 }
 function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
@@ -626,15 +631,15 @@ function renderEditForm(){
 
   let notes='';
   if(!ME||!ME.bss_user_id)
-    notes+=`<div class="note err"><b>Update band hai.</b> Aapke account par BSS User ID map nahi hai.
-      Admin → Users me ise set karwao (BindDropDown ki Users list se). Tab tak sirf view kar sakte ho.</div>`;
+    notes+=`<div class="note err"><b>Updates are disabled.</b> Your account has no BSS User ID mapped.
+      Ask an admin to set it in Admin → Users (from the BindDropDown Users list). Until then this is view-only.</div>`;
   if(rd.ambiguous.length)
-    notes+=`<div class="note warn"><b>Dhyan do:</b> ${rd.ambiguous.map(a=>
-      `"${esc(a.name)}" master list me ${a.ids.length} baar hai (IDs ${a.ids.join(', ')})`).join('; ')}.
-      In fields ko save karne se pehle KHUD dobara select karo — warna galat ID ja sakti hai.</div>`;
+    notes+=`<div class="note warn"><b>Heads up:</b> ${rd.ambiguous.map(a=>
+      `"${esc(a.name)}" appears ${a.ids.length} times in the master list (IDs ${a.ids.join(', ')})`).join('; ')}.
+      Please re-select these fields yourself before saving, otherwise the wrong ID may be sent.</div>`;
   if(rd.missing.length)
-    notes+=`<div class="note info">Live response me ye fields nahi mile: <b>${rd.missing.map(esc).join(', ')}</b>.
-      Inhe khaali chhod doge to unchanged rahenge (payload me bheje hi nahi jaate).</div>`;
+    notes+=`<div class="note info">These fields were not returned by the live response: <b>${rd.missing.map(esc).join(', ')}</b>.
+      Leaving them blank keeps them unchanged (blank fields are not sent).</div>`;
 
   const cur=`<div class="note ok" style="background:var(--s2);border-color:var(--border2);color:var(--text2)">
     <div class="kv">
@@ -655,7 +660,8 @@ function renderEditForm(){
     return `<div class="fld" id="fld-${f.key}">
       <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
       <select class="inp" id="in-${f.key}" onchange="onFieldChange('${f.key}',this.value)"></select>
-      ${f.type==='cascade'?`<div class="hint">${esc(bssField(f.parent).label)} pehle select karo</div>`:''}
+      ${f.type==='cascade'?`<div class="hint">Select ${esc(bssField(f.parent).label)} first</div>`:''}
+      ${f.key==='bssComment'?`<div class="hint">Adds a new comment to the BSS comment log (it does not overwrite)</div>`:''}
       <div class="e" id="er-${f.key}"></div></div>`;
   }).join('');
 
@@ -708,7 +714,7 @@ async function submitUpdate(){
   if(!EDIT) return;
   const bssId=ME&&ME.bss_user_id;
   const errs=bssValidate(EDIT.form,DD,bssId);
-  if(errs.length){showErrors(errs);toast('⚠️ '+errs.length+' field theek karo',4000);return;}
+  if(errs.length){showErrors(errs);toast('⚠️ Please fix '+errs.length+' field'+(errs.length>1?'s':''),4000);return;}
   showErrors([]);
 
   const btn=document.getElementById('edSave'), st=document.getElementById('edStatus');
@@ -739,9 +745,9 @@ async function submitUpdate(){
     if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
 
     st.textContent='';
-    toast('✅ '+EDIT.ticketNo+' update ho gaya'+(j.cache&&j.cache.patched?' (cache bhi)':''),4500);
+    toast('✅ '+EDIT.ticketNo+' updated'+(j.cache&&j.cache.patched?' (cache updated too)':''),4500);
     if(j.cache&&!j.cache.patched)
-      console.warn('Cache patch nahi hua:',j.cache.reason,'— dashboard purana dikha sakta hai jab tak Refresh na karo.');
+      console.warn('Cache patch skipped:',j.cache.reason,'— the dashboard may show stale values until the next refresh.');
 
     /* Local row bhi update karo taaki KPI/table turant sahi dikhe */
     const patch=j.cache&&j.cache.patched?null:null;
@@ -767,7 +773,7 @@ async function submitUpdate(){
 
 /* ── Refresh / export ── */
 async function refreshCache(){
-  toast('TAT ya Support Dashboard se "Refresh Data" chalao — wahi cache likhte hain.',6000);
+  toast('Use "Refresh Data" on the TAT or Support Dashboard — those pages write the cache.',6000);
 }
 function rowsToAOA(rows){
   const cols=listColumns();
@@ -776,7 +782,7 @@ function rowsToAOA(rows){
   return [head].concat(rows.map(r=>cols.map(c=>strip(c[1](r)))));
 }
 function saveXLSX(rows,name){
-  if(!rows.length){toast('Export ke liye koi ticket nahi');return;}
+  if(!rows.length){toast('No tickets to export');return;}
   const ws=XLSX.utils.aoa_to_sheet(rowsToAOA(rows));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tickets');
   XLSX.writeFile(wb,name);

@@ -247,3 +247,77 @@ Fix: `ticket_cache` (naye columns + unique constraint + RLS) aur
   `writer` column audit nahi, advisory hai.
 - Workflow matrix me **2027 ki entry nahi hai**. 1 Jan 2027 se nightly current
   year cover karna band kar degi.
+
+---
+
+# BSS Dashboard + schema v3 (2026-08-18)
+
+## Schema v2 → v3: naya field `cd`
+
+`ld` (last disposition) ek **recognized-first walk** hai — sirf 6 values leta
+hai (Bug / Bug Urgent / Development / Development Urgent / Improvement /
+Data Updation), baaki SKIP karta hai. Wo Bug-vs-Dev analytics ke liye sahi hai.
+
+Par BSS ka UI "Disposition" dropdown **alag cheez** dikhata hai: ticket abhi jis
+stage par hai, USI stage ki disposition — recognized ho ya na ho.
+
+Live example (MB - 037392): status `Acknowledge`, `Ack_Disp` = "Future
+Development", `TransferToIT_Disp` = "Bug".
+```
+ld     = "Bug"                  <- analytics walk
+BSS UI = "Future Development"   <- current stage
+```
+BSS Dashboard `ld` par bharosa karta to **galat value dikha kar user se
+overwrite karwa deta**. Isliye parser ab `cd` (current-stage disposition) bhi
+store karta hai — bina recognition filter ke.
+
+Iske saath `MB_SCHEMA_VERSION` 2 → **3**. Bump kahan-kahan hua:
+`assets/ticket-parser.js`, `.github/scripts/fetch_tickets.py`,
+`api/ticket-cache.js` (`REQUIRED_SCHEMA`), aur paanchon pages ka `?v=3`.
+
+⚠️ **Deploy ke baad ek full refresh chahiye.** Tab tak purani rows v2 hain,
+unme `cd` nahi hai, aur BSS Dashboard ka Disposition column `—` dikhayega
+(modal phir bhi sahi rahega — wo LIVE Marg data se bharta hai). Console me
+"ticket_cache is on an older schema (v2)" warning aayegi. Ye apne aap theek ho
+jata hai; kuch todta nahi.
+
+## Read vs Update naming — CONFIRMED
+
+Live response (MB - 037392) aur BSS UI screen dono se verify kiya. Ye sirf swap
+nahi, **shift** hai — naam par bharosa mat karna:
+
+| BSS UI label | read field | update payload | BindDropDown list |
+|---|---|---|---|
+| Main Disposition | `MainDisposition` | `BSSMainDisposition` | `SubDispostion` |
+| Problem Type | `Problemtype` | `BSSProblemType` | `ProblemTypeMargBook` |
+| Sub-Problem Type | `SubDisposition` | `BSSSubProblemType` | `SubProblemTypeMargBook` |
+| Sub Disposition | `Status` | `Disposition` | `Dispostion` |
+| Disposition | *(current stage ka `*_Disp`)* | `SubDisposition` | `BSSDisposition` |
+
+Mapping sirf `assets/bss-fields.js` ke `BSS_CROSSWALK` + `BSS_READ_ALIASES` me
+hai. Kahin inline mat karna.
+
+## Aur do behaviours
+
+- **`TimeLineDate` do formats me hai.** Read `29-08-2026` (DD-MM-YYYY) deta hai,
+  update `2026-08-29` (YYYY-MM-DD) maangta hai. `bssToISODate()` convert karta
+  hai; bina uske date input khali rehta aur save par value ud jati.
+- **`BSSComment` field nahi, append-only log hai.** Har update BSS ke Comments
+  table me ek nayi row banata hai. Isliye modal me wo hamesha KHALI rehta hai —
+  pre-fill karne par har save duplicate comment bana deta. `Remarks` alag hai,
+  wo overwrite hota hai.
+
+## Known limitation — TAT/Support ka Bug/Dev count
+
+TAT aur Support dashboards Bug/Dev classification `r.q` (= `Ack_Disp`) se karte
+hain. BSS UI ka "Disposition" bhi current stage ka `*_Disp` hai — to agar ticket
+Acknowledge stage par hai aur koi BSS Dashboard se Disposition badalta hai, wo
+asal me `Ack_Disp` badal raha hai.
+
+Hamara cache patch `cd`/`ld` set karta hai, **`q` nahi**. Matlab TAT aur Support
+ka Bug/Dev count **agli nightly tak purana dikhega**.
+
+Ye JAANBUJHKAR hai. `q` ko conditionally patch karna (sirf jab stage Acknowledge
+ho) wahan conditional logic add karta jahan galti hone par GALAT stage ki field
+patch ho jati — wo stale count se kahin mehenga bug hota. Asli data Marg me
+hamesha sahi rehta hai aur nightly refresh sab theek kar deti hai.
