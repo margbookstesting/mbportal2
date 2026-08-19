@@ -106,6 +106,27 @@ select.inp{cursor:pointer}
 .card-t{font-size:13px;font-weight:700}
 .card-s{font-size:10.5px;color:var(--muted)}
 .tw{overflow:auto;max-height:420px}
+/* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
+   table hai. Pehle .tw par `max-height:none` tha — wo kabhi scroll nahi karta
+   tha, aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
+   ancestor (.tw, jisme overflow:auto hai) se bind hota hai — aur wo scroll na
+   kare to header chipakta hi nahi. Isliye height yahan, aur .mdl-b ka scroll
+   band. */
+.tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
+.mdl-b.no-scroll{overflow:hidden}
+
+/* Sticky header ko solid + elevated rakho, warna scroll par rows uske
+   peeche se dikhti hain. */
+#tblList th{
+  background:var(--s2);
+  box-shadow:inset 0 -1px 0 var(--border2), 0 2px 6px rgba(8,16,30,.06);
+}
+/* Ticket No column bhi sticky — 14 columns hain, horizontally scroll karte
+   waqt ticket number gayab ho jata tha aur row pehchanna mushkil. */
+#tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
+#tblList td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
+  box-shadow:inset -1px 0 0 var(--border)}
+#tblList tbody tr:hover td:first-child{background:var(--s2)}
 /* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
    list dikhni chahiye, page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
    overflow visible hone par sticky ka nearest scroll container page ban jata
@@ -238,7 +259,7 @@ th.r,td.r{text-align:right}
       <button class="btn btn-teal btn-sm" onclick="exportList()">↓ Export Excel</button>
       <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeList()">✕ Close</button>
     </div>
-    <div class="mdl-b"><div class="tw" style="max-height:none"><table id="tblList"></table></div></div>
+    <div class="mdl-b no-scroll"><div class="tw tw-scroll"><table id="tblList"></table></div></div>
   </div>
 </div>
 
