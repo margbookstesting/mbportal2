@@ -4516,9 +4516,22 @@ function renderClientTrend(){
   const c1=document.getElementById('ctt1Cards'), c2=document.getElementById('ctt2Cards');
   if(!c1 || !c2) return; // sections not present on this page (safety)
   if(!RET_LIC){
+    /* Fail ho chuka hai to dobara fetch mat karo — pehle yahan se recursion
+       chalti thi (fetch -> fail -> renderClientTrend -> fetch ...) aur license
+       API par 100+ requests chali jaati thi. */
+    if(retCoolingDown()){
+      const err='<div style="padding:16px;text-align:center;color:var(--muted);grid-column:1/-1;font-size:11.5px">'+
+        '❌ License data unavailable. Use <b>↺ Reload Licenses</b> in the Client Retention tab to retry.</div>';
+      c1.innerHTML=err; c2.innerHTML=err;
+      return;
+    }
     const loading='<div style="padding:16px;text-align:center;color:var(--muted);grid-column:1/-1;font-size:11.5px">⏳ Loading license data…</div>';
     c1.innerHTML=loading; c2.innerHTML=loading;
-    if(!RET_BUSY) retFetchLic(false).then(()=>{ try{ renderClientTrend(); }catch(e){ console.error('renderClientTrend',e); } });
+    if(!RET_BUSY) retFetchLic(false).then(()=>{
+      /* SIRF success par re-render. Ye guard hi loop todta hai. */
+      if(!RET_LIC) return;
+      try{ renderClientTrend(); }catch(e){ console.error('renderClientTrend',e); }
+    });
     return;
   }
   if(!RAW || !RAW.length) return;
@@ -5327,6 +5340,19 @@ const RET_PENDING_SET = new Set(['pending','transfertoit','acknowledge','inprogr
 const RET_BUCKETS = [7,15,30,60,90,180];
 const RET_PAGE_SIZE = 100;
 let RET_LIC=null, RET_LIC_TS=0, RET_WIN=30, RET_BUSY=false;
+/* RETRY GUARD. Pehle renderClientTrend() fail hone par khud ko dobara call
+ * karta tha, jisse license API par infinite loop chal jata (131 requests, sab
+ * 502). Ab: fail hone ke baad ek cooldown lagta hai — us dauran automatic
+ * retry NAHI hoga, sirf user ka "↺ Reload Licenses" (force=true) chalega.
+ * Cooldown har consecutive failure par double hota hai, max 10 min. */
+let RET_FAIL_TS=0, RET_FAIL_N=0;
+const RET_FAIL_BASE_MS=60000, RET_FAIL_MAX_MS=600000, RET_FETCH_TIMEOUT_MS=15000;
+function retCooldownMs(){
+  return Math.min(RET_FAIL_BASE_MS*Math.pow(2,Math.max(0,RET_FAIL_N-1)), RET_FAIL_MAX_MS);
+}
+function retCoolingDown(){
+  return RET_FAIL_TS>0 && (Date.now()-RET_FAIL_TS)<retCooldownMs();
+}
 let RET_Q_LIC='', RET_Q_TK='', _retQTimer=null;
 const RET_SEL_M=new Set(), RET_SEL_Y=new Set();   // Active Month/Year multi-select
 let RET_EXP_FILTER='all';                          // all | exp | nonexp
@@ -5406,6 +5432,17 @@ function retEnrich(L){
 async function retFetchLic(force){
   if(RET_BUSY) return;
   if(RET_LIC && !force){ renderRetention(); return; }
+  /* Haal hi me fail hua hai aur user ne khud retry nahi maanga — network par
+     dobara mat jao. Yahi guard loop rokta hai. */
+  if(!force && retCoolingDown()){
+    const secs=Math.ceil((retCooldownMs()-(Date.now()-RET_FAIL_TS))/1000);
+    const i0=document.getElementById('retInfo');
+    if(i0) i0.textContent='❌ License API unavailable — auto-retry paused for '+secs+'s. Use ↺ Reload Licenses.';
+    return;
+  }
+  /* force cooldown ko BYPASS karta hai, par failure counter reset NAHI karta —
+     wo sirf success par reset hota hai. Warna user ke har manual retry par
+     backoff wapas 60s par aa jata aur toast bhi dobara-dobara aata. */
   RET_BUSY=true;
   const info=document.getElementById('retInfo');
   if(info) info.textContent='⏳ Loading license data…';
@@ -5414,22 +5451,35 @@ async function retFetchLic(force){
   const urls=['/api/liclist','https://dbwork.margbooks.com/api/Other/gelliclist'];
   let rows=null, lastErr=null;
   for(const u of urls){
+    /* Timeout zaroori hai: ek hanging request pending padi rehti thi aur
+       loader kabhi hatta hi nahi tha. */
+    const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+    const tmr=ctl?setTimeout(()=>ctl.abort(),RET_FETCH_TIMEOUT_MS):null;
     try{
-      const res=await fetch(u,{headers:{'Accept':'application/json'}});
+      const res=await fetch(u,{headers:{'Accept':'application/json'},signal:ctl?ctl.signal:undefined});
       if(!res.ok) throw new Error('HTTP '+res.status);
       const j=await res.json();
       const arr=Array.isArray(j)?j:(j.data||j.Data||null);
       if(Array.isArray(arr)&&arr.length){ rows=arr; break; }
       throw new Error('Empty response');
-    }catch(e){ lastErr=e; }
+    }catch(e){ lastErr=(e && e.name==='AbortError')?new Error('Timed out after '+(RET_FETCH_TIMEOUT_MS/1000)+'s'):e; }
+    finally{ if(tmr) clearTimeout(tmr); }
   }
   RET_BUSY=false;
   retLoaderShow(false);
   if(!rows){
-    if(info) info.textContent='❌ License API error: '+((lastErr&&lastErr.message)||'unknown');
-    showToast('❌ License/billing data failed to load — retry with ↺ Licenses');
+    RET_FAIL_N++;
+    RET_FAIL_TS=Date.now();
+    const wait=Math.round(retCooldownMs()/1000);
+    if(info) info.textContent='❌ License API error: '+((lastErr&&lastErr.message)||'unknown')+
+      ' — auto-retry paused for '+wait+'s';
+    /* Toast sirf pehli failure par — warna har attempt par toast spam hota. */
+    if(RET_FAIL_N===1)
+      showToast('❌ License/billing data failed to load — use ↺ Reload Licenses to retry');
+    console.warn('retFetchLic failed ('+RET_FAIL_N+'x):', lastErr, '— next auto-attempt allowed after '+wait+'s');
     return;
   }
+  RET_FAIL_TS=0; RET_FAIL_N=0;
   const today=retMidnight();
   const map=new Map(); // dedupe by license — keep last
   rows.forEach(x=>{
@@ -6058,9 +6108,9 @@ window._aiAtRiskOnly=false;
 async function aiToggleAtRisk(){
   const btn=document.getElementById('aiAtRiskBtn');
   if(!window._aiAtRiskOnly && !RET_LIC){
-    showToast('⏳ License data load ho raha hai (at-risk filter ke liye)…');
+    showToast('⏳ Loading license data for the at-risk filter…');
     await retFetchLic(false);
-    if(!RET_LIC){ showToast('❌ License data nahi mila — ↺ retry karo'); return; }
+    if(!RET_LIC){ showToast('❌ License data unavailable — use ↺ Reload Licenses to retry'); return; }
   }
   window._aiAtRiskOnly=!window._aiAtRiskOnly;
   if(btn) btn.classList.toggle('active', window._aiAtRiskOnly);
