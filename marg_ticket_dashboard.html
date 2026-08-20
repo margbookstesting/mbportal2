@@ -2466,6 +2466,12 @@ tfoot td{
      apne `.card`/`.kpi`/`--bg` na toote). Us scope ka element YAHIN hai — iske
      bina ek bhi rule match nahi karti aur tab bilkul unstyled dikhta hai. -->
 <div id="tabBss">
+<!-- BSS ka apna header hata diya gaya tha (TAT ka header upar hai), par uske
+     andar `metaTxt` aur `dot` the jinhe ported init() seedha update karta hai.
+     Inke bina init() ki PEHLI line hi TypeError deti thi aur boot() ka catch
+     use chup-chaap nigal jata — tab khali dikhta, koi error nahi.
+     Ticket count TAT ke header me pehle se hai, isliye ye chhupe hue hain. -->
+<div style="display:none"><span id="dot"></span><span id="metaTxt"></span></div>
 
 
 
@@ -7626,7 +7632,36 @@ window.BSS.__booted = false;
 window.BSS.boot = function(){
   if(window.BSS.__booted) return;
   window.BSS.__booted = true;
-  try{ init(); }catch(e){ console.error('BSS boot failed:', e); }
+
+  const _panel = document.getElementById('tabBss');
+  /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
+     pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
+     "toota hua" lagta hai. */
+  const _ldId = 'tabBss_boot_loader';
+  if(_panel && !document.getElementById(_ldId))
+    _panel.insertAdjacentHTML('afterbegin',
+      '<div id="' + _ldId + '" style="margin:16px;padding:14px;text-align:center;' +
+      'color:#6b7280;font-size:12.5px;font-family:Sora,system-ui,sans-serif">⏳ Loading…</div>');
+  const _done = () => { const e = document.getElementById(_ldId); if(e) e.remove(); };
+
+  /* init() ASYNC hai — `try/catch` uska rejection nahi pakadta. Pehle wahi
+     galti thi: fail hone par kuch nahi dikhta tha, na error, na data. */
+  const _fail = (e) => {
+    console.error('BSS boot failed:', e);
+    window.BSS.__booted = false;          /* tab dobara khologe to retry hoga */
+    _done();
+    if(_panel) _panel.insertAdjacentHTML('afterbegin',
+      '<div style="margin:16px;padding:12px 14px;border:1px solid #fecdd3;background:#fff1f2;' +
+      'color:#991b1b;border-radius:8px;font-size:12.5px;font-family:Sora,system-ui,sans-serif">' +
+      '<b>This tab failed to load.</b> ' + String(e && e.message || e) +
+      ' — switch away and back to retry, or check the browser console.</div>');
+  };
+
+  try{
+    const r = init();
+    if(r && typeof r.then === 'function') r.then(_done, _fail);
+    else _done();
+  }catch(e){ _fail(e); }
 };
 })();
 
@@ -8234,7 +8269,36 @@ window.UP.__booted = false;
 window.UP.boot = function(){
   if(window.UP.__booted) return;
   window.UP.__booted = true;
-  try{ loadData(); }catch(e){ console.error('UP boot failed:', e); }
+
+  const _panel = document.getElementById('tabUp');
+  /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
+     pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
+     "toota hua" lagta hai. */
+  const _ldId = 'tabUp_boot_loader';
+  if(_panel && !document.getElementById(_ldId))
+    _panel.insertAdjacentHTML('afterbegin',
+      '<div id="' + _ldId + '" style="margin:16px;padding:14px;text-align:center;' +
+      'color:#6b7280;font-size:12.5px;font-family:Sora,system-ui,sans-serif">⏳ Loading…</div>');
+  const _done = () => { const e = document.getElementById(_ldId); if(e) e.remove(); };
+
+  /* loadData() ASYNC hai — `try/catch` uska rejection nahi pakadta. Pehle wahi
+     galti thi: fail hone par kuch nahi dikhta tha, na error, na data. */
+  const _fail = (e) => {
+    console.error('UP boot failed:', e);
+    window.UP.__booted = false;          /* tab dobara khologe to retry hoga */
+    _done();
+    if(_panel) _panel.insertAdjacentHTML('afterbegin',
+      '<div style="margin:16px;padding:12px 14px;border:1px solid #fecdd3;background:#fff1f2;' +
+      'color:#991b1b;border-radius:8px;font-size:12.5px;font-family:Sora,system-ui,sans-serif">' +
+      '<b>This tab failed to load.</b> ' + String(e && e.message || e) +
+      ' — switch away and back to retry, or check the browser console.</div>');
+  };
+
+  try{
+    const r = loadData();
+    if(r && typeof r.then === 'function') r.then(_done, _fail);
+    else _done();
+  }catch(e){ _fail(e); }
 };
 })();
 
