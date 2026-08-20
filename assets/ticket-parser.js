@@ -261,6 +261,40 @@ function mbParseTicket(r){
  * WALA record jeetega, tie par naya fetched_at.
  * rows = Supabase se aayi ticket_cache rows.
  * Returns { tickets, fetchedAt, dateFrom, dateTo, minSchema, rowCount } */
+/* ── TESTER ─────────────────────────────────────────────────────────────────
+ * Ek hi cheez teen API me teen naam se aati hai:
+ *   GetMBTicketStatusDetail (read)  -> TransferTo   (rec.t)
+ *   BindDropDown (master list)      -> AssignTo
+ *   UpdateTicketStatus (write)      -> AssignedTo   -> DB me Assignto (rec.assignto)
+ *
+ * Isliye tester DO fields me ho sakta hai:
+ *   rec.assignto  = Assignto    -> API/portal se set hua (zyada RECENT)
+ *   rec.t         = TransferTo  -> BSS ke normal workflow se set hua
+ * Evidence: MB - 037392 (Postman se AssignedTo:43 gaya) me Assignto bhara hai
+ * aur TransferTo null; MB - 036736 (normal workflow) me ulta.
+ * Isliye `assignto` PEHLE.
+ *
+ * Per-stage agent fields yahan JAANBUJHKAR nahi hain — wo "kis stage par
+ * kisne kaam kiya" hain, tester nahi:
+ *     rec.tia = TransfertoITAgents   rec.ta = AcknowledgebyAgents
+ *     rec.ti  = InProgressByAgent    rec.ts = TransferTosupportBy
+ *     rec.eb  = ReadyToGoLiveBy
+ * Purana code `eb` ko tester ka fallback maanta tha, jisse Tester-wise counts
+ * me Go-Live karne wale log tester ban kar gin jaate the.
+ *
+ * Ye helper SAARE dashboards use karte hain. Kisi ek page par inline likhne se
+ * hi wo drift shuru hota hai jo pehle bug bana tha. */
+function mbTesterOf(r){
+  if(!r) return '';
+  /* Har candidate ALAG se check hota hai. `String(a||b).trim()` galat tha:
+     "   " truthy hai, to fallback chalta hi nahi tha aur tester khali dikhta
+     jabki TransferTo me naam maujood hota. Falsy values (0, null, "") bhi
+     skip hoti hain — name field me 0 data artifact hai, tester nahi. */
+  var a = r.assignto ? String(r.assignto).trim() : '';
+  if(a) return a;
+  return r.t ? String(r.t).trim() : '';
+}
+
 function mbMergeCacheRows(rows){
   var byTicket = {}, seenTs = {};
   var fetchedAt = null, dateFrom = null, dateTo = null, minSchema = null;
@@ -412,5 +446,6 @@ if(typeof module !== 'undefined' && module.exports){
     MB_SCHEMA_VERSION, MB_REQUIRED_FIELDS, MB_STATUS_MAP, MB_STAGE_DISP_BY_SC,
     MB_DISP_FALLBACK_ORDER, MB_SUB_STAGES,
     mbParseTicket, mbMergeCacheRows, mbIsRecognizedDisp, mbTATFlag, mbCompactTAT, mbParseDate,
+    mbTesterOf,
   };
 }
