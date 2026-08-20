@@ -1178,7 +1178,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   position:fixed; inset:0; z-index:20000; pointer-events:none;
 }
 #tabBssModals > *, #tabUpModals > *{ pointer-events:auto; }
-#tabBssModals .ov, #tabUpModals .modal-backdrop, #tabUpModals .loader-overlay{
+#tabBssModals .ov, #tabUpModals .modal-backdrop{
   position:absolute; inset:0;
 }
 /* Toast overlay nahi hai — wo apni jagah fixed rehni chahiye */
@@ -1562,7 +1562,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabUp .no-data-icon, #tabUpModals .no-data-icon{font-size:48px;margin-bottom:12px}
 /* ── LOADER ── */
 #tabUp .loader-overlay, #tabUpModals .loader-overlay{
-  display:flex;position:fixed;inset:0;z-index:20050;
+  display:flex;position:fixed;inset:0;z-index:50;
   background:rgba(240,242,249,.88);
   backdrop-filter:blur(8px);
   align-items:center;justify-content:center;
@@ -3517,6 +3517,10 @@ function switchTab(n){
      karta, chahe wo unhe kholta bhi na ho. */
   if(n===5 && window.BSS) window.BSS.boot();
   if(n===6 && window.UP)  window.UP.boot();
+  /* Safety net: ported loader kabhi visible reh gaya (boot beech me fail hua)
+     to wo apne tab ke andar hi rahega — par tab badalne par use band kar do,
+     warna wapas aane par purana loader dikhta rahega. */
+  if(n!==6){ const _l=document.getElementById('loadingOverlay'); if(_l) _l.style.display='none'; }
 }
 function applyTabPerms(){
   const p=window._MARG_PERM; if(!p || p.admin) return;
@@ -6156,8 +6160,14 @@ async function backgroundFetch(){
       /* Refresh ke baad shared store bhi naya karo, warna BSS/Upcoming tabs
          purana data dikhate rehte. Aur unka boot flag reset karo taaki agli
          baar khulne par wo dobara render karein. */
-      window.__MB_SHARED = { tickets: RAW, fetchedAt: new Date().toISOString(),
-        dateFrom: null, dateTo: null, minSchema: MB_SCHEMA_VERSION, rowCount: 0 };
+      /* KHALI store publish mat karo. Refresh poori tarah fail ho jaye to RAW
+         khali reh jata hai; use publish karne par tabs ko lagta hai "data hai
+         par khali hai" aur wo cache read hi nahi karte — result: tab me "No
+         data" jabki cache me data maujood hai. */
+      if(RAW && RAW.length){
+        window.__MB_SHARED = { tickets: RAW, fetchedAt: new Date().toISOString(),
+          dateFrom: null, dateTo: null, minSchema: MB_SCHEMA_VERSION, rowCount: 0 };
+      }
       if(window.BSS){ window.BSS.__booted = false; }
       if(window.UP){  window.UP.__booted  = false; }
     }, 600);
@@ -7074,13 +7084,28 @@ function mbSetScrollLock(on){
   }
 }
 
+/* "Khula hai kya" ka jawab element ke MAUJOOD hone se nahi milta — dono modals
+ * DOM me hamesha rehte hain. BSS `.ov` ko class `on` se dikhata hai, Upcoming
+ * apne backdrop ko `style.display` se. Sirf `querySelector(sel)` karne par
+ * Upcoming ka backdrop HAMESHA truthy nikalta tha, yaani tab kholte hi page
+ * permanently scroll-locked ho jata — modal khula bhi na ho tab bhi.
+ * Isliye computed display/visibility dekhte hain, sirf maujoodgi nahi. */
+function mbAnyVisible(host, selector){
+  var els = host.querySelectorAll(selector);
+  for(var i = 0; i < els.length; i++){
+    var st = window.getComputedStyle(els[i]);
+    if(st.display !== 'none' && st.visibility !== 'hidden') return true;
+  }
+  return false;
+}
+
 function mbWatchModals(portalId, openSelector){
   var host = document.getElementById(portalId);
   if(!host || host._mbWatched) return;
   host._mbWatched = true;
   var wasOpen = false;
   var check = function(){
-    var isOpen = !!host.querySelector(openSelector);
+    var isOpen = mbAnyVisible(host, openSelector);
     if(isOpen !== wasOpen){ wasOpen = isOpen; mbSetScrollLock(isOpen); }
   };
   new MutationObserver(check).observe(host, {
@@ -7744,7 +7769,7 @@ window.BSS.boot = function(){
 
   /* Modals ko body me le jao — dekho mbPortalModals() ka note. */
   try{ mbPortalModals('tabBss', 'tabBssModals', ['.ov', '.toast']); }catch(e){ console.warn('BSS modal portal:', e); }
-  try{ mbWatchModals('tabBssModals', '.ov.on'); }catch(e){ console.warn('BSS scroll lock:', e); }
+  try{ mbWatchModals('tabBssModals', '.ov'); }catch(e){ console.warn('BSS scroll lock:', e); }
   const _panel = document.getElementById('tabBss');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
      pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
@@ -8387,7 +8412,11 @@ window.UP.boot = function(){
   window.UP.__booted = true;
 
   /* Modals ko body me le jao — dekho mbPortalModals() ka note. */
-  try{ mbPortalModals('tabUp', 'tabUpModals', ['.modal-backdrop', '.loader-overlay']); }catch(e){ console.warn('UP modal portal:', e); }
+  /* SIRF modals portal me jate hain. `.loader-overlay` JAANBUJHKAR nahi —
+     wo tab ka apna loader hai. Body me le jane par wo tab ke saath chhupta
+     nahi, aur ek baar visible reh gaya to z-index 20000+ par POORE app ko
+     dhak leta hai (page bilkul blank dikhta hai). */
+  try{ mbPortalModals('tabUp', 'tabUpModals', ['.modal-backdrop']); }catch(e){ console.warn('UP modal portal:', e); }
   try{ mbWatchModals('tabUpModals', '.modal-backdrop'); }catch(e){ console.warn('UP scroll lock:', e); }
   const _panel = document.getElementById('tabUp');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
