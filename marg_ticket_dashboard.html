@@ -2462,6 +2462,10 @@ tfoot td{
 
 <!-- ████ TAB 5 — BSS UPDATE (ported from bss_dashboard.html) ████ -->
 <main class="main" id="tab5" style="display:none">
+<!-- SCOPE CONTAINER. Ported CSS `#tabBss …` par scope ki gayi hai (taaki TAT ke
+     apne `.card`/`.kpi`/`--bg` na toote). Us scope ka element YAHIN hai — iske
+     bina ek bhi rule match nahi karti aur tab bilkul unstyled dikhta hai. -->
+<div id="tabBss">
 
 
 
@@ -2534,14 +2538,16 @@ tfoot td{
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="bssToast"></div>
 
 
 
+</div>
 </main>
 
 <!-- ████ TAB 6 — UPCOMING DEADLINE (ported from upcoming_timeline.html) ████ -->
 <main class="main" id="tab6" style="display:none">
+<div id="tabUp">
 
 
 <div class="loader-overlay" id="loadingOverlay">
@@ -2554,34 +2560,17 @@ tfoot td{
     </div>
     <div class="ldr-title">Loading Data...</div>
     <div class="ldr-msg" id="loadingMsg">Connecting to Supabase...</div>
-    <div class="ldr-track"><div class="ldr-fill" id="loaderBar"></div></div>
-    <div class="ldr-step" id="loaderStep">FETCHING FROM SUPABASE</div>
-    <div id="loaderTimer" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--teal);letter-spacing:-1px;">0s</div>
+    <div class="ldr-track"><div class="ldr-fill" id="upLoaderBar"></div></div>
+    <div class="ldr-step" id="upLoaderStep">FETCHING FROM SUPABASE</div>
+    <div id="upLoaderTimer" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--teal);letter-spacing:-1px;">0s</div>
   </div>
 </div>
 
-<!-- TOPBAR -->
-<div class="topbar">
-  <div class="topbar-inner">
-    <div class="brand">
-      <div class="brand-icon">📅</div>
-      <div>
-        <div class="brand-name">Marg Upcoming Deadlines</div>
-        <div class="brand-tagline">Marg Upcoming Deadlines</div>
-      </div>
-    </div>
-    <div class="topbar-sep"></div>
-    <div class="page-title">Marg Upcoming Deadlines</div>
-    <div class="topbar-right">
-      <button onclick="location.href='portal.html'" style="height:32px;padding:0 16px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);">← Portal</button>
-      <button onclick="mbSignOut()" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:#e11d48;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(225,29,72,.3);">Sign Out</button>
-      <div class="sync-badge" id="syncBadge" style="display:none">
-        <span class="sync-dot"></span>
-        <span id="syncText">—</span>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Upcoming ka apna TOPBAR hata diya gaya (brand + Portal + Sign Out) — TAT
+     ka header pehle se upar maujood hai. `syncBadge` / `syncText` yahan chhote
+     roop me rakhe hain kyunki ported JS unhe update karta hai; na hone par wo
+     null-reference deta. -->
+<div style="display:none"><span id="syncBadge"><span id="syncText">—</span></span></div>
 
 <!-- FILTER BAR -->
 <div class="filter-bar">
@@ -2764,6 +2753,7 @@ tfoot td{
 <!-- MB NAV: sign out helper -->
 
 
+</div>
 </main>
 
 
@@ -7056,7 +7046,7 @@ let RAW=[], VIEW=[], DD=null, DD_ERR=null, ME=null, LIST_ROWS=[], LIST_TITLE='',
 
 const fmt=n=>Number(n||0).toLocaleString('en-IN');
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
+function toast(m,ms){const t=document.getElementById('bssToast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
 async function signOut(){await sb.auth.signOut();location.replace('index.html');}
 
 /* ── Status defs — support_dashboard.html se identical, taaki dono dashboards
@@ -7852,11 +7842,11 @@ function exportExcel(sectionId, sectionLabel, event){
 let _timerInterval = null;
 function startLoaderTimer(){
   let secs = 0;
-  document.getElementById('loaderTimer').textContent = '0s';
+  document.getElementById('upLoaderTimer').textContent = '0s';
   _timerInterval = setInterval(()=>{
     secs++;
     const m = Math.floor(secs/60), s = secs%60;
-    document.getElementById('loaderTimer').textContent =
+    document.getElementById('upLoaderTimer').textContent =
       m > 0 ? m+'m '+String(s).padStart(2,'0')+'s' : secs+'s';
   }, 1000);
 }
@@ -7866,11 +7856,11 @@ function stopLoaderTimer(){
 
 async function loadData(){
   document.getElementById('loadingMsg').textContent = 'Connecting to Supabase...';
-  document.getElementById('loaderBar').style.width = '10%';
-  document.getElementById('loaderStep').textContent = 'FETCHING FROM SUPABASE';
+  document.getElementById('upLoaderBar').style.width = '10%';
+  document.getElementById('upLoaderStep').textContent = 'FETCHING FROM SUPABASE';
   startLoaderTimer();
   try{
-    document.getElementById('loaderBar').style.width = '30%';
+    document.getElementById('upLoaderBar').style.width = '30%';
 
     /* Shared store se lo — TAT ne page load par cache pehle hi padh liya hai.
        Dobara padhna wahi 0.78MB server se lene ke barabar hai, bina kisi fayde
@@ -7882,8 +7872,8 @@ async function loadData(){
       RAW = _sh.tickets;
       latestFetchedAt = _sh.fetchedAt;
       RAW = RAW.filter(r => r.tld);
-      document.getElementById('loaderBar').style.width = '85%';
-      document.getElementById('loaderStep').textContent = 'BUILDING DASHBOARD';
+      document.getElementById('upLoaderBar').style.width = '85%';
+      document.getElementById('upLoaderStep').textContent = 'BUILDING DASHBOARD';
       if(latestFetchedAt){
         const d = new Date(latestFetchedAt);
         const label = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
@@ -7893,8 +7883,8 @@ async function loadData(){
       }
       populateFilters();
       applyFilters();
-      document.getElementById('loaderBar').style.width = '100%';
-      document.getElementById('loaderStep').textContent = 'DONE';
+      document.getElementById('upLoaderBar').style.width = '100%';
+      document.getElementById('upLoaderStep').textContent = 'DONE';
       stopLoaderTimer();
       const ov=document.getElementById('loaderOverlay'); if(ov) ov.classList.remove('active');
       const lo=document.getElementById('loadingOverlay'); if(lo) lo.style.display='none';
@@ -7905,8 +7895,8 @@ async function loadData(){
     if(error) throw new Error(error.message || error.details || error.hint || JSON.stringify(error));
     if(!data || !data.length) throw new Error('No data in Supabase — please run the GitHub Action first');
 
-    document.getElementById('loaderBar').style.width = '60%';
-    document.getElementById('loaderStep').textContent = 'PROCESSING TICKETS';
+    document.getElementById('upLoaderBar').style.width = '60%';
+    document.getElementById('upLoaderStep').textContent = 'PROCESSING TICKETS';
     document.getElementById('loadingMsg').textContent = `Processing ${data.length} record(s)...`;
 
     // Merge shared helper se (assets/ticket-parser.js). Pehle blind last-wins
@@ -7921,8 +7911,8 @@ async function loadData(){
     // Filter only tickets with tld (timeline date)
     RAW = RAW.filter(r => r.tld);
 
-    document.getElementById('loaderBar').style.width = '85%';
-    document.getElementById('loaderStep').textContent = 'BUILDING DASHBOARD';
+    document.getElementById('upLoaderBar').style.width = '85%';
+    document.getElementById('upLoaderStep').textContent = 'BUILDING DASHBOARD';
     document.getElementById('loadingMsg').textContent = `${RAW.length} tickets with deadlines found`;
 
     console.log(`Loaded ${RAW.length} tickets with timeline dates`);
@@ -7939,8 +7929,8 @@ async function loadData(){
     populateFilters();
     applyFilters();
 
-    document.getElementById('loaderBar').style.width = '100%';
-    document.getElementById('loaderStep').textContent = 'DONE';
+    document.getElementById('upLoaderBar').style.width = '100%';
+    document.getElementById('upLoaderStep').textContent = 'DONE';
 
   }catch(e){
     console.error('loadData error:', e);
