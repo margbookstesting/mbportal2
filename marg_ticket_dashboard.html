@@ -1172,6 +1172,14 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
  * bahar TAT ke apne. Bina scope kiye `--bg`, `--surface` overwrite ho jate
  * aur poora TAT dashboard toot jata.
  * ═════════════════════════════════════════════════════════════════════ */
+/* ── OVERLAY STACKING ──────────────────────────────────────────────────────
+ * Ported modals apne standalone pages par z-index 200–400 par the, jahan koi
+ * competition nahi thi. TAT me header `z-index:300` aur uske loaders 9999/10000
+ * par hain — isliye modal khulta to tha par header ke NEECHE, aur backdrop
+ * page ko dhak nahi paata tha.
+ * Ab 20000+ par, taaki wo sach me sab ke upar aayein.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
 #tabBss{
   --bg:#f0f2f9; --surface:#fff; --s2:#f7f8fd; --border:#e8eaf4; --border2:#d4d8ec;
   --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
@@ -1185,8 +1193,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss *{margin:0;padding:0;box-sizing:border-box}
 #tabBss{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
 #tabBss .mono{font-family:'JetBrains Mono',monospace}
-#tabBss /* ── Header ── */
-.hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
+/* ── Header ── */
+#tabBss .hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
 #tabBss .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.2px}
 #tabBss .hdr .sub{font-size:10.5px;opacity:.72;margin-top:1px}
 #tabBss .hdr .sp{flex:1}
@@ -1201,16 +1209,16 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:8px}
 #tabBss .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
 #tabBss .dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
-#tabBss /* ── Filters ── */
-.wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+/* ── Filters ── */
+#tabBss .wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
 #tabBss .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 #tabBss .inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
 #tabBss .inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
 #tabBss select.inp{cursor:pointer}
 #tabBss .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
 #tabBss .f-grp{display:flex;flex-direction:column}
-#tabBss /* ── KPI cards ── */
-.sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+/* ── KPI cards ── */
+#tabBss .sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
 #tabBss .sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
 #tabBss .sec-l{flex:1;height:1px;background:var(--border2)}
 #tabBss .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
@@ -1230,41 +1238,41 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .kpi-f{border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
 #tabBss .lnk{font-size:10.5px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
 #tabBss .lnk:hover{background:rgba(13,148,136,.1)}
-#tabBss /* ── Tables ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
+/* ── Tables ── */
+#tabBss .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
 #tabBss .card-h{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #tabBss .card-t{font-size:13px;font-weight:700}
 #tabBss .card-s{font-size:10.5px;color:var(--muted)}
 #tabBss .tw{overflow:auto;max-height:420px}
-#tabBss /* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
+/* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
    table hai. Pehle .tw par `max-height:none` tha — wo kabhi scroll nahi karta
-   tha, #tabBss aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
-   ancestor (.tw, #tabBss jisme overflow:auto hai) se bind hota hai — aur wo scroll na
-   kare to header chipakta hi nahi. Isliye height yahan, #tabBss aur .mdl-b ka scroll
+   tha, aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
+   ancestor (.tw, jisme overflow:auto hai) se bind hota hai — aur wo scroll na
+   kare to header chipakta hi nahi. Isliye height yahan, aur .mdl-b ka scroll
    band. */
-.tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
+#tabBss .tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
 #tabBss .mdl-b.no-scroll{overflow:hidden}
-#tabBss /* Sticky header ko solid + elevated rakho, #tabBss warna scroll par rows uske
+/* Sticky header ko solid + elevated rakho, warna scroll par rows uske
    peeche se dikhti hain. */
-#tblList th{
+#tabBss #tblList th{
   background:var(--s2);
   box-shadow:inset 0 -1px 0 var(--border2), 0 2px 6px rgba(8,16,30,.06);
 }
-#tabBss /* Ticket No column bhi sticky — 14 columns hain, #tabBss horizontally scroll karte
+/* Ticket No column bhi sticky — 14 columns hain, horizontally scroll karte
    waqt ticket number gayab ho jata tha aur row pehchanna mushkil. */
-#tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
+#tabBss #tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
 #tabBss #tblList td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
   box-shadow:inset -1px 0 0 var(--border)}
 #tabBss #tblList tbody tr:hover td:first-child{background:var(--s2)}
-#tabBss /* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
-   list dikhni chahiye, #tabBss page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
+/* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
+   list dikhni chahiye, page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
    overflow visible hone par sticky ka nearest scroll container page ban jata
-   hai, #tabBss aur header page ke apne sticky header ke neeche chipak kar overlap
+   hai, aur header page ke apne sticky header ke neeche chipak kar overlap
    karta hai. */
-.tw-full{overflow:visible;max-height:none}
+#tabBss .tw-full{overflow:visible;max-height:none}
 #tabBss .tw-full th{position:static}
-#tabBss /* Totals row */
-tfoot td{
+/* Totals row */
+#tabBss tfoot td{
   padding:9px 10px;border-top:2px solid var(--border2);background:var(--s2);
   font-weight:800;color:var(--text);position:sticky;bottom:0;
 }
@@ -1279,8 +1287,8 @@ tfoot td{
 #tabBss .tno:hover{text-decoration:underline}
 #tabBss .muted{color:var(--muted2)}
 #tabBss .badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--s2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
-#tabBss /* ── Modals ── */
-.ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
+/* ── Modals ── */
+#tabBss .ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:20000;padding:18px}
 #tabBss .ov.on{display:flex}
 #tabBss .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
 #tabBss .mdl.sm{max-width:1260px}
@@ -1289,10 +1297,10 @@ tfoot td{
 #tabBss .mdl-b{overflow:auto;padding:0}
 #tabBss .mdl-b.pad{padding:14px 18px}
 #tabBss .mdl-f{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
-#tabBss /* ── Edit form ── */
+/* ── Edit form ── */
 /* 12 updatable fields. 2 columns me 6 rows banti thi aur modal scroll karta
    tha; 3 columns me 4 rows — normal laptop par sab kuch bina scroll dikhta hai. */
-.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
+#tabBss .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
 @media(max-width:1100px){#tabBss .fgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){#tabBss .fgrid{grid-template-columns:1fr}}
 #tabBss .fld label{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
@@ -1320,7 +1328,7 @@ tfoot td{
 #tabBss .spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:bss_sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes bss_sp{to{transform:rotate(360deg)}}
 #tabBss .empty{padding:44px 20px;text-align:center;color:var(--muted)}
-#tabBss .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:400;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
+#tabBss .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:20100;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
 #tabBss .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
 #tabUp *{margin:0;padding:0;box-sizing:border-box}
 #tabUp{
@@ -1338,8 +1346,8 @@ tfoot td{
   --sh-l:0 8px 24px rgba(0,0,0,.12);
 }
 #tabUp{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-#tabUp /* ── TOPBAR ── */
-.topbar{
+/* ── TOPBAR ── */
+#tabUp .topbar{
   background:linear-gradient(135deg,#0d9488 0%,#0891b2 100%);
   position:sticky;top:0;z-index:300;
   box-shadow:0 4px 20px rgba(13,148,136,.35);
@@ -1368,8 +1376,8 @@ tfoot td{
 }
 #tabUp .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:up_pulse 2s infinite}
 @keyframes up_pulse{0%,100%{opacity:1}50%{opacity:.5}}
-#tabUp /* ── FILTERS ── */
-.filter-bar{
+/* ── FILTERS ── */
+#tabUp .filter-bar{
   background:#fff;border-bottom:1px solid var(--border);
   padding:10px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
 }
@@ -1400,13 +1408,13 @@ tfoot td{
 #tabUp .chip-dev.active{background:var(--blue)}
 #tabUp .chip-bug{border-color:var(--red);color:var(--red)}
 #tabUp .chip-bug.active{background:var(--red)}
-#tabUp /* ── MAIN ── */
-.main{max-width:1400px;margin:0 auto;padding:20px 24px}
-#tabUp /* ── SUMMARY CARDS ── */
-.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+/* ── MAIN ── */
+#tabUp .main{max-width:1400px;margin:0 auto;padding:20px 24px}
+/* ── SUMMARY CARDS ── */
+#tabUp .summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
 @media(min-width:1400px){#tabUp .summary-row{grid-template-columns:repeat(7,1fr)}}
-#tabUp /* Overdue cards visually alag — ye "late ho chuka" hai, #tabUp "aane wala" nahi */
-.sum-card.od{border-color:var(--red-m);background:var(--red-l)}
+/* Overdue cards visually alag — ye "late ho chuka" hai, "aane wala" nahi */
+#tabUp .sum-card.od{border-color:var(--red-m);background:var(--red-l)}
 #tabUp .sum-card.od .sum-card-label{color:var(--red)}
 #tabUp .section.od .section-title{color:var(--red)}
 @media(max-width:900px){#tabUp .summary-row{grid-template-columns:repeat(2,1fr)}}
@@ -1425,8 +1433,8 @@ tfoot td{
 #tabUp .sum-cat-oth{background:#f7f8fd;color:#4b5563;border-color:#e8eaf4}
 #tabUp .sum-card-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border)}
 #tabUp .sum-card-bar-fill{height:100%;border-radius:2px;transition:.5s}
-#tabUp /* ── SECTIONS ── */
-.section{margin-bottom:28px}
+/* ── SECTIONS ── */
+#tabUp .section{margin-bottom:28px}
 #tabUp .section-hdr{
   display:flex;align-items:center;gap:10px;
   margin-bottom:14px;padding-bottom:10px;
@@ -1443,21 +1451,21 @@ tfoot td{
   margin-left:auto;padding:4px 12px;border-radius:20px;
   font-size:12px;font-weight:700;border:1.5px solid;
 }
-#tabUp /* ── CARDS GRID ── */
-.cards-grid{
+/* ── CARDS GRID ── */
+#tabUp .cards-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;
 }
 @media(max-width:640px){#tabUp .cards-grid{grid-template-columns:1fr}}
-#tabUp /* ── TICKET CARD ── */
-.t-card{
+/* ── TICKET CARD ── */
+#tabUp .t-card{
   background:#fff;border-radius:12px;border:1.5px solid var(--border);
   padding:14px 16px;box-shadow:var(--sh-s);
   transition:.2s;cursor:pointer;position:relative;overflow:hidden;
 }
 #tabUp .t-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
 #tabUp .t-card:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
-#tabUp /* Urgency colors */
-.t-card.u-critical::before{background:var(--red)}
+/* Urgency colors */
+#tabUp .t-card.u-critical::before{background:var(--red)}
 #tabUp .t-card.u-critical{border-color:var(--red-m)}
 #tabUp .t-card.u-high::before{background:var(--orange)}
 #tabUp .t-card.u-high{border-color:var(--orange-m)}
@@ -1503,8 +1511,8 @@ tfoot td{
 #tabUp .cat-dev{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
 #tabUp .cat-bug{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
 #tabUp .cat-other{background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db}
-#tabUp /* Empty */
-.empty-section{
+/* Empty */
+#tabUp .empty-section{
   text-align:center;padding:32px;color:var(--muted);
   background:var(--s2);border-radius:12px;border:1.5px dashed var(--border);
   font-size:13px;
@@ -1516,8 +1524,8 @@ tfoot td{
   transition:.15s;display:flex;align-items:center;gap:5px;
 }
 #tabUp .btn-excel:hover{opacity:.88;transform:translateY(-1px)}
-#tabUp /* Per-section category buttons */
-.sec-cat-btn{
+/* Per-section category buttons */
+#tabUp .sec-cat-btn{
   padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;
   cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);
   transition:.15s;font-family:'Sora',sans-serif;
@@ -1526,12 +1534,12 @@ tfoot td{
 #tabUp .sc-active-dev{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
 #tabUp .sc-active-bug{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
 #tabUp .sc-active-other{background:var(--muted)!important;color:#fff!important;border-color:var(--muted)!important}
-#tabUp /* No data */
-.no-data{text-align:center;padding:60px 20px;color:var(--muted)}
+/* No data */
+#tabUp .no-data{text-align:center;padding:60px 20px;color:var(--muted)}
 #tabUp .no-data-icon{font-size:48px;margin-bottom:12px}
-#tabUp /* ── LOADER ── */
-.loader-overlay{
-  display:flex;position:fixed;inset:0;z-index:9999;
+/* ── LOADER ── */
+#tabUp .loader-overlay{
+  display:flex;position:fixed;inset:0;z-index:20050;
   background:rgba(240,242,249,.88);
   backdrop-filter:blur(8px);
   align-items:center;justify-content:center;
@@ -1554,10 +1562,10 @@ tfoot td{
 #tabUp .ldr-track{background:var(--s2);border-radius:20px;height:5px;overflow:hidden;}
 #tabUp .ldr-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--teal),var(--teal2));width:0%;transition:width .3s ease;}
 #tabUp .ldr-step{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px;}
-#tabUp /* ── TICKET DETAIL MODAL ── */
-.modal-backdrop{
+/* ── TICKET DETAIL MODAL ── */
+#tabUp .modal-backdrop{
   position:fixed;inset:0;background:rgba(8,16,30,.55);
-  z-index:1000;display:flex;align-items:center;justify-content:center;
+  z-index:20000;display:flex;align-items:center;justify-content:center;
   padding:20px;animation:up_fadeIn .18s ease;
 }
 @keyframes up_fadeIn{from{opacity:0}to{opacity:1}}
@@ -1566,7 +1574,7 @@ tfoot td{
   max-height:90vh;overflow-y:auto;
   box-shadow:0 24px 60px rgba(0,0,0,.25);
   animation:up_slideUp .2s ease;
-}
+;z-index:20001}
 @keyframes up_slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 #tabUp .modal-header{
   padding:20px 24px 16px;
