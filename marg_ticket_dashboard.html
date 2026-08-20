@@ -1165,6 +1165,30 @@ body[data-theme="analyst"] th{ background:#F3F4F6 !important; border:1px solid #
 body[data-theme="analyst"] td{ border:1px solid #D1D5DB !important; padding:3px 5px !important; font-variant-numeric:tabular-nums; font-size:10.5px !important; }
 body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 
+
+/* ── MODAL PORTAL CONTAINERS ───────────────────────────────────────────────
+ * Portal khud fixed + full viewport hai, aur uske andar ke overlays absolute.
+ * Isse overlay ki apni positioning par bharosa nahi karna padta — chahe kuch
+ * bhi ho, backdrop poora viewport dhakta hai aur modal ka header hamesha
+ * screen ke andar rehta hai.
+ * pointer-events: container khud clicks nahi rokta (band modals ke waqt),
+ * uske children rokte hain.
+ * ══════════════════════════════════════════════════════════════════════════ */
+#tabBssModals, #tabUpModals{
+  position:fixed; inset:0; z-index:20000; pointer-events:none;
+}
+#tabBssModals > *, #tabUpModals > *{ pointer-events:auto; }
+#tabBssModals .ov, #tabUpModals .modal-backdrop, #tabUpModals .loader-overlay{
+  position:absolute; inset:0;
+}
+/* Toast overlay nahi hai — wo apni jagah fixed rehni chahiye */
+#tabBssModals .toast{ position:fixed; }
+
+/* Modal ke andar ka scroll page tak na pahunche (scroll chaining) */
+#tabBssModals .mdl-b, #tabBssModals .tw, #tabUpModals .modal-box{
+  overscroll-behavior: contain;
+}
+
 /* ═══ PORTED TAB STYLES ═══════════════════════════════════════════════════
  * BSS aur Upcoming ki CSS #tabBss / #tabUp ke ANDAR scope ki gayi hai.
  * Unke `:root` blocks `#tabBss{...}` / `#tabUp{...}` ban gaye hain — CSS
@@ -7014,6 +7038,57 @@ window.mbSignOut = async function(){
 </div>
 
 <script>
+/* ═══ BODY SCROLL LOCK ═══════════════════════════════════════════════════════
+ * Modal khulne par peeche wala page scroll nahi hona chahiye. Do alag problem
+ * hain aur dono ka ilaaj alag hai:
+ *   1. Cursor overlay ke DARK area par ho — wahan koi scrollable element nahi,
+ *      to wheel seedha page ko jata hai. Iske liye body lock chahiye.
+ *   2. Cursor modal ke andar ho aur uska scroll END par pahunch jaye — browser
+ *      wheel ko parent tak "chain" kar deta hai. Iske liye overscroll-behavior
+ *      (CSS me upar) chahiye.
+ *
+ * Lock MutationObserver se lagta hai, kisi ek open/close function se nahi —
+ * modal Escape, ✕ button, aur backdrop click teeno se band hota hai, aur kisi
+ * ek raste par unlock chhoot jaye to page HAMESHA ke liye scroll-locked reh
+ * jata, jo isse bada bug hota.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+var _mbLockCount = 0, _mbPrevOverflow = '', _mbPrevPadRight = '';
+function mbSetScrollLock(on){
+  if(on){
+    if(_mbLockCount++ > 0) return;
+    /* `|| ''` — restore ke waqt undefined set karne se bacho. Browser me ye
+       hamesha string hota hai, par explicit rehna sasta hai. */
+    _mbPrevOverflow  = document.body.style.overflow   || '';
+    _mbPrevPadRight  = document.body.style.paddingRight || '';
+    /* Scrollbar hatne se page ki width badal jati hai aur content "kood" jata
+       hai. Utni width padding me daal kar wo jump rok dete hain. */
+    var sw = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if(sw > 0) document.body.style.paddingRight =
+      (parseFloat(_mbPrevPadRight || 0) + sw) + 'px';
+  } else {
+    if(_mbLockCount === 0) return;
+    if(--_mbLockCount > 0) return;
+    document.body.style.overflow    = _mbPrevOverflow;
+    document.body.style.paddingRight = _mbPrevPadRight;
+  }
+}
+
+function mbWatchModals(portalId, openSelector){
+  var host = document.getElementById(portalId);
+  if(!host || host._mbWatched) return;
+  host._mbWatched = true;
+  var wasOpen = false;
+  var check = function(){
+    var isOpen = !!host.querySelector(openSelector);
+    if(isOpen !== wasOpen){ wasOpen = isOpen; mbSetScrollLock(isOpen); }
+  };
+  new MutationObserver(check).observe(host, {
+    subtree:true, attributes:true, attributeFilter:['class','style'], childList:true
+  });
+  check();
+}
+
 /* ═══ MODAL PORTAL ═══════════════════════════════════════════════════════════
  * Ported modals tab panel ke ANDAR the. Wahan `position:fixed` bharosemand
  * nahi hai: koi bhi ancestor jo stacking context ya containing block banata
@@ -7669,6 +7744,7 @@ window.BSS.boot = function(){
 
   /* Modals ko body me le jao — dekho mbPortalModals() ka note. */
   try{ mbPortalModals('tabBss', 'tabBssModals', ['.ov', '.toast']); }catch(e){ console.warn('BSS modal portal:', e); }
+  try{ mbWatchModals('tabBssModals', '.ov.on'); }catch(e){ console.warn('BSS scroll lock:', e); }
   const _panel = document.getElementById('tabBss');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
      pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
@@ -8312,6 +8388,7 @@ window.UP.boot = function(){
 
   /* Modals ko body me le jao — dekho mbPortalModals() ka note. */
   try{ mbPortalModals('tabUp', 'tabUpModals', ['.modal-backdrop', '.loader-overlay']); }catch(e){ console.warn('UP modal portal:', e); }
+  try{ mbWatchModals('tabUpModals', '.modal-backdrop'); }catch(e){ console.warn('UP scroll lock:', e); }
   const _panel = document.getElementById('tabUp');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
      pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
