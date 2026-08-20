@@ -10,6 +10,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SHARED SUPERSET TICKET PARSER — mbTesterOf() etc. -->
+<script src="/assets/ticket-parser.js?v=3"></script>
 <!-- AUTH GUARD: login + per-dashboard permission check -->
 <script>
 (async function(){
@@ -1645,7 +1647,7 @@ function renderModalTable(rows){
       <td style="font-size:11px;color:var(--muted)">${r[actKey]||'—'}</td>
       <td>${tatHtml}</td>
       <td style="font-size:11px">${r.q||'—'}</td>
-      <td style="font-size:11px">${r.t||r.eb||'—'}</td>
+      <td style="font-size:11px">${mbTesterOf(r)||'—'}</td>
       <td style="font-size:11px">${r.r||'—'}</td>
     </tr>`;
   }).join('');
@@ -1747,7 +1749,7 @@ function exportModalExcel(){
       durKey ? r[durKey]||'' : '—',
       r[actKey]||'',
       r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
-      r.q||'', r.t||r.eb||'', r.r||''
+      r.q||'', mbTesterOf(r), r.r||''
     ]);
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -1761,7 +1763,7 @@ function exportModalExcel(){
     durKey ? r[durKey]||'' : '—',
     r[actKey]||'',
     r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
-    r.q||'', r.t||r.eb||'', r.r||''
+    r.q||'', mbTesterOf(r), r.r||''
   ])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pendRows), 'Pending Only');
 

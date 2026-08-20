@@ -2901,7 +2901,7 @@ function renderModalTable(rows){
       <td style="font-size:11px;color:var(--muted)">${r[actKey]||'—'}</td>
       <td>${tatHtml}</td>
       <td style="font-size:11px">${r.q||'—'}</td>
-      <td class="col-tester" style="font-size:11px">${r.t||r.eb||'—'}</td>
+      <td class="col-tester" style="font-size:11px">${mbTesterOf(r)||'—'}</td>
       <td class="col-rm" style="font-size:11px">${r.r||'—'}</td>
     </tr>`;
   }).join('');
@@ -3006,7 +3006,7 @@ function exportModalExcel(){
       durKey ? r[durKey]||'' : '—',
       r[actKey]||'',
       r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
-      r.q||'', r.t||r.eb||'', r.r||''
+      r.q||'', mbTesterOf(r), r.r||''
     ]);
   });
   const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -3020,7 +3020,7 @@ function exportModalExcel(){
     durKey ? r[durKey]||'' : '—',
     r[actKey]||'',
     r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
-    r.q||'', r.t||r.eb||'', r.r||''
+    r.q||'', mbTesterOf(r), r.r||''
   ])];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pendRows), 'Pending Only');
 
@@ -3597,7 +3597,25 @@ async function fetchYearChunk(yearStart, yearEnd, label, progressCb){
   return Array.from(map.values());
 }
 
+/* SERVER-CHOKE GUARD.
+ * Ye function ek Refresh me ~16 Marg API requests + 4 cache writes karta hai.
+ * Button par koi guard nahi tha — user 5 baar click kare to 5 poore fetch loops
+ * PARALLEL chal jaate the (80 Marg requests, 20 cache writes), aur har run apna
+ * full-year payload /api/ticket-cache par POST karta. Slow network par ye aasan
+ * galti hai: kuch nahi hota dikhta, to log dobara dabate hain.
+ *
+ * Ab: ek waqt me ek hi run. Doosra click chup-chaap ignore nahi hota — user ko
+ * batate hain ki chal raha hai, warna wo aur click karega. */
+let _bgFetchBusy = false;
 async function backgroundFetch(){
+  if(_bgFetchBusy){
+    showToast('⏳ Refresh already running — please wait');
+    return;
+  }
+  _bgFetchBusy = true;
+  const _btn = document.getElementById('btnRefresh');
+  if(_btn){ _btn.disabled = true; _btn.style.opacity = '.55'; _btn.style.cursor = 'not-allowed'; }
+  try{
   const _fetchStart = Date.now();
   document.getElementById('loaderTitle').textContent = 'Refreshing Data...';
   document.getElementById('loaderMsg').textContent   = 'Starting year-wise fetch...';
@@ -3689,6 +3707,14 @@ async function backgroundFetch(){
     document.getElementById('loaderBar').style.width = '0%';
     document.getElementById('fInfo').textContent = `⚠️ Load failed: ${err.message}`;
     showToast(`❌ ${err.message}`);
+  }
+  } finally {
+    /* Guard HAMESHA release ho — success, error, ya beech me kuch bhi. Warna
+       ek failure ke baad Refresh permanently disabled reh jata, jo original
+       problem se bada bug hota. */
+    _bgFetchBusy = false;
+    const _b = document.getElementById('btnRefresh');
+    if(_b){ _b.disabled = false; _b.style.opacity = ''; _b.style.cursor = ''; }
   }
 }
 

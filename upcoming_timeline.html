@@ -95,6 +95,11 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 
 /* ── SUMMARY CARDS ── */
 .summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+@media(min-width:1400px){.summary-row{grid-template-columns:repeat(7,1fr)}}
+/* Overdue cards visually alag — ye "late ho chuka" hai, "aane wala" nahi */
+.sum-card.od{border-color:var(--red-m);background:var(--red-l)}
+.sum-card.od .sum-card-label{color:var(--red)}
+.section.od .section-title{color:var(--red)}
 @media(max-width:900px){.summary-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:500px){.summary-row{grid-template-columns:1fr}}
 
@@ -167,6 +172,9 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 .u-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
 .u-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
 .u-low .t-days-badge{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m)}
+.u-od-critical .t-days-badge{background:var(--red);color:#fff;border:1px solid var(--red)}
+.u-od-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
+.u-od-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
 
 .t-client{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
 .t-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;
@@ -394,55 +402,12 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 <!-- MAIN -->
 <div class="main">
 
-  <!-- Summary Row -->
-  <div class="summary-row" id="summaryRow">
-    <div class="sum-card">
-      <div class="sum-card-label">1–7 Days</div>
-      <div class="sum-card-val" id="s1">0</div>
-      <div class="sum-card-sub">Critical / Urgent</div>
-      <div class="sum-cat-row">
-        <span class="sum-cat-chip sum-cat-dev" id="sc1dev">Dev: 0</span>
-        <span class="sum-cat-chip sum-cat-bug" id="sc1bug">Bugs: 0</span>
-        <span class="sum-cat-chip sum-cat-oth" id="sc1oth">Other: 0</span>
-      </div>
-      <div class="sum-card-bar"><div class="sum-card-bar-fill" id="b1" style="background:var(--red);width:0%"></div></div>
-    </div>
-    <div class="sum-card">
-      <div class="sum-card-label">8–15 Days</div>
-      <div class="sum-card-val" id="s2">0</div>
-      <div class="sum-card-sub">High Priority</div>
-      <div class="sum-cat-row">
-        <span class="sum-cat-chip sum-cat-dev" id="sc2dev">Dev: 0</span>
-        <span class="sum-cat-chip sum-cat-bug" id="sc2bug">Bugs: 0</span>
-        <span class="sum-cat-chip sum-cat-oth" id="sc2oth">Other: 0</span>
-      </div>
-      <div class="sum-card-bar"><div class="sum-card-bar-fill" id="b2" style="background:var(--orange);width:0%"></div></div>
-    </div>
-    <div class="sum-card">
-      <div class="sum-card-label">16–30 Days</div>
-      <div class="sum-card-val" id="s3">0</div>
-      <div class="sum-card-sub">Medium Priority</div>
-      <div class="sum-cat-row">
-        <span class="sum-cat-chip sum-cat-dev" id="sc3dev">Dev: 0</span>
-        <span class="sum-cat-chip sum-cat-bug" id="sc3bug">Bugs: 0</span>
-        <span class="sum-cat-chip sum-cat-oth" id="sc3oth">Other: 0</span>
-      </div>
-      <div class="sum-card-bar"><div class="sum-card-bar-fill" id="b3" style="background:var(--amber);width:0%"></div></div>
-    </div>
-    <div class="sum-card">
-      <div class="sum-card-label">31–60 Days</div>
-      <div class="sum-card-val" id="s4">0</div>
-      <div class="sum-card-sub">Low Priority</div>
-      <div class="sum-cat-row">
-        <span class="sum-cat-chip sum-cat-dev" id="sc4dev">Dev: 0</span>
-        <span class="sum-cat-chip sum-cat-bug" id="sc4bug">Bugs: 0</span>
-        <span class="sum-cat-chip sum-cat-oth" id="sc4oth">Other: 0</span>
-      </div>
-      <div class="sum-card-bar"><div class="sum-card-bar-fill" id="b4" style="background:var(--teal);width:0%"></div></div>
-    </div>
-  </div>
+  <!-- Summary Row — SECTIONS se auto-generate hota hai (renderSummaryCards).
+       Pehle 4 cards hardcoded the aur unke ids s1..s4 / b1..b4; naya section
+       add karne par HTML bhi manually badalna padta tha. -->
+  <div class="summary-row" id="summaryRow"></div>
 
-  <!-- Sections -->
+<!-- Sections -->
   <div id="sectionsContainer"></div>
 
 </div>
@@ -609,16 +574,81 @@ const STAGE_LABELS = {
   RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT', OT:'Other'
 };
 
+/* ── "Ye ticket ab IT ke paas nahi hai" ──────────────────────────────────────
+ * Deadline list ka matlab hi wo tickets hain jinpar KAAM BAAKI hai. Jo close
+ * ho chuki, support ko wapas/transfer ho chuki, ya reject ho chuki — unki
+ * deadline se ab koi farak nahi padta. Pehle inpar koi filter tha hi nahi,
+ * isliye closed tickets bhi Upcoming me green hokar dikhte the.
+ *
+ * `sc` short-codes: CL=Closed, SP=Transfer To Support, RS=Return to Support.
+ * REJECTED ka koi short-code NAHI hai — wo `sc` me OT me girta hai, isliye use
+ * raw status label se pakadna padta hai. Sirf `sc` par bharosa karte to
+ * Rejected tickets chup-chaap list me bane rehte. */
+const DONE_SC = { CL:1, SP:1, RS:1 };
+function isDoneForDeadline(r){
+  if(!r) return false;
+  if(DONE_SC[r.sc]) return true;
+  /* TRIM zaroori hai — Marg se "  Rejected " jaisa padded label aa sakta hai,
+     aur bina trim ke `/^reject/` match nahi karta (ticket chup-chaap list me
+     bana rehta). */
+  const st = String(r.st||'').trim().toLowerCase();
+  if(/^reject/.test(st)) return true;                 /* Rejected / Reject */
+  if(/^closed?$/.test(st)) return true;
+  if(/transfer\s*to\s*support/.test(st)) return true;
+  if(/return\s*to\s*support/.test(st)) return true;
+  return false;
+}
+
+/* Sections. `days` = tld - today, to OVERDUE ke liye days NEGATIVE hota hai.
+ * Overdue sabse UPAR — pehle ye dikhe ki kya late ho chuka hai. */
 const SECTIONS = [
-  { id:'s1-7',   label:'1–7 Days',   urgency:'critical', min:1,  max:7,  icon:'🔴', color:'var(--red)',    countEl:'s1', barEl:'b1' },
-  { id:'s8-15',  label:'8–15 Days',  urgency:'high',     min:8,  max:15, icon:'🟠', color:'var(--orange)', countEl:'s2', barEl:'b2' },
-  { id:'s16-30', label:'16–30 Days', urgency:'medium',   min:16, max:30, icon:'🟡', color:'var(--amber)',  countEl:'s3', barEl:'b3' },
-  { id:'s31-60', label:'31–60 Days', urgency:'low',      min:31, max:60, icon:'🟢', color:'var(--teal)',   countEl:'s4', barEl:'b4' },
+  { id:'od30',   label:'30+ Days Overdue', urgency:'od-critical', min:-Infinity, max:-31, icon:'🚨', color:'var(--red)',    overdue:true },
+  { id:'od8-30', label:'8–30 Days Overdue',urgency:'od-high',     min:-30,    max:-8,  icon:'⚠️', color:'var(--orange)', overdue:true },
+  { id:'od1-7',  label:'1–7 Days Overdue', urgency:'od-medium',   min:-7,     max:-1,  icon:'⏰', color:'var(--amber)',  overdue:true },
+  /* min:0 — "aaj due, abhi khuli" ticket sabse urgent hai. Purana filter
+     (`r.tld <= todayStr`) bhi use dikhata tha, kyunki todayStr toISOString se
+     aata tha jo IST me ek din PEECHE hota hai. Us off-by-one ko fix karte waqt
+     aaj wali tickets kahin bhi na girein — ye guard usi ke liye hai. */
+  { id:'s1-7',   label:'Today – 7 Days', urgency:'critical', min:0,  max:7,  icon:'🔴', color:'var(--red)'    },
+  { id:'s8-15',  label:'8–15 Days',  urgency:'high',     min:8,  max:15, icon:'🟠', color:'var(--orange)' },
+  { id:'s16-30', label:'16–30 Days', urgency:'medium',   min:16, max:30, icon:'🟡', color:'var(--amber)'  },
+  { id:'s31-60', label:'31–60 Days', urgency:'low',      min:31, max:60, icon:'🟢', color:'var(--teal)'   },
 ];
+/* countEl/barEl/chip ids ab section id se derive hote hain — pehle hardcoded
+ * s1..s4 / b1..b4 the, jinme naya section add karna manual kaam tha. */
+SECTIONS.forEach(sec=>{
+  sec.countEl = 'cnt_'+sec.id;
+  sec.barEl   = 'bar_'+sec.id;
+  sec.chipDev = 'cd_'+sec.id;
+  sec.chipBug = 'cb_'+sec.id;
+  sec.chipOth = 'co_'+sec.id;
+});
 
 let RAW = [];
 // Category filter now per-section
 let latestFetchedAt = null;
+
+/* Summary cards SECTIONS se banti hain — ek hi jagah section add karo aur
+ * card + bucket + section sab apne aap aa jaate hain. */
+let _sumCardsBuilt = false;
+function renderSummaryCards(){
+  if(_sumCardsBuilt) return;
+  const row = document.getElementById('summaryRow');
+  if(!row) return;
+  row.innerHTML = SECTIONS.map(sec=>`
+    <div class="sum-card${sec.overdue?' od':''}">
+      <div class="sum-card-label">${sec.icon} ${sec.label}</div>
+      <div class="sum-card-val" id="${sec.countEl}">0</div>
+      <div class="sum-card-sub">${sec.overdue?'Deadline missed — still open':'Deadline approaching'}</div>
+      <div class="sum-cat-row">
+        <span class="sum-cat-chip sum-cat-dev" id="${sec.chipDev}">Dev: 0</span>
+        <span class="sum-cat-chip sum-cat-bug" id="${sec.chipBug}">Bugs: 0</span>
+        <span class="sum-cat-chip sum-cat-oth" id="${sec.chipOth}">Other: 0</span>
+      </div>
+      <div class="sum-card-bar"><div class="sum-card-bar-fill" id="${sec.barEl}" style="background:${sec.color};width:0%"></div></div>
+    </div>`).join('');
+  _sumCardsBuilt = true;
+}
 
 // ── Detect category ──────────────────────────────────────────────────────────
 function detectCategory(rec){
@@ -635,7 +665,6 @@ function exportExcel(sectionId, sectionLabel, event){
   event.stopPropagation();
 
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = today.toISOString().split('T')[0];
 
   // Get section bounds
   const sec = SECTIONS.find(s => s.id === sectionId);
@@ -650,12 +679,15 @@ function exportExcel(sectionId, sectionLabel, event){
 
   // Filter data for this section
   const items = RAW.filter(r=>{
-    if(!r.tld || r.tld <= todayStr) return false;
+    if(!r.tld) return false;
+    /* Closed/support/rejected tickets deadline list me nahi aate — na Upcoming
+       me, na Overdue me. Inpar kaam baaki hi nahi hai. */
+    if(isDoneForDeadline(r)) return false;
     const dateObj = new Date(r.tld+'T00:00:00');
     const days = Math.round((dateObj - today) / 86400000);
     if(days < sec.min || days > sec.max) return false;
     if(q){ const hay=[r.n,r.u,r.desc,r.remarks,r.r,r.dev,r.t,r.ti,r.ta,r.ts,r.eb].join(' ').toLowerCase(); if(!hay.includes(q)) return false; }
-    if(tester){ const t=r.eb||r.t||r.ti||r.ta||r.ts||''; if(t!==tester) return false; }
+    if(tester && mbTesterOf(r)!==tester) return false;
     if(rm && r.r !== rm) return false;
     if(dev && r.dev !== dev) return false;
     if(stage && r.sc !== stage) return false;
@@ -667,7 +699,7 @@ function exportExcel(sectionId, sectionLabel, event){
 
   // Build Excel rows
   const wsData = [
-    ['Ticket No', 'Customer', 'Timeline Date', 'Days Left', 'Stage', 'Category',
+    ['Ticket No', 'Customer', 'Timeline Date', 'Days Left (negative = overdue)', 'Stage', 'Category',
      'Description', 'Remarks', 'Tester/Agent', 'RM', 'Developer', 'Subscription Plan',
      'Licence No', 'Mobile', 'Email']
   ];
@@ -675,7 +707,7 @@ function exportExcel(sectionId, sectionLabel, event){
   items.forEach(r=>{
     const dateObj = new Date(r.tld+'T00:00:00');
     const days = Math.round((dateObj - today) / 86400000);
-    const testerName = r.eb||r.t||r.ti||r.ta||r.ts||'—';
+    const testerName = mbTesterOf(r)||'—';
     const cat = detectCategory(r);
     const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
     wsData.push([
@@ -796,8 +828,12 @@ async function loadData(){
 // ── Populate filters ─────────────────────────────────────────────────────────
 function populateFilters(){
   const testers=new Set(), rms=new Set(), devs=new Set(), stages=new Set();
-  RAW.forEach(r=>{
-    const t = r.eb||r.t||r.ti||r.ta||r.ts||'';
+  /* SIRF un tickets se options banao jo is dashboard par dikh sakti hain.
+     RAW me closed/support/rejected bhi hain — unse dropdown bharne par Stage
+     me "Closed"/"Transfer To Support" jaise options aate the, jinhe chunne par
+     poora dashboard khali ho jata tha bina wajah bataye. */
+  RAW.filter(r=>!isDoneForDeadline(r)).forEach(r=>{
+    const t = mbTesterOf(r);
     if(t&&t!=='—') testers.add(t);
     if(r.r&&r.r!=='—') rms.add(r.r);
     if(r.dev&&r.dev!=='—') devs.add(r.dev);
@@ -836,16 +872,19 @@ function applyFilters(){
   const stage   = document.getElementById('filterStage').value;
 
   const today = new Date(); today.setHours(0,0,0,0);
-  const todayStr = today.toISOString().split('T')[0];
 
   // Filter tickets with future tld
   let filtered = RAW.filter(r=>{
-    if(!r.tld || r.tld <= todayStr) return false; // only future dates
+    if(!r.tld) return false;
+    /* Yahan pehle sirf `r.tld <= todayStr` check tha — na overdue dikhta tha,
+       na closed tickets hatte the (isliye close ho chuki tickets Upcoming me
+       green hokar dikhti thin). */
+    if(isDoneForDeadline(r)) return false;
     if(q){
       const hay = [r.n,r.u,r.desc,r.remarks,r.r,r.dev,r.t,r.ti,r.ta,r.ts,r.eb].join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
     }
-    if(tester){ const t=r.eb||r.t||r.ti||r.ta||r.ts||''; if(t!==tester) return false; }
+    if(tester && mbTesterOf(r)!==tester) return false;
     if(rm && r.r !== rm) return false;
     if(dev && r.dev !== dev) return false;
     if(stage && r.sc !== stage) return false;
@@ -853,51 +892,44 @@ function applyFilters(){
     return true;
   });
 
-  // Bucket by days
-  const buckets = { 'u-critical':[], 'u-high':[], 'u-medium':[], 'u-low':[] };
+  /* Bucketing ab SECTIONS se chalti hai (pehle hardcoded 4 keys the, isliye
+     naya section add karna do jagah change maangta tha). */
+  const buckets = {};
+  SECTIONS.forEach(sec=>buckets[sec.id]=[]);
   filtered.forEach(r=>{
     const dateObj = new Date(r.tld+'T00:00:00');
     const days = Math.round((dateObj - today) / 86400000);
-    if(days >= 1  && days <= 7)  buckets['u-critical'].push({r, days});
-    else if(days >= 8  && days <= 15) buckets['u-high'].push({r, days});
-    else if(days >= 16 && days <= 30) buckets['u-medium'].push({r, days});
-    else if(days >= 31 && days <= 60) buckets['u-low'].push({r, days});
+    const sec = SECTIONS.find(x=>days >= x.min && days <= x.max);
+    if(sec) buckets[sec.id].push({r, days});
   });
 
-  // Sort each bucket by tld ascending
-  Object.values(buckets).forEach(b=>b.sort((a,z)=>a.r.tld.localeCompare(z.r.tld)));
+  /* Upcoming: sabse paas wali deadline pehle (tld ascending).
+     Overdue: sabse ZYADA late pehle — yaani sabse purani tld, jo bhi ascending
+     hi hai. Dono ke liye tld ascending sahi hai. */
+  SECTIONS.forEach(sec=>buckets[sec.id].sort((a,z)=>a.r.tld.localeCompare(z.r.tld)));
 
   const total = filtered.length;
 
   // Update summary cards with dev/bug/other counts
-  const counts = [
-    buckets['u-critical'].length,
-    buckets['u-high'].length,
-    buckets['u-medium'].length,
-    buckets['u-low'].length,
-  ];
+  renderSummaryCards();
+  const counts = SECTIONS.map(sec=>buckets[sec.id].length);
   const maxCount = Math.max(...counts, 1);
-  const secNums = [1,2,3,4];
-  const buckKeys = ['u-critical','u-high','u-medium','u-low'];
 
   SECTIONS.forEach((sec,i)=>{
-    document.getElementById(sec.countEl).textContent = counts[i];
-    document.getElementById(sec.barEl).style.width = Math.round(counts[i]/maxCount*100)+'%';
-    // Cat breakdown
-    const items = buckets[buckKeys[i]];
-    const devC = items.filter(({r})=>detectCategory(r)==='dev').length;
-    const bugC = items.filter(({r})=>detectCategory(r)==='bug').length;
-    const othC = items.filter(({r})=>detectCategory(r)==='other').length;
-    const n = secNums[i];
-    document.getElementById(`sc${n}dev`).textContent = 'Dev: '+devC;
-    document.getElementById(`sc${n}bug`).textContent = 'Bugs: '+bugC;
-    document.getElementById(`sc${n}oth`).textContent = 'Other: '+othC;
+    const setT=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+    setT(sec.countEl, counts[i]);
+    const bar=document.getElementById(sec.barEl);
+    if(bar) bar.style.width = Math.round(counts[i]/maxCount*100)+'%';
+    const items = buckets[sec.id];
+    setT(sec.chipDev, 'Dev: ' +items.filter(({r})=>detectCategory(r)==='dev').length);
+    setT(sec.chipBug, 'Bugs: '+items.filter(({r})=>detectCategory(r)==='bug').length);
+    setT(sec.chipOth, 'Other: '+items.filter(({r})=>detectCategory(r)==='other').length);
   });
 
   // Render sections
   let html = '';
   SECTIONS.forEach((sec,i)=>{
-    const items = buckets[`u-${sec.urgency}`];
+    const items = buckets[sec.id];
     const secColor = sec.color;
     // Per-section category state
     const secCatKey = 'secCat_'+sec.id;
@@ -913,14 +945,16 @@ function applyFilters(){
     const bugC  = items.filter(({r})=>detectCategory(r)==='bug').length;
     const othC  = items.filter(({r})=>detectCategory(r)==='other').length;
 
-    html += `<div class="section">
+    html += `<div class="section${sec.overdue?' od':''}">
       <div class="section-hdr">
         <div class="section-icon" style="background:${secColor.replace('var(','').replace(')','')};opacity:.15;color:#000">
           <span style="opacity:1">${sec.icon}</span>
         </div>
         <div>
           <div class="section-title">${sec.label}</div>
-          <div class="section-sub">Timeline deadline within this range</div>
+          <div class="section-sub">${sec.overdue
+            ? 'Deadline passed and the ticket is still open (not closed / transferred to support / rejected)'
+            : 'Timeline deadline within this range'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap">
           <button onclick="setSectionCat('${sec.id}','all')"   class="sec-cat-btn ${activeCat==='all'  ?'sc-active-all':''}"  style="border-color:${secColor};${activeCat==='all'  ?'background:'+secColor+';color:#fff':''}" >All (${items.length})</button>
@@ -938,11 +972,16 @@ function applyFilters(){
       secItems.forEach(({r, days})=>{
         const cat = detectCategory(r);
         const urgClass = `u-${sec.urgency}`;
-        const testerName = r.eb||r.t||r.ti||r.ta||r.ts||'—';
+        const testerName = mbTesterOf(r)||'—';
         const stageLabel = STAGE_LABELS[r.sc]||r.sc||'—';
         const desc = (r.desc||r.remarks||'No description').slice(0,100);
         const tldFmt = new Date(r.tld+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-        const daysLabel = days===1 ? '🔴 Tomorrow' : days<=7 ? `🔴 ${days} days` : days<=15 ? `🟠 ${days} days` : days<=30 ? `🟡 ${days} days` : `🟢 ${days} days`;
+        /* Overdue me days NEGATIVE hota hai — usko "18 days overdue" dikhana
+           hai, "-18 days" nahi. */
+        const od = days < 0, late = Math.abs(days);
+        const daysLabel = od
+          ? (late===1 ? '🚨 1 day overdue' : `🚨 ${late} days overdue`)
+          : (days===0 ? '🔴 Due today' : days===1 ? '🔴 Tomorrow' : days<=7 ? `🔴 ${days} days` : days<=15 ? `🟠 ${days} days` : days<=30 ? `🟡 ${days} days` : `🟢 ${days} days`);
 
         const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
         const catCls   = cat==='dev'?'cat-dev':cat==='bug'?'cat-bug':'cat-other';

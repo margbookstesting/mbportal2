@@ -348,7 +348,8 @@ function statusKeyOf(r){
 }
 function statusLabelOf(r){const d=STATUSES.find(x=>x.key===statusKeyOf(r));return d?d.label:(r.st||'Other');}
 function stageDateOf(r){return r.e||r.d||r.c||r.b||r.a||'';}
-const testerOf=r=>(r.assignto||r.t||r.eb||'').trim();
+/* Shared helper — dekho assets/ticket-parser.js ka mbTesterOf(). */
+const testerOf=r=>mbTesterOf(r);
 const devOf=r=>(r.dev||'').trim();
 const rmOf=r=>(r.r||'').trim();
 
