@@ -15,6 +15,8 @@
      purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
      400 deta hai. -->
 <script src="/assets/ticket-parser.js?v=3"></script>
+<!-- BSS FIELD CROSSWALK — "BSS Update" tab ke liye zaroori -->
+<script src="/assets/bss-fields.js?v=1"></script>
 <script>
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
@@ -1162,6 +1164,457 @@ body[data-theme="analyst"] table{ border-collapse:collapse; font-size:10.5px; }
 body[data-theme="analyst"] th{ background:#F3F4F6 !important; border:1px solid #9CA3AF !important; padding:3px 5px !important; font-size:10.5px !important; letter-spacing:.3px; color:#374151; }
 body[data-theme="analyst"] td{ border:1px solid #D1D5DB !important; padding:3px 5px !important; font-variant-numeric:tabular-nums; font-size:10.5px !important; }
 body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
+
+/* ═══ PORTED TAB STYLES ═══════════════════════════════════════════════════
+ * BSS aur Upcoming ki CSS #tabBss / #tabUp ke ANDAR scope ki gayi hai.
+ * Unke `:root` blocks `#tabBss{...}` / `#tabUp{...}` ban gaye hain — CSS
+ * variables inherit karte hain, to tab ke andar unke values chalte hain aur
+ * bahar TAT ke apne. Bina scope kiye `--bg`, `--surface` overwrite ho jate
+ * aur poora TAT dashboard toot jata.
+ * ═════════════════════════════════════════════════════════════════════ */
+#tabBss{
+  --bg:#f0f2f9; --surface:#fff; --s2:#f7f8fd; --border:#e8eaf4; --border2:#d4d8ec;
+  --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
+  --it:#0d9488; --ack:#0891b2; --ip:#0f766e; --tst:#b45309; --uat:#0284c7;
+  --glv:#15803d; --cl:#475569; --oth:#b45309; --sup:#dc2626; --ret:#0891b2;
+  --sh-s:0 1px 3px rgba(8,16,30,.06),0 1px 2px rgba(8,16,30,.04);
+  --sh-m:0 4px 16px rgba(8,16,30,.08),0 1px 3px rgba(8,16,30,.04);
+  --sh-l:0 12px 48px rgba(8,16,30,.12),0 4px 8px rgba(8,16,30,.06);
+  --r:12px; --r2:7px; --r3:5px;
+}
+#tabBss *{margin:0;padding:0;box-sizing:border-box}
+#tabBss{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
+#tabBss .mono{font-family:'JetBrains Mono',monospace}
+#tabBss /* ── Header ── */
+.hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
+#tabBss .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.2px}
+#tabBss .hdr .sub{font-size:10.5px;opacity:.72;margin-top:1px}
+#tabBss .hdr .sp{flex:1}
+#tabBss .btn{border:none;border-radius:var(--r2);padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+#tabBss .btn:disabled{opacity:.5;cursor:not-allowed}
+#tabBss .btn-ghost{background:rgba(255,255,255,.12);color:#fff}
+#tabBss .btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.22)}
+#tabBss .btn-red{background:#dc2626;color:#fff}
+#tabBss .btn-teal{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff}
+#tabBss .btn-teal:hover:not(:disabled){filter:brightness(1.08)}
+#tabBss .btn-sm{padding:5px 10px;font-size:11px}
+#tabBss .pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:8px}
+#tabBss .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+#tabBss .dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
+#tabBss /* ── Filters ── */
+.wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+#tabBss .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+#tabBss .inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
+#tabBss .inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+#tabBss select.inp{cursor:pointer}
+#tabBss .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
+#tabBss .f-grp{display:flex;flex-direction:column}
+#tabBss /* ── KPI cards ── */
+.sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+#tabBss .sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+#tabBss .sec-l{flex:1;height:1px;background:var(--border2)}
+#tabBss .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
+@media(max-width:1400px){#tabBss .kpi-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:1000px){#tabBss .kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){#tabBss .kpi-row{grid-template-columns:1fr}}
+#tabBss .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
+#tabBss .kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+#tabBss .kpi-top{height:4px}
+#tabBss .kpi-b{padding:10px 13px 9px}
+#tabBss .kpi-s{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
+#tabBss .kpi-n{font-size:25px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
+#tabBss .kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+#tabBss .kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:var(--r3);padding:4px 3px;text-align:center}
+#tabBss .kpi-sp .l{font-size:8px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
+#tabBss .kpi-sp .v{font-size:12px;font-weight:700;color:var(--text2);margin-top:1px}
+#tabBss .kpi-f{border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
+#tabBss .lnk{font-size:10.5px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
+#tabBss .lnk:hover{background:rgba(13,148,136,.1)}
+#tabBss /* ── Tables ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
+#tabBss .card-h{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#tabBss .card-t{font-size:13px;font-weight:700}
+#tabBss .card-s{font-size:10.5px;color:var(--muted)}
+#tabBss .tw{overflow:auto;max-height:420px}
+#tabBss /* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
+   table hai. Pehle .tw par `max-height:none` tha — wo kabhi scroll nahi karta
+   tha, #tabBss aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
+   ancestor (.tw, #tabBss jisme overflow:auto hai) se bind hota hai — aur wo scroll na
+   kare to header chipakta hi nahi. Isliye height yahan, #tabBss aur .mdl-b ka scroll
+   band. */
+.tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
+#tabBss .mdl-b.no-scroll{overflow:hidden}
+#tabBss /* Sticky header ko solid + elevated rakho, #tabBss warna scroll par rows uske
+   peeche se dikhti hain. */
+#tblList th{
+  background:var(--s2);
+  box-shadow:inset 0 -1px 0 var(--border2), 0 2px 6px rgba(8,16,30,.06);
+}
+#tabBss /* Ticket No column bhi sticky — 14 columns hain, #tabBss horizontally scroll karte
+   waqt ticket number gayab ho jata tha aur row pehchanna mushkil. */
+#tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
+#tabBss #tblList td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
+  box-shadow:inset -1px 0 0 var(--border)}
+#tabBss #tblList tbody tr:hover td:first-child{background:var(--s2)}
+#tabBss /* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
+   list dikhni chahiye, #tabBss page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
+   overflow visible hone par sticky ka nearest scroll container page ban jata
+   hai, #tabBss aur header page ke apne sticky header ke neeche chipak kar overlap
+   karta hai. */
+.tw-full{overflow:visible;max-height:none}
+#tabBss .tw-full th{position:static}
+#tabBss /* Totals row */
+tfoot td{
+  padding:9px 10px;border-top:2px solid var(--border2);background:var(--s2);
+  font-weight:800;color:var(--text);position:sticky;bottom:0;
+}
+#tabBss tfoot td.r{text-align:right}
+#tabBss tfoot .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+#tabBss table{width:100%;border-collapse:collapse;font-size:11.5px}
+#tabBss th{background:var(--s2);color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;text-align:left;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border2);white-space:nowrap}
+#tabBss td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+#tabBss tbody tr:hover{background:var(--s2)}
+#tabBss th.r, #tabBss td.r{text-align:right}
+#tabBss .tno{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0d9488;cursor:pointer;white-space:nowrap}
+#tabBss .tno:hover{text-decoration:underline}
+#tabBss .muted{color:var(--muted2)}
+#tabBss .badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--s2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
+#tabBss /* ── Modals ── */
+.ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
+#tabBss .ov.on{display:flex}
+#tabBss .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+#tabBss .mdl.sm{max-width:1260px}
+#tabBss .mdl-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
+#tabBss .mdl-t{font-size:15px;font-weight:700}
+#tabBss .mdl-b{overflow:auto;padding:0}
+#tabBss .mdl-b.pad{padding:14px 18px}
+#tabBss .mdl-f{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
+#tabBss /* ── Edit form ── */
+/* 12 updatable fields. 2 columns me 6 rows banti thi aur modal scroll karta
+   tha; 3 columns me 4 rows — normal laptop par sab kuch bina scroll dikhta hai. */
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
+@media(max-width:1100px){#tabBss .fgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){#tabBss .fgrid{grid-template-columns:1fr}}
+#tabBss .fld label{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+#tabBss .fld .inp{width:100%}
+#tabBss .fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+#tabBss .fld .e{color:#dc2626;font-size:10.5px;margin-top:3px;display:none}
+#tabBss .fld.err .e{display:block}
+#tabBss .req{color:#dc2626}
+#tabBss .hint{font-size:9.5px;color:var(--muted2);margin-top:2px;line-height:1.3}
+#tabBss .note{border-radius:var(--r2);padding:8px 11px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
+#tabBss .note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+#tabBss .note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
+#tabBss .note.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+#tabBss .note.info{background:#f0f9ff;border:1px solid #bae6fd;color:#075985}
+#tabBss .kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
+#tabBss .kv .k{color:var(--muted);font-weight:600}
+#tabBss .kv .v{color:var(--text);font-weight:500;word-break:break-word}
+#tabBss .meta-row{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:11.5px;align-items:center}
+#tabBss .meta-row b{color:var(--muted);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;margin-right:3px}
+#tabBss .desc-box{margin-top:8px;
+  white-space:pre-wrap;line-height:1.5;max-height:88px;overflow:auto;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);
+  padding:8px 10px;font-weight:400;font-size:11.5px;color:var(--text2);
+}
+#tabBss .spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:bss_sp .7s linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes bss_sp{to{transform:rotate(360deg)}}
+#tabBss .empty{padding:44px 20px;text-align:center;color:var(--muted)}
+#tabBss .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:400;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
+#tabBss .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+#tabUp *{margin:0;padding:0;box-sizing:border-box}
+#tabUp{
+  --bg:#f0f2f9;--surface:#ffffff;--s2:#f7f8fd;--border:#e8eaf4;--border2:#d4d8ec;
+  --navy:#08101e;--navy2:#0f1d34;--text:#111827;--text2:#374151;--muted:#6b7280;--muted2:#9ca3af;
+  --teal:#0d9488;--teal2:#0891b2;--teal-l:#f0fdfa;--teal-m:#99f6e4;
+  --amber:#d97706;--amber-l:#fffbeb;--amber-m:#fde68a;
+  --red:#dc2626;--red-l:#fef2f2;--red-m:#fecaca;
+  --green:#16a34a;--green-l:#f0fdf4;--green-m:#bbf7d0;
+  --blue:#2563eb;--blue-l:#eff6ff;--blue-m:#bfdbfe;
+  --purple:#7c3aed;--purple-l:#f5f3ff;--purple-m:#ddd6fe;
+  --orange:#ea580c;--orange-l:#fff7ed;--orange-m:#fed7aa;
+  --sh-s:0 1px 3px rgba(0,0,0,.08);
+  --sh-m:0 4px 12px rgba(0,0,0,.1);
+  --sh-l:0 8px 24px rgba(0,0,0,.12);
+}
+#tabUp{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#tabUp /* ── TOPBAR ── */
+.topbar{
+  background:linear-gradient(135deg,#0d9488 0%,#0891b2 100%);
+  position:sticky;top:0;z-index:300;
+  box-shadow:0 4px 20px rgba(13,148,136,.35);
+}
+#tabUp .topbar-inner{
+  max-width:1400px;margin:0 auto;
+  display:flex;align-items:center;gap:14px;
+  padding:0 24px;height:58px;
+}
+#tabUp .brand{display:flex;align-items:center;gap:10px}
+#tabUp .brand-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+#tabUp .brand-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px}
+#tabUp .brand-tagline{font-size:10px;color:rgba(255,255,255,.7);font-weight:400}
+#tabUp .topbar-sep{width:1px;height:24px;background:rgba(255,255,255,.2);margin:0 4px}
+#tabUp .page-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.2px}
+#tabUp .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+#tabUp .sync-badge{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+  border-radius:20px;padding:5px 14px;font-size:11px;
+  font-family:'JetBrains Mono',monospace;color:#fff;white-space:nowrap;
+}
+#tabUp .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:up_pulse 2s infinite}
+@keyframes up_pulse{0%,100%{opacity:1}50%{opacity:.5}}
+#tabUp /* ── FILTERS ── */
+.filter-bar{
+  background:#fff;border-bottom:1px solid var(--border);
+  padding:10px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+#tabUp .filter-bar-inner{max-width:1400px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#tabUp .filter-pill{
+  display:flex;align-items:center;gap:6px;padding:5px 12px;
+  background:var(--s2);border:1.5px solid var(--border);border-radius:20px;
+  font-size:12px;font-weight:600;color:var(--text);cursor:pointer;transition:.15s;
+}
+#tabUp .filter-pill select{border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;outline:none;font-family:'Sora',sans-serif;color:var(--text)}
+#tabUp .search-wrap{position:relative;display:flex;align-items:center}
+#tabUp .search-icon{position:absolute;left:10px;font-size:13px;pointer-events:none}
+#tabUp .search-input{
+  padding:6px 12px 6px 30px;border:1.5px solid var(--border);border-radius:20px;
+  font-size:12px;font-family:'Sora',sans-serif;outline:none;background:var(--s2);width:200px;
+  transition:.2s;
+}
+#tabUp .search-input:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.08)}
+#tabUp .stat-chips{display:flex;gap:8px;margin-left:auto}
+#tabUp .stat-chip{
+  padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+  border:1.5px solid;cursor:pointer;transition:.15s;
+}
+#tabUp .stat-chip.active{color:#fff}
+#tabUp .chip-total{border-color:var(--teal);color:var(--teal)}
+#tabUp .chip-total.active{background:var(--teal)}
+#tabUp .chip-dev{border-color:var(--blue);color:var(--blue)}
+#tabUp .chip-dev.active{background:var(--blue)}
+#tabUp .chip-bug{border-color:var(--red);color:var(--red)}
+#tabUp .chip-bug.active{background:var(--red)}
+#tabUp /* ── MAIN ── */
+.main{max-width:1400px;margin:0 auto;padding:20px 24px}
+#tabUp /* ── SUMMARY CARDS ── */
+.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+@media(min-width:1400px){#tabUp .summary-row{grid-template-columns:repeat(7,1fr)}}
+#tabUp /* Overdue cards visually alag — ye "late ho chuka" hai, #tabUp "aane wala" nahi */
+.sum-card.od{border-color:var(--red-m);background:var(--red-l)}
+#tabUp .sum-card.od .sum-card-label{color:var(--red)}
+#tabUp .section.od .section-title{color:var(--red)}
+@media(max-width:900px){#tabUp .summary-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){#tabUp .summary-row{grid-template-columns:1fr}}
+#tabUp .sum-card{
+  background:#fff;border-radius:14px;border:1px solid var(--border);
+  padding:16px 18px;box-shadow:var(--sh-s);
+}
+#tabUp .sum-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+#tabUp .sum-card-val{font-size:28px;font-weight:800;color:var(--text);line-height:1}
+#tabUp .sum-card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+#tabUp .sum-cat-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+#tabUp .sum-cat-chip{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid;letter-spacing:.2px}
+#tabUp .sum-cat-dev{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+#tabUp .sum-cat-bug{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+#tabUp .sum-cat-oth{background:#f7f8fd;color:#4b5563;border-color:#e8eaf4}
+#tabUp .sum-card-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border)}
+#tabUp .sum-card-bar-fill{height:100%;border-radius:2px;transition:.5s}
+#tabUp /* ── SECTIONS ── */
+.section{margin-bottom:28px}
+#tabUp .section-hdr{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:14px;padding-bottom:10px;
+  border-bottom:2px solid var(--border);
+}
+#tabUp .section-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+#tabUp .section-title{font-size:14px;font-weight:800;color:var(--text)}
+#tabUp .section-sub{font-size:11px;color:var(--muted);margin-top:1px}
+#tabUp .section-count{
+  margin-left:auto;padding:4px 12px;border-radius:20px;
+  font-size:12px;font-weight:700;border:1.5px solid;
+}
+#tabUp /* ── CARDS GRID ── */
+.cards-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;
+}
+@media(max-width:640px){#tabUp .cards-grid{grid-template-columns:1fr}}
+#tabUp /* ── TICKET CARD ── */
+.t-card{
+  background:#fff;border-radius:12px;border:1.5px solid var(--border);
+  padding:14px 16px;box-shadow:var(--sh-s);
+  transition:.2s;cursor:pointer;position:relative;overflow:hidden;
+}
+#tabUp .t-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
+#tabUp .t-card:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+#tabUp /* Urgency colors */
+.t-card.u-critical::before{background:var(--red)}
+#tabUp .t-card.u-critical{border-color:var(--red-m)}
+#tabUp .t-card.u-high::before{background:var(--orange)}
+#tabUp .t-card.u-high{border-color:var(--orange-m)}
+#tabUp .t-card.u-medium::before{background:var(--amber)}
+#tabUp .t-card.u-medium{border-color:var(--amber-m)}
+#tabUp .t-card.u-low::before{background:var(--teal)}
+#tabUp .t-card.u-low{border-color:var(--teal-m)}
+#tabUp .t-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+#tabUp .t-ticket{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--teal)}
+#tabUp .t-days-badge{
+  padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;
+  white-space:nowrap;flex-shrink:0;
+}
+#tabUp .u-critical .t-days-badge{background:var(--red-l);color:var(--red);border:1px solid var(--red-m)}
+#tabUp .u-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
+#tabUp .u-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
+#tabUp .u-low .t-days-badge{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m)}
+#tabUp .u-od-critical .t-days-badge{background:var(--red);color:#fff;border:1px solid var(--red)}
+#tabUp .u-od-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
+#tabUp .u-od-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
+#tabUp .t-client{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+#tabUp .t-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#tabUp .t-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+#tabUp .t-tag{
+  font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;
+  background:var(--s2);color:var(--text2);border:1px solid var(--border);
+}
+#tabUp .t-tag.dev{background:var(--blue-l);color:var(--blue);border-color:var(--blue-m)}
+#tabUp .t-tag.bug{background:var(--red-l);color:var(--red);border-color:var(--red-m)}
+#tabUp .t-tag.stage{background:var(--teal-l);color:var(--teal);border-color:var(--teal-m)}
+#tabUp .t-tag.rm{background:var(--purple-l);color:var(--purple);border-color:var(--purple-m)}
+#tabUp .t-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:8px;border-top:1px dashed var(--border);
+}
+#tabUp .t-date{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  color:#92400e;background:#fef3c7;border:1px solid #fde68a;
+  border-radius:6px;padding:2px 8px;
+}
+#tabUp .t-category{font-size:10px;font-weight:700;padding:2px 10px;border-radius:5px;letter-spacing:.3px}
+#tabUp .cat-dev{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+#tabUp .cat-bug{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+#tabUp .cat-other{background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db}
+#tabUp /* Empty */
+.empty-section{
+  text-align:center;padding:32px;color:var(--muted);
+  background:var(--s2);border-radius:12px;border:1.5px dashed var(--border);
+  font-size:13px;
+}
+#tabUp .btn-excel{
+  padding:5px 14px;border:none;border-radius:20px;
+  background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;
+  font-size:11px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;
+  transition:.15s;display:flex;align-items:center;gap:5px;
+}
+#tabUp .btn-excel:hover{opacity:.88;transform:translateY(-1px)}
+#tabUp /* Per-section category buttons */
+.sec-cat-btn{
+  padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;
+  cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);
+  transition:.15s;font-family:'Sora',sans-serif;
+}
+#tabUp .sec-cat-btn:hover{opacity:.8}
+#tabUp .sc-active-dev{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
+#tabUp .sc-active-bug{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
+#tabUp .sc-active-other{background:var(--muted)!important;color:#fff!important;border-color:var(--muted)!important}
+#tabUp /* No data */
+.no-data{text-align:center;padding:60px 20px;color:var(--muted)}
+#tabUp .no-data-icon{font-size:48px;margin-bottom:12px}
+#tabUp /* ── LOADER ── */
+.loader-overlay{
+  display:flex;position:fixed;inset:0;z-index:9999;
+  background:rgba(240,242,249,.88);
+  backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;
+}
+#tabUp .loader-box{
+  background:#fff;border-radius:20px;padding:40px 52px;
+  text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.12);
+  border:1.5px solid var(--border);min-width:280px;
+}
+#tabUp .ldr-ring{width:60px;height:60px;margin:0 auto 20px;}
+#tabUp .ldr-ring svg{width:60px;height:60px;animation:up_lspin 1.1s linear infinite;}
+#tabUp .l-track{fill:none;stroke:var(--border2);stroke-width:4;}
+#tabUp .l-arc{fill:none;stroke:var(--teal);stroke-width:4;stroke-linecap:round;
+  stroke-dasharray:140;stroke-dashoffset:0;
+  animation:up_larc 1.1s ease-in-out infinite;}
+@keyframes up_lspin{to{transform:rotate(360deg);}}
+@keyframes up_larc{0%{stroke-dashoffset:140;}50%{stroke-dashoffset:28;}100%{stroke-dashoffset:140;}}
+#tabUp .ldr-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;}
+#tabUp .ldr-msg{font-size:11px;color:var(--muted);margin-bottom:16px;}
+#tabUp .ldr-track{background:var(--s2);border-radius:20px;height:5px;overflow:hidden;}
+#tabUp .ldr-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--teal),var(--teal2));width:0%;transition:width .3s ease;}
+#tabUp .ldr-step{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px;}
+#tabUp /* ── TICKET DETAIL MODAL ── */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(8,16,30,.55);
+  z-index:1000;display:flex;align-items:center;justify-content:center;
+  padding:20px;animation:up_fadeIn .18s ease;
+}
+@keyframes up_fadeIn{from{opacity:0}to{opacity:1}}
+#tabUp .modal-box{
+  background:#fff;border-radius:18px;width:100%;max-width:640px;
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 24px 60px rgba(0,0,0,.25);
+  animation:up_slideUp .2s ease;
+}
+@keyframes up_slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+#tabUp .modal-header{
+  padding:20px 24px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  position:sticky;top:0;background:#fff;border-radius:18px 18px 0 0;z-index:2;
+}
+#tabUp .modal-ticket-no{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--teal)}
+#tabUp .modal-close{
+  width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);
+  background:#f7f8fd;cursor:pointer;font-size:16px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;transition:.15s;
+}
+#tabUp .modal-close:hover{background:var(--red-l);border-color:var(--red-m);color:var(--red)}
+#tabUp .modal-body{padding:20px 24px}
+#tabUp .modal-section{margin-bottom:18px}
+#tabUp .modal-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+#tabUp .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:500px){#tabUp .modal-grid{grid-template-columns:1fr}}
+#tabUp .modal-field{background:var(--s2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)}
+#tabUp .modal-field-label{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+#tabUp .modal-field-val{font-size:13px;font-weight:600;color:var(--text);word-break:break-word}
+#tabUp .modal-field.full{grid-column:1/-1}
+#tabUp .modal-deadline-banner{
+  background:linear-gradient(135deg,#fffbeb,#fef3c7);
+  border:1.5px solid #fde68a;border-radius:12px;
+  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+#tabUp .modal-stage-badge{
+  display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+  background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m);
+}
+#tabUp .modal-cat-badge{
+  display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+}
+#tabUp .modal-footer{
+  padding:14px 24px;border-top:1px solid var(--border);
+  display:flex;gap:10px;justify-content:flex-end;
+  background:#fafbfc;border-radius:0 0 18px 18px;
+}
+#tabUp .modal-btn{
+  padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;
+  cursor:pointer;border:none;transition:.15s;font-family:'Sora',sans-serif;
+}
+#tabUp .modal-btn-primary{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff}
+#tabUp .modal-btn-secondary{background:var(--s2);color:var(--text);border:1.5px solid var(--border)}
+#tabUp .modal-btn:hover{opacity:.88;transform:translateY(-1px)}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1215,6 +1668,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   <button class="vtab" id="tabBtn2" onclick="switchTab(2)"><span class="vtab-ic">🧩</span><span class="vtab-title">Disposition Wise</span></button>
   <button class="vtab" id="tabBtn3" onclick="switchTab(3)"><span class="vtab-ic">🤖</span><span class="vtab-title">AI Analysis</span></button>
   <button class="vtab" id="tabBtn4" onclick="switchTab(4)"><span class="vtab-ic">💚</span><span class="vtab-title">Client Retention</span></button>
+  <button class="vtab" id="tabBtn5" onclick="switchTab(5)"><span class="vtab-ic">🎛️</span><span class="vtab-title">BSS Update</span></button>
+  <button class="vtab" id="tabBtn6" onclick="switchTab(6)"><span class="vtab-ic">📅</span><span class="vtab-title">Upcoming Deadline</span></button>
 </div>
 
 <!-- ████ FILTER BAR ████ -->
@@ -2005,6 +2460,313 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 
 </main>
 
+<!-- ████ TAB 5 — BSS UPDATE (ported from bss_dashboard.html) ████ -->
+<main class="main" id="tab5" style="display:none">
+
+
+
+<div class="wrap">
+
+  <div class="filters">
+    <div class="f-grp"><span class="f-lab">Ticket No</span>
+      <input class="inp" id="fTicket" placeholder="🔍 MB - 036939" style="width:170px" onkeydown="if(event.key==='Enter')BSS.applyFilters()"></div>
+    <div class="f-grp"><span class="f-lab">License</span>
+      <input class="inp" id="fLic" placeholder="🎫 License…" style="width:150px" onkeydown="if(event.key==='Enter')BSS.applyFilters()"></div>
+    <div class="f-grp"><span class="f-lab">Status</span>
+      <select class="inp" id="fStatus" style="width:180px"><option value="">All statuses</option></select></div>
+    <div class="f-grp"><span class="f-lab">Tester</span>
+      <select class="inp" id="fTester" style="width:160px"><option value="">All testers</option></select></div>
+    <div class="f-grp"><span class="f-lab">RM</span>
+      <select class="inp" id="fRM" style="width:150px"><option value="">All RMs</option></select></div>
+    <div class="f-grp"><span class="f-lab">Developer</span>
+      <select class="inp" id="fDev" style="width:160px"><option value="">All developers</option></select></div>
+    <div class="f-grp"><span class="f-lab">&nbsp;</span>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-teal" onclick="BSS.applyFilters()">Apply</button>
+        <button class="btn btn-ghost" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="BSS.clearFilters()">Clear</button>
+      </div></div>
+    <div class="sp" style="flex:1"></div>
+    <div style="font-size:11px;color:var(--muted)" id="filterInfo"></div>
+  </div>
+
+  <div class="sec-h"><span class="sec-t">⚡ Current Status — Ticket Count</span><span class="sec-l"></span></div>
+  <div class="kpi-row" id="kpis"></div>
+
+  <div class="sec-h"><span class="sec-t">👤 Tester-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw tw-full"><table id="tblTester"></table></div></div>
+
+  <div class="sec-h"><span class="sec-t">💻 Developer-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw tw-full"><table id="tblDev"></table></div></div>
+
+  <div class="sec-h"><span class="sec-t">🤝 RM-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw tw-full"><table id="tblRM"></table></div></div>
+</div>
+
+<!-- ── Ticket list modal ── -->
+<div class="ov" id="ovList" onclick="if(event.target===this)BSS.closeList()">
+  <div class="mdl">
+    <div class="mdl-h">
+      <div class="mdl-t" id="listTitle">Ticket Details</div>
+      <span class="badge" id="listCount"></span>
+      <div class="sp" style="flex:1"></div>
+      <button class="btn btn-teal btn-sm" onclick="BSS.exportList()">↓ Export Excel</button>
+      <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="BSS.closeList()">✕ Close</button>
+    </div>
+    <div class="mdl-b no-scroll"><div class="tw tw-scroll"><table id="tblList"></table></div></div>
+  </div>
+</div>
+
+<!-- ── BSS update modal ── -->
+<div class="ov" id="ovEdit" onclick="if(event.target===this)BSS.closeEdit()">
+  <div class="mdl sm">
+    <div class="mdl-h">
+      <div class="mdl-t">Update Ticket · <span class="mono" id="edTicketNo"></span></div>
+      <div class="sp" style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="BSS.closeEdit()">✕ Close</button>
+    </div>
+    <div class="mdl-b pad" id="edBody"></div>
+    <div class="mdl-f">
+      <button class="btn btn-teal" id="edSave" onclick="BSS.submitUpdate()">💾 Update Ticket</button>
+      <button class="btn btn-ghost" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="BSS.closeEdit()">Cancel</button>
+      <div class="sp" style="flex:1"></div>
+      <span id="edStatus" style="font-size:11.5px;color:var(--muted)"></span>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+
+</main>
+
+<!-- ████ TAB 6 — UPCOMING DEADLINE (ported from upcoming_timeline.html) ████ -->
+<main class="main" id="tab6" style="display:none">
+
+
+<div class="loader-overlay" id="loadingOverlay">
+  <div class="loader-box">
+    <div class="ldr-ring">
+      <svg viewBox="0 0 60 60">
+        <circle class="l-track" cx="30" cy="30" r="24"/>
+        <circle class="l-arc"   cx="30" cy="30" r="24" transform="rotate(-90 30 30)"/>
+      </svg>
+    </div>
+    <div class="ldr-title">Loading Data...</div>
+    <div class="ldr-msg" id="loadingMsg">Connecting to Supabase...</div>
+    <div class="ldr-track"><div class="ldr-fill" id="loaderBar"></div></div>
+    <div class="ldr-step" id="loaderStep">FETCHING FROM SUPABASE</div>
+    <div id="loaderTimer" style="margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--teal);letter-spacing:-1px;">0s</div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-icon">📅</div>
+      <div>
+        <div class="brand-name">Marg Upcoming Deadlines</div>
+        <div class="brand-tagline">Marg Upcoming Deadlines</div>
+      </div>
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="page-title">Marg Upcoming Deadlines</div>
+    <div class="topbar-right">
+      <button onclick="location.href='portal.html'" style="height:32px;padding:0 16px;border-radius:8px;border:none;background:#ffffff;color:#0d9488;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.18);">← Portal</button>
+      <button onclick="mbSignOut()" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:#e11d48;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(225,29,72,.3);">Sign Out</button>
+      <div class="sync-badge" id="syncBadge" style="display:none">
+        <span class="sync-dot"></span>
+        <span id="syncText">—</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <div class="filter-bar-inner">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search ticket, client..." oninput="UP.applyFilters()"/>
+    </div>
+    <div class="filter-pill">
+      <span>🧑‍💻</span>
+      <select id="filterTester" onchange="UP.applyFilters()">
+        <option value="">All Testers</option>
+      </select>
+    </div>
+    <div class="filter-pill">
+      <span>👔</span>
+      <select id="filterRM" onchange="UP.applyFilters()">
+        <option value="">All RMs</option>
+      </select>
+    </div>
+    <div class="filter-pill">
+      <span>💻</span>
+      <select id="filterDev" onchange="UP.applyFilters()">
+        <option value="">All Devs</option>
+      </select>
+    </div>
+    <div class="filter-pill">
+      <span>📍</span>
+      <select id="filterStage" onchange="UP.applyFilters()">
+        <option value="">All Stages</option>
+      </select>
+    </div>
+
+
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- Summary Row — SECTIONS se auto-generate hota hai (renderSummaryCards).
+       Pehle 4 cards hardcoded the aur unke ids s1..s4 / b1..b4; naya section
+       add karne par HTML bhi manually badalna padta tha. -->
+  <div class="summary-row" id="summaryRow"></div>
+
+<!-- Sections -->
+  <div id="sectionsContainer"></div>
+
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div id="ticketModal" class="modal-backdrop" style="display:none" onclick="UP.closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-ticket-no" id="mdTicketNo">—</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:3px" id="mdClient">—</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('ticketModal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-deadline-banner">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#92400e;margin-bottom:3px">Timeline Deadline</div>
+          <div style="font-size:16px;font-weight:800;color:#78350f" id="mdDeadline">—</div>
+        </div>
+        <div style="text-align:right">
+          <div id="mdDaysBadge" style="font-size:20px;font-weight:800"></div>
+          <div id="mdDaysLabel" style="font-size:11px;color:#92400e;font-weight:600"></div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📌 Status & Category</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="modal-stage-badge" id="mdStage">—</span>
+          <span class="modal-cat-badge" id="mdCat">—</span>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📋 Description & Remarks</div>
+        <div class="modal-grid">
+          <div class="modal-field full">
+            <div class="modal-field-label">Description</div>
+            <div class="modal-field-val" id="mdDesc" style="font-weight:400;line-height:1.6;font-size:12px">—</div>
+          </div>
+          <div class="modal-field full" id="mdRemarksWrap">
+            <div class="modal-field-label">Remarks</div>
+            <div class="modal-field-val" id="mdRemarks" style="font-weight:400;line-height:1.6;font-size:12px">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">👥 Team & Assignment</div>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <div class="modal-field-label">Tester / Agent</div>
+            <div class="modal-field-val" id="mdTester">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">RM</div>
+            <div class="modal-field-val" id="mdRM">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Developer</div>
+            <div class="modal-field-val" id="mdDev">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Assigned To</div>
+            <div class="modal-field-val" id="mdAssignto">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">🏢 Customer Info</div>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <div class="modal-field-label">Licence No</div>
+            <div class="modal-field-val" id="mdLic">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Subscription Plan</div>
+            <div class="modal-field-val" id="mdPlan">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Mobile</div>
+            <div class="modal-field-val" id="mdMobile">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Email</div>
+            <div class="modal-field-val" id="mdEmail" style="font-size:12px;word-break:break-all">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">📅 Dates</div>
+        <div class="modal-grid">
+          <div class="modal-field">
+            <div class="modal-field-label">Ticket Created</div>
+            <div class="modal-field-val" id="mdCreated">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Transfer to IT</div>
+            <div class="modal-field-val" id="mdIT">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">Acknowledge</div>
+            <div class="modal-field-val" id="mdAck">—</div>
+          </div>
+          <div class="modal-field">
+            <div class="modal-field-label">In Progress</div>
+            <div class="modal-field-val" id="mdIP">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-secondary" onclick="document.getElementById('ticketModal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- SHARED SUPERSET TICKET PARSER — cache merge helper ke liye -->
+<!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
+     purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
+     400 deta hai. -->
+
+
+<!-- AUTH GUARD: login + per-dashboard permission check -->
+
+
+
+
+<!-- MB NAV: sign out helper -->
+
+
+</main>
+
+
 <!-- CLIENT RETENTION: license-list modal (count card click) -->
 <div class="ret-lic-overlay" id="retLicOverlay" onclick="if(event.target===this)retLicClose()">
   <div class="ret-lic-modal">
@@ -2709,16 +3471,25 @@ function applyFilter(){
 
 // ===== TABS =====
 function switchTab(n){
-  for(let i=1;i<=4;i++){
+  for(let i=1;i<=6;i++){
     const t=document.getElementById('tab'+i);    if(t) t.style.display = n===i ? '' : 'none';
     const b=document.getElementById('tabBtn'+i); if(b) b.classList.toggle('active', n===i);
   }
   // Client Retention tab par upar wala ticket filter bar lagoo nahi hota — hide karo
-  const fb=document.querySelector('.filter-bar');    if(fb) fb.style.display = n===4 ? 'none' : '';
-  const sbn=document.querySelector('.search-banner');if(sbn) sbn.style.display = n===4 ? 'none' : '';
+  /* Upar wala ticket filter-bar sirf tab 1/2/3 ke liye hai. Retention, BSS aur
+     Upcoming ke apne filters hain — dono dikhane par user confuse hota hai ki
+     kaunsa lag raha hai. */
+  const ownFilters = (n===4 || n===5 || n===6);
+  const fb=document.querySelector('.filter-bar');    if(fb) fb.style.display = ownFilters ? 'none' : '';
+  const sbn=document.querySelector('.search-banner');if(sbn) sbn.style.display = ownFilters ? 'none' : '';
   if(n===2) renderSubdisp();
   if(n===3) aiInit();
   if(n===4) retInit();
+  /* Ported tabs pehli baar khulne par hi boot hote hain — page load par nahi.
+     Warna har user ka har page-load do extra dashboards ka poora render
+     karta, chahe wo unhe kholta bhi na ho. */
+  if(n===5 && window.BSS) window.BSS.boot();
+  if(n===6 && window.UP)  window.UP.boot();
 }
 function applyTabPerms(){
   const p=window._MARG_PERM; if(!p || p.admin) return;
@@ -2726,6 +3497,12 @@ function applyTabPerms(){
   if(!d.includes('tat-disposition')){ const el=document.getElementById('tabBtn2'); if(el) el.style.display='none'; }
   if(!d.includes('tat-ai-analysis')){ const el=document.getElementById('tabBtn3'); if(el) el.style.display='none'; }
   if(!d.includes('tat-retention')){   const el=document.getElementById('tabBtn4'); if(el) el.style.display='none'; }
+  /* Purani standalone permission ids bhi maani jaati hain — jinke paas pehle
+     se `bss-dashboard` / `upcoming-dashboard` hai unka access na toote. */
+  if(!d.includes('tat-bss') && !d.includes('bss-dashboard')){
+    const el=document.getElementById('tabBtn5'); if(el) el.style.display='none'; }
+  if(!d.includes('tat-upcoming') && !d.includes('upcoming-dashboard')){
+    const el=document.getElementById('tabBtn6'); if(el) el.style.display='none'; }
 }
 window._applyTabPerms=applyTabPerms;
 document.addEventListener('DOMContentLoaded', applyTabPerms);
@@ -5151,6 +5928,19 @@ async function cacheLoad(){
         setTimeout(()=>showToast(`⚠️ Cache purane format (v${merged.minSchema}) me hai — "↺ Refresh Data" dabao`), 1200);
     }
 
+    /* SHARED STORE. BSS aur Upcoming tabs isi page me hain — unhe cache
+       DOBARA nahi padhna chahiye. Pehle teen alag pages the aur teeno apna
+       full cache read karte the (~0.78MB gzipped x3 per user session).
+       Ab ek read, teeno tab share karte hain. */
+    window.__MB_SHARED = {
+      tickets: merged.tickets,
+      fetchedAt: merged.fetchedAt,
+      dateFrom: merged.dateFrom,
+      dateTo: merged.dateTo,
+      minSchema: merged.minSchema,
+      rowCount: merged.rowCount,
+    };
+
     return {
       raw: merged.tickets,
       ts: merged.fetchedAt ? new Date(merged.fetchedAt).getTime() : Date.now(),
@@ -5336,6 +6126,13 @@ async function backgroundFetch(){
         `${fmt(RAW.length)} tickets · fetched in ${_time}`;
       badge.style.display = 'flex';
       showToast(`✅ ${fmt(RAW.length)} tickets refreshed in ${_time}`);
+      /* Refresh ke baad shared store bhi naya karo, warna BSS/Upcoming tabs
+         purana data dikhate rehte. Aur unka boot flag reset karo taaki agli
+         baar khulne par wo dobara render karein. */
+      window.__MB_SHARED = { tickets: RAW, fetchedAt: new Date().toISOString(),
+        dateFrom: null, dateTo: null, minSchema: MB_SCHEMA_VERSION, rowCount: 0 };
+      if(window.BSS){ window.BSS.__booted = false; }
+      if(window.UP){  window.UP.__booted  = false; }
     }, 600);
 
   }catch(err){
@@ -6212,5 +7009,1245 @@ window.mbSignOut = async function(){
 </script>
 
 </div>
+
+<script>
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * bss_dashboard.html — TAT ke tab ke roop me port kiya gaya.
+ *
+ * Poora code ek IIFE me hai. Iske bina naam collide karte: dono pages me
+ * `applyFilters`, `render`, `esc`, `fmt`, `init`, `sb`, `STATUSES` maujood
+ * hain. IIFE ke andar sab local hai; bahar sirf `window.BSS` dikhta hai,
+ * aur markup ke onclick usi se call karte hain.
+ *
+ * CSS bhi `#tabBss` ke andar scope ki gayi hai (tools/scope_css.py) —
+ * warna `:root` ke `--bg` jaise variables TAT ke apne variables ko overwrite
+ * kar dete, aur ye chup-chaap hota (JS check isse nahi pakadta).
+ * ═════════════════════════════════════════════════════════════════════════ */
+(function(){
+
+if(typeof mbParseTicket !== 'function')
+  console.error('assets/ticket-parser.js failed to load — the dashboard will not work correctly.');
+if(typeof bssBuildPayload !== 'function')
+  console.error('assets/bss-fields.js failed to load — the update form will not work.');
+
+
+
+
+
+/* ===========================================================================
+ * BSS DASHBOARD
+ * ---------------------------------------------------------------------------
+ * DATA SOURCES — jaanbujhkar do alag hain:
+ *   LIST / KPI  → ticket_cache (Supabase). Tez hai, 27k tickets client-side.
+ *   EDIT MODAL  → LIVE Marg API (/api/bss-proxy action:ticket). Cache se NAHI.
+ *
+ * Modal live kyun: (1) cache me kuch BSS fields hain hi nahi (JiraID,
+ * Sub-Problem Type), (2) cache nightly hai — user purani value dekh kar
+ * "update" karta to wo current value ko purani se overwrite kar deta.
+ * =========================================================================== */
+const SUPA_URL='https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+/* sessionStorage — auth guard bhi wahi use karta hai. Default localStorage
+   hota to getSession() null deta aur /api/bss-proxy ko token hi na milta. */
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,storage:window.sessionStorage}});
+
+let RAW=[], VIEW=[], DD=null, DD_ERR=null, ME=null, LIST_ROWS=[], LIST_TITLE='', EDIT=null;
+
+const fmt=n=>Number(n||0).toLocaleString('en-IN');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
+async function signOut(){await sb.auth.signOut();location.replace('index.html');}
+
+/* ── Status defs — support_dashboard.html se identical, taaki dono dashboards
+   par ek hi ticket ka status same dikhe. Alag rakhne par drift ho jati. ── */
+function _normSt(s){return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim();}
+const STATUSES=[
+  {key:'pending',   label:'Pending',              c:'--oth'},
+  {key:'reopen',    label:'Reopen',               c:'--ret'},
+  {key:'it',        label:'Transferred To IT',    c:'--it'},
+  {key:'ack',       label:'Acknowledged',         c:'--ack'},
+  {key:'ip',        label:'In Progress',          c:'--ip'},
+  {key:'rft',       label:'Ready For Testing',    c:'--tst'},
+  {key:'reopentest',label:'Reopend from Testing', c:'--ret'},
+  {key:'rfcr',      label:'Ready For Code Review',c:'--uat'},
+  {key:'rfm',       label:'Ready For Merging',    c:'--uat'},
+  {key:'rfu',       label:'Ready For UAT',        c:'--uat'},
+  {key:'rgl',       label:'Ready to go Live',     c:'--glv'},
+  {key:'rts',       label:'Return to Support',    c:'--ret'},
+  {key:'sp',        label:'Transferred To Support',c:'--sup'},
+  {key:'future',    label:'Future Development',   c:'--oth'},
+  {key:'rejected',  label:'Rejected',             c:'--sup'},
+  {key:'closed',    label:'Closed',               c:'--cl'},
+];
+const MATCH={pending:['pending'],reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
+ ack:['acknowledge','acknowledged'],ip:['in progress','inprogress'],rft:['ready for testing'],
+ reopentest:['reopend from testing','reopen from testing','reopened from testing'],
+ rfcr:['ready for code review'],rfm:['ready for merging','ready for merge'],rfu:['ready for uat'],
+ rgl:['ready to go live'],rts:['return to support'],sp:['transfer to support','transferred to support'],
+ future:['future development'],rejected:['rejected','reject'],closed:['closed','close']};
+const SC2KEY={IT:'it',AK:'ack',IP:'ip',RT:'rft',RU:'rfu',LV:'rgl',SP:'sp',RS:'rts',CL:'closed'};
+
+function statusKeyOf(r){
+  const raw=_normSt(r.st);
+  if(raw){
+    for(const d of STATUSES) if((MATCH[d.key]||[]).includes(raw)) return d.key;
+    for(const d of STATUSES) if((MATCH[d.key]||[]).some(x=>raw.includes(x))) return d.key;
+  }
+  if(r.sc&&SC2KEY[r.sc]) return SC2KEY[r.sc];
+  return 'pending';
+}
+function statusLabelOf(r){const d=STATUSES.find(x=>x.key===statusKeyOf(r));return d?d.label:(r.st||'Other');}
+function stageDateOf(r){return r.e||r.d||r.c||r.b||r.a||'';}
+/* Shared helper — dekho assets/ticket-parser.js ka mbTesterOf(). */
+const testerOf=r=>mbTesterOf(r);
+const devOf=r=>(r.dev||'').trim();
+const rmOf=r=>(r.r||'').trim();
+
+/* Month buckets. Basis = ticket CREATED date (r.tc), warna r.tld/stage date.
+   Jaanbujhkar created chuna hai kyunki detail table bhi "Created" dikhata hai —
+   dono ka basis same rehna chahiye, warna counts aur rows match nahi karenge. */
+function bucketOf(r){
+  const d=r.tc||r.tld||stageDateOf(r); if(!d) return 'older';
+  const now=new Date(), cm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const pm=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const pms=pm.getFullYear()+'-'+String(pm.getMonth()+1).padStart(2,'0');
+  const s=String(d).slice(0,7);
+  return s===cm?'cur':(s===pms?'prev':'older');
+}
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ── Cache load ── */
+async function cacheLoad(){
+  /* Shared store TAT ke page load par bhar jata hai. Iske hote hue dobara
+     cache padhna sirf server par extra load hai — wahi data hai. */
+  if(window.__MB_SHARED && window.__MB_SHARED.tickets && window.__MB_SHARED.tickets.length){
+    const sh = window.__MB_SHARED;
+    return { tickets: sh.tickets, fetchedAt: sh.fetchedAt, dateFrom: sh.dateFrom,
+             dateTo: sh.dateTo, minSchema: sh.minSchema, rowCount: sh.rowCount };
+  }
+  try{
+    const {data,error}=await sb.from('ticket_cache').select('*');
+    if(error){console.warn('cacheLoad:',error.message);return null;}
+    if(!data||!data.length) return null;
+    const m=mbMergeCacheRows(data);
+    if(m.minSchema<MB_SCHEMA_VERSION)
+      console.warn(`ticket_cache is on an older schema (v${m.minSchema}) — run Refresh Data.`);
+    return m.tickets.length?m:null;
+  }catch(e){console.warn('cacheLoad failed:',e);return null;}
+}
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    const {data:p}=await sb.from('users').select('name,email,role,bss_user_id').eq('id',session.user.id).single();
+    ME=p||null;
+  }
+  const c=await cacheLoad();
+  if(!c){document.getElementById('metaTxt').textContent='No cached data';
+    document.getElementById('kpis').innerHTML='<div class="empty">Cache is empty — click “↺ Refresh Data”.</div>';return;}
+  RAW=c.tickets; VIEW=RAW.slice();
+  const ts=c.fetchedAt?new Date(c.fetchedAt):null;
+  document.getElementById('metaTxt').textContent=
+    `${fmt(RAW.length)} tickets · Last fetched: ${ts?ts.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}):'—'}`;
+  if(ts&&(Date.now()-ts.getTime())>36*3600*1000) document.getElementById('dot').classList.add('stale');
+  buildFilterOptions(); render();
+  loadDropdowns();   /* background — modal turant khule */
+}
+
+/* ── Dropdowns (BindDropDown via proxy) ── */
+async function loadDropdowns(force){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session) return null;
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'dropdowns',force:!!force})});
+    const j=await r.json();
+    if(!r.ok||j.error){
+      /* Asli server message yaad rakho — modal me "console dekho" likhna
+         bekaar hai, user ko wahi batao jo karna hai. */
+      DD_ERR = (j && j.error) ? j.error : ('HTTP '+r.status);
+      console.warn('dropdowns:',DD_ERR, j);
+      return null;
+    }
+    DD_ERR=null;
+    DD=j.dropdowns;
+    /* Master data me cascade toota hua hai — kuch Problem Types aise parent ko
+       refer karte hain jo Main Disposition list me hai hi nahi. Wo cascade se
+       kabhi reachable nahi honge. Chup-chaap gayab hone se behtar hai console
+       me saaf batana. */
+    const h=bssDropdownHealth(DD);
+    if(h.orphanParents.length)
+      console.warn(`BindDropDown: ${h.orphanProblemTypes} Problem Types reference parents (${h.orphanParents.join(', ')}) that are missing from the Main Disposition list — they will not appear in the cascade. This is a Marg master-data issue.`);
+    Object.keys(h.duplicateNames||{}).forEach(k=>console.warn(`BindDropDown: duplicate names in "${k}" —`,h.duplicateNames[k]));
+    return DD;
+  }catch(e){console.warn('dropdowns failed:',e);return null;}
+}
+
+/* ── Filters ── */
+function buildFilterOptions(){
+  const st=document.getElementById('fStatus');
+  st.innerHTML='<option value="">All statuses</option>'+
+    STATUSES.map(d=>`<option value="${d.key}">${esc(d.label)}</option>`).join('');
+  const uniq=f=>[...new Set(RAW.map(f).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const fill=(id,label,vals)=>{document.getElementById(id).innerHTML=
+    `<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');};
+  fill('fTester','All testers',uniq(testerOf));
+  fill('fRM','All RMs',uniq(rmOf));
+  fill('fDev','All developers',uniq(devOf));
+}
+function applyFilters(){
+  const tn=document.getElementById('fTicket').value.trim().toLowerCase();
+  const lc=document.getElementById('fLic').value.trim().toLowerCase();
+  const sk=document.getElementById('fStatus').value;
+  const ts=document.getElementById('fTester').value, rm=document.getElementById('fRM').value, dv=document.getElementById('fDev').value;
+  VIEW=RAW.filter(r=>{
+    if(tn&&!String(r.n||'').toLowerCase().includes(tn)) return false;
+    if(lc&&!String(r.l||'').toLowerCase().includes(lc)) return false;
+    if(sk&&statusKeyOf(r)!==sk) return false;
+    if(ts&&testerOf(r)!==ts) return false;
+    if(rm&&rmOf(r)!==rm) return false;
+    if(dv&&devOf(r)!==dv) return false;
+    return true;
+  });
+  const on=[tn,lc,sk,ts,rm,dv].filter(Boolean).length;
+  document.getElementById('filterInfo').textContent=
+    on?`${fmt(VIEW.length)} of ${fmt(RAW.length)} tickets · ${on} filter${on>1?'s':''}`:`${fmt(RAW.length)} tickets`;
+  render();
+}
+function clearFilters(){
+  ['fTicket','fLic','fStatus','fTester','fRM','fDev'].forEach(id=>document.getElementById(id).value='');
+  VIEW=RAW.slice();document.getElementById('filterInfo').textContent=`${fmt(RAW.length)} tickets`;render();
+}
+
+/* ── Render ── */
+function render(){renderKPIs();renderAgents();}
+
+function renderKPIs(){
+  const now=new Date(), curL=MON[now.getMonth()], prevL=MON[(now.getMonth()+11)%12];
+  const by={}; STATUSES.forEach(d=>by[d.key]={t:0,cur:0,prev:0,older:0});
+  VIEW.forEach(r=>{const k=statusKeyOf(r);if(!by[k])return;by[k].t++;by[k][bucketOf(r)]++;});
+  document.getElementById('kpis').innerHTML=STATUSES.map(d=>{
+    const b=by[d.key];
+    return `<div class="kpi">
+      <div class="kpi-top" style="background:var(${d.c})"></div>
+      <div class="kpi-b">
+        <div class="kpi-s" style="color:var(${d.c})">${esc(d.label)}</div>
+        <div class="kpi-n">${fmt(b.t)}</div>
+        <div class="kpi-splits">
+          <div class="kpi-sp"><div class="l">${curL}</div><div class="v">${fmt(b.cur)}</div></div>
+          <div class="kpi-sp"><div class="l">${prevL}</div><div class="v">${fmt(b.prev)}</div></div>
+          <div class="kpi-sp"><div class="l">Older</div><div class="v">${fmt(b.older)}</div></div>
+        </div>
+      </div>
+      <div class="kpi-f">
+        <button class="lnk" onclick="openList('${d.key}')">🔍 View Details</button>
+        <button class="lnk" onclick="exportStatus('${d.key}')">↓ Excel</button>
+      </div></div>`;
+  }).join('');
+}
+
+/* Tester / Developer / RM sections — teeno ka shape same hai, isliye ek hi
+   builder. Har row par status-wise count + total, click par list modal. */
+function agentTable(getter,label){
+  const map=new Map();
+  VIEW.forEach(r=>{
+    const a=getter(r); if(!a) return;
+    if(!map.has(a)) map.set(a,{name:a,total:0,by:{}});
+    const e=map.get(a); e.total++;
+    const k=statusKeyOf(r); e.by[k]=(e.by[k]||0)+1;
+  });
+  const rows=[...map.values()].sort((a,b)=>b.total-a.total);
+
+  /* 16 statuses me se ye 8 columns dikhte hain. Baaki ko "Other" me jodte hain
+     — warna row ka Total dikhaye gaye columns ke sum se match nahi karta aur
+     tickets gayab lagte hain (jaise DC-JHA: total 1001, columns ka sum 929). */
+  const cols=['pending','it','ack','ip','rft','rfu','sp','closed'];
+  const otherOf=e=>{
+    let shown=0; cols.forEach(c=>shown+=(e.by[c]||0));
+    return e.total-shown;
+  };
+
+  const head=`<thead><tr><th>${esc(label)}</th><th class="r">Total</th>`+
+    cols.map(c=>`<th class="r">${esc(STATUSES.find(s=>s.key===c).label)}</th>`).join('')+
+    `<th class="r" title="All remaining statuses: Reopen, Reopend from Testing, Code Review, Merging, Return to Support, Future Development, Rejected">Other</th></tr></thead>`;
+
+  const span=cols.length+3;
+  if(!rows.length) return head+`<tbody><tr><td colspan="${span}"><div class="empty">No data</div></td></tr></tbody>`;
+
+  const body=rows.map(e=>{
+    const oth=otherOf(e);
+    return `<tr>
+     <td style="font-weight:600">${esc(e.name)}</td>
+     <td class="r"><span class="badge" style="cursor:pointer" data-agent-kind="${esc(label)}" data-agent-name="${esc(e.name)}">${fmt(e.total)}</span></td>
+     ${cols.map(c=>`<td class="r ${e.by[c]?'':'muted'}">${fmt(e.by[c]||0)}</td>`).join('')}
+     <td class="r ${oth?'':'muted'}">${fmt(oth)}</td>
+   </tr>`;
+  }).join('');
+
+  /* TOTALS — har column ka sum. Grand total = sum of shown + Other, to ye row
+     hamesha reconcile karta hai. */
+  const tot={total:0,other:0,by:{}};
+  rows.forEach(e=>{
+    tot.total+=e.total;
+    tot.other+=otherOf(e);
+    cols.forEach(c=>tot.by[c]=(tot.by[c]||0)+(e.by[c]||0));
+  });
+  const foot=`<tfoot><tr>
+     <td><span class="lbl">Total · ${fmt(rows.length)} ${esc(label.toLowerCase())}${rows.length===1?'':'s'}</span></td>
+     <td class="r">${fmt(tot.total)}</td>
+     ${cols.map(c=>`<td class="r">${fmt(tot.by[c])}</td>`).join('')}
+     <td class="r">${fmt(tot.other)}</td>
+   </tr></tfoot>`;
+
+  return head+`<tbody>${body}</tbody>`+foot;
+}
+function renderAgents(){
+  document.getElementById('tblTester').innerHTML=agentTable(testerOf,'Tester');
+  document.getElementById('tblDev').innerHTML=agentTable(devOf,'Developer');
+  document.getElementById('tblRM').innerHTML=agentTable(rmOf,'RM');
+}
+
+/* ── Ticket list modal ── */
+/* Columns = BSS fields. `—` ka matlab: ye field cache me hai hi nahi
+   (JiraID, Sub-Problem Type) — ticket kholne par LIVE value dikhegi. */
+function listColumns(){
+  return [
+    /* data-attribute + event delegation, onclick me value interpolate NAHI.
+       Pehle `onclick="openEdit('${esc(r.n)}')"` tha — esc() apostrophe ko
+       &#39; kar deta hai, par browser attribute value ko DECODE karke JS
+       parse karta hai, to `MB - O'BRIEN` jaisa koi bhi naam handler tod deta
+       tha (SyntaxError, row click dead). Backslash bhi wahi karta tha. */
+    ['Ticket No',        r=>`<span class="tno" data-tno="${esc(r.n)}">${esc(r.n)}</span>`],
+    ['Created',          r=>esc(r.tc||'—')],
+    ['Current Status',   r=>esc(statusLabelOf(r))],
+    ['Timeline',         r=>esc(r.tld||'—')],
+    /* BSS UI ka "Disposition" = current stage ki disposition (`cd`, schema v3),
+        NOT `ld`. `ld` sirf 6 recognized values leta hai — MB - 037392 par
+        ld="Bug" jabki BSS UI "Future Development" dikhata hai. */
+    ['Disposition',      r=>r.cd?esc(r.cd):'<span class="muted" title="Not in cache yet — refresh the cache (schema v3) or open the ticket for the live value">—</span>'],
+    ['Main Disposition', r=>esc(r.mainDisp||'—')],
+    /* Parser raw keys store karta hai: subDisp = r.SubDisposition,
+       probType = r.Problemtype. Live data (MB - 036741) se confirmed:
+       SubDisposition = UI "Problem Type", Problemtype = UI "Sub-Problem Type".
+       Isliye ye jodi ULTI lagti hai par sahi hai. */
+    ['Problem Type',     r=>esc(r.subDisp||'—')],
+    ['Sub-Problem Type', r=>esc(r.probType||'—')],
+    ['Jira ID',          r=>r.jira?esc(r.jira):'<span class="muted" title="Not stored in the cache — open the ticket to see the live value">—</span>'],
+    ['Assign To (Tester)',r=>esc(testerOf(r)||'—')],
+    ['RM',               r=>esc(rmOf(r)||'—')],
+    ['Developer',        r=>esc(devOf(r)||'—')],
+    ['Client',           r=>esc(r.u||'—')],
+    ['License',          r=>esc(r.l||'—')],
+  ];
+}
+function renderList(rows,title){
+  LIST_ROWS=rows; LIST_TITLE=title;
+  document.getElementById('listTitle').textContent=title;
+  document.getElementById('listCount').textContent=`${fmt(rows.length)} tickets`;
+  const cols=listColumns();
+  const head=`<thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead>`;
+  const body=rows.length
+    ? rows.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}"><div class="empty">No tickets</div></td></tr>`;
+  document.getElementById('tblList').innerHTML=head+`<tbody>${body}</tbody>`;
+  document.getElementById('ovList').classList.add('on');
+}
+function openList(key){
+  const d=STATUSES.find(x=>x.key===key);
+  renderList(VIEW.filter(r=>statusKeyOf(r)===key),`${d?d.label:key} — Ticket Details`);
+}
+function openAgentList(kind,name){
+  const g=kind==='Tester'?testerOf:kind==='Developer'?devOf:rmOf;
+  renderList(VIEW.filter(r=>g(r)===name),`${kind}: ${name} — Ticket Details`);
+}
+function closeList(){document.getElementById('ovList').classList.remove('on');}
+
+/* ── Edit modal ── */
+async function openEdit(ticketNo){
+  EDIT={ticketNo,raw:null,read:null,form:{}};
+  document.getElementById('edTicketNo').textContent=ticketNo;
+  document.getElementById('edStatus').textContent='';
+  document.getElementById('edSave').disabled=true;
+  document.getElementById('edBody').innerHTML='<div class="empty"><span class="spin"></span> Loading live ticket data…</div>';
+  document.getElementById('ovEdit').classList.add('on');
+
+  if(!DD){ await loadDropdowns(); }
+  if(!DD){
+    /* Server ne jo bataya wahi dikhao, aur uske hisaab se next step. */
+    const msg = DD_ERR || 'Unknown error (network?)';
+    let fix = '';
+    if(/migration|bss_user_id/i.test(msg))
+      fix = 'Run <b>sql/2026-08-bss-dashboard.sql</b> in the Supabase SQL Editor.';
+    else if(/access nahi|permission/i.test(msg))
+      fix = 'Ask an admin to tick the <b>BSS Dashboard</b> permission in Admin → Users.';
+    else if(/profile/i.test(msg))
+      fix = 'Ask an admin to create your user record in <b>public.users</b>.';
+    else if(/not configured|MARG_LOGIN/i.test(msg))
+      fix = 'Set the <b>MARG_LOGIN_EMAIL</b> / <b>MARG_LOGIN_PASSWORD</b> env vars in Vercel.';
+    else
+      fix = 'Is /api/bss-proxy deployed? Check the response in the Network tab.';
+    document.getElementById('edBody').innerHTML=
+      `<div class="note err"><b>Could not load the dropdown master.</b><br>
+         <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${esc(msg)}</span><br><br>${fix}</div>`;
+    return;
+  }
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'ticket',ticketNo})});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+    EDIT.raw=j.ticket;
+    /* Stage maps parser se pass kar rahe hain — bss-fields.js me duplicate
+       nahi karte, warna wahi drift ka bug wapas aa jayega. */
+    EDIT.read=bssReadTicket(j.ticket,DD,MB_STAGE_DISP_BY_SC,MB_DISP_FALLBACK_ORDER);
+    /* Diagnostic: live response me kaun se BSS fields mile. Alias theek karne
+       ke liye — console me ek baar dekh lena kaafi hai. */
+    console.table(bssReadAudit(j.ticket));
+    renderEditForm();
+  }catch(e){
+    document.getElementById('edBody').innerHTML=
+      `<div class="note err"><b>Could not load ticket:</b> ${esc(e.message||e)}</div>`;
+  }
+}
+function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
+
+function renderEditForm(){
+  const rd=EDIT.read, v=rd.values;
+  EDIT.form={};
+  bssSelectFields().forEach(f=>{ if(v[f.key]!=null) EDIT.form[f.key]=v[f.key]; });
+  ['timelineDate','jiraId','remarks','bssComment'].forEach(k=>{
+    if(v[k]!=null) EDIT.form[k]=k==='timelineDate'?String(v[k]).slice(0,10):String(v[k]);
+  });
+
+  let notes='';
+  if(!ME||!ME.bss_user_id)
+    notes+=`<div class="note err"><b>Updates are disabled.</b> Your account has no BSS User ID mapped.
+      Ask an admin to set it in Admin → Users (from the BindDropDown Users list). Until then this is view-only.</div>`;
+  if(rd.ambiguous.length)
+    notes+=`<div class="note warn"><b>Heads up:</b> ${rd.ambiguous.map(a=>
+      `"${esc(a.name)}" appears ${a.ids.length} times in the master list (IDs ${a.ids.join(', ')})`).join('; ')}.
+      Please re-select these fields yourself before saving, otherwise the wrong ID may be sent.</div>`;
+  /* "These fields were not returned…" note hata diya gaya hai. Live data se
+     confirm hua ki wo fields BSS me genuinely KHALI hote hain (MB - 036741:
+     Assignto/Developer/RM/JiraID/Remarks sab ""), to har ticket par ek warning
+     dikhana sirf shor tha. Asli problems (unresolved value, cascade mismatch)
+     neeche alag se report hoti hain. rd.missing ab bhi console audit me hai. */
+
+  /* Value AAYI par master list me match nahi hui. Pehle ye chup-chaap blank ho
+     jata tha aur dikhta tha jaise BSS me kuch set hi nahi hai. */
+  if(rd.unresolved.length)
+    notes+=`<div class="note warn"><b>Could not match these to the dropdown master:</b>
+      ${rd.unresolved.map(u=>`<b>${esc(u.label)}</b> = "${esc(u.name)}" (not found in <code>${esc(u.list)}</code>)`).join('; ')}.
+      BSS has a value here but it is not in the current master list, so the field shows blank.
+      Pick the correct option before saving, or leave the whole field alone.</div>`;
+
+  /* Cascade parent mismatch — child ki value valid hai par doosre parent ke
+     neeche. Aise me child dropdown khali dikhega aur wajah pata nahi chalti. */
+  if(rd.parentMismatch.length)
+    notes+=`<div class="note warn"><b>Cascade mismatch:</b>
+      ${rd.parentMismatch.map(m=>`<b>${esc(m.label)}</b> = "${esc(m.name)}" belongs to ${esc(m.parentLabel)}
+        "${esc(m.actualParentName||'—')}", not the one currently selected`).join('; ')}.
+      BSS stores it this way, but the two dropdowns disagree — re-select ${esc(rd.parentMismatch[0].parentLabel)}
+      and the fields under it before saving.</div>`;
+
+  /* Description read-only hai — UpdateTicketStatus me ye field hai hi nahi.
+     Par update karne wale ko ticket ka context chahiye, isliye yahan dikha
+     rahe hain. Lamba ho sakta hai, to scroll ke saath. */
+  const desc = rd.values.description ? String(rd.values.description).trim() : '';
+  /* Meta ek hi row me (pehle 3 alag rows leti thi) — modal ki height bachane
+     ke liye, taaki saare fields bina scroll ke aa jayein. */
+  const cur=`<div class="note ok" style="background:var(--s2);border-color:var(--border2);color:var(--text2)">
+    <div class="meta-row">
+      <span><b>Ticket</b> <span class="mono">${esc(rd.values.ticketNo||EDIT.ticketNo)}</span></span>
+      <span><b>Created</b> ${esc(rd.values.createdDate?String(rd.values.createdDate).slice(0,10):'—')}</span>
+      <span><b>Status</b> ${esc(rd.values.currentStatus||'—')}</span>
+    </div>
+    ${desc ? `<div class="desc-box">${esc(desc)}</div>` : ''}</div>`;
+
+  const fields=BSS_CROSSWALK.map(f=>{
+    const val=EDIT.form[f.key];
+    if(f.type==='text'||f.type==='date'){
+      return `<div class="fld" id="fld-${f.key}">
+        <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+        <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
+               value="${esc(val==null?'':val)}" oninput="onFieldChange('${f.key}',this.value)">
+        <div class="e" id="er-${f.key}"></div></div>`;
+    }
+    return `<div class="fld" id="fld-${f.key}">
+      <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <select class="inp" id="in-${f.key}" onchange="onFieldChange('${f.key}',this.value)"></select>
+      ${f.type==='cascade'?`<div class="hint">Select ${esc(bssField(f.parent).label)} first</div>`:''}
+      ${f.key==='bssComment'?`<div class="hint">Adds a new comment to the BSS comment log (it does not overwrite)</div>`:''}
+      <div class="e" id="er-${f.key}"></div></div>`;
+  }).join('');
+
+  document.getElementById('edBody').innerHTML=notes+cur+`<div class="fgrid">${fields}</div>`;
+  bssSelectFields().forEach(f=>fillSelect(f.key));
+  document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
+}
+
+function fillSelect(key){
+  const f=bssField(key), el=document.getElementById('in-'+key);
+  if(!el) return;
+  const opts=f.type==='cascade'
+    ? bssCascadeOptions(DD,key,EDIT.form[f.parent])
+    : bssOptions(DD,key);
+  const cur=EDIT.form[key];
+  /* Duplicate IDs (jaise AssignTo me 43 do baar) — dono dikhao, par value ek
+     hi hai. Chhupana galat hoga: user ko pata hona chahiye ki list me kya hai. */
+  el.innerHTML='<option value="">— select —</option>'+
+    opts.map((o,i)=>`<option value="${o.ID}" ${String(o.ID)===String(cur)&&opts.findIndex(x=>String(x.ID)===String(cur))===i?'selected':''}>${esc(o.Name)}</option>`).join('');
+  if(cur!=null&&!opts.some(o=>String(o.ID)===String(cur))){
+    /* Current value is list me nahi (cascade parent alag hai, ya master se hat
+       gaya). Silently drop karne ke bajaye dikhao — warna user ko lagega field
+       khali tha aur save par wo value ud jayegi. */
+    const nm=bssNameById(DD,key,cur);
+    el.insertAdjacentHTML('beforeend',`<option value="${esc(cur)}" selected>${esc(nm)} (current)</option>`);
+  }
+}
+function onFieldChange(key,val){
+  EDIT.form[key]=val===''?undefined:val;
+  /* Parent badla to children reset — warna invalid combo bach jayega */
+  BSS_CROSSWALK.filter(f=>f.parent===key).forEach(child=>{
+    EDIT.form[child.key]=undefined;
+    fillSelect(child.key);
+    BSS_CROSSWALK.filter(g=>g.parent===child.key).forEach(gc=>{EDIT.form[gc.key]=undefined;fillSelect(gc.key);});
+  });
+  const fl=document.getElementById('fld-'+key); if(fl) fl.classList.remove('err');
+}
+
+function showErrors(errs){
+  BSS_CROSSWALK.forEach(f=>{const e=document.getElementById('fld-'+f.key);if(e)e.classList.remove('err');});
+  errs.forEach(x=>{
+    const fl=document.getElementById('fld-'+x.field), er=document.getElementById('er-'+x.field);
+    if(fl)fl.classList.add('err'); if(er)er.textContent=x.msg;
+  });
+  const g=errs.filter(x=>!document.getElementById('fld-'+x.field));
+  if(g.length) toast(g[0].msg,6000);
+}
+
+async function submitUpdate(){
+  if(!EDIT) return;
+  const bssId=ME&&ME.bss_user_id;
+  const errs=bssValidate(EDIT.form,DD,bssId);
+  if(errs.length){showErrors(errs);toast('⚠️ Please fix '+errs.length+' field'+(errs.length>1?'s':''),4000);return;}
+  showErrors([]);
+
+  const btn=document.getElementById('edSave'), st=document.getElementById('edStatus');
+  btn.disabled=true; st.innerHTML='<span class="spin"></span> Updating…';
+  try{
+    const payload=bssBuildPayload(EDIT.form,EDIT.ticketNo,bssId);
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({
+        action:'update', payload,
+        before:EDIT.read?EDIT.read.values:null,
+        /* Cache patch: sirf wahi fields jo cache me dikhte hain. Status ka raw
+           label bhejte hain (st), kyunki KPI/list wahi padhte hain. */
+        cachePatch:{
+          st: bssNameById(DD,'subDisposition',EDIT.form.subDisposition)||undefined,
+          ld: bssNameById(DD,'disposition',EDIT.form.disposition)||undefined,
+          mainDisp: bssNameById(DD,'mainDisposition',EDIT.form.mainDisposition)||undefined,
+          probType: bssNameById(DD,'problemType',EDIT.form.problemType)||undefined,
+          subDisp: bssNameById(DD,'subProblemType',EDIT.form.subProblemType)||undefined,
+          assignto: bssNameById(DD,'assignedTo',EDIT.form.assignedTo)||undefined,
+          dev: bssNameById(DD,'developer',EDIT.form.developer)||undefined,
+          r: bssNameById(DD,'rm',EDIT.form.rm)||undefined,
+          tld: EDIT.form.timelineDate||undefined,
+        }
+      })});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+
+    st.textContent='';
+    toast('✅ '+EDIT.ticketNo+' updated'+(j.cache&&j.cache.patched?' (cache updated too)':''),4500);
+    if(j.cache&&!j.cache.patched)
+      console.warn('Cache patch skipped:',j.cache.reason,'— the dashboard may show stale values until the next refresh.');
+
+    /* Local row bhi update karo taaki KPI/table turant sahi dikhe */
+    const patch=j.cache&&j.cache.patched?null:null;
+    const row=RAW.find(x=>x.n===EDIT.ticketNo);
+    if(row){
+      const s=bssNameById(DD,'subDisposition',EDIT.form.subDisposition); if(s) row.st=s;
+      const l=bssNameById(DD,'disposition',EDIT.form.disposition); if(l) row.ld=l;
+      const a=bssNameById(DD,'assignedTo',EDIT.form.assignedTo); if(a) row.assignto=a;
+      const dv=bssNameById(DD,'developer',EDIT.form.developer); if(dv) row.dev=dv;
+      const rr=bssNameById(DD,'rm',EDIT.form.rm); if(rr) row.r=rr;
+      if(EDIT.form.timelineDate) row.tld=EDIT.form.timelineDate;
+      delete row.sc;   /* st ab authoritative hai; purana short-code hata do */
+    }
+    closeEdit(); applyFilters();
+  }catch(e){
+    st.textContent='';
+    toast('❌ '+(e.message||e),8000);
+    console.error('update failed:',e);
+  }finally{
+    const b=document.getElementById('edSave'); if(b) b.disabled=!(ME&&ME.bss_user_id);
+  }
+}
+
+/* ── Refresh / export ── */
+async function refreshCache(){
+  toast('Use "Refresh Data" on the TAT or Support Dashboard — those pages write the cache.',6000);
+}
+function rowsToAOA(rows){
+  const cols=listColumns();
+  const head=cols.map(c=>c[0]);
+  const strip=h=>String(h).replace(/<[^>]*>/g,'').trim();
+  return [head].concat(rows.map(r=>cols.map(c=>strip(c[1](r)))));
+}
+function saveXLSX(rows,name){
+  if(!rows.length){toast('No tickets to export');return;}
+  const ws=XLSX.utils.aoa_to_sheet(rowsToAOA(rows));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tickets');
+  XLSX.writeFile(wb,name);
+}
+function exportList(){saveXLSX(LIST_ROWS,`bss_${LIST_TITLE.replace(/[^a-z0-9]+/gi,'_').slice(0,40)}.xlsx`);}
+function exportStatus(key){const d=STATUSES.find(x=>x.key===key);saveXLSX(VIEW.filter(r=>statusKeyOf(r)===key),`bss_${key}.xlsx`);}
+function exportAll(){saveXLSX(VIEW,'bss_all_tickets.xlsx');}
+
+/* ── Event delegation ──────────────────────────────────────────────────────
+ * Ticket no aur agent name inline onclick me NAHI jaate. Wo data-attributes
+ * me hain aur yahan padhe jaate hain. Isse quotes/backslash/HTML wale naam
+ * (jaise "Support agent's concern", O'Brien) handler nahi tod sakte —
+ * attribute value ko browser decode karta hai, to escaping se bacha nahi ja
+ * sakta tha. Delegation is poore class of bug ko khatam kar deta hai. */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tno]');
+  if(t){ openEdit(t.getAttribute('data-tno')); return; }
+  const a=e.target.closest('[data-agent-name]');
+  if(a){ openAgentList(a.getAttribute('data-agent-kind'),a.getAttribute('data-agent-name')); return; }
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(document.getElementById('ovEdit').classList.contains('on'))closeEdit();
+  else if(document.getElementById('ovList').classList.contains('on'))closeList();
+});
+
+
+window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof statusKeyOf!=="undefined"?statusKeyOf:undefined), statusLabelOf: (typeof statusLabelOf!=="undefined"?statusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
+window.BSS.__booted = false;
+window.BSS.boot = function(){
+  if(window.BSS.__booted) return;
+  window.BSS.__booted = true;
+  try{ init(); }catch(e){ console.error('BSS boot failed:', e); }
+};
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * upcoming_timeline.html — TAT ke tab ke roop me port kiya gaya.
+ *
+ * Poora code ek IIFE me hai. Iske bina naam collide karte: dono pages me
+ * `applyFilters`, `render`, `esc`, `fmt`, `init`, `sb`, `STATUSES` maujood
+ * hain. IIFE ke andar sab local hai; bahar sirf `window.UP` dikhta hai,
+ * aur markup ke onclick usi se call karte hain.
+ *
+ * CSS bhi `#tabUp` ke andar scope ki gayi hai (tools/scope_css.py) —
+ * warna `:root` ke `--bg` jaise variables TAT ke apne variables ko overwrite
+ * kar dete, aur ye chup-chaap hota (JS check isse nahi pakadta).
+ * ═════════════════════════════════════════════════════════════════════════ */
+(function(){
+
+/* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
+   saaf error, warna sab kuch "no data" jaisa dikhega. */
+if(typeof mbParseTicket !== 'function')
+  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+
+
+
+
+
+const SUPA_URL = 'https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+// Session sessionStorage me rehti hai (index.html + is page ka auth guard).
+// Data client bhi WAHI storage use kare, warna sb.auth.getSession() null deta
+// hai aur /api/ticket-cache ko bhejne ke liye access token hi nahi milta.
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,storage:window.sessionStorage}});
+
+const STAGE_LABELS = {
+  IT:'Transfer to IT', AK:'Acknowledge', IP:'In Progress',
+  SP:'Close by IT', LV:'Ready to Go Live', CL:'Closed',
+  RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT', OT:'Other'
+};
+
+/* ── "Ye ticket ab IT ke paas nahi hai" ──────────────────────────────────────
+ * Deadline list ka matlab hi wo tickets hain jinpar KAAM BAAKI hai. Jo close
+ * ho chuki, support ko wapas/transfer ho chuki, ya reject ho chuki — unki
+ * deadline se ab koi farak nahi padta. Pehle inpar koi filter tha hi nahi,
+ * isliye closed tickets bhi Upcoming me green hokar dikhte the.
+ *
+ * `sc` short-codes: CL=Closed, SP=Transfer To Support, RS=Return to Support.
+ * REJECTED ka koi short-code NAHI hai — wo `sc` me OT me girta hai, isliye use
+ * raw status label se pakadna padta hai. Sirf `sc` par bharosa karte to
+ * Rejected tickets chup-chaap list me bane rehte. */
+const DONE_SC = { CL:1, SP:1, RS:1 };
+function isDoneForDeadline(r){
+  if(!r) return false;
+  if(DONE_SC[r.sc]) return true;
+  /* TRIM zaroori hai — Marg se "  Rejected " jaisa padded label aa sakta hai,
+     aur bina trim ke `/^reject/` match nahi karta (ticket chup-chaap list me
+     bana rehta). */
+  const st = String(r.st||'').trim().toLowerCase();
+  if(/^reject/.test(st)) return true;                 /* Rejected / Reject */
+  if(/^closed?$/.test(st)) return true;
+  if(/transfer\s*to\s*support/.test(st)) return true;
+  if(/return\s*to\s*support/.test(st)) return true;
+  return false;
+}
+
+/* Sections. `days` = tld - today, to OVERDUE ke liye days NEGATIVE hota hai.
+ * Overdue sabse UPAR — pehle ye dikhe ki kya late ho chuka hai. */
+const SECTIONS = [
+  { id:'od30',   label:'30+ Days Overdue', urgency:'od-critical', min:-Infinity, max:-31, icon:'🚨', color:'var(--red)',    overdue:true },
+  { id:'od8-30', label:'8–30 Days Overdue',urgency:'od-high',     min:-30,    max:-8,  icon:'⚠️', color:'var(--orange)', overdue:true },
+  { id:'od1-7',  label:'1–7 Days Overdue', urgency:'od-medium',   min:-7,     max:-1,  icon:'⏰', color:'var(--amber)',  overdue:true },
+  /* min:0 — "aaj due, abhi khuli" ticket sabse urgent hai. Purana filter
+     (`r.tld <= todayStr`) bhi use dikhata tha, kyunki todayStr toISOString se
+     aata tha jo IST me ek din PEECHE hota hai. Us off-by-one ko fix karte waqt
+     aaj wali tickets kahin bhi na girein — ye guard usi ke liye hai. */
+  { id:'s1-7',   label:'Today – 7 Days', urgency:'critical', min:0,  max:7,  icon:'🔴', color:'var(--red)'    },
+  { id:'s8-15',  label:'8–15 Days',  urgency:'high',     min:8,  max:15, icon:'🟠', color:'var(--orange)' },
+  { id:'s16-30', label:'16–30 Days', urgency:'medium',   min:16, max:30, icon:'🟡', color:'var(--amber)'  },
+  { id:'s31-60', label:'31–60 Days', urgency:'low',      min:31, max:60, icon:'🟢', color:'var(--teal)'   },
+];
+/* countEl/barEl/chip ids ab section id se derive hote hain — pehle hardcoded
+ * s1..s4 / b1..b4 the, jinme naya section add karna manual kaam tha. */
+SECTIONS.forEach(sec=>{
+  sec.countEl = 'cnt_'+sec.id;
+  sec.barEl   = 'bar_'+sec.id;
+  sec.chipDev = 'cd_'+sec.id;
+  sec.chipBug = 'cb_'+sec.id;
+  sec.chipOth = 'co_'+sec.id;
+});
+
+let RAW = [];
+// Category filter now per-section
+let latestFetchedAt = null;
+
+/* Summary cards SECTIONS se banti hain — ek hi jagah section add karo aur
+ * card + bucket + section sab apne aap aa jaate hain. */
+let _sumCardsBuilt = false;
+function renderSummaryCards(){
+  if(_sumCardsBuilt) return;
+  const row = document.getElementById('summaryRow');
+  if(!row) return;
+  row.innerHTML = SECTIONS.map(sec=>`
+    <div class="sum-card${sec.overdue?' od':''}">
+      <div class="sum-card-label">${sec.icon} ${sec.label}</div>
+      <div class="sum-card-val" id="${sec.countEl}">0</div>
+      <div class="sum-card-sub">${sec.overdue?'Deadline missed — still open':'Deadline approaching'}</div>
+      <div class="sum-cat-row">
+        <span class="sum-cat-chip sum-cat-dev" id="${sec.chipDev}">Dev: 0</span>
+        <span class="sum-cat-chip sum-cat-bug" id="${sec.chipBug}">Bugs: 0</span>
+        <span class="sum-cat-chip sum-cat-oth" id="${sec.chipOth}">Other: 0</span>
+      </div>
+      <div class="sum-card-bar"><div class="sum-card-bar-fill" id="${sec.barEl}" style="background:${sec.color};width:0%"></div></div>
+    </div>`).join('');
+  _sumCardsBuilt = true;
+}
+
+// ── Detect category ──────────────────────────────────────────────────────────
+function detectCategory(rec){
+  const text = [rec.desc||'', rec.remarks||'', rec.probType||'', rec.subDisp||'', rec.mainDisp||''].join(' ').toLowerCase();
+  const devKeywords = ['development','develop','dev ','feature','enhancement','module','coding','implementation','new requirement'];
+  const bugKeywords = ['bug','error','issue','fix','crash','defect','incorrect','wrong','not working','failed'];
+  if(devKeywords.some(k=>text.includes(k))) return 'dev';
+  if(bugKeywords.some(k=>text.includes(k))) return 'bug';
+  return 'other';
+}
+
+// ── Excel Export ─────────────────────────────────────────────────────────────
+function exportExcel(sectionId, sectionLabel, event){
+  event.stopPropagation();
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Get section bounds
+  const sec = SECTIONS.find(s => s.id === sectionId);
+  if(!sec) return;
+
+  // Get current filters
+  const q       = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  const tester  = document.getElementById('filterTester').value;
+  const rm      = document.getElementById('filterRM').value;
+  const dev     = document.getElementById('filterDev').value;
+  const stage   = document.getElementById('filterStage').value;
+
+  // Filter data for this section
+  const items = RAW.filter(r=>{
+    if(!r.tld) return false;
+    /* Closed/support/rejected tickets deadline list me nahi aate — na Upcoming
+       me, na Overdue me. Inpar kaam baaki hi nahi hai. */
+    if(isDoneForDeadline(r)) return false;
+    const dateObj = new Date(r.tld+'T00:00:00');
+    const days = Math.round((dateObj - today) / 86400000);
+    if(days < sec.min || days > sec.max) return false;
+    if(q){ const hay=[r.n,r.u,r.desc,r.remarks,r.r,r.dev,r.t,r.ti,r.ta,r.ts,r.eb].join(' ').toLowerCase(); if(!hay.includes(q)) return false; }
+    if(tester && mbTesterOf(r)!==tester) return false;
+    if(rm && r.r !== rm) return false;
+    if(dev && r.dev !== dev) return false;
+    if(stage && r.sc !== stage) return false;
+
+    return true;
+  }).sort((a,b) => a.tld.localeCompare(b.tld));
+
+  if(!items.length){ alert('No data to export for ' + sectionLabel); return; }
+
+  // Build Excel rows
+  const wsData = [
+    ['Ticket No', 'Customer', 'Timeline Date', 'Days Left (negative = overdue)', 'Stage', 'Category',
+     'Description', 'Remarks', 'Tester/Agent', 'RM', 'Developer', 'Subscription Plan',
+     'Licence No', 'Mobile', 'Email']
+  ];
+
+  items.forEach(r=>{
+    const dateObj = new Date(r.tld+'T00:00:00');
+    const days = Math.round((dateObj - today) / 86400000);
+    const testerName = mbTesterOf(r)||'—';
+    const cat = detectCategory(r);
+    const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
+    wsData.push([
+      r.n||'',
+      r.u||'',
+      r.tld||'',
+      days,
+      STAGE_LABELS[r.sc]||r.sc||'',
+      catLabel,
+      r.desc||'',
+      r.remarks||'',
+      testerName,
+      r.r||'',
+      r.dev||'',
+      r.p||'',
+      r.l||'',
+      r.mobile||'',
+      r.email||''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:18},{wch:25},{wch:14},{wch:10},{wch:18},{wch:14},
+    {wch:40},{wch:30},{wch:20},{wch:15},{wch:18},{wch:20},
+    {wch:15},{wch:14},{wch:25}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sectionLabel);
+
+  const today2 = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Marg_Upcoming_${sectionLabel.replace(/[^a-zA-Z0-9]/g,'_')}_${today2}.xlsx`);
+}
+
+// ── Load from Supabase ───────────────────────────────────────────────────────
+let _timerInterval = null;
+function startLoaderTimer(){
+  let secs = 0;
+  document.getElementById('loaderTimer').textContent = '0s';
+  _timerInterval = setInterval(()=>{
+    secs++;
+    const m = Math.floor(secs/60), s = secs%60;
+    document.getElementById('loaderTimer').textContent =
+      m > 0 ? m+'m '+String(s).padStart(2,'0')+'s' : secs+'s';
+  }, 1000);
+}
+function stopLoaderTimer(){
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval = null; }
+}
+
+async function loadData(){
+  document.getElementById('loadingMsg').textContent = 'Connecting to Supabase...';
+  document.getElementById('loaderBar').style.width = '10%';
+  document.getElementById('loaderStep').textContent = 'FETCHING FROM SUPABASE';
+  startLoaderTimer();
+  try{
+    document.getElementById('loaderBar').style.width = '30%';
+
+    /* Shared store se lo — TAT ne page load par cache pehle hi padh liya hai.
+       Dobara padhna wahi 0.78MB server se lene ke barabar hai, bina kisi fayde
+       ke. `data` sirf tab fetch hota hai jab shared store khali ho (yaani ye
+       page standalone /upcoming ke roop me khula ho). */
+    let data, error;
+    const _sh = window.__MB_SHARED;
+    if(_sh && _sh.tickets && _sh.tickets.length){
+      RAW = _sh.tickets;
+      latestFetchedAt = _sh.fetchedAt;
+      RAW = RAW.filter(r => r.tld);
+      document.getElementById('loaderBar').style.width = '85%';
+      document.getElementById('loaderStep').textContent = 'BUILDING DASHBOARD';
+      if(latestFetchedAt){
+        const d = new Date(latestFetchedAt);
+        const label = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+          + ' at ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+        const st=document.getElementById('syncText'); if(st) st.textContent = `Last fetched: ${label}`;
+        const sb2=document.getElementById('syncBadge'); if(sb2) sb2.style.display = 'flex';
+      }
+      populateFilters();
+      applyFilters();
+      document.getElementById('loaderBar').style.width = '100%';
+      document.getElementById('loaderStep').textContent = 'DONE';
+      stopLoaderTimer();
+      const ov=document.getElementById('loaderOverlay'); if(ov) ov.classList.remove('active');
+      const lo=document.getElementById('loadingOverlay'); if(lo) lo.style.display='none';
+      return;
+    }
+
+    ({ data, error } = await sb.from('ticket_cache').select('*'));
+    if(error) throw new Error(error.message || error.details || error.hint || JSON.stringify(error));
+    if(!data || !data.length) throw new Error('No data in Supabase — please run the GitHub Action first');
+
+    document.getElementById('loaderBar').style.width = '60%';
+    document.getElementById('loaderStep').textContent = 'PROCESSING TICKETS';
+    document.getElementById('loadingMsg').textContent = `Processing ${data.length} record(s)...`;
+
+    // Merge shared helper se (assets/ticket-parser.js). Pehle blind last-wins
+    // tha aur rows ka order undefined, to purani adhoori row nayi poori row ko
+    // overwrite kar sakti thi. Ab jyada fields wala record jeetta hai.
+    const merged = mbMergeCacheRows(data);
+    RAW = merged.tickets;
+    latestFetchedAt = merged.fetchedAt;
+    if(merged.minSchema < MB_SCHEMA_VERSION)
+      console.warn(`ticket_cache purane schema me hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — TAT/Support dashboard se "Refresh Data" chalao.`);
+
+    // Filter only tickets with tld (timeline date)
+    RAW = RAW.filter(r => r.tld);
+
+    document.getElementById('loaderBar').style.width = '85%';
+    document.getElementById('loaderStep').textContent = 'BUILDING DASHBOARD';
+    document.getElementById('loadingMsg').textContent = `${RAW.length} tickets with deadlines found`;
+
+    console.log(`Loaded ${RAW.length} tickets with timeline dates`);
+
+    // Show sync badge
+    if(latestFetchedAt){
+      const d = new Date(latestFetchedAt);
+      const label = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+        + ' at ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      document.getElementById('syncText').textContent = `Last fetched: ${label}`;
+      document.getElementById('syncBadge').style.display = 'flex';
+    }
+
+    populateFilters();
+    applyFilters();
+
+    document.getElementById('loaderBar').style.width = '100%';
+    document.getElementById('loaderStep').textContent = 'DONE';
+
+  }catch(e){
+    console.error('loadData error:', e);
+    const errMsg = e.message || String(e);
+    document.getElementById('sectionsContainer').innerHTML = `
+      <div class="no-data">
+        <div class="no-data-icon">❌</div>
+        <div style="font-weight:700;color:var(--red);font-size:14px">Failed to load data</div>
+        <div style="font-size:12px;margin-top:8px;color:var(--text)">${errMsg}</div>
+        <div style="font-size:11px;margin-top:6px;color:var(--muted)">Check browser console (F12) for details</div>
+      </div>`;
+  }finally{
+    stopLoaderTimer();
+    setTimeout(()=>{ document.getElementById('loadingOverlay').style.display = 'none'; }, 300);
+  }
+}
+
+// ── Populate filters ─────────────────────────────────────────────────────────
+function populateFilters(){
+  const testers=new Set(), rms=new Set(), devs=new Set(), stages=new Set();
+  /* SIRF un tickets se options banao jo is dashboard par dikh sakti hain.
+     RAW me closed/support/rejected bhi hain — unse dropdown bharne par Stage
+     me "Closed"/"Transfer To Support" jaise options aate the, jinhe chunne par
+     poora dashboard khali ho jata tha bina wajah bataye. */
+  RAW.filter(r=>!isDoneForDeadline(r)).forEach(r=>{
+    const t = mbTesterOf(r);
+    if(t&&t!=='—') testers.add(t);
+    if(r.r&&r.r!=='—') rms.add(r.r);
+    if(r.dev&&r.dev!=='—') devs.add(r.dev);
+    if(r.sc) stages.add(r.sc);
+  });
+  fillSelect('filterTester', [...testers].sort(), 'All Testers');
+  fillSelect('filterRM', [...rms].sort(), 'All RMs');
+  fillSelect('filterDev', [...devs].sort(), 'All Devs');
+  fillSelect('filterStage', [...stages].sort().map(s=>({val:s,label:STAGE_LABELS[s]||s})), 'All Stages', true);
+}
+
+function fillSelect(id, items, placeholder, isObj=false){
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  items.forEach(item=>{
+    const opt = document.createElement('option');
+    opt.value = isObj ? item.val : item;
+    opt.textContent = isObj ? item.label : item;
+    sel.appendChild(opt);
+  });
+}
+
+// ── Per-section category filter ──────────────────────────────────────────────
+function setSectionCat(secId, cat){
+  if(!window._secCats) window._secCats = {};
+  window._secCats[secId] = cat;
+  applyFilters();
+}
+
+// ── Apply filters & render ───────────────────────────────────────────────────
+function applyFilters(){
+  const q       = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+  const tester  = document.getElementById('filterTester').value;
+  const rm      = document.getElementById('filterRM').value;
+  const dev     = document.getElementById('filterDev').value;
+  const stage   = document.getElementById('filterStage').value;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Filter tickets with future tld
+  let filtered = RAW.filter(r=>{
+    if(!r.tld) return false;
+    /* Yahan pehle sirf `r.tld <= todayStr` check tha — na overdue dikhta tha,
+       na closed tickets hatte the (isliye close ho chuki tickets Upcoming me
+       green hokar dikhti thin). */
+    if(isDoneForDeadline(r)) return false;
+    if(q){
+      const hay = [r.n,r.u,r.desc,r.remarks,r.r,r.dev,r.t,r.ti,r.ta,r.ts,r.eb].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    if(tester && mbTesterOf(r)!==tester) return false;
+    if(rm && r.r !== rm) return false;
+    if(dev && r.dev !== dev) return false;
+    if(stage && r.sc !== stage) return false;
+
+    return true;
+  });
+
+  /* Bucketing ab SECTIONS se chalti hai (pehle hardcoded 4 keys the, isliye
+     naya section add karna do jagah change maangta tha). */
+  const buckets = {};
+  SECTIONS.forEach(sec=>buckets[sec.id]=[]);
+  filtered.forEach(r=>{
+    const dateObj = new Date(r.tld+'T00:00:00');
+    const days = Math.round((dateObj - today) / 86400000);
+    const sec = SECTIONS.find(x=>days >= x.min && days <= x.max);
+    if(sec) buckets[sec.id].push({r, days});
+  });
+
+  /* Upcoming: sabse paas wali deadline pehle (tld ascending).
+     Overdue: sabse ZYADA late pehle — yaani sabse purani tld, jo bhi ascending
+     hi hai. Dono ke liye tld ascending sahi hai. */
+  SECTIONS.forEach(sec=>buckets[sec.id].sort((a,z)=>a.r.tld.localeCompare(z.r.tld)));
+
+  const total = filtered.length;
+
+  // Update summary cards with dev/bug/other counts
+  renderSummaryCards();
+  const counts = SECTIONS.map(sec=>buckets[sec.id].length);
+  const maxCount = Math.max(...counts, 1);
+
+  SECTIONS.forEach((sec,i)=>{
+    const setT=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+    setT(sec.countEl, counts[i]);
+    const bar=document.getElementById(sec.barEl);
+    if(bar) bar.style.width = Math.round(counts[i]/maxCount*100)+'%';
+    const items = buckets[sec.id];
+    setT(sec.chipDev, 'Dev: ' +items.filter(({r})=>detectCategory(r)==='dev').length);
+    setT(sec.chipBug, 'Bugs: '+items.filter(({r})=>detectCategory(r)==='bug').length);
+    setT(sec.chipOth, 'Other: '+items.filter(({r})=>detectCategory(r)==='other').length);
+  });
+
+  // Render sections
+  let html = '';
+  SECTIONS.forEach((sec,i)=>{
+    const items = buckets[sec.id];
+    const secColor = sec.color;
+    // Per-section category state
+    const secCatKey = 'secCat_'+sec.id;
+    if(!window._secCats) window._secCats = {};
+    if(!window._secCats[sec.id]) window._secCats[sec.id] = 'all';
+    const activeCat = window._secCats[sec.id];
+
+    // Filter items by section category
+    const secItems = activeCat === 'all' ? items
+      : items.filter(({r}) => detectCategory(r) === activeCat);
+
+    const devC  = items.filter(({r})=>detectCategory(r)==='dev').length;
+    const bugC  = items.filter(({r})=>detectCategory(r)==='bug').length;
+    const othC  = items.filter(({r})=>detectCategory(r)==='other').length;
+
+    html += `<div class="section${sec.overdue?' od':''}">
+      <div class="section-hdr">
+        <div class="section-icon" style="background:${secColor.replace('var(','').replace(')','')};opacity:.15;color:#000">
+          <span style="opacity:1">${sec.icon}</span>
+        </div>
+        <div>
+          <div class="section-title">${sec.label}</div>
+          <div class="section-sub">${sec.overdue
+            ? 'Deadline passed and the ticket is still open (not closed / transferred to support / rejected)'
+            : 'Timeline deadline within this range'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap">
+          <button onclick="setSectionCat('${sec.id}','all')"   class="sec-cat-btn ${activeCat==='all'  ?'sc-active-all':''}"  style="border-color:${secColor};${activeCat==='all'  ?'background:'+secColor+';color:#fff':''}" >All (${items.length})</button>
+          <button onclick="setSectionCat('${sec.id}','dev')"   class="sec-cat-btn ${activeCat==='dev'  ?'sc-active-dev':''}"  >Development (${devC})</button>
+          <button onclick="setSectionCat('${sec.id}','bug')"   class="sec-cat-btn ${activeCat==='bug'  ?'sc-active-bug':''}"  >Bugs (${bugC})</button>
+          <button onclick="setSectionCat('${sec.id}','other')" class="sec-cat-btn ${activeCat==='other'?'sc-active-other':''}" >Other (${othC})</button>
+          <button class="btn-excel" onclick="exportExcel('${sec.id}','${sec.label}',event)">⬇ Excel</button>
+        </div>
+      </div>`;
+
+    if(!secItems.length){
+      html += `<div class="empty-section">✅ No tickets in this category for this range</div>`;
+    } else {
+      html += `<div class="cards-grid">`;
+      secItems.forEach(({r, days})=>{
+        const cat = detectCategory(r);
+        const urgClass = `u-${sec.urgency}`;
+        const testerName = mbTesterOf(r)||'—';
+        const stageLabel = STAGE_LABELS[r.sc]||r.sc||'—';
+        const desc = (r.desc||r.remarks||'No description').slice(0,100);
+        const tldFmt = new Date(r.tld+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+        /* Overdue me days NEGATIVE hota hai — usko "18 days overdue" dikhana
+           hai, "-18 days" nahi. */
+        const od = days < 0, late = Math.abs(days);
+        const daysLabel = od
+          ? (late===1 ? '🚨 1 day overdue' : `🚨 ${late} days overdue`)
+          : (days===0 ? '🔴 Due today' : days===1 ? '🔴 Tomorrow' : days<=7 ? `🔴 ${days} days` : days<=15 ? `🟠 ${days} days` : days<=30 ? `🟡 ${days} days` : `🟢 ${days} days`);
+
+        const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
+        const catCls   = cat==='dev'?'cat-dev':cat==='bug'?'cat-bug':'cat-other';
+        html += `<div class="t-card ${urgClass}" onclick="openTicketDetail('${r.n}')">
+          <div class="t-card-top">
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1">
+              <span class="t-ticket">${r.n||'—'}</span>
+              <span class="t-category ${catCls}">${catLabel}</span>
+            </div>
+            <span class="t-days-badge">${daysLabel}</span>
+          </div>
+          <div class="t-client">${r.u||'—'}</div>
+          <div class="t-desc" title="${(r.desc||r.remarks||'').replace(/"/g,'&quot;')}">${desc}</div>
+          <div class="t-tags">
+            <span class="t-tag stage">📍 ${stageLabel}</span>
+            ${testerName!=='—'?`<span class="t-tag">🧑‍💻 ${testerName}</span>`:''}
+            ${r.r&&r.r!=='—'?`<span class="t-tag rm">👔 ${r.r}</span>`:''}
+            ${r.dev&&r.dev!=='—'?`<span class="t-tag dev">💻 ${r.dev}</span>`:''}
+          </div>
+          <div class="t-footer">
+            <span class="t-date">📅 ${tldFmt}</span>
+            ${r.p?`<span style="font-size:10px;color:var(--muted)">${r.p}</span>`:''}
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+
+  if(!html || filtered.length === 0){
+    html = `<div class="no-data">
+      <div class="no-data-icon">🗓️</div>
+      <div style="font-weight:700;font-size:15px">No upcoming deadlines found</div>
+      <div style="font-size:12px;margin-top:6px;color:var(--muted)">No tickets with timeline dates in next 60 days</div>
+    </div>`;
+  }
+
+  document.getElementById('sectionsContainer').innerHTML = html;
+}
+
+function openTicketDetail(n){
+  const rec = RAW.find(r => r.n === n);
+  if(!rec){ alert('Ticket data not found'); return; }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dateObj = new Date(rec.tld+'T00:00:00');
+  const days = Math.round((dateObj - today) / 86400000);
+  const tldFmt = dateObj.toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const cat = detectCategory(rec);
+
+  // Header
+  document.getElementById('mdTicketNo').textContent = rec.n || '—';
+  document.getElementById('mdClient').textContent   = rec.u || '—';
+
+  // Deadline banner
+  document.getElementById('mdDeadline').textContent   = tldFmt;
+  document.getElementById('mdDaysBadge').textContent  = days + ' days';
+  document.getElementById('mdDaysLabel').textContent  = days === 1 ? 'Due Tomorrow!' : days <= 7 ? 'Due Very Soon!' : days <= 15 ? 'Due Soon' : 'Upcoming';
+
+  // Stage & Category
+  document.getElementById('mdStage').textContent = STAGE_LABELS[rec.sc] || rec.sc || '—';
+  const catEl = document.getElementById('mdCat');
+  if(cat === 'dev'){
+    catEl.textContent = 'Development';
+    catEl.style.cssText = 'background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe';
+  } else if(cat === 'bug'){
+    catEl.textContent = 'Bug';
+    catEl.style.cssText = 'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+  } else {
+    catEl.textContent = 'Other';
+    catEl.style.cssText = 'background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db';
+  }
+
+  // Description & Remarks
+  document.getElementById('mdDesc').textContent    = rec.desc    || 'No description available';
+  document.getElementById('mdRemarks').textContent = rec.remarks || '—';
+  document.getElementById('mdRemarksWrap').style.display = rec.remarks ? '' : 'none';
+
+  // Team
+  document.getElementById('mdTester').textContent  = rec.eb||rec.t||rec.ti||rec.ta||rec.ts||'—';
+  document.getElementById('mdRM').textContent       = rec.r    || '—';
+  document.getElementById('mdDev').textContent      = rec.dev  || '—';
+  document.getElementById('mdAssignto').textContent = rec.assignto || '—';
+
+  // Customer
+  document.getElementById('mdLic').textContent    = rec.l      || '—';
+  document.getElementById('mdPlan').textContent   = rec.p      || '—';
+  document.getElementById('mdMobile').textContent = rec.mobile || '—';
+  document.getElementById('mdEmail').textContent  = rec.email  || '—';
+
+  // Dates
+  document.getElementById('mdCreated').textContent = rec.tc || '—';
+  document.getElementById('mdIT').textContent      = rec.a  || '—';
+  document.getElementById('mdAck').textContent     = rec.b  || '—';
+  document.getElementById('mdIP').textContent      = rec.c  || '—';
+
+  document.getElementById('ticketModal').style.display = 'flex';
+  document.querySelector('.modal-box').scrollTop = 0;
+}
+
+function closeModal(e){
+  if(e.target.id === 'ticketModal') document.getElementById('ticketModal').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') document.getElementById('ticketModal').style.display = 'none';
+});
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+window.mbSignOut = async function(){
+  try{
+    const _c = window.supabase.createClient(
+      'https://xsxchyqhhyfvuxbofxna.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4',
+      {auth:{persistSession:true,storage:window.sessionStorage}}
+    );
+    await _c.auth.signOut();
+  }catch(e){}
+  location.replace('index.html');
+};
+
+
+window.UP = { applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), closeModal: (typeof closeModal!=="undefined"?closeModal:undefined), detectCategory: (typeof detectCategory!=="undefined"?detectCategory:undefined), exportExcel: (typeof exportExcel!=="undefined"?exportExcel:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), isDoneForDeadline: (typeof isDoneForDeadline!=="undefined"?isDoneForDeadline:undefined), loadData: (typeof loadData!=="undefined"?loadData:undefined), openTicketDetail: (typeof openTicketDetail!=="undefined"?openTicketDetail:undefined), populateFilters: (typeof populateFilters!=="undefined"?populateFilters:undefined), renderSummaryCards: (typeof renderSummaryCards!=="undefined"?renderSummaryCards:undefined), setSectionCat: (typeof setSectionCat!=="undefined"?setSectionCat:undefined), startLoaderTimer: (typeof startLoaderTimer!=="undefined"?startLoaderTimer:undefined), stopLoaderTimer: (typeof stopLoaderTimer!=="undefined"?stopLoaderTimer:undefined) };
+window.UP.__booted = false;
+window.UP.boot = function(){
+  if(window.UP.__booted) return;
+  window.UP.__booted = true;
+  try{ loadData(); }catch(e){ console.error('UP boot failed:', e); }
+};
+})();
+
+</script>
 </body>
 </html>
