@@ -35,7 +35,11 @@ const MARG_ORIGIN    = process.env.MARG_ORIGIN || 'http://192.167.24.89:8086';
 // Is page ka permission id (portal.html ke ALL_DASHBOARDS se match karta hai).
 // Page access aur update permission JAANBUJHKAR same hai: jiske paas dashboard
 // hai wo update kar sakta hai.
-const DASH_ID = 'bss-dashboard';
+// BSS ab TAT dashboard ka tab hai, isliye permission `tat-bss` hai. Purani
+// standalone id bhi maani jati hai — jinke paas pehle se `bss-dashboard` hai
+// unka access na toote (aur /bss route abhi bhi chalta hai).
+const DASH_IDS = ['tat-bss', 'bss-dashboard'];
+const DASH_ID = DASH_IDS[0];
 
 // BindDropDown master data roz nahi badalta. Har modal par fetch karna Marg par
 // bekaar load hai, isliye warm lambda me cache. TTL chhota rakha hai taaki naya
@@ -288,10 +292,11 @@ module.exports = async function handler(req, res) {
     });
   if (migrationMissing) p.bss_user_id = null;
 
-  const allowed = p.role === 'admin' || (Array.isArray(p.dashboards) && p.dashboards.includes(DASH_ID));
+  const allowed = p.role === 'admin' ||
+    (Array.isArray(p.dashboards) && DASH_IDS.some(id => p.dashboards.includes(id)));
   if (!allowed)
     return res.status(403).json({
-      error: `You do not have access to "${DASH_ID}". Ask an admin to tick the BSS Dashboard permission in Admin → Users.`,
+      error: `You do not have access to the BSS Update tab. Ask an admin to tick "BSS Update (TAT)" in Admin → Users.`,
       role: p.role || null,
       dashboards: Array.isArray(p.dashboards) ? p.dashboards : [],
     });
