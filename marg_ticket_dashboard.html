@@ -343,7 +343,16 @@ body::before {
 .main {
   padding:12px 28px 24px;
   max-width:1700px;margin:0 auto;
-  position:relative;z-index:1;
+  position:relative;
+  /* `z-index:1` HATAYA GAYA.
+   * position:relative + z-index ek STACKING CONTEXT banata hai. Uske andar
+   * ka har child — chahe uska z-index 20000 ho — poore page ke muqable sirf
+   * LEVEL 1 par rehta hai. Isi wajah se tab ke andar khulne wale modals
+   * header (z-index 300) ke NEECHE dab jate the, aur backdrop page ko dhak
+   * nahi paata tha.
+   * Yahan z-index ki koi zaroorat nahi thi (koi overlap nahi hai), aur ise
+   * hatane se `.main` sirf positioning context rehta hai — stacking context
+   * nahi. Ab andar ke modals apne asli z-index par kaam karte hain. */
 }
 
 /* ── KPI STRIP ── */
@@ -1165,29 +1174,8 @@ body[data-theme="analyst"] th{ background:#F3F4F6 !important; border:1px solid #
 body[data-theme="analyst"] td{ border:1px solid #D1D5DB !important; padding:3px 5px !important; font-variant-numeric:tabular-nums; font-size:10.5px !important; }
 body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 
-
-/* ── MODAL PORTAL CONTAINERS ───────────────────────────────────────────────
- * Portal khud fixed + full viewport hai, aur uske andar ke overlays absolute.
- * Isse overlay ki apni positioning par bharosa nahi karna padta — chahe kuch
- * bhi ho, backdrop poora viewport dhakta hai aur modal ka header hamesha
- * screen ke andar rehta hai.
- * pointer-events: container khud clicks nahi rokta (band modals ke waqt),
- * uske children rokte hain.
- * ══════════════════════════════════════════════════════════════════════════ */
-#tabBssModals, #tabUpModals{
-  position:fixed; inset:0; z-index:20000; pointer-events:none;
-}
-#tabBssModals > *, #tabUpModals > *{ pointer-events:auto; }
-#tabBssModals .ov, #tabUpModals .modal-backdrop{
-  position:absolute; inset:0;
-}
-/* Toast overlay nahi hai — wo apni jagah fixed rehni chahiye */
-#tabBssModals .toast{ position:fixed; }
-
 /* Modal ke andar ka scroll page tak na pahunche (scroll chaining) */
-#tabBssModals .mdl-b, #tabBssModals .tw, #tabUpModals .modal-box{
-  overscroll-behavior: contain;
-}
+#tabBss .mdl-b, #tabBss .tw, #tabUp .modal-box{ overscroll-behavior: contain; }
 
 /* ═══ PORTED TAB STYLES ═══════════════════════════════════════════════════
  * BSS aur Upcoming ki CSS #tabBss / #tabUp ke ANDAR scope ki gayi hai.
@@ -1203,7 +1191,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
  * page ko dhak nahi paata tha.
  * Ab 20000+ par, taaki wo sach me sab ke upar aayein.
  * ═══════════════════════════════════════════════════════════════════════ */
-#tabBss, #tabBssModals{
+
+#tabBss{
   --bg:#f0f2f9; --surface:#fff; --s2:#f7f8fd; --border:#e8eaf4; --border2:#d4d8ec;
   --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
   --it:#0d9488; --ack:#0891b2; --ip:#0f766e; --tst:#b45309; --uat:#0284c7;
@@ -1213,148 +1202,148 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   --sh-l:0 12px 48px rgba(8,16,30,.12),0 4px 8px rgba(8,16,30,.06);
   --r:12px; --r2:7px; --r3:5px;
 }
-#tabBss *, #tabBssModals *{margin:0;padding:0;box-sizing:border-box}
-#tabBss, #tabBssModals{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
-#tabBss .mono, #tabBssModals .mono{font-family:'JetBrains Mono',monospace}
+#tabBss *{margin:0;padding:0;box-sizing:border-box}
+#tabBss{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
+#tabBss .mono{font-family:'JetBrains Mono',monospace}
 /* ── Header ── */
-#tabBss .hdr, #tabBssModals .hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
-#tabBss .hdr h1, #tabBssModals .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.2px}
-#tabBss .hdr .sub, #tabBssModals .hdr .sub{font-size:10.5px;opacity:.72;margin-top:1px}
-#tabBss .hdr .sp, #tabBssModals .hdr .sp{flex:1}
-#tabBss .btn, #tabBssModals .btn{border:none;border-radius:var(--r2);padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
-#tabBss .btn:disabled, #tabBssModals .btn:disabled{opacity:.5;cursor:not-allowed}
-#tabBss .btn-ghost, #tabBssModals .btn-ghost{background:rgba(255,255,255,.12);color:#fff}
-#tabBss .btn-ghost:hover:not(:disabled), #tabBssModals .btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.22)}
-#tabBss .btn-red, #tabBssModals .btn-red{background:#dc2626;color:#fff}
-#tabBss .btn-teal, #tabBssModals .btn-teal{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff}
-#tabBss .btn-teal:hover:not(:disabled), #tabBssModals .btn-teal:hover:not(:disabled){filter:brightness(1.08)}
-#tabBss .btn-sm, #tabBssModals .btn-sm{padding:5px 10px;font-size:11px}
-#tabBss .pill, #tabBssModals .pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:8px}
-#tabBss .dot, #tabBssModals .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
-#tabBss .dot.stale, #tabBssModals .dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
+#tabBss .hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
+#tabBss .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.2px}
+#tabBss .hdr .sub{font-size:10.5px;opacity:.72;margin-top:1px}
+#tabBss .hdr .sp{flex:1}
+#tabBss .btn{border:none;border-radius:var(--r2);padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+#tabBss .btn:disabled{opacity:.5;cursor:not-allowed}
+#tabBss .btn-ghost{background:rgba(255,255,255,.12);color:#fff}
+#tabBss .btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.22)}
+#tabBss .btn-red{background:#dc2626;color:#fff}
+#tabBss .btn-teal{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff}
+#tabBss .btn-teal:hover:not(:disabled){filter:brightness(1.08)}
+#tabBss .btn-sm{padding:5px 10px;font-size:11px}
+#tabBss .pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:8px}
+#tabBss .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+#tabBss .dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
 /* ── Filters ── */
-#tabBss .wrap, #tabBssModals .wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
-#tabBss .filters, #tabBssModals .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-#tabBss .inp, #tabBssModals .inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
-#tabBss .inp:focus, #tabBssModals .inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
-#tabBss select.inp, #tabBssModals select.inp{cursor:pointer}
-#tabBss .f-lab, #tabBssModals .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
-#tabBss .f-grp, #tabBssModals .f-grp{display:flex;flex-direction:column}
+#tabBss .wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
+#tabBss .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+#tabBss .inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
+#tabBss .inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+#tabBss select.inp{cursor:pointer}
+#tabBss .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
+#tabBss .f-grp{display:flex;flex-direction:column}
 /* ── KPI cards ── */
-#tabBss .sec-h, #tabBssModals .sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
-#tabBss .sec-t, #tabBssModals .sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
-#tabBss .sec-l, #tabBssModals .sec-l{flex:1;height:1px;background:var(--border2)}
-#tabBss .kpi-row, #tabBssModals .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
-@media(max-width:1400px){#tabBss .kpi-row, #tabBssModals .kpi-row{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:1000px){#tabBss .kpi-row, #tabBssModals .kpi-row{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:620px){#tabBss .kpi-row, #tabBssModals .kpi-row{grid-template-columns:1fr}}
-#tabBss .kpi, #tabBssModals .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
-#tabBss .kpi:hover, #tabBssModals .kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
-#tabBss .kpi-top, #tabBssModals .kpi-top{height:4px}
-#tabBss .kpi-b, #tabBssModals .kpi-b{padding:10px 13px 9px}
-#tabBss .kpi-s, #tabBssModals .kpi-s{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
-#tabBss .kpi-n, #tabBssModals .kpi-n{font-size:25px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
-#tabBss .kpi-splits, #tabBssModals .kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
-#tabBss .kpi-sp, #tabBssModals .kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:var(--r3);padding:4px 3px;text-align:center}
-#tabBss .kpi-sp .l, #tabBssModals .kpi-sp .l{font-size:8px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
-#tabBss .kpi-sp .v, #tabBssModals .kpi-sp .v{font-size:12px;font-weight:700;color:var(--text2);margin-top:1px}
-#tabBss .kpi-f, #tabBssModals .kpi-f{border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
-#tabBss .lnk, #tabBssModals .lnk{font-size:10.5px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
-#tabBss .lnk:hover, #tabBssModals .lnk:hover{background:rgba(13,148,136,.1)}
+#tabBss .sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+#tabBss .sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+#tabBss .sec-l{flex:1;height:1px;background:var(--border2)}
+#tabBss .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
+@media(max-width:1400px){#tabBss .kpi-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:1000px){#tabBss .kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){#tabBss .kpi-row{grid-template-columns:1fr}}
+#tabBss .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
+#tabBss .kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+#tabBss .kpi-top{height:4px}
+#tabBss .kpi-b{padding:10px 13px 9px}
+#tabBss .kpi-s{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
+#tabBss .kpi-n{font-size:25px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
+#tabBss .kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+#tabBss .kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:var(--r3);padding:4px 3px;text-align:center}
+#tabBss .kpi-sp .l{font-size:8px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
+#tabBss .kpi-sp .v{font-size:12px;font-weight:700;color:var(--text2);margin-top:1px}
+#tabBss .kpi-f{border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
+#tabBss .lnk{font-size:10.5px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
+#tabBss .lnk:hover{background:rgba(13,148,136,.1)}
 /* ── Tables ── */
-#tabBss .card, #tabBssModals .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
-#tabBss .card-h, #tabBssModals .card-h{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-#tabBss .card-t, #tabBssModals .card-t{font-size:13px;font-weight:700}
-#tabBss .card-s, #tabBssModals .card-s{font-size:10.5px;color:var(--muted)}
-#tabBss .tw, #tabBssModals .tw{overflow:auto;max-height:420px}
+#tabBss .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
+#tabBss .card-h{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#tabBss .card-t{font-size:13px;font-weight:700}
+#tabBss .card-s{font-size:10.5px;color:var(--muted)}
+#tabBss .tw{overflow:auto;max-height:420px}
 /* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
    table hai. Pehle .tw par `max-height:none` tha — wo kabhi scroll nahi karta
    tha, aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
    ancestor (.tw, jisme overflow:auto hai) se bind hota hai — aur wo scroll na
    kare to header chipakta hi nahi. Isliye height yahan, aur .mdl-b ka scroll
    band. */
-#tabBss .tw-scroll, #tabBssModals .tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
-#tabBss .mdl-b.no-scroll, #tabBssModals .mdl-b.no-scroll{overflow:hidden}
+#tabBss .tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
+#tabBss .mdl-b.no-scroll{overflow:hidden}
 /* Sticky header ko solid + elevated rakho, warna scroll par rows uske
    peeche se dikhti hain. */
-#tabBss #tblList th, #tabBssModals #tblList th{
+#tabBss #tblList th{
   background:var(--s2);
   box-shadow:inset 0 -1px 0 var(--border2), 0 2px 6px rgba(8,16,30,.06);
 }
 /* Ticket No column bhi sticky — 14 columns hain, horizontally scroll karte
    waqt ticket number gayab ho jata tha aur row pehchanna mushkil. */
-#tabBss #tblList th:first-child, #tabBssModals #tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
-#tabBss #tblList td:first-child, #tabBssModals #tblList td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
+#tabBss #tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
+#tabBss #tblList td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
   box-shadow:inset -1px 0 0 var(--border)}
-#tabBss #tblList tbody tr:hover td:first-child, #tabBssModals #tblList tbody tr:hover td:first-child{background:var(--s2)}
+#tabBss #tblList tbody tr:hover td:first-child{background:var(--s2)}
 /* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
    list dikhni chahiye, page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
    overflow visible hone par sticky ka nearest scroll container page ban jata
    hai, aur header page ke apne sticky header ke neeche chipak kar overlap
    karta hai. */
-#tabBss .tw-full, #tabBssModals .tw-full{overflow:visible;max-height:none}
-#tabBss .tw-full th, #tabBssModals .tw-full th{position:static}
+#tabBss .tw-full{overflow:visible;max-height:none}
+#tabBss .tw-full th{position:static}
 /* Totals row */
-#tabBss tfoot td, #tabBssModals tfoot td{
+#tabBss tfoot td{
   padding:9px 10px;border-top:2px solid var(--border2);background:var(--s2);
   font-weight:800;color:var(--text);position:sticky;bottom:0;
 }
-#tabBss tfoot td.r, #tabBssModals tfoot td.r{text-align:right}
-#tabBss tfoot .lbl, #tabBssModals tfoot .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
-#tabBss table, #tabBssModals table{width:100%;border-collapse:collapse;font-size:11.5px}
-#tabBss th, #tabBssModals th{background:var(--s2);color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;text-align:left;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border2);white-space:nowrap}
-#tabBss td, #tabBssModals td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
-#tabBss tbody tr:hover, #tabBssModals tbody tr:hover{background:var(--s2)}
-#tabBss th.r, #tabBssModals th.r, #tabBss td.r, #tabBssModals td.r{text-align:right}
-#tabBss .tno, #tabBssModals .tno{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0d9488;cursor:pointer;white-space:nowrap}
-#tabBss .tno:hover, #tabBssModals .tno:hover{text-decoration:underline}
-#tabBss .muted, #tabBssModals .muted{color:var(--muted2)}
-#tabBss .badge, #tabBssModals .badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--s2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
+#tabBss tfoot td.r{text-align:right}
+#tabBss tfoot .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+#tabBss table{width:100%;border-collapse:collapse;font-size:11.5px}
+#tabBss th{background:var(--s2);color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;text-align:left;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border2);white-space:nowrap}
+#tabBss td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+#tabBss tbody tr:hover{background:var(--s2)}
+#tabBss th.r, #tabBss td.r{text-align:right}
+#tabBss .tno{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0d9488;cursor:pointer;white-space:nowrap}
+#tabBss .tno:hover{text-decoration:underline}
+#tabBss .muted{color:var(--muted2)}
+#tabBss .badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--s2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
 /* ── Modals ── */
-#tabBss .ov, #tabBssModals .ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:20000;padding:18px}
-#tabBss .ov.on, #tabBssModals .ov.on{display:flex}
-#tabBss .mdl, #tabBssModals .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
-#tabBss .mdl.sm, #tabBssModals .mdl.sm{max-width:1260px}
-#tabBss .mdl-h, #tabBssModals .mdl-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
-#tabBss .mdl-t, #tabBssModals .mdl-t{font-size:15px;font-weight:700}
-#tabBss .mdl-b, #tabBssModals .mdl-b{overflow:auto;padding:0}
-#tabBss .mdl-b.pad, #tabBssModals .mdl-b.pad{padding:14px 18px}
-#tabBss .mdl-f, #tabBssModals .mdl-f{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
+#tabBss .ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:20000;padding:18px}
+#tabBss .ov.on{display:flex}
+#tabBss .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+#tabBss .mdl.sm{max-width:1260px}
+#tabBss .mdl-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
+#tabBss .mdl-t{font-size:15px;font-weight:700}
+#tabBss .mdl-b{overflow:auto;padding:0}
+#tabBss .mdl-b.pad{padding:14px 18px}
+#tabBss .mdl-f{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;background:var(--s2)}
 /* ── Edit form ── */
 /* 12 updatable fields. 2 columns me 6 rows banti thi aur modal scroll karta
    tha; 3 columns me 4 rows — normal laptop par sab kuch bina scroll dikhta hai. */
-#tabBss .fgrid, #tabBssModals .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
-@media(max-width:1100px){#tabBss .fgrid, #tabBssModals .fgrid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:700px){#tabBss .fgrid, #tabBssModals .fgrid{grid-template-columns:1fr}}
-#tabBss .fld label, #tabBssModals .fld label{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-#tabBss .fld .inp, #tabBssModals .fld .inp{width:100%}
-#tabBss .fld.err .inp, #tabBssModals .fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
-#tabBss .fld .e, #tabBssModals .fld .e{color:#dc2626;font-size:10.5px;margin-top:3px;display:none}
-#tabBss .fld.err .e, #tabBssModals .fld.err .e{display:block}
-#tabBss .req, #tabBssModals .req{color:#dc2626}
-#tabBss .hint, #tabBssModals .hint{font-size:9.5px;color:var(--muted2);margin-top:2px;line-height:1.3}
-#tabBss .note, #tabBssModals .note{border-radius:var(--r2);padding:8px 11px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
-#tabBss .note.warn, #tabBssModals .note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
-#tabBss .note.err, #tabBssModals .note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
-#tabBss .note.ok, #tabBssModals .note.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
-#tabBss .note.info, #tabBssModals .note.info{background:#f0f9ff;border:1px solid #bae6fd;color:#075985}
-#tabBss .kv, #tabBssModals .kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
-#tabBss .kv .k, #tabBssModals .kv .k{color:var(--muted);font-weight:600}
-#tabBss .kv .v, #tabBssModals .kv .v{color:var(--text);font-weight:500;word-break:break-word}
-#tabBss .meta-row, #tabBssModals .meta-row{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:11.5px;align-items:center}
-#tabBss .meta-row b, #tabBssModals .meta-row b{color:var(--muted);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;margin-right:3px}
-#tabBss .desc-box, #tabBssModals .desc-box{margin-top:8px;
+#tabBss .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
+@media(max-width:1100px){#tabBss .fgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){#tabBss .fgrid{grid-template-columns:1fr}}
+#tabBss .fld label{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+#tabBss .fld .inp{width:100%}
+#tabBss .fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+#tabBss .fld .e{color:#dc2626;font-size:10.5px;margin-top:3px;display:none}
+#tabBss .fld.err .e{display:block}
+#tabBss .req{color:#dc2626}
+#tabBss .hint{font-size:9.5px;color:var(--muted2);margin-top:2px;line-height:1.3}
+#tabBss .note{border-radius:var(--r2);padding:8px 11px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
+#tabBss .note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+#tabBss .note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
+#tabBss .note.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+#tabBss .note.info{background:#f0f9ff;border:1px solid #bae6fd;color:#075985}
+#tabBss .kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
+#tabBss .kv .k{color:var(--muted);font-weight:600}
+#tabBss .kv .v{color:var(--text);font-weight:500;word-break:break-word}
+#tabBss .meta-row{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:11.5px;align-items:center}
+#tabBss .meta-row b{color:var(--muted);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;margin-right:3px}
+#tabBss .desc-box{margin-top:8px;
   white-space:pre-wrap;line-height:1.5;max-height:88px;overflow:auto;
   background:var(--surface);border:1px solid var(--border);border-radius:var(--r3);
   padding:8px 10px;font-weight:400;font-size:11.5px;color:var(--text2);
 }
-#tabBss .spin, #tabBssModals .spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:bss_sp .7s linear infinite;display:inline-block;vertical-align:-2px}
+#tabBss .spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:bss_sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes bss_sp{to{transform:rotate(360deg)}}
-#tabBss .empty, #tabBssModals .empty{padding:44px 20px;text-align:center;color:var(--muted)}
-#tabBss .toast, #tabBssModals .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:20100;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
-#tabBss .toast.on, #tabBssModals .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
-#tabUp *, #tabUpModals *{margin:0;padding:0;box-sizing:border-box}
-#tabUp, #tabUpModals{
+#tabBss .empty{padding:44px 20px;text-align:center;color:var(--muted)}
+#tabBss .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:20100;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
+#tabBss .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+#tabUp *{margin:0;padding:0;box-sizing:border-box}
+#tabUp{
   --bg:#f0f2f9;--surface:#ffffff;--s2:#f7f8fd;--border:#e8eaf4;--border2:#d4d8ec;
   --navy:#08101e;--navy2:#0f1d34;--text:#111827;--text2:#374151;--muted:#6b7280;--muted2:#9ca3af;
   --teal:#0d9488;--teal2:#0891b2;--teal-l:#f0fdfa;--teal-m:#99f6e4;
@@ -1368,284 +1357,288 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   --sh-m:0 4px 12px rgba(0,0,0,.1);
   --sh-l:0 8px 24px rgba(0,0,0,.12);
 }
-#tabUp, #tabUpModals{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#tabUp{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 /* ── TOPBAR ── */
-#tabUp .topbar, #tabUpModals .topbar{
+#tabUp .topbar{
   background:linear-gradient(135deg,#0d9488 0%,#0891b2 100%);
   position:sticky;top:0;z-index:300;
   box-shadow:0 4px 20px rgba(13,148,136,.35);
 }
-#tabUp .topbar-inner, #tabUpModals .topbar-inner{
+#tabUp .topbar-inner{
   max-width:1400px;margin:0 auto;
   display:flex;align-items:center;gap:14px;
   padding:0 24px;height:58px;
 }
-#tabUp .brand, #tabUpModals .brand{display:flex;align-items:center;gap:10px}
-#tabUp .brand-icon, #tabUpModals .brand-icon{
+#tabUp .brand{display:flex;align-items:center;gap:10px}
+#tabUp .brand-icon{
   width:36px;height:36px;border-radius:10px;
   background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);
   display:flex;align-items:center;justify-content:center;font-size:16px;
 }
-#tabUp .brand-name, #tabUpModals .brand-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px}
-#tabUp .brand-tagline, #tabUpModals .brand-tagline{font-size:10px;color:rgba(255,255,255,.7);font-weight:400}
-#tabUp .topbar-sep, #tabUpModals .topbar-sep{width:1px;height:24px;background:rgba(255,255,255,.2);margin:0 4px}
-#tabUp .page-title, #tabUpModals .page-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.2px}
-#tabUp .topbar-right, #tabUpModals .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-#tabUp .sync-badge, #tabUpModals .sync-badge{
+#tabUp .brand-name{font-size:15px;font-weight:800;color:#fff;letter-spacing:-.2px}
+#tabUp .brand-tagline{font-size:10px;color:rgba(255,255,255,.7);font-weight:400}
+#tabUp .topbar-sep{width:1px;height:24px;background:rgba(255,255,255,.2);margin:0 4px}
+#tabUp .page-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.2px}
+#tabUp .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+#tabUp .sync-badge{
   display:flex;align-items:center;gap:7px;
   background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
   border-radius:20px;padding:5px 14px;font-size:11px;
   font-family:'JetBrains Mono',monospace;color:#fff;white-space:nowrap;
 }
-#tabUp .sync-dot, #tabUpModals .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:up_pulse 2s infinite}
+#tabUp .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:up_pulse 2s infinite}
 @keyframes up_pulse{0%,100%{opacity:1}50%{opacity:.5}}
 /* ── FILTERS ── */
-#tabUp .filter-bar, #tabUpModals .filter-bar{
+#tabUp .filter-bar{
   background:#fff;border-bottom:1px solid var(--border);
   padding:10px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
 }
-#tabUp .filter-bar-inner, #tabUpModals .filter-bar-inner{max-width:1400px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#tabUp .filter-pill, #tabUpModals .filter-pill{
+#tabUp .filter-bar-inner{max-width:1400px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#tabUp .filter-pill{
   display:flex;align-items:center;gap:6px;padding:5px 12px;
   background:var(--s2);border:1.5px solid var(--border);border-radius:20px;
   font-size:12px;font-weight:600;color:var(--text);cursor:pointer;transition:.15s;
 }
-#tabUp .filter-pill select, #tabUpModals .filter-pill select{border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;outline:none;font-family:'Sora',sans-serif;color:var(--text)}
-#tabUp .search-wrap, #tabUpModals .search-wrap{position:relative;display:flex;align-items:center}
-#tabUp .search-icon, #tabUpModals .search-icon{position:absolute;left:10px;font-size:13px;pointer-events:none}
-#tabUp .search-input, #tabUpModals .search-input{
+#tabUp .filter-pill select{border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;outline:none;font-family:'Sora',sans-serif;color:var(--text)}
+#tabUp .search-wrap{position:relative;display:flex;align-items:center}
+#tabUp .search-icon{position:absolute;left:10px;font-size:13px;pointer-events:none}
+#tabUp .search-input{
   padding:6px 12px 6px 30px;border:1.5px solid var(--border);border-radius:20px;
   font-size:12px;font-family:'Sora',sans-serif;outline:none;background:var(--s2);width:200px;
   transition:.2s;
 }
-#tabUp .search-input:focus, #tabUpModals .search-input:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.08)}
-#tabUp .stat-chips, #tabUpModals .stat-chips{display:flex;gap:8px;margin-left:auto}
-#tabUp .stat-chip, #tabUpModals .stat-chip{
+#tabUp .search-input:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(13,148,136,.08)}
+#tabUp .stat-chips{display:flex;gap:8px;margin-left:auto}
+#tabUp .stat-chip{
   padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
   border:1.5px solid;cursor:pointer;transition:.15s;
 }
-#tabUp .stat-chip.active, #tabUpModals .stat-chip.active{color:#fff}
-#tabUp .chip-total, #tabUpModals .chip-total{border-color:var(--teal);color:var(--teal)}
-#tabUp .chip-total.active, #tabUpModals .chip-total.active{background:var(--teal)}
-#tabUp .chip-dev, #tabUpModals .chip-dev{border-color:var(--blue);color:var(--blue)}
-#tabUp .chip-dev.active, #tabUpModals .chip-dev.active{background:var(--blue)}
-#tabUp .chip-bug, #tabUpModals .chip-bug{border-color:var(--red);color:var(--red)}
-#tabUp .chip-bug.active, #tabUpModals .chip-bug.active{background:var(--red)}
+#tabUp .stat-chip.active{color:#fff}
+#tabUp .chip-total{border-color:var(--teal);color:var(--teal)}
+#tabUp .chip-total.active{background:var(--teal)}
+#tabUp .chip-dev{border-color:var(--blue);color:var(--blue)}
+#tabUp .chip-dev.active{background:var(--blue)}
+#tabUp .chip-bug{border-color:var(--red);color:var(--red)}
+#tabUp .chip-bug.active{background:var(--red)}
 /* ── MAIN ── */
-#tabUp .main, #tabUpModals .main{max-width:1400px;margin:0 auto;padding:20px 24px}
+#tabUp .main{max-width:1400px;margin:0 auto;padding:20px 24px}
 /* ── SUMMARY CARDS ── */
-#tabUp .summary-row, #tabUpModals .summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
-@media(min-width:1400px){#tabUp .summary-row, #tabUpModals .summary-row{grid-template-columns:repeat(7,1fr)}}
+#tabUp .summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+@media(min-width:1400px){#tabUp .summary-row{grid-template-columns:repeat(7,1fr)}}
 /* Overdue cards visually alag — ye "late ho chuka" hai, "aane wala" nahi */
-#tabUp .sum-card.od, #tabUpModals .sum-card.od{border-color:var(--red-m);background:var(--red-l)}
-#tabUp .sum-card.od .sum-card-label, #tabUpModals .sum-card.od .sum-card-label{color:var(--red)}
-#tabUp .section.od .section-title, #tabUpModals .section.od .section-title{color:var(--red)}
-@media(max-width:900px){#tabUp .summary-row, #tabUpModals .summary-row{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:500px){#tabUp .summary-row, #tabUpModals .summary-row{grid-template-columns:1fr}}
-#tabUp .sum-card, #tabUpModals .sum-card{
+#tabUp .sum-card.od{border-color:var(--red-m);background:var(--red-l)}
+#tabUp .sum-card.od .sum-card-label{color:var(--red)}
+#tabUp .section.od .section-title{color:var(--red)}
+@media(max-width:900px){#tabUp .summary-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){#tabUp .summary-row{grid-template-columns:1fr}}
+#tabUp .sum-card{
   background:#fff;border-radius:14px;border:1px solid var(--border);
   padding:16px 18px;box-shadow:var(--sh-s);
 }
-#tabUp .sum-card-label, #tabUpModals .sum-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
-#tabUp .sum-card-val, #tabUpModals .sum-card-val{font-size:28px;font-weight:800;color:var(--text);line-height:1}
-#tabUp .sum-card-sub, #tabUpModals .sum-card-sub{font-size:11px;color:var(--muted);margin-top:4px}
-#tabUp .sum-cat-row, #tabUpModals .sum-cat-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-#tabUp .sum-cat-chip, #tabUpModals .sum-cat-chip{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid;letter-spacing:.2px}
-#tabUp .sum-cat-dev, #tabUpModals .sum-cat-dev{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
-#tabUp .sum-cat-bug, #tabUpModals .sum-cat-bug{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
-#tabUp .sum-cat-oth, #tabUpModals .sum-cat-oth{background:#f7f8fd;color:#4b5563;border-color:#e8eaf4}
-#tabUp .sum-card-bar, #tabUpModals .sum-card-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border)}
-#tabUp .sum-card-bar-fill, #tabUpModals .sum-card-bar-fill{height:100%;border-radius:2px;transition:.5s}
+#tabUp .sum-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+#tabUp .sum-card-val{font-size:28px;font-weight:800;color:var(--text);line-height:1}
+#tabUp .sum-card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+#tabUp .sum-cat-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+#tabUp .sum-cat-chip{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid;letter-spacing:.2px}
+#tabUp .sum-cat-dev{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+#tabUp .sum-cat-bug{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+#tabUp .sum-cat-oth{background:#f7f8fd;color:#4b5563;border-color:#e8eaf4}
+#tabUp .sum-card-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border)}
+#tabUp .sum-card-bar-fill{height:100%;border-radius:2px;transition:.5s}
 /* ── SECTIONS ── */
-#tabUp .section, #tabUpModals .section{margin-bottom:28px}
-#tabUp .section-hdr, #tabUpModals .section-hdr{
+#tabUp .section{margin-bottom:28px}
+#tabUp .section-hdr{
   display:flex;align-items:center;gap:10px;
   margin-bottom:14px;padding-bottom:10px;
   border-bottom:2px solid var(--border);
 }
-#tabUp .section-icon, #tabUpModals .section-icon{
+#tabUp .section-icon{
   width:34px;height:34px;border-radius:10px;
   display:flex;align-items:center;justify-content:center;
   font-size:16px;flex-shrink:0;
 }
-#tabUp .section-title, #tabUpModals .section-title{font-size:14px;font-weight:800;color:var(--text)}
-#tabUp .section-sub, #tabUpModals .section-sub{font-size:11px;color:var(--muted);margin-top:1px}
-#tabUp .section-count, #tabUpModals .section-count{
+#tabUp .section-title{font-size:14px;font-weight:800;color:var(--text)}
+#tabUp .section-sub{font-size:11px;color:var(--muted);margin-top:1px}
+#tabUp .section-count{
   margin-left:auto;padding:4px 12px;border-radius:20px;
   font-size:12px;font-weight:700;border:1.5px solid;
 }
 /* ── CARDS GRID ── */
-#tabUp .cards-grid, #tabUpModals .cards-grid{
+#tabUp .cards-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;
 }
-@media(max-width:640px){#tabUp .cards-grid, #tabUpModals .cards-grid{grid-template-columns:1fr}}
+@media(max-width:640px){#tabUp .cards-grid{grid-template-columns:1fr}}
 /* ── TICKET CARD ── */
-#tabUp .t-card, #tabUpModals .t-card{
+#tabUp .t-card{
   background:#fff;border-radius:12px;border:1.5px solid var(--border);
   padding:14px 16px;box-shadow:var(--sh-s);
   transition:.2s;cursor:pointer;position:relative;overflow:hidden;
 }
-#tabUp .t-card::before, #tabUpModals .t-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
-#tabUp .t-card:hover, #tabUpModals .t-card:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+#tabUp .t-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
+#tabUp .t-card:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
 /* Urgency colors */
-#tabUp .t-card.u-critical::before, #tabUpModals .t-card.u-critical::before{background:var(--red)}
-#tabUp .t-card.u-critical, #tabUpModals .t-card.u-critical{border-color:var(--red-m)}
-#tabUp .t-card.u-high::before, #tabUpModals .t-card.u-high::before{background:var(--orange)}
-#tabUp .t-card.u-high, #tabUpModals .t-card.u-high{border-color:var(--orange-m)}
-#tabUp .t-card.u-medium::before, #tabUpModals .t-card.u-medium::before{background:var(--amber)}
-#tabUp .t-card.u-medium, #tabUpModals .t-card.u-medium{border-color:var(--amber-m)}
-#tabUp .t-card.u-low::before, #tabUpModals .t-card.u-low::before{background:var(--teal)}
-#tabUp .t-card.u-low, #tabUpModals .t-card.u-low{border-color:var(--teal-m)}
-#tabUp .t-card-top, #tabUpModals .t-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
-#tabUp .t-ticket, #tabUpModals .t-ticket{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--teal)}
-#tabUp .t-days-badge, #tabUpModals .t-days-badge{
+#tabUp .t-card.u-critical::before{background:var(--red)}
+#tabUp .t-card.u-critical{border-color:var(--red-m)}
+#tabUp .t-card.u-high::before{background:var(--orange)}
+#tabUp .t-card.u-high{border-color:var(--orange-m)}
+#tabUp .t-card.u-medium::before{background:var(--amber)}
+#tabUp .t-card.u-medium{border-color:var(--amber-m)}
+#tabUp .t-card.u-low::before{background:var(--teal)}
+#tabUp .t-card.u-low{border-color:var(--teal-m)}
+#tabUp .t-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+#tabUp .t-ticket{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--teal)}
+#tabUp .t-days-badge{
   padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;
   white-space:nowrap;flex-shrink:0;
 }
-#tabUp .u-critical .t-days-badge, #tabUpModals .u-critical .t-days-badge{background:var(--red-l);color:var(--red);border:1px solid var(--red-m)}
-#tabUp .u-high .t-days-badge, #tabUpModals .u-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
-#tabUp .u-medium .t-days-badge, #tabUpModals .u-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
-#tabUp .u-low .t-days-badge, #tabUpModals .u-low .t-days-badge{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m)}
-#tabUp .u-od-critical .t-days-badge, #tabUpModals .u-od-critical .t-days-badge{background:var(--red);color:#fff;border:1px solid var(--red)}
-#tabUp .u-od-high .t-days-badge, #tabUpModals .u-od-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
-#tabUp .u-od-medium .t-days-badge, #tabUpModals .u-od-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
-#tabUp .t-client, #tabUpModals .t-client{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
-#tabUp .t-desc, #tabUpModals .t-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;
+#tabUp .u-critical .t-days-badge{background:var(--red-l);color:var(--red);border:1px solid var(--red-m)}
+#tabUp .u-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
+#tabUp .u-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
+#tabUp .u-low .t-days-badge{background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m)}
+#tabUp .u-od-critical .t-days-badge{background:var(--red);color:#fff;border:1px solid var(--red)}
+#tabUp .u-od-high .t-days-badge{background:var(--orange-l);color:var(--orange);border:1px solid var(--orange-m)}
+#tabUp .u-od-medium .t-days-badge{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber-m)}
+#tabUp .t-client{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+#tabUp .t-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:8px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-#tabUp .t-tags, #tabUpModals .t-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-#tabUp .t-tag, #tabUpModals .t-tag{
+#tabUp .t-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+#tabUp .t-tag{
   font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;
   background:var(--s2);color:var(--text2);border:1px solid var(--border);
 }
-#tabUp .t-tag.dev, #tabUpModals .t-tag.dev{background:var(--blue-l);color:var(--blue);border-color:var(--blue-m)}
-#tabUp .t-tag.bug, #tabUpModals .t-tag.bug{background:var(--red-l);color:var(--red);border-color:var(--red-m)}
-#tabUp .t-tag.stage, #tabUpModals .t-tag.stage{background:var(--teal-l);color:var(--teal);border-color:var(--teal-m)}
-#tabUp .t-tag.rm, #tabUpModals .t-tag.rm{background:var(--purple-l);color:var(--purple);border-color:var(--purple-m)}
-#tabUp .t-footer, #tabUpModals .t-footer{
+#tabUp .t-tag.dev{background:var(--blue-l);color:var(--blue);border-color:var(--blue-m)}
+#tabUp .t-tag.bug{background:var(--red-l);color:var(--red);border-color:var(--red-m)}
+#tabUp .t-tag.stage{background:var(--teal-l);color:var(--teal);border-color:var(--teal-m)}
+#tabUp .t-tag.rm{background:var(--purple-l);color:var(--purple);border-color:var(--purple-m)}
+#tabUp .t-footer{
   display:flex;align-items:center;justify-content:space-between;
   padding-top:8px;border-top:1px dashed var(--border);
 }
-#tabUp .t-date, #tabUpModals .t-date{
+#tabUp .t-date{
   font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
   color:#92400e;background:#fef3c7;border:1px solid #fde68a;
   border-radius:6px;padding:2px 8px;
 }
-#tabUp .t-category, #tabUpModals .t-category{font-size:10px;font-weight:700;padding:2px 10px;border-radius:5px;letter-spacing:.3px}
-#tabUp .cat-dev, #tabUpModals .cat-dev{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
-#tabUp .cat-bug, #tabUpModals .cat-bug{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
-#tabUp .cat-other, #tabUpModals .cat-other{background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db}
+#tabUp .t-category{font-size:10px;font-weight:700;padding:2px 10px;border-radius:5px;letter-spacing:.3px}
+#tabUp .cat-dev{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+#tabUp .cat-bug{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+#tabUp .cat-other{background:#f3f4f6;color:#4b5563;border:1px solid #d1d5db}
 /* Empty */
-#tabUp .empty-section, #tabUpModals .empty-section{
+#tabUp .empty-section{
   text-align:center;padding:32px;color:var(--muted);
   background:var(--s2);border-radius:12px;border:1.5px dashed var(--border);
   font-size:13px;
 }
-#tabUp .btn-excel, #tabUpModals .btn-excel{
+#tabUp .btn-excel{
   padding:5px 14px;border:none;border-radius:20px;
   background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;
   font-size:11px;font-weight:700;cursor:pointer;font-family:'Sora',sans-serif;
   transition:.15s;display:flex;align-items:center;gap:5px;
 }
-#tabUp .btn-excel:hover, #tabUpModals .btn-excel:hover{opacity:.88;transform:translateY(-1px)}
+#tabUp .btn-excel:hover{opacity:.88;transform:translateY(-1px)}
 /* Per-section category buttons */
-#tabUp .sec-cat-btn, #tabUpModals .sec-cat-btn{
+#tabUp .sec-cat-btn{
   padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;
   cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);
   transition:.15s;font-family:'Sora',sans-serif;
 }
-#tabUp .sec-cat-btn:hover, #tabUpModals .sec-cat-btn:hover{opacity:.8}
-#tabUp .sc-active-dev, #tabUpModals .sc-active-dev{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
-#tabUp .sc-active-bug, #tabUpModals .sc-active-bug{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
-#tabUp .sc-active-other, #tabUpModals .sc-active-other{background:var(--muted)!important;color:#fff!important;border-color:var(--muted)!important}
+#tabUp .sec-cat-btn:hover{opacity:.8}
+#tabUp .sc-active-dev{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
+#tabUp .sc-active-bug{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
+#tabUp .sc-active-other{background:var(--muted)!important;color:#fff!important;border-color:var(--muted)!important}
 /* No data */
-#tabUp .no-data, #tabUpModals .no-data{text-align:center;padding:60px 20px;color:var(--muted)}
-#tabUp .no-data-icon, #tabUpModals .no-data-icon{font-size:48px;margin-bottom:12px}
+#tabUp .no-data{text-align:center;padding:60px 20px;color:var(--muted)}
+#tabUp .no-data-icon{font-size:48px;margin-bottom:12px}
 /* ── LOADER ── */
-#tabUp .loader-overlay, #tabUpModals .loader-overlay{
+#tabUp .loader-overlay{
+  /* z-index tab ke andar ke liye kaafi hai. Pehle 20050 tha (portal wale
+     experiment ka bacha hua) — loader tab ke andar hai, use app chrome ke
+     upar aane ki zaroorat hi nahi, aur high z-index sirf risk banata hai. */
+
   display:flex;position:fixed;inset:0;z-index:50;
   background:rgba(240,242,249,.88);
   backdrop-filter:blur(8px);
   align-items:center;justify-content:center;
 }
-#tabUp .loader-box, #tabUpModals .loader-box{
+#tabUp .loader-box{
   background:#fff;border-radius:20px;padding:40px 52px;
   text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.12);
   border:1.5px solid var(--border);min-width:280px;
 }
-#tabUp .ldr-ring, #tabUpModals .ldr-ring{width:60px;height:60px;margin:0 auto 20px;}
-#tabUp .ldr-ring svg, #tabUpModals .ldr-ring svg{width:60px;height:60px;animation:up_lspin 1.1s linear infinite;}
-#tabUp .l-track, #tabUpModals .l-track{fill:none;stroke:var(--border2);stroke-width:4;}
-#tabUp .l-arc, #tabUpModals .l-arc{fill:none;stroke:var(--teal);stroke-width:4;stroke-linecap:round;
+#tabUp .ldr-ring{width:60px;height:60px;margin:0 auto 20px;}
+#tabUp .ldr-ring svg{width:60px;height:60px;animation:up_lspin 1.1s linear infinite;}
+#tabUp .l-track{fill:none;stroke:var(--border2);stroke-width:4;}
+#tabUp .l-arc{fill:none;stroke:var(--teal);stroke-width:4;stroke-linecap:round;
   stroke-dasharray:140;stroke-dashoffset:0;
   animation:up_larc 1.1s ease-in-out infinite;}
 @keyframes up_lspin{to{transform:rotate(360deg);}}
 @keyframes up_larc{0%{stroke-dashoffset:140;}50%{stroke-dashoffset:28;}100%{stroke-dashoffset:140;}}
-#tabUp .ldr-title, #tabUpModals .ldr-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;}
-#tabUp .ldr-msg, #tabUpModals .ldr-msg{font-size:11px;color:var(--muted);margin-bottom:16px;}
-#tabUp .ldr-track, #tabUpModals .ldr-track{background:var(--s2);border-radius:20px;height:5px;overflow:hidden;}
-#tabUp .ldr-fill, #tabUpModals .ldr-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--teal),var(--teal2));width:0%;transition:width .3s ease;}
-#tabUp .ldr-step, #tabUpModals .ldr-step{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px;}
+#tabUp .ldr-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;}
+#tabUp .ldr-msg{font-size:11px;color:var(--muted);margin-bottom:16px;}
+#tabUp .ldr-track{background:var(--s2);border-radius:20px;height:5px;overflow:hidden;}
+#tabUp .ldr-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--teal),var(--teal2));width:0%;transition:width .3s ease;}
+#tabUp .ldr-step{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.7px;margin-top:8px;}
 /* ── TICKET DETAIL MODAL ── */
-#tabUp .modal-backdrop, #tabUpModals .modal-backdrop{
+#tabUp .modal-backdrop{
   position:fixed;inset:0;background:rgba(8,16,30,.55);
   z-index:20000;display:flex;align-items:center;justify-content:center;
   padding:20px;animation:up_fadeIn .18s ease;
 }
 @keyframes up_fadeIn{from{opacity:0}to{opacity:1}}
-#tabUp .modal-box, #tabUpModals .modal-box{
+#tabUp .modal-box{
   background:#fff;border-radius:18px;width:100%;max-width:640px;
   max-height:90vh;overflow-y:auto;
   box-shadow:0 24px 60px rgba(0,0,0,.25);
   animation:up_slideUp .2s ease;
-}
+;z-index:20001}
 @keyframes up_slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-#tabUp .modal-header, #tabUpModals .modal-header{
+#tabUp .modal-header{
   padding:20px 24px 16px;
   border-bottom:1px solid var(--border);
   display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
   position:sticky;top:0;background:#fff;border-radius:18px 18px 0 0;z-index:2;
 }
-#tabUp .modal-ticket-no, #tabUpModals .modal-ticket-no{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--teal)}
-#tabUp .modal-close, #tabUpModals .modal-close{
+#tabUp .modal-ticket-no{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--teal)}
+#tabUp .modal-close{
   width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);
   background:#f7f8fd;cursor:pointer;font-size:16px;display:flex;align-items:center;
   justify-content:center;flex-shrink:0;transition:.15s;
 }
-#tabUp .modal-close:hover, #tabUpModals .modal-close:hover{background:var(--red-l);border-color:var(--red-m);color:var(--red)}
-#tabUp .modal-body, #tabUpModals .modal-body{padding:20px 24px}
-#tabUp .modal-section, #tabUpModals .modal-section{margin-bottom:18px}
-#tabUp .modal-section-title, #tabUpModals .modal-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:5px}
-#tabUp .modal-grid, #tabUpModals .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:500px){#tabUp .modal-grid, #tabUpModals .modal-grid{grid-template-columns:1fr}}
-#tabUp .modal-field, #tabUpModals .modal-field{background:var(--s2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)}
-#tabUp .modal-field-label, #tabUpModals .modal-field-label{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
-#tabUp .modal-field-val, #tabUpModals .modal-field-val{font-size:13px;font-weight:600;color:var(--text);word-break:break-word}
-#tabUp .modal-field.full, #tabUpModals .modal-field.full{grid-column:1/-1}
-#tabUp .modal-deadline-banner, #tabUpModals .modal-deadline-banner{
+#tabUp .modal-close:hover{background:var(--red-l);border-color:var(--red-m);color:var(--red)}
+#tabUp .modal-body{padding:20px 24px}
+#tabUp .modal-section{margin-bottom:18px}
+#tabUp .modal-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:5px}
+#tabUp .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:500px){#tabUp .modal-grid{grid-template-columns:1fr}}
+#tabUp .modal-field{background:var(--s2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)}
+#tabUp .modal-field-label{font-size:10px;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+#tabUp .modal-field-val{font-size:13px;font-weight:600;color:var(--text);word-break:break-word}
+#tabUp .modal-field.full{grid-column:1/-1}
+#tabUp .modal-deadline-banner{
   background:linear-gradient(135deg,#fffbeb,#fef3c7);
   border:1.5px solid #fde68a;border-radius:12px;
   padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
   margin-bottom:18px;
 }
-#tabUp .modal-stage-badge, #tabUpModals .modal-stage-badge{
+#tabUp .modal-stage-badge{
   display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
   background:var(--teal-l);color:var(--teal);border:1px solid var(--teal-m);
 }
-#tabUp .modal-cat-badge, #tabUpModals .modal-cat-badge{
+#tabUp .modal-cat-badge{
   display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
 }
-#tabUp .modal-footer, #tabUpModals .modal-footer{
+#tabUp .modal-footer{
   padding:14px 24px;border-top:1px solid var(--border);
   display:flex;gap:10px;justify-content:flex-end;
   background:#fafbfc;border-radius:0 0 18px 18px;
 }
-#tabUp .modal-btn, #tabUpModals .modal-btn{
+#tabUp .modal-btn{
   padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;
   cursor:pointer;border:none;transition:.15s;font-family:'Sora',sans-serif;
 }
-#tabUp .modal-btn-primary, #tabUpModals .modal-btn-primary{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff}
-#tabUp .modal-btn-secondary, #tabUpModals .modal-btn-secondary{background:var(--s2);color:var(--text);border:1.5px solid var(--border)}
-#tabUp .modal-btn:hover, #tabUpModals .modal-btn:hover{opacity:.88;transform:translateY(-1px)}
+#tabUp .modal-btn-primary{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff}
+#tabUp .modal-btn-secondary{background:var(--s2);color:var(--text);border:1.5px solid var(--border)}
+#tabUp .modal-btn:hover{opacity:.88;transform:translateY(-1px)}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -3517,9 +3510,9 @@ function switchTab(n){
      karta, chahe wo unhe kholta bhi na ho. */
   if(n===5 && window.BSS) window.BSS.boot();
   if(n===6 && window.UP)  window.UP.boot();
-  /* Safety net: ported loader kabhi visible reh gaya (boot beech me fail hua)
-     to wo apne tab ke andar hi rahega — par tab badalne par use band kar do,
-     warna wapas aane par purana loader dikhta rahega. */
+  /* Upcoming ka loader boot beech me fail hone par visible reh sakta hai.
+     Wo tab ke ANDAR hai (body me nahi), to poore app ko nahi dhakta — par
+     wapas aane par purana loader dikhta rahega. Isliye tab chhodte hi band. */
   if(n!==6){ const _l=document.getElementById('loadingOverlay'); if(_l) _l.style.display='none'; }
 }
 function applyTabPerms(){
@@ -6162,8 +6155,8 @@ async function backgroundFetch(){
          baar khulne par wo dobara render karein. */
       /* KHALI store publish mat karo. Refresh poori tarah fail ho jaye to RAW
          khali reh jata hai; use publish karne par tabs ko lagta hai "data hai
-         par khali hai" aur wo cache read hi nahi karte — result: tab me "No
-         data" jabki cache me data maujood hai. */
+         par khali hai" aur wo cache padhte hi nahi — tab me "No data" dikhta
+         hai jabki cache me data maujood hota hai. */
       if(RAW && RAW.length){
         window.__MB_SHARED = { tickets: RAW, fetchedAt: new Date().toISOString(),
           dateFrom: null, dateTo: null, minSchema: MB_SCHEMA_VERSION, rowCount: 0 };
@@ -7050,48 +7043,43 @@ window.mbSignOut = async function(){
 <script>
 /* ═══ BODY SCROLL LOCK ═══════════════════════════════════════════════════════
  * Modal khulne par peeche wala page scroll nahi hona chahiye. Do alag problem
- * hain aur dono ka ilaaj alag hai:
- *   1. Cursor overlay ke DARK area par ho — wahan koi scrollable element nahi,
+ * hain, dono ka ilaaj alag:
+ *   1. Cursor overlay ke dark area par ho — wahan koi scrollable element nahi,
  *      to wheel seedha page ko jata hai. Iske liye body lock chahiye.
- *   2. Cursor modal ke andar ho aur uska scroll END par pahunch jaye — browser
- *      wheel ko parent tak "chain" kar deta hai. Iske liye overscroll-behavior
- *      (CSS me upar) chahiye.
+ *   2. Cursor modal ke andar ho aur scroll END par pahunch jaye — browser wheel
+ *      ko parent tak "chain" kar deta hai. Iske liye overscroll-behavior (CSS).
  *
- * Lock MutationObserver se lagta hai, kisi ek open/close function se nahi —
- * modal Escape, ✕ button, aur backdrop click teeno se band hota hai, aur kisi
+ * Lock MutationObserver se lagta hai, kisi ek open/close function se nahi:
+ * modal Escape, ✕ button aur backdrop click teeno se band hota hai, aur kisi
  * ek raste par unlock chhoot jaye to page HAMESHA ke liye scroll-locked reh
- * jata, jo isse bada bug hota.
+ * jata — jo original problem se bada bug hota.
+ *
+ * "Khula hai kya" element ke MAUJOOD hone se tay nahi hota — dono modals DOM
+ * me hamesha rehte hain (BSS class `on` se dikhata hai, Upcoming `style.display`
+ * se). Isliye computed visibility dekhte hain.
  * ═══════════════════════════════════════════════════════════════════════════ */
 var _mbLockCount = 0, _mbPrevOverflow = '', _mbPrevPadRight = '';
 function mbSetScrollLock(on){
   if(on){
     if(_mbLockCount++ > 0) return;
-    /* `|| ''` — restore ke waqt undefined set karne se bacho. Browser me ye
-       hamesha string hota hai, par explicit rehna sasta hai. */
-    _mbPrevOverflow  = document.body.style.overflow   || '';
-    _mbPrevPadRight  = document.body.style.paddingRight || '';
+    _mbPrevOverflow   = document.body.style.overflow     || '';
+    _mbPrevPadRight   = document.body.style.paddingRight || '';
     /* Scrollbar hatne se page ki width badal jati hai aur content "kood" jata
        hai. Utni width padding me daal kar wo jump rok dete hain. */
     var sw = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = 'hidden';
-    if(sw > 0) document.body.style.paddingRight =
-      (parseFloat(_mbPrevPadRight || 0) + sw) + 'px';
+    if(sw > 0) document.body.style.paddingRight = (parseFloat(_mbPrevPadRight || 0) + sw) + 'px';
   } else {
     if(_mbLockCount === 0) return;
     if(--_mbLockCount > 0) return;
-    document.body.style.overflow    = _mbPrevOverflow;
+    document.body.style.overflow     = _mbPrevOverflow;
     document.body.style.paddingRight = _mbPrevPadRight;
   }
 }
 
-/* "Khula hai kya" ka jawab element ke MAUJOOD hone se nahi milta — dono modals
- * DOM me hamesha rehte hain. BSS `.ov` ko class `on` se dikhata hai, Upcoming
- * apne backdrop ko `style.display` se. Sirf `querySelector(sel)` karne par
- * Upcoming ka backdrop HAMESHA truthy nikalta tha, yaani tab kholte hi page
- * permanently scroll-locked ho jata — modal khula bhi na ho tab bhi.
- * Isliye computed display/visibility dekhte hain, sirf maujoodgi nahi. */
-function mbAnyVisible(host, selector){
-  var els = host.querySelectorAll(selector);
+function mbAnyVisible(root, selector){
+  if(!root) return false;
+  var els = root.querySelectorAll(selector);
   for(var i = 0; i < els.length; i++){
     var st = window.getComputedStyle(els[i]);
     if(st.display !== 'none' && st.visibility !== 'hidden') return true;
@@ -7099,8 +7087,8 @@ function mbAnyVisible(host, selector){
   return false;
 }
 
-function mbWatchModals(portalId, openSelector){
-  var host = document.getElementById(portalId);
+function mbWatchModals(scopeId, openSelector){
+  var host = document.getElementById(scopeId);
   if(!host || host._mbWatched) return;
   host._mbWatched = true;
   var wasOpen = false;
@@ -7112,33 +7100,6 @@ function mbWatchModals(portalId, openSelector){
     subtree:true, attributes:true, attributeFilter:['class','style'], childList:true
   });
   check();
-}
-
-/* ═══ MODAL PORTAL ═══════════════════════════════════════════════════════════
- * Ported modals tab panel ke ANDAR the. Wahan `position:fixed` bharosemand
- * nahi hai: koi bhi ancestor jo stacking context ya containing block banata
- * hai (transform / filter / contain / z-index wala positioned parent) fixed
- * element ko apne andar trap kar leta hai. Nateeja: modal poore screen par
- * aane ki jagah tab ke andar khinch jata hai, backdrop page ko dhak nahi paata
- * aur header uske upar aa jata hai.
- *
- * Fix: boot par modals ko <body> ke direct child me le jao. CSS unhe wahan bhi
- * milti hai kyunki ported styles DO roots par scope ki gayi hain —
- * `#tabBss .ov, #tabBssModals .ov{…}`.
- * ═══════════════════════════════════════════════════════════════════════════ */
-function mbPortalModals(scopeId, portalId, selectors){
-  var host = document.getElementById(portalId);
-  if(!host){
-    host = document.createElement('div');
-    host.id = portalId;
-    document.body.appendChild(host);
-  }
-  var scope = document.getElementById(scopeId);
-  if(!scope) return;
-  selectors.forEach(function(sel){
-    var nodes = scope.querySelectorAll(sel);
-    for(var i = 0; i < nodes.length; i++) host.appendChild(nodes[i]);
-  });
 }
 
 
@@ -7767,9 +7728,8 @@ window.BSS.boot = function(){
   if(window.BSS.__booted) return;
   window.BSS.__booted = true;
 
-  /* Modals ko body me le jao — dekho mbPortalModals() ka note. */
-  try{ mbPortalModals('tabBss', 'tabBssModals', ['.ov', '.toast']); }catch(e){ console.warn('BSS modal portal:', e); }
-  try{ mbWatchModals('tabBssModals', '.ov'); }catch(e){ console.warn('BSS scroll lock:', e); }
+  /* Modal khule to background scroll band — dekho mbWatchModals(). */
+  try{ mbWatchModals('tabBss', '.ov'); }catch(e){ console.warn('BSS scroll lock:', e); }
   const _panel = document.getElementById('tabBss');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
      pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
@@ -8411,13 +8371,8 @@ window.UP.boot = function(){
   if(window.UP.__booted) return;
   window.UP.__booted = true;
 
-  /* Modals ko body me le jao — dekho mbPortalModals() ka note. */
-  /* SIRF modals portal me jate hain. `.loader-overlay` JAANBUJHKAR nahi —
-     wo tab ka apna loader hai. Body me le jane par wo tab ke saath chhupta
-     nahi, aur ek baar visible reh gaya to z-index 20000+ par POORE app ko
-     dhak leta hai (page bilkul blank dikhta hai). */
-  try{ mbPortalModals('tabUp', 'tabUpModals', ['.modal-backdrop']); }catch(e){ console.warn('UP modal portal:', e); }
-  try{ mbWatchModals('tabUpModals', '.modal-backdrop'); }catch(e){ console.warn('UP scroll lock:', e); }
+  /* Modal khule to background scroll band — dekho mbWatchModals(). */
+  try{ mbWatchModals('tabUp', '.modal-backdrop'); }catch(e){ console.warn('UP scroll lock:', e); }
   const _panel = document.getElementById('tabUp');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
      pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
