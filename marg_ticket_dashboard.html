@@ -1184,14 +1184,6 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
  * bahar TAT ke apne. Bina scope kiye `--bg`, `--surface` overwrite ho jate
  * aur poora TAT dashboard toot jata.
  * ═════════════════════════════════════════════════════════════════════ */
-/* ── OVERLAY STACKING ──────────────────────────────────────────────────────
- * Ported modals apne standalone pages par z-index 200–400 par the, jahan koi
- * competition nahi thi. TAT me header `z-index:300` aur uske loaders 9999/10000
- * par hain — isliye modal khulta to tha par header ke NEECHE, aur backdrop
- * page ko dhak nahi paata tha.
- * Ab 20000+ par, taaki wo sach me sab ke upar aayein.
- * ═══════════════════════════════════════════════════════════════════════ */
-
 #tabBss{
   --bg:#f0f2f9; --surface:#fff; --s2:#f7f8fd; --border:#e8eaf4; --border2:#d4d8ec;
   --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
@@ -1222,33 +1214,37 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
 #tabBss .dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
 /* ── Filters ── */
-#tabBss .wrap{padding:16px 20px 40px;max-width:1600px;margin:0 auto}
-#tabBss .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+#tabBss .wrap{padding:12px 18px 32px;max-width:1600px;margin:0 auto}
+#tabBss .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
 #tabBss .inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
 #tabBss .inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
 #tabBss select.inp{cursor:pointer}
 #tabBss .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
 #tabBss .f-grp{display:flex;flex-direction:column}
 /* ── KPI cards ── */
-#tabBss .sec-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+#tabBss .sec-h{display:flex;align-items:center;gap:10px;margin:14px 0 7px}
 #tabBss .sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
 #tabBss .sec-l{flex:1;height:1px;background:var(--border2)}
-#tabBss .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:11px}
-@media(max-width:1400px){#tabBss .kpi-row{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:1000px){#tabBss .kpi-row{grid-template-columns:repeat(2,1fr)}}
+/* COMPACT KPIs — saare 16 status cards ek screen par aane chahiye, bilkul
+   Support Dashboard jaise. Pehle breakpoint 1400px par tha, isliye 1365px ke
+   normal laptop par sirf 4 columns dikhte the aur cards bade the — 16 KPI
+   dekhne ke liye scroll karna padta tha. */
+#tabBss .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:1200px){#tabBss .kpi-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:760px){#tabBss .kpi-row{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){#tabBss .kpi-row{grid-template-columns:1fr}}
 #tabBss .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
 #tabBss .kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
 #tabBss .kpi-top{height:4px}
-#tabBss .kpi-b{padding:10px 13px 9px}
-#tabBss .kpi-s{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
-#tabBss .kpi-n{font-size:25px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
-#tabBss .kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
-#tabBss .kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:var(--r3);padding:4px 3px;text-align:center}
-#tabBss .kpi-sp .l{font-size:8px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
-#tabBss .kpi-sp .v{font-size:12px;font-weight:700;color:var(--text2);margin-top:1px}
-#tabBss .kpi-f{border-top:1px solid var(--border);padding:6px 12px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
-#tabBss .lnk{font-size:10.5px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
+#tabBss .kpi-b{padding:7px 10px 5px}
+#tabBss .kpi-s{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
+#tabBss .kpi-n{font-size:21px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
+#tabBss .kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:4px}
+#tabBss .kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:3px 2px;text-align:center}
+#tabBss .kpi-sp .l{font-size:7px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
+#tabBss .kpi-sp .v{font-size:11px;font-weight:700;color:var(--text2);margin-top:1px}
+#tabBss .kpi-f{border-top:1px solid var(--border);padding:4px 10px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
+#tabBss .lnk{font-size:10px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
 #tabBss .lnk:hover{background:rgba(13,148,136,.1)}
 /* ── Tables ── */
 #tabBss .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
@@ -1551,10 +1547,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabUp .no-data-icon{font-size:48px;margin-bottom:12px}
 /* ── LOADER ── */
 #tabUp .loader-overlay{
-  /* z-index tab ke andar ke liye kaafi hai. Pehle 20050 tha (portal wale
-     experiment ka bacha hua) — loader tab ke andar hai, use app chrome ke
-     upar aane ki zaroorat hi nahi, aur high z-index sirf risk banata hai. */
-
+  /* z-index tab ke andar ke liye kaafi hai — loader ko app chrome ke upar
+     aane ki zaroorat nahi, aur high z-index sirf risk banata hai. */
   display:flex;position:fixed;inset:0;z-index:50;
   background:rgba(240,242,249,.88);
   backdrop-filter:blur(8px);
@@ -1590,7 +1584,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   max-height:90vh;overflow-y:auto;
   box-shadow:0 24px 60px rgba(0,0,0,.25);
   animation:up_slideUp .2s ease;
-;z-index:20001}
+}
 @keyframes up_slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 #tabUp .modal-header{
   padding:20px 24px 16px;
