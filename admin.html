@@ -118,6 +118,28 @@ nav{
 .btn-create:disabled{opacity:.6;cursor:not-allowed;transform:none}
 
 /* ── USER LIST ── */
+.user-search-bar{
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px; border-bottom:1px solid var(--border);
+  background:var(--surface-2, #f8fafc);
+}
+.user-search-bar .us-icon{ font-size:13px; opacity:.55; }
+.us-input{
+  flex:1; border:1px solid var(--border); border-radius:8px;
+  padding:7px 11px; font-family:inherit; font-size:12.5px; color:var(--text);
+  background:#fff; outline:none; min-width:0;
+}
+.us-input:focus{ border-color:var(--brand,#0d9488); box-shadow:0 0 0 3px rgba(13,148,136,.12); }
+.us-input::-webkit-search-cancel-button{ display:none; }
+.us-clear{
+  border:1px solid var(--border); background:#fff; color:var(--muted);
+  border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:12px;
+  display:none; flex:0 0 auto;
+}
+.us-clear:hover{ background:#f1f5f9; color:var(--text); }
+.us-clear.on{ display:block; }
+/* Search me match hue hisse ko highlight — 22+ users me scan karna aasan */
+.us-hit{ background:#fef9c3; border-radius:3px; padding:0 1px; }
 .user-list-body{overflow-y:auto;flex:1;padding:4px 0}
 .user-row{
   padding:13px 20px;border-bottom:1px solid #f1f5f9;
@@ -324,9 +346,17 @@ nav{
       <div class="panel-hdr">
         <div>
           <div class="panel-title">👥 All Users</div>
-          <div class="panel-sub">Edit details or manage permissions</div>
+          <div class="panel-sub" id="userCount">Edit details or manage permissions</div>
         </div>
         <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
+      </div>
+      <!-- Search: naam, email, role aur assigned dashboards — sab par match -->
+      <div class="user-search-bar">
+        <span class="us-icon">🔍</span>
+        <input id="userSearch" class="us-input" type="search" autocomplete="off"
+               placeholder="Search by name, email, role or dashboard…"
+               oninput="filterUsers()">
+        <button class="us-clear" id="userSearchClear" onclick="clearUserSearch()" title="Clear">✕</button>
       </div>
       <div class="user-list-body" id="userList"><div class="empty-msg">Loading...</div></div>
     </div>
@@ -454,30 +484,119 @@ window.loadUsers = async function(){
   document.getElementById('stTotal').textContent=allUsers.length;
   document.getElementById('stAdmins').textContent=admins;
   document.getElementById('stUsers').textContent=allUsers.length-admins;
-  if(!allUsers.length){document.getElementById('userList').innerHTML='<div class="empty-msg">No users yet.</div>';return;}
-  document.getElementById('userList').innerHTML=allUsers.map(u=>{
-    const init=(u.name||u.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    const isAdm=u.role==='admin';
-    const perms=(u.dashboards||[]).map(id=>{const d=ALL_DASHBOARDS.find(x=>x.id===id);return d?`<span class="perm-pill">${d.icon} ${d.title}</span>`:''}).join('');
+  renderUserList();
+};
+
+/* ── USER SEARCH ────────────────────────────────────────────────────────────
+ * 22+ users ho gaye hain, list scroll karke dhoondhna mushkil hai. Search
+ * naam, email, role AUR assigned dashboards par match karta hai — kyunki aksar
+ * sawaal "kis-kis ke paas BSS Update hai?" jaisa hota hai, sirf naam ka nahi.
+ * ─────────────────────────────────────────────────────────────────────────── */
+function _userSearchTerm(){
+  const el = document.getElementById('userSearch');
+  return el ? el.value.trim().toLowerCase() : '';
+}
+
+/* Escape KAR KE highlight — pehle text ko safe banao, phir match wrap karo.
+   Ulta karne par user ka apna naam HTML ban sakta hai. */
+function _esc(x){
+  return String(x == null ? '' : x)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function _hl(text, term){
+  const raw = String(text == null ? '' : text);
+  if(!term) return _esc(raw);
+  /* Match RAW text me dhoondho, phir teeno hisse ALAG-ALAG escape karo.
+     Pehle escape karke phir dhoondhna galat tha: "O'Brien" escape hone par
+     "O&#39;Brien" ban jata hai, aur us me "o'brien" milta hi nahi — apostrophe
+     ya <, > wale naam kabhi highlight nahi hote the. */
+  const i = raw.toLowerCase().indexOf(term.toLowerCase());
+  if(i < 0) return _esc(raw);
+  return _esc(raw.slice(0, i))
+       + '<span class="us-hit">' + _esc(raw.slice(i, i + term.length)) + '</span>'
+       + _esc(raw.slice(i + term.length));
+}
+
+function _userMatches(u, term){
+  if(!term) return true;
+  const dashTitles = (u.dashboards||[])
+    .map(id => { const d = ALL_DASHBOARDS.find(x => x.id === id); return d ? d.title : id; })
+    .join(' ');
+  const hay = [u.name, u.email, u.role, dashTitles,
+               (u.role === 'admin' ? 'admin full access all dashboards' : '')]
+    .join(' ').toLowerCase();
+  /* Har word alag se match ho — "anil tat" bhi kaam kare */
+  return term.split(/\s+/).filter(Boolean).every(w => hay.indexOf(w) >= 0);
+}
+
+window.filterUsers = function(){
+  const term = _userSearchTerm();
+  const btn = document.getElementById('userSearchClear');
+  if(btn) btn.classList.toggle('on', !!term);
+  renderUserList();
+};
+
+window.clearUserSearch = function(){
+  const el = document.getElementById('userSearch');
+  if(el){ el.value = ''; el.focus(); }
+  window.filterUsers();
+};
+
+function renderUserList(){
+  const term = _userSearchTerm();
+  const list = allUsers.filter(u => _userMatches(u, term));
+
+  const sub = document.getElementById('userCount');
+  if(sub) sub.textContent = term
+    ? `${list.length} of ${allUsers.length} users match "${term}"`
+    : 'Edit details or manage permissions';
+
+  const box = document.getElementById('userList');
+  if(!allUsers.length){ box.innerHTML = '<div class="empty-msg">No users yet.</div>'; return; }
+  if(!list.length){
+    box.innerHTML = `<div class="empty-msg">No user matches <b>${_esc(term)}</b>.
+      <button class="refresh-btn" style="margin-left:8px" onclick="clearUserSearch()">Clear search</button></div>`;
+    return;
+  }
+
+  box.innerHTML = list.map(u => {
+    const init = (u.name||u.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const isAdm = u.role === 'admin';
+    const perms = (u.dashboards||[]).map(id => {
+      const d = ALL_DASHBOARDS.find(x => x.id === id);
+      return d ? `<span class="perm-pill">${d.icon} ${_hl(d.title, term)}</span>` : '';
+    }).join('');
+    /* Naam/email data-attributes me — inline onclick me daalne par apostrophe
+       wale naam ("O'Brien") handler tod dete hain: esc() unhe &#39; karta hai
+       aur browser attribute ko decode karke wapas ' bana deta hai. */
     return `<div class="user-row">
-      <div class="avatar ${isAdm?'':'av-muted'}">${init}</div>
+      <div class="avatar ${isAdm?'':'av-muted'}">${_esc(init)}</div>
       <div class="user-info">
         <div class="user-name-row">
-          <span class="u-name">${u.name||'—'}</span>
-          <span class="role-chip ${isAdm?'chip-admin':'chip-user'}">${u.role||'user'}</span>
+          <span class="u-name">${_hl(u.name||'—', term)}</span>
+          <span class="role-chip ${isAdm?'chip-admin':'chip-user'}">${_hl(u.role||'user', term)}</span>
         </div>
-        <div class="u-email">${u.email||''}</div>
+        <div class="u-email">${_hl(u.email||'', term)}</div>
         ${isAdm
-          ?'<div class="u-full">✓ Full access to all dashboards</div>'
-          :`<div class="u-perms">${perms||'<span style="font-size:10px;color:var(--muted2)">No dashboards assigned</span>'}</div>`}
+          ? '<div class="u-full">✓ Full access to all dashboards</div>'
+          : `<div class="u-perms">${perms||'<span style="font-size:10px;color:var(--muted2)">No dashboards assigned</span>'}</div>`}
       </div>
       <div class="user-acts">
-        <button class="act-btn" title="Edit" onclick="openEditModal('${u.id}')">✏️</button>
-        <button class="act-btn del" title="Delete" onclick="deleteUser('${u.id}','${(u.name||u.email).replace(/'/g,"\\'")}')">🗑️</button>
+        <button class="act-btn" title="Edit" data-uid="${_esc(u.id)}">✏️</button>
+        <button class="act-btn del" title="Delete" data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">🗑️</button>
       </div>
     </div>`;
   }).join('');
-};
+}
+
+/* Event delegation — inline onclick me naam interpolate nahi karte (upar note) */
+document.addEventListener('click', function(e){
+  const del = e.target.closest('.act-btn.del[data-uid]');
+  if(del){ deleteUser(del.getAttribute('data-uid'), del.getAttribute('data-uname')); return; }
+  const ed = e.target.closest('.act-btn[data-uid]');
+  if(ed){ openEditModal(ed.getAttribute('data-uid')); return; }
+});
 
 window.createUser = async function(){
   const name=document.getElementById('nName').value.trim();
