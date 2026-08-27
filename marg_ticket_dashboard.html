@@ -1554,6 +1554,69 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   backdrop-filter:blur(8px);
   align-items:center;justify-content:center;
 }
+/* BSS boot loader: base .loader-overlay hi use karta hai (display .active se
+   toggle hoti hai), sirf z-index yahan kam kiya gaya hai — usi wajah se jo
+   #tabUp ke liye upar likhi hai: header aur tab buttons clickable rehne
+   chahiye taaki boot atakne par user tab badal sake. */
+#tabBss .loader-overlay{ z-index:50; }
+
+/* ══ MANAGEMENT TAB (tab 7) ══
+   Weekly one-pager. Naye colours nahi banaye — sab kuch maujooda CSS vars par
+   hai taaki baaki dashboard ke saath match kare. */
+#tab7 .loader-overlay{ z-index:50; }
+#tab7 .mg-bar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:14px;
+  padding:12px 16px;margin-bottom:16px;
+}
+#tab7 .mg-bar label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+#tab7 .mg-bar input[type=date]{
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:7px 10px;
+  border:1.5px solid var(--border);border-radius:9px;background:var(--s2);color:var(--text);
+}
+#tab7 .mg-win{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+#tab7 .mg-win b{color:var(--text);}
+#tab7 .mg-wrap{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+#tab7 table{width:100%;border-collapse:collapse;font-size:12.5px;}
+#tab7 thead th{
+  background:var(--s2);color:var(--muted);font-size:10px;font-weight:800;
+  text-transform:uppercase;letter-spacing:.7px;text-align:left;
+  padding:10px 12px;border-bottom:1.5px solid var(--border);white-space:nowrap;
+}
+#tab7 tbody td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+#tab7 tbody tr:last-child td{border-bottom:none;}
+#tab7 .mg-sec td{
+  background:var(--s2);font-size:10px;font-weight:800;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.7px;padding:7px 12px;
+}
+#tab7 .mg-metric{font-weight:700;color:var(--text);}
+#tab7 .mg-note{display:block;font-size:10.5px;font-weight:500;color:var(--muted2);margin-top:2px;}
+#tab7 .mg-val{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap;}
+#tab7 .mg-prev{font-family:'JetBrains Mono',monospace;color:var(--muted);white-space:nowrap;}
+#tab7 .mg-trend{font-size:13px;font-weight:800;white-space:nowrap;}
+#tab7 .mg-up{color:#059669;}      /* behtar */
+#tab7 .mg-down{color:#dc2626;}    /* kharab */
+#tab7 .mg-flat{color:var(--muted2);}
+#tab7 .mg-target{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);white-space:nowrap;}
+#tab7 .mg-off{opacity:.55;}
+#tab7 .mg-chip{
+  display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.5px;
+  text-transform:uppercase;padding:3px 8px;border-radius:20px;
+  background:var(--s2);color:var(--muted2);border:1px solid var(--border);
+}
+#tab7 .mg-res{
+  width:100%;font-family:Sora,system-ui,sans-serif;font-size:11.5px;
+  padding:6px 9px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--s2);color:var(--muted2);min-width:150px;
+}
+#tab7 .mg-foot{
+  margin-top:14px;padding:12px 16px;background:var(--s2);
+  border:1px solid var(--border);border-radius:12px;
+  font-size:11px;color:var(--muted);line-height:1.65;
+}
+#tab7 .mg-foot b{color:var(--text);}
+#tab7 .mg-dup{margin-top:14px;}
+#tab7 .mg-dup li{font-size:11.5px;color:var(--muted);margin-bottom:3px;}
 #tabUp .loader-box{
   background:#fff;border-radius:20px;padding:40px 52px;
   text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.12);
@@ -1688,6 +1751,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   <button class="vtab" id="tabBtn4" onclick="switchTab(4)"><span class="vtab-ic">💚</span><span class="vtab-title">Client Retention</span></button>
   <button class="vtab" id="tabBtn5" onclick="switchTab(5)"><span class="vtab-ic">🎛️</span><span class="vtab-title">BSS Update</span></button>
   <button class="vtab" id="tabBtn6" onclick="switchTab(6)"><span class="vtab-ic">📅</span><span class="vtab-title">Upcoming Deadline</span></button>
+  <button class="vtab" id="tabBtn7" onclick="switchTab(7)"><span class="vtab-ic">📋</span><span class="vtab-title">Management</span></button>
 </div>
 
 <!-- ████ FILTER BAR ████ -->
@@ -2484,6 +2548,24 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
      apne `.card`/`.kpi`/`--bg` na toote). Us scope ka element YAHIN hai — iske
      bina ek bhi rule match nahi karti aur tab bilkul unstyled dikhta hai. -->
 <div id="tabBss">
+<!-- BOOT LOADER. window.BSS.boot() ise `.active` class se on/off karta hai.
+     Markup jaan-bujh kar base `.loader-overlay` / `.loader-box` / `.ldr-ring`
+     classes par hai (koi naya CSS nahi), sirf z-index tab-scope me kam kiya
+     gaya hai taaki header aur tab buttons upar rahein — boot atak jaye to
+     user tab switch kar sake. Progress bar aur timer nahi hain: boot me koi
+     network call nahi hoti, sirf render hota hai. -->
+<div class="loader-overlay" id="bssLoaderOverlay">
+  <div class="loader-box">
+    <div class="ldr-ring">
+      <svg viewBox="0 0 60 60">
+        <circle class="l-track" cx="30" cy="30" r="24"/>
+        <circle class="l-arc"   cx="30" cy="30" r="24" transform="rotate(-90 30 30)"/>
+      </svg>
+    </div>
+    <div class="ldr-title">Loading BSS Update…</div>
+    <div class="ldr-msg">Preparing ticket list…</div>
+  </div>
+</div>
 <!-- BSS ka apna header hata diya gaya tha (TAT ka header upar hai), par uske
      andar `metaTxt` aur `dot` the jinhe ported init() seedha update karta hai.
      Inke bina init() ki PEHLI line hi TypeError deti thi aur boot() ka catch
@@ -2853,6 +2935,56 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 </div>
 
 <!-- ████ LOADER ████ -->
+<!-- ████ TAB 7 — MANAGEMENT (weekly one-pager) ████ -->
+<main class="main" id="tab7" style="display:none">
+
+<!-- Loader: 11 metrics × 2 windows compute hote hain aur duplicate-share me
+     clustering bhi chalti hai, to pehli render me kuch waqt lagta hai. BSS
+     wali hi tarah — ring + text, bar/timer nahi (koi network call nahi hai). -->
+<div class="loader-overlay" id="mgmtLoaderOverlay">
+  <div class="loader-box">
+    <div class="ldr-ring">
+      <svg viewBox="0 0 60 60">
+        <circle class="l-track" cx="30" cy="30" r="24"/>
+        <circle class="l-arc"   cx="30" cy="30" r="24" transform="rotate(-90 30 30)"/>
+      </svg>
+    </div>
+    <div class="ldr-title">Building weekly report…</div>
+    <div class="ldr-msg" id="mgmtLoaderMsg">Computing metrics…</div>
+  </div>
+</div>
+
+<div class="mg-bar">
+  <label for="mgUpto">Upto</label>
+  <input type="date" id="mgUpto" onchange="mgmtRender()">
+  <span class="mg-win" id="mgWinTxt">—</span>
+  <button class="kpi-xls" style="margin-left:auto" onclick="mgmtRender()">↻ Recalculate</button>
+</div>
+
+<div class="mg-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:29%">Metric</th>
+        <th style="width:12%">This week</th>
+        <th style="width:12%">Last week</th>
+        <th style="width:7%">Trend</th>
+        <th style="width:14%">Target</th>
+        <th style="width:26%">Resolution + owner</th>
+      </tr>
+    </thead>
+    <tbody id="mgBody">
+      <tr><td colspan="6" style="padding:26px;text-align:center;color:var(--muted)">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="mg-dup" id="mgDup"></div>
+
+<div class="mg-foot" id="mgFoot"></div>
+
+</main>
+
 <div class="loader-overlay" id="loaderOverlay">
   <div class="loader-box">
     <div class="ldr-ring">
@@ -3492,7 +3624,7 @@ function applyFilter(){
 
 // ===== TABS =====
 function switchTab(n){
-  for(let i=1;i<=6;i++){
+  for(let i=1;i<=7;i++){
     const t=document.getElementById('tab'+i);    if(t) t.style.display = n===i ? '' : 'none';
     const b=document.getElementById('tabBtn'+i); if(b) b.classList.toggle('active', n===i);
   }
@@ -3500,7 +3632,7 @@ function switchTab(n){
   /* Upar wala ticket filter-bar sirf tab 1/2/3 ke liye hai. Retention, BSS aur
      Upcoming ke apne filters hain — dono dikhane par user confuse hota hai ki
      kaunsa lag raha hai. */
-  const ownFilters = (n===4 || n===5 || n===6);
+  const ownFilters = (n===4 || n===5 || n===6 || n===7);
   const fb=document.querySelector('.filter-bar');    if(fb) fb.style.display = ownFilters ? 'none' : '';
   const sbn=document.querySelector('.search-banner');if(sbn) sbn.style.display = ownFilters ? 'none' : '';
   if(n===2) renderSubdisp();
@@ -3511,10 +3643,17 @@ function switchTab(n){
      karta, chahe wo unhe kholta bhi na ho. */
   if(n===5 && window.BSS) window.BSS.boot();
   if(n===6 && window.UP)  window.UP.boot();
+  if(n===7) mgmtInit();
   /* Upcoming ka loader boot beech me fail hone par visible reh sakta hai.
      Wo tab ke ANDAR hai (body me nahi), to poore app ko nahi dhakta — par
      wapas aane par purana loader dikhta rahega. Isliye tab chhodte hi band. */
   if(n!==6){ const _l=document.getElementById('loadingOverlay'); if(_l) _l.style.display='none'; }
+  /* BSS ke loader par bhi wahi baat lagu hoti hai. Yahan `.active` class
+     hatani hai kyunki wo base .loader-overlay use karta hai, inline display
+     nahi. Boot success/fail dono me _done() ise hata deta hai — ye sirf us
+     soorat ke liye hai jahan boot beech me hi latak jaye. */
+  if(n!==5){ const _b=document.getElementById('bssLoaderOverlay'); if(_b) _b.classList.remove('active'); }
+  if(n!==7){ const _m=document.getElementById('mgmtLoaderOverlay'); if(_m) _m.classList.remove('active'); }
 }
 function applyTabPerms(){
   const p=window._MARG_PERM; if(!p || p.admin) return;
@@ -3528,10 +3667,289 @@ function applyTabPerms(){
     const el=document.getElementById('tabBtn5'); if(el) el.style.display='none'; }
   if(!d.includes('tat-upcoming') && !d.includes('upcoming-dashboard')){
     const el=document.getElementById('tabBtn6'); if(el) el.style.display='none'; }
+  if(!d.includes('tat-management')){ const el=document.getElementById('tabBtn7'); if(el) el.style.display='none'; }
 }
 window._applyTabPerms=applyTabPerms;
 document.addEventListener('DOMContentLoaded', applyTabPerms);
 setTimeout(applyTabPerms, 0);
+
+// ═══════════════ MANAGEMENT TAB (weekly one-pager) ═══════════════
+/* Slide "MARG_Support_Dev_Metrics_Visibility" ke slide 5 ka format.
+ *
+ * WINDOW: ek hi "Upto" date se dono hafte nikalte hain (rolling 7-day, Mon-Sun
+ * nahi):  this = upto-6 … upto  |  prev = upto-13 … upto-7
+ *
+ * Isi wajah se trend column ko kisi stored snapshot ka intezaar nahi karna
+ * padta — dono windows usi RAW se compute hoti hain jo browser me pehle se
+ * loaded hai. Snapshot (phase 2) sirf manual values + resolution text ke liye
+ * aayega, trend ke liye nahi.
+ *
+ * DO TARAH KE METRICS:
+ *   flow  — event window me hua ya nahi (stage dates se seedha pata chalta hai)
+ *   stock — "us waqt kitne khule the"; cache me sirf CURRENT status hota hai,
+ *           isliye as-of X reconstruct karte hain: jis stage ki date <= X ho
+ *           unme sabse latest = us din ka stage.
+ *
+ * Jo reconstruct nahi hota (footnotes me user ko bhi bataya jata hai):
+ *   - RS (Return to Support) ki koi date API me aati hi nahi. Ticket khula
+ *     tha ya nahi ye theek rehta hai, bas stage attribution peeche wale
+ *     stage par chala jata hai.
+ *   - Re-entries: API har stage ki ek hi (latest) date rakhta hai, to ek se
+ *     zyada baar IT me aaya ticket ek hi baar gina jata hai.
+ */
+let _mgBooted=false;
+
+const MG_DATE_KEYS=['a','b','c','rtd','crd','mgd','uad','rfd','rod','fdd','rjd','e','d'];
+
+function mgShift(iso, days){
+  const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+days);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function mgToday(){ return mgShift(new Date().toISOString().slice(0,10), 0); }
+function mgDayDiff(a,b){ return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000); }
+function mgPctile(sorted,p){
+  if(!sorted.length) return null;
+  const i=Math.min(sorted.length-1, Math.max(0, Math.ceil(p/100*sorted.length)-1));
+  return sorted[i];
+}
+/* Ticket X tareekh ko IT ke paas khula tha? a par aata hai, d par jata hai. */
+function mgOpenAsOf(r, X){
+  if(!r.a || r.a > X) return false;
+  if(r.d   && r.d   <= X) return false;
+  if(r.cld && r.cld <= X) return false;
+  return true;
+}
+/* X tak ki sabse latest stage date — "kitne din se hila nahi" ke liye. */
+function mgLastAct(r, X){
+  let m='';
+  for(const k of MG_DATE_KEYS){ const v=r[k]; if(v && v<=X && v>m) m=v; }
+  return m;
+}
+function mgWindows(upto){
+  return { cur:[mgShift(upto,-6), upto], prev:[mgShift(upto,-13), mgShift(upto,-7)] };
+}
+
+/* Duplicate share: wahi keyword (TF-IDF) clustering jo AI Analysis tab use
+   karta hai, wahi thresholds [0.26,0.36]. "AI meaning" mode jaan-bujh kar
+   nahi — wo har ticket ko ek-ek karke embed karta hai (CDN se model download
+   + slow loop), jo weekly report ke liye theek nahi. */
+function mgDupShare(rows){
+  const withDesc=rows.filter(r=>String(r.desc||'').trim().length>=4);
+  if(withDesc.length<2) return {share:null, top:[], n:withDesc.length};
+  const tf=aiVectorize(withDesc.map(r=>aiClean(r.desc)));
+  const members=aiClusterSparse(tf.vecs, 0.26, 0.36);
+  const n=withDesc.length;
+  const share=100*(n-members.length)/n;
+  const top=members.slice().sort((a,b)=>b.length-a.length).filter(m=>m.length>1).slice(0,3)
+    .map(m=>{
+      const agg=new Map();
+      m.forEach(i=>tf.vecs[i].forEach((w,t)=>agg.set(t,(agg.get(t)||0)+w)));
+      const e=[...agg.entries()].sort((x,y)=>y[1]-x[1]);
+      const bi=e.filter(([t])=>t.includes(' ')).slice(0,3).map(([t])=>t);
+      const un=e.filter(([t])=>!t.includes(' ')).slice(0,3).map(([t])=>t);
+      return { name:(bi.length?bi:un).join(', ')||'misc', count:m.length };
+    });
+  return {share, top, n};
+}
+
+function mgCompute(from, to){
+  const R=RAW||[], o={};
+  const inW = d => !!d && d>=from && d<=to;
+
+  // ── FLOW ──
+  const ack=R.filter(r=>inW(r.b));
+  o.ackTat = ack.length ? 100*ack.filter(r=>r.bt==='I').length/ack.length : null;
+
+  const glv=R.filter(r=>inW(r.e));
+  o.glvTat = glv.length ? 100*glv.filter(r=>r.et==='I').length/glv.length : null;
+
+  const intake=R.filter(r=>inW(r.a));          // IT me aaye
+  const exits =R.filter(r=>inW(r.d));          // IT se nikle (Close by IT)
+  o._in=intake.length; o._out=exits.length;
+  o.flow = intake.length ? exits.length/intake.length : null;
+
+  /* QA bypass = Transfer to IT se seedha Close by IT, Acknowledge/In Progress
+     dono skip. Wahi shart jo Dashboard tab ke "Direct: IT → Close by IT"
+     card me hai. */
+  o.bypass = exits.length ? 100*exits.filter(r=>r.a && !r.b && !r.c).length/exits.length : null;
+
+  const cyc=exits.filter(r=>r.a && r.d).map(r=>mgDayDiff(r.a,r.d)).filter(n=>n>=0).sort((x,y)=>x-y);
+  o.cycP50=mgPctile(cyc,50); o.cycP90=mgPctile(cyc,90); o._cycN=cyc.length;
+
+  const disp=exits.filter(r=>lastDisp(r));
+  o.runChange = disp.length ? 100*disp.filter(isBug).length/disp.length : null;
+
+  /* Developer speed spread: sabse dheere vs sabse tez ka ratio. 3 se kam
+     tickets wale dev ko chhod dete hain — ek hi ticket kisi ko "10x fast"
+     dikha deta hai aur number bemaani ho jata hai. */
+  const byDev={};
+  exits.forEach(r=>{ if(!r.dev || !r.a || !r.d) return;
+    const dd=mgDayDiff(r.a,r.d); if(dd<0) return;
+    (byDev[r.dev]=byDev[r.dev]||[]).push(dd); });
+  const avgs=Object.entries(byDev).filter(([,v])=>v.length>=3)
+    .map(([k,v])=>({dev:k, avg:v.reduce((s,x)=>s+x,0)/v.length}))
+    .sort((a,b)=>a.avg-b.avg);
+  if(avgs.length>=2 && avgs[0].avg>0){
+    o.devSpread=avgs[avgs.length-1].avg/avgs[0].avg;
+    o._devFast=avgs[0]; o._devSlow=avgs[avgs.length-1];
+  } else { o.devSpread=null; }
+
+  const dup=mgDupShare(intake);
+  o.dupShare=dup.share; o._dupTop=dup.top; o._dupN=dup.n;
+
+  // ── STOCK (as of window ke aakhri din) ──
+  const open=R.filter(r=>mgOpenAsOf(r,to));
+  o._open=open.length;
+
+  o.aged30 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=30; }).length;
+  o.aged90 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=90; }).length;
+
+  const byAcc={};
+  open.forEach(r=>{ const k=String(r.l||'').trim(); if(k) byAcc[k]=(byAcc[k]||0)+1; });
+  o.acc5 = Object.values(byAcc).filter(v=>v>=5).length;
+
+  /* Load concentration: bina tester wale tickets base se bahar hain, warna
+     "Unassigned" hi hamesha top bucket ban jata aur number bemaani hota.
+     Tester nikalne ke liye wahi _smfTesterVal() use hota hai jo Tester-wise
+     table use karta hai — mbTesterOf() akela `ts` fallback miss kar deta hai
+     aur tab ye row us table se alag number dikhati. */
+  const byT={};
+  open.forEach(r=>{ const t=(_smfTesterVal(r)||'').trim(); if(t) byT[t]=(byT[t]||0)+1; });
+  const tv=Object.values(byT).sort((a,b)=>b-a), tot=tv.reduce((s,x)=>s+x,0);
+  o.loadTop2 = tot ? 100*(tv.slice(0,2).reduce((s,x)=>s+x,0))/tot : null;
+  o._assigned=tot;
+
+  return o;
+}
+
+const MG_ROWS=[
+  {sec:'Support'},
+  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge stage jinki date is hafte me hai',        f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — sabse kharab stage (slide 2)',     f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'aged30',    label:'Aged backlog 30d+',     note:'IT ke paas khule, 30+ din se koi stage change nahi',  f:'num',  target:'↓ har hafte', better:'down'},
+  {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — is hafte IT me aayi tickets par', f:'pct', target:'< 10%', better:'down'},
+  {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
+  {id:'fcr',       label:'FCR / CSAT',            note:'VoIP call data chahiye',                              f:'off'},
+  {id:'flow',      label:'Backlog flow ratio',    note:'Close by IT ÷ Transfer to IT (RS exits shamil nahi)', f:'ratio',target:'≥ 1.0',  better:'up'},
+  {id:'loadTop2',  label:'Load concentration',    note:'Top 2 testers ke paas khule tickets ka hissa',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'acc5',      label:'Accounts with 5+ open', note:'Ek hi license par 5 ya zyada khule tickets',          f:'num',  target:'↓ har hafte', better:'down'},
+  {sec:'Engineering'},
+  {id:'devSpread', label:'Developer speed spread',note:'Sabse dheere ÷ sabse tez (min 3 tickets per dev)',    f:'x',    target:'< 3x',   better:'down'},
+  {id:'runChange', label:'Run vs Change',         note:'Bug fixes ka hissa (baaki dev + improvement)',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'cycTime',   label:'Cycle time P50 / P90',  note:'Transfer to IT → Close by IT, din me',                f:'cyc',  target:'P90 < 30d', better:'down'},
+  {id:'volume',    label:'Delivered code volume', note:'GitLab connector chahiye',                            f:'off'},
+  {id:'rework',    label:'Rework rate',           note:'GitLab connector chahiye',                            f:'off'},
+  {id:'escaped',   label:'Escaped defects',       note:'Release tags chahiye',                                f:'off'},
+];
+
+function mgFmt(v, f){
+  if(v===null || v===undefined || (typeof v==='number' && !isFinite(v))) return '—';
+  if(f==='pct')   return v.toFixed(0)+'%';
+  if(f==='num')   return fmt(v);
+  if(f==='ratio') return v.toFixed(2);
+  if(f==='x')     return v.toFixed(1)+'x';
+  return String(v);
+}
+function mgTrend(cur, prev, better){
+  if(cur===null||prev===null||cur===undefined||prev===undefined) return {cls:'mg-flat', txt:'—'};
+  const d=cur-prev;
+  /* 0.5 se chhota farak noise hai — har hafte arrow flip hone se trend column
+     par bharosa uth jata hai. */
+  if(Math.abs(d)<0.5) return {cls:'mg-flat', txt:'→'};
+  const up=d>0, good=(better==='up')===up;
+  return {cls: good?'mg-up':'mg-down', txt: up?'▲':'▼'};
+}
+
+function mgmtInit(){
+  const el=document.getElementById('mgUpto');
+  if(el && !el.value){ el.value=mgToday(); el.max=mgToday(); }
+  if(_mgBooted) return;
+  _mgBooted=true;
+  mgmtRender();
+}
+
+function mgmtRender(){
+  const ov=document.getElementById('mgmtLoaderOverlay');
+  if(ov) ov.classList.add('active');
+  /* Do frames chhod kar heavy kaam karo, warna loader paint hi nahi hota —
+     wahi pattern jo applyFilter() me hai. */
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    try{ mgmtRenderNow(); }
+    catch(e){
+      console.error('Management tab failed:', e);
+      const b=document.getElementById('mgBody');
+      if(b) b.innerHTML='<tr><td colspan="6" style="padding:20px;color:#991b1b">'+
+        '<b>Report banane me dikkat aayi.</b> '+String(e&&e.message||e)+
+        ' — console dekho.</td></tr>';
+    }
+    finally{ if(ov) ov.classList.remove('active'); }
+  }));
+}
+
+function mgmtRenderNow(){
+  const upto=(document.getElementById('mgUpto')||{}).value || mgToday();
+  const w=mgWindows(upto);
+  const cur=mgCompute(w.cur[0], w.cur[1]);
+  const prev=mgCompute(w.prev[0], w.prev[1]);
+
+  const dsp=d=>{ try{ return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'}); }catch(e){ return d; } };
+  const wt=document.getElementById('mgWinTxt');
+  if(wt) wt.innerHTML='This week <b>'+dsp(w.cur[0])+' → '+dsp(w.cur[1])+'</b> &nbsp;·&nbsp; '+
+                      'Last week <b>'+dsp(w.prev[0])+' → '+dsp(w.prev[1])+'</b>';
+
+  const valOf=(o,id)=> id==='cycTime' ? o.cycP50 : o[id];
+  let html='';
+  MG_ROWS.forEach(row=>{
+    if(row.sec){ html+='<tr class="mg-sec"><td colspan="6">'+row.sec+'</td></tr>'; return; }
+    if(row.f==='off'){
+      html+='<tr class="mg-off"><td class="mg-metric">'+row.label+
+        '<span class="mg-note">'+row.note+'</span></td>'+
+        '<td colspan="3"><span class="mg-chip">Not connected</span></td>'+
+        '<td class="mg-target">—</td><td>'+mgResCell()+'</td></tr>';
+      return;
+    }
+    let curTxt, prevTxt;
+    if(row.id==='cycTime'){
+      curTxt  = (cur.cycP50===null?'—':cur.cycP50+'d')+' / '+(cur.cycP90===null?'—':cur.cycP90+'d');
+      prevTxt = (prev.cycP50===null?'—':prev.cycP50+'d')+' / '+(prev.cycP90===null?'—':prev.cycP90+'d');
+    } else {
+      curTxt=mgFmt(cur[row.id], row.f); prevTxt=mgFmt(prev[row.id], row.f);
+    }
+    const t=mgTrend(valOf(cur,row.id), valOf(prev,row.id), row.better);
+    html+='<tr><td class="mg-metric">'+row.label+'<span class="mg-note">'+row.note+'</span></td>'+
+      '<td class="mg-val">'+curTxt+'</td>'+
+      '<td class="mg-prev">'+prevTxt+'</td>'+
+      '<td class="mg-trend '+t.cls+'">'+t.txt+'</td>'+
+      '<td class="mg-target">'+(row.target||'—')+'</td>'+
+      '<td>'+mgResCell()+'</td></tr>';
+  });
+  document.getElementById('mgBody').innerHTML=html;
+
+  const dupEl=document.getElementById('mgDup');
+  if(dupEl){
+    if(cur._dupTop && cur._dupTop.length){
+      dupEl.innerHTML='<div class="mg-foot"><b>Top duplicate clusters is hafte</b><ul style="margin:8px 0 0 18px;padding:0">'+
+        cur._dupTop.map(c=>'<li>'+fmt(c.count)+' tickets — <b>'+String(c.name).replace(/</g,'&lt;')+'</b></li>').join('')+
+        '</ul></div>';
+    } else dupEl.innerHTML='';
+  }
+
+  const f=document.getElementById('mgFoot');
+  if(f) f.innerHTML=
+    '<b>Is hafte ka base:</b> '+fmt(cur._in)+' tickets IT me aaye, '+fmt(cur._out)+' nikle, '+
+    fmt(cur._open)+' abhi khule ('+fmt(cur._assigned)+' assigned). '+
+    'Cycle time '+fmt(cur._cycN)+' tickets par, duplicate share '+fmt(cur._dupN)+' par.<br>'+
+    '<b>Padhne se pehle:</b> Return-to-Support exits count nahi hote — BSS us event ki koi date nahi deta, '+
+    'to flow ratio thoda upar dikhega. Ek ticket do baar IT me aaya ho to ek hi baar gina jata hai '+
+    '(API har stage ki sirf latest date rakhta hai). Stock metrics us din ka haal stage dates se '+
+    'reconstruct karke nikalte hain. Ye tab upar wale Tester/RM/Dev filters ko nahi maanta — '+
+    'report hamesha poore org ki hai.<br>'+
+    '<b>Resolution + owner</b> abhi save nahi hota — wo snapshot ke saath phase 2 me aayega.';
+}
+function mgResCell(){
+  return '<input class="mg-res" disabled placeholder="Phase 2 — snapshot ke saath">';
+}
+
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
 let _aiRows=[], _aiTfidf=null, _aiDense=null, _aiMode='ai', _aiClusters=[], _aiSig='', _aiBusy=false, _aiSearch='';
@@ -7737,13 +8155,15 @@ window.BSS.boot = function(){
   const _panel = document.getElementById('tabBss');
   /* Tab switch par turant feedback. Data shared store se aata hai (fast), par
      pehli render me kuch waqt lagta hai aur bina kisi signal ke khali panel
-     "toota hua" lagta hai. */
-  const _ldId = 'tabBss_boot_loader';
-  if(_panel && !document.getElementById(_ldId))
-    _panel.insertAdjacentHTML('afterbegin',
-      '<div id="' + _ldId + '" style="margin:16px;padding:14px;text-align:center;' +
-      'color:#6b7280;font-size:12.5px;font-family:Sora,system-ui,sans-serif">⏳ Loading…</div>');
-  const _done = () => { const e = document.getElementById(_ldId); if(e) e.remove(); };
+     "toota hua" lagta hai.
+     Pehle yahan ek chhoti "⏳ Loading…" text line lagti thi. Ab wahi
+     .loader-overlay / .ldr-ring markup use hota hai jo baaki dashboard me hai,
+     taaki dikhne me consistent rahe. Bar aur timer jaan-bujh kar nahi hain:
+     boot me koi network call nahi hoti (data cacheLoad() se pehle hi aa chuka
+     hota hai), sirf render hota hai — progress bar yahan jhooth bolti. */
+  const _ov   = document.getElementById('bssLoaderOverlay');
+  if(_ov) _ov.classList.add('active');
+  const _done = () => { if(_ov) _ov.classList.remove('active'); };
 
   /* init() ASYNC hai — `try/catch` uska rejection nahi pakadta. Pehle wahi
      galti thi: fail hone par kuch nahi dikhta tha, na error, na data. */
