@@ -245,8 +245,13 @@ Fix: `ticket_cache` (naye columns + unique constraint + RLS) aur
 - `/api/ticket-cache` par koi user jiske paas ek bhi dashboard hai, kisi bhi
   `date_from` par likh sakta hai aur `writer` khud declare kar sakta hai — to
   `writer` column audit nahi, advisory hai.
-- Workflow matrix me **2027 ki entry nahi hai**. 1 Jan 2027 se nightly current
-  year cover karna band kar degi.
+- Workflow matrix ab **2036 tak** bhari hai (2026-08 me extend ki gayi). Aane
+  wale saal jaan-bujh kar shamil hain taaki har 1 Jan ko koi workflow edit na
+  karna pade — `fetch_tickets.py` ka future-date guard un jobs ko API call se
+  pehle hi skip kar deta hai (~10s, exit 0, ye normal hai). **Deadline: 1 Jan
+  2037.** Usse pehle matrix extend karni hogi, warna nightly current year cover
+  karna band kar degi. Behtar permanent fix: matrix ko ek generator job se
+  banao (2023 → current year), phir koi deadline hi nahi rahegi.
 
 ---
 
