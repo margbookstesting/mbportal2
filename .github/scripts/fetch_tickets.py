@@ -319,6 +319,17 @@ def fetch_chunk(session, fdate, todate, attempt_no, total):
 if os.getenv("IS_MATRIX_RUN") == "true":
     START_DATE = os.getenv("START_DATE_OVERRIDE")
     target_end = datetime.strptime(os.getenv("END_DATE_OVERRIDE"), '%Y-%m-%d').date()
+    # Matrix me aane wale saal bhi pade hain (2036 tak), taaki har 1 Jan ko
+    # koi workflow edit na karna pade. Jis saal ka start abhi future me hai
+    # uska Marg API ko call karne ka koi matlab nahi — yahin nikal jao.
+    # Isse Marg par har raat ke concurrent hits utne hi rehte hain jitne
+    # saal sach me exist karte hain, aur cache me khaali date_from rows nahi
+    # banti (jo aage chal kar ticket-cache.js ke count-drop guard ko confuse
+    # karti). Job phir bhi chalega, bas 10 second me khatam ho jayega.
+    if datetime.strptime(START_DATE, '%Y-%m-%d').date() > date.today():
+        print(f"⏭️  {START_DATE} abhi future me hai — is saal ka data exist "
+              f"nahi karta, skip. (Ye normal hai, error nahi.)", flush=True)
+        raise SystemExit(0)
     today = min(date.today(), target_end)
 else:
     START_DATE = '2023-04-01'
