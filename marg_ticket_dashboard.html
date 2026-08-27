@@ -3358,9 +3358,14 @@ function buildFiltered(from, to){
     fSup  = baseSup.filter(r => !!r.d);
     fLive = baseLive.filter(r => !!r.e);
     fRfT  = baseRfT.filter(r => r.sc==='RT');        // current status, no date filter (like pending)
-    fRt   = baseRt.filter(r => r.sc==='RT');
-    fUa   = baseUa.filter(r => r.sc==='RU');
-    fGl   = baseLive.filter(r => r.sc==='LV');  /* current status, no date filter */
+    // RfT / UAT / Go Live ab IT-ACK-IP-Sup jaise hi date-driven hain: stage ki
+    // apni date par filter, aur KPI card ka "Overall:" pill current status
+    // count dikhata hai (renderKPIs ka pendingFn). Pehle ye teeno seedhe
+    // sc==='RT'/'RU'/'LV' the, isliye date range ko honour hi nahi karte the
+    // aur Overall pill chhupana padta tha (bada number aur pill same hote).
+    fRt   = baseRt.filter(r => !!r.rtd);
+    fUa   = baseUa.filter(r => !!r.uad);
+    fGl   = fLive;                                   // dono ka source ek hi hai: r.e
   } else {
     // Normal: date range filter
     const dateOk = d => inRange(d, from, to);
@@ -3370,9 +3375,11 @@ function buildFiltered(from, to){
     fSup  = baseSup.filter(r => dateOk(r.d));
     fLive = baseLive.filter(r => dateOk(r.e));
     fRfT  = baseRfT.filter(r => r.sc==='RT');        // current status, no date filter (like pending)
-    fRt   = baseRt.filter(r => r.sc==='RT');   /* current status, no date filter */
-    fUa   = baseUa.filter(r => r.sc==='RU');
-    fGl   = baseLive.filter(r => r.sc==='LV');
+    // In Progress waali hi semantics (upar ticket-search branch me detail):
+    // bada number = date range, "Overall:" pill = current status count.
+    fRt   = baseRt.filter(r => dateOk(r.rtd));       // ReadyForTestingDate
+    fUa   = baseUa.filter(r => dateOk(r.uad));       // ReadyForUATDate
+    fGl   = fLive;                                   // ReadyToGoLiveDate (r.e)
   }
   currentFrom = from; currentTo = to;
 }
@@ -4326,9 +4333,11 @@ function renderKPIs(){
     // Acknowledge By — moved to Tester section (rendered separately)
     { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => RAW.filter(r=>r.sc==='IP').length   },
     { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => RAW.filter(r=>r.sc==='SP').length  },
-    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT', curStatus:true, pendingFn: () => RAW.filter(r=>r.sc==='RT').length  },
-    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU', curStatus:true, pendingFn: () => RAW.filter(r=>r.sc==='RU').length  },
-    { label:'Ready for Go Live',data:fGl,   tatKey:'et', cls:'c-glv',  key:'RGL', curStatus:true, pendingFn: () => RAW.filter(r=>r.sc==='LV').length  },
+    // curStatus flag hata diya gaya: teeno ab date-filtered arrays par hain
+    // (buildFiltered dekho), isliye "Overall:" pill IP/ACK jaisa hi dikhta hai.
+    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT', pendingFn: () => RAW.filter(r=>r.sc==='RT').length  },
+    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU', pendingFn: () => RAW.filter(r=>r.sc==='RU').length  },
+    { label:'Ready for Go Live',data:fGl,   tatKey:'et', cls:'c-glv',  key:'RGL', pendingFn: () => RAW.filter(r=>r.sc==='LV').length  },
   ];
 
   // Status-only KPIs use the current filtered dashboard view.
@@ -4981,23 +4990,24 @@ let _charts = {};
 function renderCharts(){
   if(typeof Chart==='undefined') return;
 
-  // Date-filtered stages use fIT/fAck/fIP/fLive/fSup
-  // Status-only stages use the current filtered dashboard view.
+  // Date-filtered stages use fIT/fAck/fIP/fSup/fRt/fUa/fGl — wahi arrays jo KPI
+  // cards use karte hain, taaki chart aur card ka number kabhi alag na dikhe.
+  // Sirf Return to Support genuinely status-only hai (uski koi apni stage date
+  // nahi hai), isliye wahi faded/dashed dikhta hai.
   const rsCount  = VIEW.filter(r=>r.sc==='RS').length;
-  const rtCount  = VIEW.filter(r=>r.sc==='RT').length;
-  const ruCount  = VIEW.filter(r=>r.sc==='RU').length;
-  const rglCount = VIEW.filter(r=>r.sc==='LV').length;
 
   const ST = [
     {label:'Transfer to IT',    short:'IT',  n:fIT.length,   in:fIT.filter(r=>r.at==='I').length,   out:fIT.filter(r=>r.at==='O').length,   c:'#0d9488'},
     {label:'Acknowledge',       short:'ACK', n:fAck.length,  in:fAck.filter(r=>r.bt==='I').length,  out:fAck.filter(r=>r.bt==='O').length,  c:'#d97706'},
     {label:'In Progress',       short:'IP',  n:fIP.length,   in:fIP.filter(r=>r.ct==='I').length,   out:fIP.filter(r=>r.ct==='O').length,   c:'#059669'},
-    {label:'Go Live',           short:'Live',n:fLive.length, in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#7c3aed'},
     {label:'Close by IT',       short:'SUP', n:fSup.length,  in:fSup.filter(r=>r.dt==='I').length,  out:fSup.filter(r=>r.dt==='O').length,  c:'#dc2626'},
     {label:'Return to Support', short:'RTS', n:rsCount,      in:0,  out:0,  c:'#f97316', statusOnly:true},
-    {label:'Ready for Testing', short:'RFT', n:rtCount,      in:0,  out:0,  c:'#0891b2', statusOnly:true},
-    {label:'Ready for UAT',     short:'RFU', n:ruCount,      in:0,  out:0,  c:'#84cc16', statusOnly:true},
-    {label:'Ready for Go Live', short:'RGL', n:rglCount,     in:fLive.filter(r=>r.et==='I').length, out:fLive.filter(r=>r.et==='O').length, c:'#a21caf'},
+    {label:'Ready for Testing', short:'RFT', n:fRt.length,   in:fRt.filter(r=>r.rtt==='I').length,  out:fRt.filter(r=>r.rtt==='O').length,  c:'#0891b2'},
+    {label:'Ready for UAT',     short:'RFU', n:fUa.length,   in:fUa.filter(r=>r.uat==='I').length,  out:fUa.filter(r=>r.uat==='O').length,  c:'#84cc16'},
+    // NOTE: pehle yahan DO Go Live rows thi — ek 'Go Live' (fLive) aur ek
+    // 'Ready for Go Live' (status LV). Dono ka source ab ek hi hai (r.e), to
+    // donut me wo duplicate slice ban jati. KPI card wali label rakhi hai.
+    {label:'Ready for Go Live', short:'RGL', n:fGl.length,   in:fGl.filter(r=>r.et==='I').length,   out:fGl.filter(r=>r.et==='O').length,   c:'#a21caf'},
   ];
   const total = ST.reduce((s,x)=>s+x.n,0);
   const totalDateFiltered = ST.filter(s=>!s.statusOnly).reduce((s,x)=>s+x.n,0);
