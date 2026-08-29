@@ -8293,7 +8293,10 @@ async function submitUpdate(){
     if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
 
     st.textContent='';
-    toast('✅ '+EDIT.ticketNo+' updated'+(j.cache&&j.cache.patched?' (cache updated too)':''),4500);
+    /* Marg ka apna message dikhate hain, apna text nahi. Ticket number
+       isliye jodte hain kyunki wo Marg ke message me nahi hota. */
+    toast('✅ '+EDIT.ticketNo+' — '+(j.message||'Updated')
+          +(j.cache&&j.cache.patched?' (cache updated too)':''),4500);
     if(j.cache&&!j.cache.patched)
       console.warn('Cache patch skipped:',j.cache.reason,'— the dashboard may show stale values until the next refresh.');
     /* Diagnostic: agar Marg ka update response poora record lautata ho to
@@ -8327,7 +8330,10 @@ async function submitUpdate(){
     bssResyncTicket(tn, prevSig);
   }catch(e){
     st.textContent='';
-    toast('❌ '+(e.message||e),8000);
+    /* Marg ka message jaisa hai waisa — wo batata hai ki kaun sa field galat
+       hai. Modal khula rehta hai (closeEdit sirf success path me hai) taaki
+       user wahi field theek karke dobara try kar sake. */
+    toast('❌ '+(EDIT?EDIT.ticketNo+' — ':'')+(e.message||e),8000);
     console.error('update failed:',e);
   }finally{
     const b=document.getElementById('edSave'); if(b) b.disabled=!(ME&&ME.bss_user_id);
