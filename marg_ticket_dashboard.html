@@ -1289,6 +1289,53 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .card-t{font-size:13px;font-weight:700}
 #tabBss .card-s{font-size:10.5px;color:var(--muted)}
 #tabBss .tw{overflow:auto;max-height:420px}
+/* ── List modal ke column filters ── */
+#tabBss .lf-th{display:flex;align-items:center;gap:6px;justify-content:space-between}
+#tabBss .lf-btn{
+  border:1px solid var(--border2);background:var(--surface);color:var(--muted);
+  border-radius:5px;font-size:9px;line-height:1;padding:3px 4px;cursor:pointer;
+  flex:none;transition:.14s
+}
+#tabBss .lf-btn:hover{background:var(--s2);color:var(--text2)}
+#tabBss .lf-btn.on{background:var(--it);border-color:var(--it);color:#fff}
+#tabBss .lf-search{
+  font-family:inherit;font-size:11.5px;padding:5px 9px;border-radius:7px;
+  border:1px solid var(--border2);background:var(--surface);color:var(--text);
+  min-width:190px
+}
+#tabBss .lf-clear{
+  font-family:inherit;font-size:10.5px;font-weight:700;padding:5px 9px;border-radius:7px;
+  border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer
+}
+/* Panel body me hai, #tabBss ke bahar — isliye ye rules scope se BAHAR hain
+   (neeche). Yahan sirf trigger ke styles hain. */
+
+/* ── Filter panel (position:fixed, body par) ──
+   Table .tw{overflow:auto} ke andar rakha panel kat jata, isliye ye body me
+   append hota hai aur getBoundingClientRect() se position hota hai. */
+.lf-panel{
+  position:fixed;z-index:99999;width:270px;max-height:352px;display:flex;flex-direction:column;
+  background:#fff;border:1px solid #d7dbe7;border-radius:10px;
+  box-shadow:0 12px 34px rgba(8,16,30,.22);font-family:Sora,system-ui,sans-serif;overflow:hidden
+}
+.lf-panel .lf-head{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
+  color:#6b7280;padding:9px 11px 5px}
+.lf-panel .lf-find{margin:0 11px 7px;padding:5px 8px;font-size:11.5px;font-family:inherit;
+  border:1px solid #d7dbe7;border-radius:6px;background:#f7f8fd;color:#111827}
+.lf-panel .lf-acts{display:flex;align-items:center;gap:8px;padding:0 11px 7px}
+.lf-panel .lf-a{background:none;border:none;color:#0d9488;font-size:10.5px;font-weight:700;
+  cursor:pointer;padding:0;font-family:inherit}
+.lf-panel .lf-a:hover{text-decoration:underline}
+.lf-panel .lf-n{margin-left:auto;font-size:9.5px;color:#9ca3af}
+.lf-panel .lf-list{overflow:auto;flex:1;border-top:1px solid #eef0f6;padding:4px 0}
+.lf-panel .lf-row{display:flex;align-items:center;gap:7px;padding:4px 11px;font-size:11.5px;
+  color:#374151;cursor:pointer}
+.lf-panel .lf-row:hover{background:#f7f8fd}
+.lf-panel .lf-v{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lf-panel .lf-c{font-size:10px;color:#9ca3af;font-family:'JetBrains Mono',monospace}
+.lf-panel .lf-none{padding:12px;text-align:center;font-size:11px;color:#9ca3af}
+.lf-panel .lf-foot{display:flex;gap:7px;justify-content:flex-end;padding:8px 11px;
+  border-top:1px solid #eef0f6;background:#f7f8fd}
 /* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
    table hai. Pehle .tw par `max-height:none` tha — wo kabhi scroll nahi karta
    tha, aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
@@ -2678,6 +2725,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
     <div class="mdl-h">
       <div class="mdl-t" id="listTitle">Ticket Details</div>
       <span class="badge" id="listCount"></span>
+      <input id="listSearch" class="lf-search" type="search" placeholder="🔍 Search all columns…" oninput="BSS.listSearch()">
+      <button class="lf-clear" id="listClearFilters" style="display:none" onclick="BSS.clearListFilters()">✕ Clear filters</button>
       <div class="sp" style="flex:1"></div>
       <button class="btn btn-teal btn-sm" onclick="BSS.exportList()">↓ Export Excel</button>
       <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="BSS.closeList()">✕ Close</button>
@@ -7991,16 +8040,183 @@ function listColumns(){
     ['License',          r=>esc(r.l||'—')],
   ];
 }
+/* ── List modal ke column filters ──────────────────────────────────────────
+ * Har <th> me ek funnel button. Click par us column ki unique values ka panel
+ * khulta hai (search + checkbox + count). Multiple columns AND logic par
+ * chalte hain, aur header ka global search bhi unke SAATH lagta hai.
+ *
+ * Values column ke RENDERED cell se HTML strip karke aati hain — wahi strip()
+ * jo rowsToAOA() Excel ke liye use karta hai. Isliye filter me jo value dikhti
+ * hai aur Excel me jo jaati hai, wo hamesha ek rehti hain; do jagah alag logic
+ * nahi banta.
+ *
+ * Panel `position:fixed` layer me render hota hai, <th> ke andar nahi —
+ * table `.tw{overflow:auto;max-height:420px}` ke andar hai aur andar rakha
+ * panel wahin kat jata.
+ */
+let LIST_FILTERS = {};      // colIndex -> Set(values)
+let LIST_VIEW    = [];      // filters + search ke baad ki rows
+let LIST_Q       = '';
+
+function listCellText(col, r){
+  return String(col[1](r)).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+    .replace(/&#39;/g,"'").trim() || '—';
+}
+function listPassesFilters(r, cols){
+  for(const k of Object.keys(LIST_FILTERS)){
+    const set=LIST_FILTERS[k];
+    if(!set || !set.size) continue;
+    if(!set.has(listCellText(cols[k], r))) return false;
+  }
+  if(LIST_Q){
+    const hay=cols.map(c=>listCellText(c,r)).join(' ').toLowerCase();
+    if(!hay.includes(LIST_Q)) return false;
+  }
+  return true;
+}
+function listApply(){
+  const cols=listColumns();
+  LIST_VIEW = LIST_ROWS.filter(r=>listPassesFilters(r, cols));
+  const body = LIST_VIEW.length
+    ? LIST_VIEW.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}"><div class="empty">No tickets match these filters</div></td></tr>`;
+  const tb=document.querySelector('#tblList tbody');
+  if(tb) tb.innerHTML=body;
+  const active=Object.keys(LIST_FILTERS).filter(k=>LIST_FILTERS[k] && LIST_FILTERS[k].size);
+  document.getElementById('listCount').textContent =
+    (LIST_VIEW.length===LIST_ROWS.length)
+      ? `${fmt(LIST_ROWS.length)} tickets`
+      : `${fmt(LIST_VIEW.length)} of ${fmt(LIST_ROWS.length)} tickets`;
+  const cb=document.getElementById('listClearFilters');
+  if(cb) cb.style.display=(active.length||LIST_Q)?'':'none';
+  document.querySelectorAll('#tblList th .lf-btn').forEach(b=>{
+    b.classList.toggle('on', !!(LIST_FILTERS[b.dataset.ci] && LIST_FILTERS[b.dataset.ci].size));
+  });
+}
+function listSearch(){
+  LIST_Q=(document.getElementById('listSearch').value||'').toLowerCase().trim();
+  listApply();
+}
+function clearListFilters(){
+  LIST_FILTERS={}; LIST_Q='';
+  const s=document.getElementById('listSearch'); if(s) s.value='';
+  closeFilterPanel(); listApply();
+}
+function closeFilterPanel(){
+  const p=document.getElementById('lfPanel'); if(p) p.remove();
+}
+function openFilterPanel(ci, btn){
+  const existing=document.getElementById('lfPanel');
+  const wasSame = existing && existing.dataset.ci===String(ci);
+  closeFilterPanel();
+  if(wasSame) return;                       // wahi button dobara → toggle band
+
+  const cols=listColumns(), col=cols[ci];
+  /* Counts filters ke bina nikalte hain jo ISI column par lage hain, warna
+     ek value chunte hi baaki values list se gayab ho jati aur dobara chunna
+     mumkin na hota. */
+  const others={...LIST_FILTERS}; delete others[ci];
+  const base=LIST_ROWS.filter(r=>{
+    for(const k of Object.keys(others)){
+      const set=others[k]; if(!set||!set.size) continue;
+      if(!set.has(listCellText(cols[k], r))) return false;
+    }
+    if(LIST_Q){
+      const hay=cols.map(c=>listCellText(c,r)).join(' ').toLowerCase();
+      if(!hay.includes(LIST_Q)) return false;
+    }
+    return true;
+  });
+  const counts=new Map();
+  base.forEach(r=>{ const v=listCellText(col,r); counts.set(v,(counts.get(v)||0)+1); });
+  const values=[...counts.entries()].sort((a,b)=>b[1]-a[1] || String(a[0]).localeCompare(String(b[0])));
+  const sel=LIST_FILTERS[ci] || new Set();
+
+  const p=document.createElement('div');
+  p.id='lfPanel'; p.className='lf-panel'; p.dataset.ci=String(ci);
+  p.innerHTML=`
+    <div class="lf-head">${esc(col[0])}</div>
+    <input class="lf-find" type="search" placeholder="Search ${esc(col[0])}…" autocomplete="off">
+    <div class="lf-acts">
+      <button class="lf-a" data-act="all">Select all</button>
+      <button class="lf-a" data-act="none">Clear</button>
+      <span class="lf-n"></span>
+    </div>
+    <div class="lf-list"></div>
+    <div class="lf-foot">
+      <button class="btn btn-ghost btn-sm" data-act="cancel">Cancel</button>
+      <button class="btn btn-teal btn-sm" data-act="apply">Apply</button>
+    </div>`;
+  document.body.appendChild(p);
+
+  /* Panel ko button ke neeche rakho, par viewport se bahar mat jane do. */
+  const rc=btn.getBoundingClientRect(), pw=270;
+  p.style.left = Math.max(8, Math.min(rc.left, window.innerWidth-pw-8))+'px';
+  p.style.top  = Math.min(rc.bottom+4, window.innerHeight-360)+'px';
+
+  const listEl=p.querySelector('.lf-list'), findEl=p.querySelector('.lf-find'), nEl=p.querySelector('.lf-n');
+  const CAP=300;   // 1745 checkbox render karna modal ko atka deta hai
+  let shown=values;
+  function draw(){
+    const slice=shown.slice(0,CAP);
+    listEl.innerHTML = slice.map(([v,c])=>`
+      <label class="lf-row"><input type="checkbox" value="${esc(v)}"${sel.has(v)?' checked':''}>
+        <span class="lf-v" title="${esc(v)}">${esc(v)}</span><span class="lf-c">${fmt(c)}</span></label>`).join('')
+      || '<div class="lf-none">No matches</div>';
+    nEl.textContent = shown.length>CAP
+      ? `showing ${CAP} of ${fmt(shown.length)} — use search`
+      : `${fmt(shown.length)} value${shown.length===1?'':'s'}`;
+  }
+  draw();
+  findEl.addEventListener('input',()=>{
+    const q=findEl.value.toLowerCase().trim();
+    shown = q ? values.filter(([v])=>String(v).toLowerCase().includes(q)) : values;
+    draw();
+  });
+  listEl.addEventListener('change',e=>{
+    const cbx=e.target; if(cbx.type!=='checkbox') return;
+    if(cbx.checked) sel.add(cbx.value); else sel.delete(cbx.value);
+  });
+  p.addEventListener('click',e=>{
+    const act=e.target.dataset&&e.target.dataset.act; if(!act) return;
+    if(act==='all'){ shown.forEach(([v])=>sel.add(v)); draw(); }
+    if(act==='none'){ sel.clear(); draw(); }
+    if(act==='cancel'){ closeFilterPanel(); }
+    if(act==='apply'){
+      if(sel.size) LIST_FILTERS[ci]=sel; else delete LIST_FILTERS[ci];
+      closeFilterPanel(); listApply();
+    }
+  });
+  findEl.focus();
+}
+/* Bahar click / Escape / table scroll par band. Reposition karne ke bajaye
+   band karna saaf hai — panel fixed hai, scroll par table ke saath nahi
+   khisakta aur galat jagah lagta. */
+document.addEventListener('mousedown',e=>{
+  const p=document.getElementById('lfPanel');
+  if(p && !p.contains(e.target) && !(e.target.closest && e.target.closest('.lf-btn'))) closeFilterPanel();
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeFilterPanel(); });
+
 function renderList(rows,title){
   LIST_ROWS=rows; LIST_TITLE=title;
+  /* Naya list khulte hi filters reset — warna pichhle tester ka filter agle
+     par laga reh jata aur list khali dikhti. */
+  LIST_FILTERS={}; LIST_Q='';
+  closeFilterPanel();
+  const s=document.getElementById('listSearch'); if(s) s.value='';
   document.getElementById('listTitle').textContent=title;
-  document.getElementById('listCount').textContent=`${fmt(rows.length)} tickets`;
   const cols=listColumns();
-  const head=`<thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead>`;
-  const body=rows.length
-    ? rows.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join('')}</tr>`).join('')
-    : `<tr><td colspan="${cols.length}"><div class="empty">No tickets</div></td></tr>`;
-  document.getElementById('tblList').innerHTML=head+`<tbody>${body}</tbody>`;
+  const head=`<thead><tr>${cols.map((c,i)=>
+    `<th><span class="lf-th"><span class="lf-lbl">${esc(c[0])}</span>`+
+    `<button class="lf-btn" data-ci="${i}" title="Filter ${esc(c[0])}">⏷</button></span></th>`
+  ).join('')}</tr></thead>`;
+  document.getElementById('tblList').innerHTML=head+'<tbody></tbody>';
+  document.querySelectorAll('#tblList .lf-btn').forEach(b=>{
+    b.addEventListener('click',ev=>{ ev.stopPropagation(); openFilterPanel(Number(b.dataset.ci), b); });
+  });
+  listApply();
   document.getElementById('ovList').classList.add('on');
 }
 function openList(key){
@@ -8011,7 +8227,7 @@ function openAgentList(kind,name){
   const g=kind==='Tester'?testerOf:kind==='Developer'?devOf:rmOf;
   renderList(VIEW.filter(r=>g(r)===name),`${kind}: ${name} — Ticket Details`);
 }
-function closeList(){document.getElementById('ovList').classList.remove('on');}
+function closeList(){closeFilterPanel();document.getElementById('ovList').classList.remove('on');}
 
 /* ── Edit modal ── */
 async function openEdit(ticketNo){
@@ -8356,7 +8572,9 @@ function saveXLSX(rows,name){
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tickets');
   XLSX.writeFile(wb,name);
 }
-function exportList(){saveXLSX(LIST_ROWS,`bss_${LIST_TITLE.replace(/[^a-z0-9]+/gi,'_').slice(0,40)}.xlsx`);}
+/* Export wahi rows bhejta hai jo screen par dikh rahi hain (LIST_VIEW),
+   poora set nahi — warna filter lagane ka matlab hi nahi rehta. */
+function exportList(){saveXLSX(LIST_VIEW,`bss_${LIST_TITLE.replace(/[^a-z0-9]+/gi,'_').slice(0,40)}.xlsx`);}
 function exportStatus(key){const d=STATUSES.find(x=>x.key===key);saveXLSX(VIEW.filter(r=>bssStatusKeyOf(r)===key),`bss_${key}.xlsx`);}
 function exportAll(){saveXLSX(VIEW,'bss_all_tickets.xlsx');}
 
@@ -8380,7 +8598,7 @@ document.addEventListener('keydown',e=>{
 });
 
 
-window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof bssStatusKeyOf!=="undefined"?bssStatusKeyOf:undefined), statusLabelOf: (typeof bssStatusLabelOf!=="undefined"?bssStatusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
+window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), listSearch: (typeof listSearch!=="undefined"?listSearch:undefined), clearListFilters: (typeof clearListFilters!=="undefined"?clearListFilters:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof bssStatusKeyOf!=="undefined"?bssStatusKeyOf:undefined), statusLabelOf: (typeof bssStatusLabelOf!=="undefined"?bssStatusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
 window.BSS.__booted = false;
 window.BSS.boot = function(){
   if(window.BSS.__booted) return;
