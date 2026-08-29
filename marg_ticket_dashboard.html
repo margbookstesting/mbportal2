@@ -1704,7 +1704,25 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabUp .up-list-box{max-width:1180px}
 #tabUp .up-list-title{font-size:15px;font-weight:800;color:var(--text)}
 #tabUp .up-list-sub{font-size:11.5px;color:var(--muted);margin-top:3px}
-#tabUp #upListBody{max-height:74vh;overflow:auto}
+#tabUp #upListBody{max-height:74vh;overflow:auto;padding:0 14px 14px}
+/* List view table — card grid ki jagah. */
+#tabUp .up-list-tbl{width:100%;border-collapse:collapse;font-size:12px}
+#tabUp .up-list-tbl thead th{
+  position:sticky;top:0;z-index:1;background:var(--s2,#f7f8fd);
+  text-align:left;font-size:9.5px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--muted);padding:9px 10px;
+  border-bottom:1.5px solid var(--border);white-space:nowrap;
+}
+#tabUp .up-list-tbl tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+#tabUp .up-list-tbl tbody tr:hover{background:var(--s2,#f7f8fd)}
+#tabUp .up-list-tbl tbody tr:last-child{border-bottom:none}
+#tabUp .up-list-tbl td{padding:9px 10px;vertical-align:middle;color:var(--text2)}
+#tabUp .ul-tno{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal);white-space:nowrap}
+#tabUp .ul-days{white-space:nowrap;font-weight:700}
+#tabUp .ul-od{color:var(--red)}
+#tabUp .ul-client{font-weight:700;color:var(--text);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tabUp .ul-desc{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+#tabUp .ul-date{font-family:'JetBrains Mono',monospace;white-space:nowrap;color:var(--muted)}
 #tabUp .modal-section{margin-bottom:18px}
 #tabUp .modal-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:5px}
 #tabUp .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -8851,7 +8869,7 @@ function openBucket(secId, cat){
     : 'Timeline deadline within this range';
 
   document.getElementById('upListBody').innerHTML = items.length
-    ? `<div class="cards-grid">${items.map(it=>upCardHtml(it, sec)).join('')}</div>`
+    ? upListHtml(items)
     : `<div class="empty-section">✅ No tickets in this category for this range</div>`;
 
   window._upListRows = items.map(({r})=>r);
@@ -8870,8 +8888,48 @@ function exportBucket(){
   exportExcel(window._upListSec, window._upListName||'Tickets', null, rows);
 }
 
-/* Ek ticket ka card. Pehle ye renderSections() ke andar inline bana tha;
-   ab modal aur (zaroorat pade to) kahin aur, dono jagah se reuse hota hai. */
+/* Modal ki list — table view. Pehle yahan cards ka grid tha; ek screen par
+   6-8 tickets hi aate the aur scan karna mushkil tha. Columns wahi fields
+   rakhte hain jo card par the (ticket, category, overdue, client, desc,
+   stage, tester, RM, dev, deadline), bas ek row me. Row par click → wahi
+   detail modal. */
+function upEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function upListHtml(items){
+  const rows = items.map(({r, days})=>{
+    const cat = detectCategory(r);
+    const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
+    const catCls   = cat==='dev'?'cat-dev':cat==='bug'?'cat-bug':'cat-other';
+    const stageLabel = STAGE_LABELS[r.sc]||r.sc||'—';
+    const tester = mbTesterOf(r)||'—';
+    const desc = (r.desc||r.remarks||'').trim();
+    const tldFmt = new Date(r.tld+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+    /* Overdue me days NEGATIVE hota hai — "18 days overdue" dikhana hai,
+       "-18 days" nahi. */
+    const od = days < 0, late = Math.abs(days);
+    const daysTxt = od ? (late===1?'1 day overdue':late+' days overdue')
+                       : (days===0?'Due today':days===1?'Tomorrow':days+' days');
+    return `<tr onclick="UP.openTicketDetail('${upEsc(r.n)}')" title="Click for full details">
+      <td class="ul-tno">${upEsc(r.n||'—')}</td>
+      <td><span class="t-category ${catCls}">${catLabel}</span></td>
+      <td class="ul-days ${od?'ul-od':''}">${daysTxt}</td>
+      <td class="ul-client" title="${upEsc(r.u)}">${upEsc(r.u||'—')}</td>
+      <td class="ul-desc" title="${upEsc(desc)}">${upEsc(desc.slice(0,90))||'—'}</td>
+      <td>${upEsc(stageLabel)}</td>
+      <td>${upEsc(tester)}</td>
+      <td>${upEsc(r.r||'—')}</td>
+      <td>${upEsc(r.dev||'—')}</td>
+      <td class="ul-date">${tldFmt}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="up-list-tbl"><thead><tr>
+      <th>Ticket</th><th>Category</th><th>Deadline status</th><th>Client</th>
+      <th>Description</th><th>Stage</th><th>Tester</th><th>RM</th><th>Developer</th><th>Deadline</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* Ek ticket ka card. Modal ab table use karta hai, par ye function rakha hai:
+   card layout kahin aur chahiye to ready hai aur iska markup hi reference hai
+   ki list me kaun kaun se fields dikhne chahiye. */
 function upCardHtml({r, days}, sec){
   const cat = detectCategory(r);
   const urgClass = `u-${sec.urgency}`;
@@ -8975,7 +9033,15 @@ function closeModal(e){
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape') document.getElementById('ticketModal').style.display = 'none';
+  if(e.key !== 'Escape') return;
+  /* Do modal ho sakte hain: list (KPI click se) aur uske UPAR detail
+     (row click se). Escape sabse upar wala band kare — pehle detail, phir
+     list. Pehle sirf detail band hota tha, to list wale par Escape kaam hi
+     nahi karta tha. */
+  const det = document.getElementById('ticketModal');
+  if(det && det.style.display !== 'none'){ det.style.display = 'none'; return; }
+  const lst = document.getElementById('upListModal');
+  if(lst && lst.style.display !== 'none') lst.style.display = 'none';
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
