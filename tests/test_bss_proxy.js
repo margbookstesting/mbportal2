@@ -40,7 +40,10 @@ function reset() {
   };
   margCalls = []; loginCount = 0; tokenValid = true;
   MIGRATION_MISSING = false; USERS_DOWN = false; NO_PROFILE = false;
-  margUpdateResponse = { Status: 'success', Message: 'Ticket status updated successfully.' };
+  /* ASLI Marg response. Pehle yahan {Status:'success'} tha — jo Marg kabhi
+     bhejta hi nahi. Us galat fixture ki wajah se 88 tests pass hote rahe
+     jabki production me HAR safal update failure gina jata tha. */
+  margUpdateResponse = { Status: '1', Message: 'Updated Successfully.', Details: null };
   margDetailRecords = [{ TicketNo: 'MB - 036939', Status: 'Pending', JiraID: '1213', Developer: 'Ashish Sharma' }];
   loadHandler();
 }
@@ -222,11 +225,34 @@ const GOOD = {
 
   console.log('\n== 6. Marg failure handling ==');
   reset();
-  margUpdateResponse = { Status: 'Fail', Message: 'Invalid disposition' };
+  // Asli failure response, screenshot se liya hua
+  margUpdateResponse = { Status: '0', Message: 'Invalid Bss Disposition', Details: null };
   r = await call({ action: 'update', payload: GOOD });
-  eq(r._s, 502, 'HTTP 200 with Status:Fail is treated as FAILURE');
-  eq(/Invalid disposition/.test(r._j.error), true, 'Marg message surfaced to the user');
+  eq(r._s, 502, 'Status:"0" is treated as FAILURE');
+  eq(/Invalid Bss Disposition/.test(r._j.error), true, 'Marg message surfaced to the user');
+  eq(/Update failed:/.test(r._j.error), false, 'no hardcoded prefix — Marg ka message jaisa hai waisa');
   eq(db.bss_update_log[0].success, false, 'failed attempt still audited');
+
+  // Success ka asli shape: Status "1". Yahi wo case hai jo toota hua tha.
+  reset();
+  margUpdateResponse = { Status: '1', Message: 'Updated Successfully.', Details: null };
+  r = await call({ action: 'update', payload: GOOD });
+  eq(r._s, 200, 'Status:"1" is SUCCESS (pehle 502 aata tha)');
+  eq(r._j.message, 'Updated Successfully.', 'Marg ka message client ko bheja jata hai');
+  eq(db.bss_update_log[0].success, true, 'audit me success:true jata hai');
+
+  // Read endpoint alag convention par hai — wo bhi chalna chahiye
+  reset();
+  margUpdateResponse = { Status: 'Success', Message: 'ok' };
+  eq((await call({ action: 'update', payload: GOOD }))._s, 200, 'Status:"Success" bhi SUCCESS (read endpoint wala shape)');
+
+  reset();
+  margUpdateResponse = { Status: 'Fail', Message: 'bad' };
+  eq((await call({ action: 'update', payload: GOOD }))._s, 502, 'Status:"Fail" is FAILURE');
+
+  reset();
+  margUpdateResponse = { Message: 'no status field' };
+  eq((await call({ action: 'update', payload: GOOD }))._s, 200, 'Status gayab → HTTP 200 par bharosa');
 
   reset();
   margUpdateResponse = { __http: 500, Message: 'server error' };
