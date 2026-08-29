@@ -3697,7 +3697,6 @@ setTimeout(applyTabPerms, 0);
  *   - Re-entries: API har stage ki ek hi (latest) date rakhta hai, to ek se
  *     zyada baar IT me aaya ticket ek hi baar gina jata hai.
  */
-let _mgBooted=false;
 
 const MG_DATE_KEYS=['a','b','c','rtd','crd','mgd','uad','rfd','rod','fdd','rjd','e','d'];
 
@@ -3863,8 +3862,9 @@ function mgTrend(cur, prev, better){
 function mgmtInit(){
   const el=document.getElementById('mgUpto');
   if(el && !el.value){ el.value=mgToday(); el.max=mgToday(); }
-  if(_mgBooted) return;
-  _mgBooted=true;
+  /* Har baar recompute karte hain, sirf pehli baar nahi. "Refresh Data" ya
+     BSS update ke baad RAW badal jata hai — ek baar boot karke chhod dete to
+     tab purane numbers dikhata rehta aur pata bhi na chalta. */
   mgmtRender();
 }
 
@@ -7353,7 +7353,34 @@ function retLicExport(){
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet(out);
   ws['!cols']=header.map(h=>({wch:Math.max(14,h.length+2)}));
-  XLSX.utils.book_append_sheet(wb,ws,'Licenses');
+  XLSX.utils.book_append_sheet(wb,ws,'Client Details');
+
+  /* Sheet 2 — har license ke pending tickets. `x.tks` pehle se poore ticket
+     records rakhta hai (retBuildTicketMaps se), to yahan kuch naya fetch nahi
+     hota. Sheet 1 ke filters (search, expired/non-expired, with/without
+     pending) yahan bhi lage rehte hain kyunki base wahi retLicFilteredRows()
+     hai — dono sheets hamesha ek hi set ki baat karti hain.
+     Dhyan: `tks` me sirf PENDING tickets hote hain, poora history nahi —
+     isliye sheet ka naam bhi wahi hai. */
+  const tHeader=['License','Client','Ticket No','Current Status','Created Date',
+                 'Transfer To IT','Stage Date','Timeline','RM','Developer',
+                 'Tester','Client Name','Disposition','Bug/Dev'];
+  const tOut=[tHeader];
+  rows.forEach(x=>{
+    (x.tks||[]).forEach(r=>{
+      tOut.push([
+        x.L.lic, x.nm,
+        r.n||'', statusLabelOf(r), r.tc||'', r.a||'', stageDateOf(r), r.tld||'',
+        r.r||'', r.dev||'', mbTesterOf(r)||'', r.u||'', lastDisp(r)||'', bugDevClass(r)||''
+      ]);
+    });
+  });
+  if(tOut.length>1){
+    const ws2=XLSX.utils.aoa_to_sheet(tOut);
+    ws2['!cols']=tHeader.map(h=>({wch:Math.max(12,h.length+2)}));
+    XLSX.utils.book_append_sheet(wb,ws2,'Pending Tickets');
+  }
+
   const fname=(_retModalTitle||'Licenses').replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_').slice(0,40);
   XLSX.writeFile(wb, fname+'.xlsx');
 }
@@ -7572,28 +7599,43 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function toast(m,ms){const t=document.getElementById('bssToast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
 async function signOut(){await sb.auth.signOut();location.replace('index.html');}
 
-/* ── Status defs — support_dashboard.html se identical, taaki dono dashboards
-   par ek hi ticket ka status same dikhe. Alag rakhne par drift ho jati. ── */
+/* ── Status defs — SIRF BSS tab ke liye. Order = KPI cards ka order.
+   Pehle ye array support_dashboard.html se identical rakha jata tha, par ab
+   BSS ka apna sequence hai (management ne maanga), isliye wo "dono jagah
+   identical" wala rule yahan lagu nahi hota.
+
+   NOTE: ye poora BSS section ek IIFE ke andar hai (line 7567 se 8298), to
+   ye names global scope me jate hi nahi — TAT ka apna statusKeyOf/
+   statusLabelOf (SUP_STATUSES par) alag hai aur usse koi takraav nahi hai.
+   Naam phir bhi `bss` prefix ke saath rakhe hain taaki file padhte waqt
+   confusion na ho ki kaunsa version kahan chal raha hai. ── */
 function _normSt(s){return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim();}
 const STATUSES=[
-  {key:'pending',   label:'Pending',              c:'--oth'},
-  {key:'reopen',    label:'Reopen',               c:'--ret'},
-  {key:'it',        label:'Transferred To IT',    c:'--it'},
-  {key:'ack',       label:'Acknowledged',         c:'--ack'},
-  {key:'ip',        label:'In Progress',          c:'--ip'},
-  {key:'rft',       label:'Ready For Testing',    c:'--tst'},
-  {key:'reopentest',label:'Reopend from Testing', c:'--ret'},
-  {key:'rfcr',      label:'Ready For Code Review',c:'--uat'},
-  {key:'rfm',       label:'Ready For Merging',    c:'--uat'},
-  {key:'rfu',       label:'Ready For UAT',        c:'--uat'},
-  {key:'rgl',       label:'Ready to go Live',     c:'--glv'},
-  {key:'rts',       label:'Return to Support',    c:'--ret'},
-  {key:'sp',        label:'Transferred To Support',c:'--sup'},
-  {key:'future',    label:'Future Development',   c:'--oth'},
-  {key:'rejected',  label:'Rejected',             c:'--sup'},
-  {key:'closed',    label:'Closed',               c:'--cl'},
+  {key:'pending',   label:'Pending',                c:'--oth'},
+  {key:'approval',  label:'Approval Pending',       c:'--oth'},
+  {key:'it',        label:'Transfer To IT',         c:'--it'},
+  {key:'ack',       label:'Acknowledged',           c:'--ack'},
+  {key:'ip',        label:'In-Progress',            c:'--ip'},
+  {key:'rfcr',      label:'Ready For Code Review',  c:'--uat'},
+  {key:'rft',       label:'Ready For Testing',      c:'--tst'},
+  {key:'reopentest',label:'Re-Open From Testing',   c:'--ret'},
+  {key:'rfm',       label:'Ready For Merging',      c:'--uat'},
+  {key:'rfu',       label:'Ready For UAT',          c:'--uat'},
+  {key:'rgl',       label:'Ready For Go Live',      c:'--glv'},
+  {key:'sp',        label:'Transfer To Support',    c:'--sup'},
+  {key:'rts',       label:'Return To Support',      c:'--ret'},
+  {key:'closed',    label:'Closed',                 c:'--cl'},
+  {key:'reopen',    label:'Re-Open',                c:'--ret'},
+  {key:'future',    label:'Future Development',     c:'--oth'},
+  {key:'rejected',  label:'Rejected',               c:'--sup'},
 ];
-const MATCH={pending:['pending'],reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
+/* `approval` naya key hai. Pehle "Approval Pending" chup-chaap Pending me gin
+   raha tha — matching ka doosra loop substring par chalta hai aur
+   "approval pending".includes("pending") true hai. Ab exact match pehle
+   chalta hai (pehla loop), to ye alag card me jata hai. Iska seedha asar:
+   Pending ka number utna hi girega jitne Approval Pending ke tickets hain. */
+const MATCH={pending:['pending'],approval:['approval pending'],
+ reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
  ack:['acknowledge','acknowledged'],ip:['in progress','inprogress'],rft:['ready for testing'],
  reopentest:['reopend from testing','reopen from testing','reopened from testing'],
  rfcr:['ready for code review'],rfm:['ready for merging','ready for merge'],rfu:['ready for uat'],
@@ -7601,7 +7643,7 @@ const MATCH={pending:['pending'],reopen:['reopen','re open'],it:['transfer to it
  future:['future development'],rejected:['rejected','reject'],closed:['closed','close']};
 const SC2KEY={IT:'it',AK:'ack',IP:'ip',RT:'rft',RU:'rfu',LV:'rgl',SP:'sp',RS:'rts',CL:'closed'};
 
-function statusKeyOf(r){
+function bssStatusKeyOf(r){
   const raw=_normSt(r.st);
   if(raw){
     for(const d of STATUSES) if((MATCH[d.key]||[]).includes(raw)) return d.key;
@@ -7610,7 +7652,7 @@ function statusKeyOf(r){
   if(r.sc&&SC2KEY[r.sc]) return SC2KEY[r.sc];
   return 'pending';
 }
-function statusLabelOf(r){const d=STATUSES.find(x=>x.key===statusKeyOf(r));return d?d.label:(r.st||'Other');}
+function bssStatusLabelOf(r){const d=STATUSES.find(x=>x.key===bssStatusKeyOf(r));return d?d.label:(r.st||'Other');}
 function stageDateOf(r){return r.e||r.d||r.c||r.b||r.a||'';}
 /* Shared helper — dekho assets/ticket-parser.js ka mbTesterOf(). */
 const testerOf=r=>mbTesterOf(r);
@@ -7718,7 +7760,7 @@ function applyFilters(){
   VIEW=RAW.filter(r=>{
     if(tn&&!String(r.n||'').toLowerCase().includes(tn)) return false;
     if(lc&&!String(r.l||'').toLowerCase().includes(lc)) return false;
-    if(sk&&statusKeyOf(r)!==sk) return false;
+    if(sk&&bssStatusKeyOf(r)!==sk) return false;
     if(ts&&testerOf(r)!==ts) return false;
     if(rm&&rmOf(r)!==rm) return false;
     if(dv&&devOf(r)!==dv) return false;
@@ -7740,7 +7782,7 @@ function render(){renderKPIs();renderAgents();}
 function renderKPIs(){
   const now=new Date(), curL=MON[now.getMonth()], prevL=MON[(now.getMonth()+11)%12];
   const by={}; STATUSES.forEach(d=>by[d.key]={t:0,cur:0,prev:0,older:0});
-  VIEW.forEach(r=>{const k=statusKeyOf(r);if(!by[k])return;by[k].t++;by[k][bucketOf(r)]++;});
+  VIEW.forEach(r=>{const k=bssStatusKeyOf(r);if(!by[k])return;by[k].t++;by[k][bucketOf(r)]++;});
   document.getElementById('kpis').innerHTML=STATUSES.map(d=>{
     const b=by[d.key];
     return `<div class="kpi">
@@ -7769,7 +7811,7 @@ function agentTable(getter,label){
     const a=getter(r); if(!a) return;
     if(!map.has(a)) map.set(a,{name:a,total:0,by:{}});
     const e=map.get(a); e.total++;
-    const k=statusKeyOf(r); e.by[k]=(e.by[k]||0)+1;
+    const k=bssStatusKeyOf(r); e.by[k]=(e.by[k]||0)+1;
   });
   const rows=[...map.values()].sort((a,b)=>b.total-a.total);
 
@@ -7834,7 +7876,7 @@ function listColumns(){
        tha (SyntaxError, row click dead). Backslash bhi wahi karta tha. */
     ['Ticket No',        r=>`<span class="tno" data-tno="${esc(r.n)}">${esc(r.n)}</span>`],
     ['Created',          r=>esc(r.tc||'—')],
-    ['Current Status',   r=>esc(statusLabelOf(r))],
+    ['Current Status',   r=>esc(bssStatusLabelOf(r))],
     ['Timeline',         r=>esc(r.tld||'—')],
     /* BSS UI ka "Disposition" = current stage ki disposition (`cd`, schema v3),
         NOT `ld`. `ld` sirf 6 recognized values leta hai — MB - 037392 par
@@ -7869,7 +7911,7 @@ function renderList(rows,title){
 }
 function openList(key){
   const d=STATUSES.find(x=>x.key===key);
-  renderList(VIEW.filter(r=>statusKeyOf(r)===key),`${d?d.label:key} — Ticket Details`);
+  renderList(VIEW.filter(r=>bssStatusKeyOf(r)===key),`${d?d.label:key} — Ticket Details`);
 }
 function openAgentList(kind,name){
   const g=kind==='Tester'?testerOf:kind==='Developer'?devOf:rmOf;
@@ -8043,6 +8085,85 @@ function showErrors(errs){
   if(g.length) toast(g[0].msg,6000);
 }
 
+/* Update ke baad ek ticket ko Marg se dobara padho aur RAW ki row replace kar
+   do. Sirf isi tarah stage DATES local me aati hain — aur TAT ke KPI (jo ab
+   dates par chalte hain) turant move karte hain.
+
+   RETRY kyun: Marg write ke foran baad read karne par kabhi-kabhi purana
+   record aata hai. Bina retry ke hum purana data local me wapas likh dete,
+   jo abhi ki halat se bhi bura hota. Isliye jab tak koi field badla hua na
+   dikhe, 3 baar tak dobara poochte hain. */
+/* Resync ke baad fresh stage dates cache me bhej do. Sirf wahi keys jo
+   api/bss-proxy.js ki CACHE_PATCH_KEYS whitelist me hain — baaki server
+   waise bhi drop kar dega. */
+const BSS_PATCH_KEYS=['st','ld','sc','a','b','c','d','e','cld',
+                      'rtd','crd','mgd','uad','rfd','rod','fdd','rjd'];
+async function bssPatchCacheDates(ticketNo, parsed){
+  try{
+    const patch={};
+    BSS_PATCH_KEYS.forEach(k=>{ if(parsed[k]) patch[k]=parsed[k]; });
+    if(!Object.keys(patch).length) return;
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'cachepatch', ticketNo, patch})});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+    if(j.cache && !j.cache.patched)
+      console.warn('Cache date patch skipped:', j.cache.reason);
+  }catch(e){ console.warn('Cache date patch failed:', e); }
+}
+
+/* prevSig submitUpdate se aata hai — optimistic patch LAGNE SE PEHLE ka.
+   Agar yahan RAW se padhte to patch ki hui value hi milti aur "kya badla"
+   ka comparison bemaani ho jata (har baar 3 retry chalte). */
+async function bssResyncTicket(ticketNo, prevSig){
+  if(!ticketNo || typeof mbParseTicket!=='function') return;
+  const sigOf=r=>r?JSON.stringify([r.st,r.a,r.b,r.c,r.d,r.e,r.rtd,r.uad,r.cld]):'';
+  for(let attempt=1; attempt<=3; attempt++){
+    if(attempt>1) await new Promise(r=>setTimeout(r,800));
+    let rec=null;
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const r=await fetch('/api/bss-proxy',{method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({action:'ticket', ticketNo})});
+      const j=await r.json();
+      if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+      rec=j.ticket;
+    }catch(e){
+      console.warn('resync attempt '+attempt+' failed:', e);
+      continue;
+    }
+    if(!rec) continue;
+
+    const parsed=mbParseTicket(rec);
+    if(!parsed || !parsed.n) continue;
+    const changed = sigOf(parsed)!==prevSig;
+    /* Aakhri attempt par jo mila wahi le lete hain — nahi to update to ho
+       chuka par screen purana dikhata rahega. */
+    if(changed || attempt===3){
+      const i=RAW.findIndex(x=>x.n===ticketNo);
+      if(i>=0){
+        /* MERGE, replace nahi. RAW ki row ek se zyada cache rows se mili
+           hoti hai (dekho mbMergeCacheRows) — jaise `tia` kisi doosre saal
+           ki row se aata hai jo is single-ticket API response me hai hi
+           nahi. Seedha replace karne par wo fields ud jate aur Support /
+           Retention ke section toot jate. */
+        RAW[i]=Object.assign({}, RAW[i], parsed);
+      } else RAW.push(parsed);
+      applyFilters();
+      if(typeof applyFilter==='function') applyFilter();
+      /* Cache me bhi likh do, warna page reload par stage phir peeche.
+         Best-effort — fail ho to sirf console, user ko nahi rokte. */
+      bssPatchCacheDates(ticketNo, parsed);
+      if(!changed) console.warn('Resync: Marg abhi bhi purana record de raha hai ('+
+        ticketNo+'). Stage move next refresh par dikhega.');
+      return;
+    }
+  }
+}
+
 async function submitUpdate(){
   if(!EDIT) return;
   const bssId=ME&&ME.bss_user_id;
@@ -8081,10 +8202,21 @@ async function submitUpdate(){
     toast('✅ '+EDIT.ticketNo+' updated'+(j.cache&&j.cache.patched?' (cache updated too)':''),4500);
     if(j.cache&&!j.cache.patched)
       console.warn('Cache patch skipped:',j.cache.reason,'— the dashboard may show stale values until the next refresh.');
+    /* Diagnostic: agar Marg ka update response poora record lautata ho to
+       neeche wali re-read hatayi ja sakti hai (ek API call bach jayegi).
+       Abhi maan kar nahi chal rahe — shape verify karne ke baad hi. */
+    if(j.marg) console.debug('marg update response:', j.marg);
 
-    /* Local row bhi update karo taaki KPI/table turant sahi dikhe */
-    const patch=j.cache&&j.cache.patched?null:null;
-    const row=RAW.find(x=>x.n===EDIT.ticketNo);
+    const tn=EDIT.ticketNo;
+    const row=RAW.find(x=>x.n===tn);
+    /* Signature patch se PEHLE lo — resync isse compare karke tay karta hai
+       ki Marg ne naya record diya ya abhi purana hi de raha hai. */
+    const prevSig=row?JSON.stringify([row.st,row.a,row.b,row.c,row.d,row.e,
+                                      row.rtd,row.uad,row.cld]):'';
+    /* STEP 1 — optimistic patch, jaise pehle hota tha. Ye zaroori hai: agar
+       neeche wali resync fail ho jaye (network/Marg down), to bina iske row
+       bilkul purani reh jati — pehle se bhi bura. Text fields turant sahi
+       dikh jate hain. */
     if(row){
       const s=bssNameById(DD,'subDisposition',EDIT.form.subDisposition); if(s) row.st=s;
       const l=bssNameById(DD,'disposition',EDIT.form.disposition); if(l) row.ld=l;
@@ -8095,6 +8227,10 @@ async function submitUpdate(){
       delete row.sc;   /* st ab authoritative hai; purana short-code hata do */
     }
     closeEdit(); applyFilters();
+    /* STEP 2 — Marg se poora record dobara padho. Sirf isi tarah stage DATES
+       aati hain; text patch se ticket ka stage move nahi hota tha kyunki TAT
+       ke KPI dates par chalte hain. Ye async hai, UI ko block nahi karta. */
+    bssResyncTicket(tn, prevSig);
   }catch(e){
     st.textContent='';
     toast('❌ '+(e.message||e),8000);
@@ -8121,7 +8257,7 @@ function saveXLSX(rows,name){
   XLSX.writeFile(wb,name);
 }
 function exportList(){saveXLSX(LIST_ROWS,`bss_${LIST_TITLE.replace(/[^a-z0-9]+/gi,'_').slice(0,40)}.xlsx`);}
-function exportStatus(key){const d=STATUSES.find(x=>x.key===key);saveXLSX(VIEW.filter(r=>statusKeyOf(r)===key),`bss_${key}.xlsx`);}
+function exportStatus(key){const d=STATUSES.find(x=>x.key===key);saveXLSX(VIEW.filter(r=>bssStatusKeyOf(r)===key),`bss_${key}.xlsx`);}
 function exportAll(){saveXLSX(VIEW,'bss_all_tickets.xlsx');}
 
 /* ── Event delegation ──────────────────────────────────────────────────────
