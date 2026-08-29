@@ -123,12 +123,26 @@ async function callMarg(url, { method = 'POST', body, token } = {}) {
 // Marg ka "Status" hamesha HTTP code me nahi aata — 200 ke saath bhi
 // {"Status":"Fail"} ho sakta hai. Dono check karna zaroori hai, warna
 // failed update bhi success dikh jayega.
+/* Marg do alag convention use karta hai, dono dekhe gaye hain:
+ *   UpdateTicketStatus        → {"Status":"1", "Message":"Updated Successfully."}
+ *                               {"Status":"0", "Message":"Invalid Bss Disposition"}
+ *   GetMBTicketStatusDetail   → {"Status":"Success", "Details":[...]}
+ * Pehle ye sirf /success/i test karta tha, to "1" par bhi FALSE lautata —
+ * yaani har SAFAL update ko failure maana jata tha. User ko
+ * "Update failed: Updated Successfully." dikhta tha, audit me success:false
+ * likha jata tha, aur 502 ki wajah se cache patch + resync dono skip ho jate.
+ */
 function margSucceeded(res) {
   if (!res.ok) return false;
   const d = res.data;
-  if (d && typeof d === 'object' && typeof d.Status === 'string')
-    return /success/i.test(d.Status);
-  return true;
+  if (!d || typeof d !== 'object') return true;   // koi body nahi → HTTP par bharosa
+  const s = d.Status;
+  if (s === undefined || s === null || s === '') return true;
+  if (typeof s === 'boolean') return s;
+  const t = String(s).trim();
+  if (t === '1' || /^(true|success)/i.test(t)) return true;
+  if (t === '0' || /^(false)/i.test(t) || /fail|error|invalid/i.test(t)) return false;
+  return true;   // anjaan value → HTTP 200 par bharosa, warna sahi update block ho jayega
 }
 function margMessage(res) {
   const d = res.data;
@@ -409,8 +423,16 @@ module.exports = async function handler(req, res) {
         message:     okUpdate ? null : margMessage(r),
       });
 
+      /* Marg ka apna message hi user tak jata hai — wo batata hai ki kaun sa
+         field galat hai ("Invalid Bss Disposition"), jo kisi bhi generic
+         prefix se zyada kaam ka hai. Pehle yahan "Update failed: " juda hota
+         tha, jisse success par "Update failed: Updated Successfully." jaisa
+         ulta-pulta message banta tha. */
       if (!okUpdate)
-        return res.status(502).json({ error: 'Update failed: ' + margMessage(r), marg: r.data });
+        return res.status(502).json({
+          error: margMessage(r) || 'Update failed (Marg ne koi message nahi bheja)',
+          marg: r.data,
+        });
 
       let cache = { patched: false, reason: 'not requested' };
       if (body.cachePatch && typeof body.cachePatch === 'object') {
@@ -420,7 +442,11 @@ module.exports = async function handler(req, res) {
           : { patched: false, reason: 'nothing to patch after sanitising' };
       }
 
-      return res.status(200).json({ ok: true, ticketNo: out.TicketNo, sent: out, marg: r.data, cache });
+      return res.status(200).json({
+        ok: true, ticketNo: out.TicketNo, sent: out,
+        message: margMessage(r),   // client isi ko toast me dikhata hai
+        marg: r.data, cache,
+      });
     }
 
     return res.status(400).json({ error: 'Unknown action: ' + action });
