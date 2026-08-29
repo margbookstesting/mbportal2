@@ -96,6 +96,7 @@ eq('intake counted',        m._in, 4);
 eq('exits counted',         m._out, 3);       // T1,T2,T6
 eq('flow ratio 3/4',        m.flow, 0.75);
 eq('ack in-TAT 50%',        m.ackTat, 50);    // T1 I, T2 O
+eq('ack in-TAT base = flagged only', m._ackN, 2);
 eq('go-live in-TAT 100%',   m.glvTat, 100);   // T6
 eq('QA bypass 33%',         Math.round(m.bypass), 33);  // T6 skipped b+c, of 3 exits
 eq('cycle P50 = 4d',        m.cycP50, 4);     // T1=4, T2=4, T6=56 → P50 4
@@ -107,6 +108,26 @@ eq('top2 load = 100%',      m.loadTop2, 100); // only 2 testers exist
 eq('accounts 5+ = 0',       m.acc5, 0);
 eq('dup share > 0 (3 gst tickets cluster)', m.dupShare > 0, true);
 eq('dup base = intake with desc', m._dupN, 4);
+
+console.log('== 4b. in-TAT denominator = sirf TAT flag wale tickets ==');
+/* Dashboard KPI cards `tatTot = intat + outtat` use karte hain, poora set
+   nahi. Ye test isi parity ko pakadta hai — pehle Management 13% ki jagah
+   11% dikha raha tha kyunki bina flag wale bhi denominator me the. */
+sandbox.RAW=[
+  {n:'A1', b:'2026-08-24', bt:'I'},
+  {n:'A2', b:'2026-08-24', bt:'O'},
+  {n:'A3', b:'2026-08-24'},              // TAT flag abhi nahi aaya
+  {n:'A4', b:'2026-08-24'},
+  {n:'A5', b:'2026-08-25', et:'I', e:'2026-08-25'},
+  {n:'A6', b:'2026-08-25', e:'2026-08-26'},   // go-live flag nahi
+];
+const t=sandbox.mgCompute(W[0], W[1]);
+eq('ack in-TAT ignores unflagged rows', t.ackTat, 50);   // 1 of (1 I + 1 O)
+eq('ack base counts only flagged',      t._ackN, 2);
+eq('go-live in-TAT ignores unflagged',  t.glvTat, 100);  // 1 I, 0 O
+eq('go-live base counts only flagged',  t._glvN, 1);
+eq('no flags at all → null, not 0',
+   sandbox.mgCompute('2026-08-21','2026-08-27').ackTat!==null, true);
 
 console.log('== 5. empty window is safe ==');
 const e0=sandbox.mgCompute('2020-01-01','2020-01-07');

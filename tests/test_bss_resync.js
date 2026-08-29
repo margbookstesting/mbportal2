@@ -61,5 +61,16 @@ console.log('== 5. management tab har baar recompute karta hai ==');
 eq('_mgBooted flag hata diya gaya', /_mgBooted/.test(js), false);
 eq('mgmtInit seedha render karta hai', /function mgmtInit\(\)\{[\s\S]*?mgmtRender\(\);\n\}/.test(js), true);
 
+console.log('== 6. window.BSS exports rename ke baad bhi kaam karte hain ==');
+/* Rename karte waqt ye export block chhoot gaya tha aur dono undefined ho gaye
+   the. Runtime par kuch nahi toota (koi consumer nahi hai), par test harness
+   inhi naamon se BSS ka context banate hain. */
+eq('BSS.statusKeyOf renamed fn par point karta hai',
+   /statusKeyOf: \(typeof bssStatusKeyOf!=="undefined"\?bssStatusKeyOf/.test(js), true);
+eq('BSS.statusLabelOf renamed fn par point karta hai',
+   /statusLabelOf: \(typeof bssStatusLabelOf!=="undefined"\?bssStatusLabelOf/.test(js), true);
+eq('purane undefined-wale exports nahi bache',
+   /statusKeyOf: \(typeof statusKeyOf!="undefined"/.test(js), false);
+
 console.log('\nRESYNC RESULTS: '+p+' passed, '+f+' failed');
 process.exit(f?1:0);

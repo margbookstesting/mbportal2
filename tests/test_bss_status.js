@@ -26,5 +26,34 @@ eq('short-code fallback works',          ev("bssStatusKeyOf({sc:'RU'})"), 'rfu')
 eq('unknown falls to pending',           ev("bssStatusKeyOf({st:'Totally Unknown'})"), 'pending');
 eq('every key has a MATCH or is fallback',
   ev('STATUSES.filter(s=>!MATCH[s.key]).length'), 0);
+console.log('== colours Support Dashboard se match karte hain ==');
+
+const sup=fs.readFileSync('/home/claude/mb/mbportal2-main/support_dashboard.html','utf8');
+eq('har status ka apna cls hai (inline colour nahi)',
+   ev("STATUSES.filter(s=>!s.cls).length"), 0);
+eq('koi purana `c:` property nahi bachi', /\{key:'[a-z]+',\s*label:'[^']*',\s*c:'--/.test(html), false);
+eq('inline background var hata diya gaya',
+   /kpi-top" style="background:var\(\$\{d\.c\}\)/.test(html), false);
+eq('card par cls lagti hai', /class="kpi \$\{d\.cls\}"/.test(html), true);
+// har istemal hone wali class ke liye CSS maujood honi chahiye
+const used=[...new Set(ev("STATUSES.map(s=>s.cls)"))];
+eq('har cls ke liye #tabBss stripe rule hai',
+   used.filter(c=>!new RegExp('#tabBss \\.'+c+'\\s+\\.kpi-top').test(html)).length, 0);
+eq('har cls ke liye #tabBss label rule hai',
+   used.filter(c=>!new RegExp('#tabBss \\.'+c+'\\s+\\.kpi-s').test(html)).length, 0);
+// gradient vars BSS scope me define hone chahiye, warna stripe khali dikhegi
+const grads=['--it-g','--ack-g','--ip-g','--tst-g','--uat-g','--glv-g','--ret-g','--cl-g','--oth-g'];
+const bssScope=html.slice(html.indexOf('#tabBss{'), html.indexOf('#tabBss *{'));
+eq('saare gradient vars #tabBss scope me hain',
+   grads.filter(g=>!bssScope.includes(g+':')).length, 0);
+// values Support ke barabar hon
+eq('gradient values Support se identical',
+   grads.filter(g=>{
+     const m=sup.match(new RegExp(g.replace(/-/g,'\\-')+':(linear-gradient\\([^)]*\\))'));
+     return m && !bssScope.includes(g+':'+m[1]);
+   }).length, 0);
+eq('Transfer To Support Support ki tarah HARA hai (c-sup → glv-g)',
+   /#tabBss \.c-sup\s+\.kpi-top\{background:var\(--glv-g\)/.test(html), true);
+
 console.log('\nSTATUS RESULTS: '+p+' passed, '+f+' failed');
 process.exit(f?1:0);
