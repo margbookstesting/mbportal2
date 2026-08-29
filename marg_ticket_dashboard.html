@@ -1189,6 +1189,18 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
   --it:#0d9488; --ack:#0891b2; --ip:#0f766e; --tst:#b45309; --uat:#0284c7;
   --glv:#15803d; --cl:#475569; --oth:#b45309; --sup:#dc2626; --ret:#0891b2;
+  /* Gradient stripes — support_dashboard.html se hu-ba-hu. BSS pehle flat
+     `background:var(--oth)` inline lagata tha, isliye cards Support se alag
+     dikhte the. Ab dono jagah ek hi look hai. */
+  --it-g:linear-gradient(135deg,#0d9488,#0f766e);
+  --ack-g:linear-gradient(135deg,#0891b2,#0e7490);
+  --ip-g:linear-gradient(135deg,#14b8a6,#0f766e);
+  --tst-g:linear-gradient(135deg,#f59e0b,#b45309);
+  --uat-g:linear-gradient(135deg,#0891b2,#0284c7);
+  --glv-g:linear-gradient(135deg,#22c55e,#15803d);
+  --ret-g:linear-gradient(135deg,#06b6d4,#0891b2);
+  --cl-g:linear-gradient(135deg,#64748b,#475569);
+  --oth-g:linear-gradient(135deg,#f59e0b,#b45309);
   --sh-s:0 1px 3px rgba(8,16,30,.06),0 1px 2px rgba(8,16,30,.04);
   --sh-m:0 4px 16px rgba(8,16,30,.08),0 1px 3px rgba(8,16,30,.04);
   --sh-l:0 12px 48px rgba(8,16,30,.12),0 4px 8px rgba(8,16,30,.06);
@@ -1235,7 +1247,32 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 @media(max-width:620px){#tabBss .kpi-row{grid-template-columns:1fr}}
 #tabBss .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
 #tabBss .kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
-#tabBss .kpi-top{height:4px}
+#tabBss .kpi-top{height:5px}
+/* Status-wise stripe + label colour. Support Dashboard ke `.c-*` rules ka
+   hi copy (wahan .kpi-top / .kpi-stage par lagte hain, yahan .kpi-top /
+   .kpi-s par). Pehle ye inline `style="background:var(--oth)"` se lagta tha
+   — flat colour, koi gradient/shadow nahi. Naya `approval` status `c-oth`
+   par hai, Pending ke saath. */
+#tabBss .c-it   .kpi-top{background:var(--it-g);  box-shadow:0 2px 12px rgba(13,148,136,.3)}
+#tabBss .c-ack  .kpi-top{background:var(--ack-g); box-shadow:0 2px 12px rgba(13,148,136,.3)}
+#tabBss .c-ip   .kpi-top{background:var(--ip-g);  box-shadow:0 2px 12px rgba(5,150,105,.3)}
+#tabBss .c-sup  .kpi-top{background:var(--glv-g); box-shadow:0 2px 12px rgba(21,128,61,.3)}
+#tabBss .c-ret  .kpi-top{background:var(--ret-g); box-shadow:0 2px 12px rgba(8,145,178,.3)}
+#tabBss .c-tst  .kpi-top{background:var(--tst-g); box-shadow:0 2px 12px rgba(180,83,9,.3)}
+#tabBss .c-uat  .kpi-top{background:var(--uat-g); box-shadow:0 2px 12px rgba(124,58,237,.3)}
+#tabBss .c-glv  .kpi-top{background:var(--glv-g); box-shadow:0 2px 12px rgba(21,128,61,.3)}
+#tabBss .c-cl   .kpi-top{background:var(--cl-g);  box-shadow:0 2px 12px rgba(71,85,105,.3)}
+#tabBss .c-oth  .kpi-top{background:var(--oth-g); box-shadow:0 2px 12px rgba(180,83,9,.3)}
+#tabBss .c-it   .kpi-s{color:var(--it)}
+#tabBss .c-ack  .kpi-s{color:var(--ack)}
+#tabBss .c-ip   .kpi-s{color:var(--ip)}
+#tabBss .c-sup  .kpi-s{color:var(--glv)}
+#tabBss .c-ret  .kpi-s{color:var(--ret)}
+#tabBss .c-tst  .kpi-s{color:var(--tst)}
+#tabBss .c-uat  .kpi-s{color:var(--uat)}
+#tabBss .c-glv  .kpi-s{color:var(--glv)}
+#tabBss .c-cl   .kpi-s{color:var(--cl)}
+#tabBss .c-oth  .kpi-s{color:var(--oth)}
 #tabBss .kpi-b{padding:7px 10px 5px}
 #tabBss .kpi-s{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
 #tabBss .kpi-n{font-size:21px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
@@ -3756,11 +3793,24 @@ function mgCompute(from, to){
   const inW = d => !!d && d>=from && d<=to;
 
   // ── FLOW ──
+  /* in-TAT % ka denominator SIRF wo tickets hain jinke paas TAT flag hai
+     (I ya O) — jinka TAT data abhi aaya hi nahi wo bahar. Yahi Dashboard tab
+     ke KPI cards karte hain (renderKPIs: `tatTot = intat + outtat`). Pehle
+     yahan poora set denominator me tha, isliye Management ka number Dashboard
+     se kam dikhta tha (13% ki jagah 11%). */
+  const tatPct=(rows,key)=>{
+    const inC=rows.filter(r=>r[key]==='I').length;
+    const outC=rows.filter(r=>r[key]==='O').length;
+    return (inC+outC) ? 100*inC/(inC+outC) : null;
+  };
+
   const ack=R.filter(r=>inW(r.b));
-  o.ackTat = ack.length ? 100*ack.filter(r=>r.bt==='I').length/ack.length : null;
+  o.ackTat = tatPct(ack,'bt');
+  o._ackN  = ack.filter(r=>r.bt==='I'||r.bt==='O').length;
 
   const glv=R.filter(r=>inW(r.e));
-  o.glvTat = glv.length ? 100*glv.filter(r=>r.et==='I').length/glv.length : null;
+  o.glvTat = tatPct(glv,'et');
+  o._glvN  = glv.filter(r=>r.et==='I'||r.et==='O').length;
 
   const intake=R.filter(r=>inW(r.a));          // IT me aaye
   const exits =R.filter(r=>inW(r.d));          // IT se nikle (Close by IT)
@@ -3823,8 +3873,8 @@ function mgCompute(from, to){
 
 const MG_ROWS=[
   {sec:'Support'},
-  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge stage jinki date is hafte me hai',        f:'pct',  target:'≥ 80%',  better:'up'},
-  {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — sabse kharab stage (slide 2)',     f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date is hafte me — sirf TAT flag wale tickets par',        f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — sirf TAT flag wale tickets par',     f:'pct',  target:'≥ 80%',  better:'up'},
   {id:'aged30',    label:'Aged backlog 30d+',     note:'IT ke paas khule, 30+ din se koi stage change nahi',  f:'num',  target:'↓ har hafte', better:'down'},
   {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — is hafte IT me aayi tickets par', f:'pct', target:'< 10%', better:'down'},
   {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
@@ -3938,7 +3988,9 @@ function mgmtRenderNow(){
   if(f) f.innerHTML=
     '<b>Is hafte ka base:</b> '+fmt(cur._in)+' tickets IT me aaye, '+fmt(cur._out)+' nikle, '+
     fmt(cur._open)+' abhi khule ('+fmt(cur._assigned)+' assigned). '+
-    'Cycle time '+fmt(cur._cycN)+' tickets par, duplicate share '+fmt(cur._dupN)+' par.<br>'+
+    'Cycle time '+fmt(cur._cycN)+' tickets par, duplicate share '+fmt(cur._dupN)+' par, '+
+    'Acknowledge in-TAT '+fmt(cur._ackN)+' par aur Go-Live in-TAT '+fmt(cur._glvN)+' par '+
+    '(in-TAT % sirf un tickets par nikalta hai jinka TAT flag aa chuka hai — wahi Dashboard tab karta hai).<br>'+
     '<b>Padhne se pehle:</b> Return-to-Support exits count nahi hote — BSS us event ki koi date nahi deta, '+
     'to flow ratio thoda upar dikhega. Ek ticket do baar IT me aaya ho to ek hi baar gina jata hai '+
     '(API har stage ki sirf latest date rakhta hai). Stock metrics us din ka haal stage dates se '+
@@ -7611,23 +7663,25 @@ async function signOut(){await sb.auth.signOut();location.replace('index.html');
    confusion na ho ki kaunsa version kahan chal raha hai. ── */
 function _normSt(s){return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim();}
 const STATUSES=[
-  {key:'pending',   label:'Pending',                c:'--oth'},
-  {key:'approval',  label:'Approval Pending',       c:'--oth'},
-  {key:'it',        label:'Transfer To IT',         c:'--it'},
-  {key:'ack',       label:'Acknowledged',           c:'--ack'},
-  {key:'ip',        label:'In-Progress',            c:'--ip'},
-  {key:'rfcr',      label:'Ready For Code Review',  c:'--uat'},
-  {key:'rft',       label:'Ready For Testing',      c:'--tst'},
-  {key:'reopentest',label:'Re-Open From Testing',   c:'--ret'},
-  {key:'rfm',       label:'Ready For Merging',      c:'--uat'},
-  {key:'rfu',       label:'Ready For UAT',          c:'--uat'},
-  {key:'rgl',       label:'Ready For Go Live',      c:'--glv'},
-  {key:'sp',        label:'Transfer To Support',    c:'--sup'},
-  {key:'rts',       label:'Return To Support',      c:'--ret'},
-  {key:'closed',    label:'Closed',                 c:'--cl'},
-  {key:'reopen',    label:'Re-Open',                c:'--ret'},
-  {key:'future',    label:'Future Development',     c:'--oth'},
-  {key:'rejected',  label:'Rejected',               c:'--sup'},
+  {key:'pending',   label:'Pending',                cls:'c-oth'},
+  {key:'approval',  label:'Approval Pending',       cls:'c-oth'},
+  {key:'it',        label:'Transfer To IT',         cls:'c-it'},
+  {key:'ack',       label:'Acknowledged',           cls:'c-ack'},
+  {key:'ip',        label:'In-Progress',            cls:'c-ip'},
+  {key:'rfcr',      label:'Ready For Code Review',  cls:'c-uat'},
+  {key:'rft',       label:'Ready For Testing',      cls:'c-tst'},
+  {key:'reopentest',label:'Re-Open From Testing',   cls:'c-ret'},
+  {key:'rfm',       label:'Ready For Merging',      cls:'c-uat'},
+  {key:'rfu',       label:'Ready For UAT',          cls:'c-uat'},
+  {key:'rgl',       label:'Ready For Go Live',      cls:'c-glv'},
+  /* Support Dashboard me "Transferred To Support" HARA hai (c-sup → glv-g),
+     laal nahi — IT ke liye wo ticket done hai. Wahi yahan bhi. */
+  {key:'sp',        label:'Transfer To Support',    cls:'c-sup'},
+  {key:'rts',       label:'Return To Support',      cls:'c-ret'},
+  {key:'closed',    label:'Closed',                 cls:'c-cl'},
+  {key:'reopen',    label:'Re-Open',                cls:'c-ret'},
+  {key:'future',    label:'Future Development',     cls:'c-oth'},
+  {key:'rejected',  label:'Rejected',               cls:'c-sup'},
 ];
 /* `approval` naya key hai. Pehle "Approval Pending" chup-chaap Pending me gin
    raha tha — matching ka doosra loop substring par chalta hai aur
@@ -7785,10 +7839,10 @@ function renderKPIs(){
   VIEW.forEach(r=>{const k=bssStatusKeyOf(r);if(!by[k])return;by[k].t++;by[k][bucketOf(r)]++;});
   document.getElementById('kpis').innerHTML=STATUSES.map(d=>{
     const b=by[d.key];
-    return `<div class="kpi">
-      <div class="kpi-top" style="background:var(${d.c})"></div>
+    return `<div class="kpi ${d.cls}">
+      <div class="kpi-top"></div>
       <div class="kpi-b">
-        <div class="kpi-s" style="color:var(${d.c})">${esc(d.label)}</div>
+        <div class="kpi-s">${esc(d.label)}</div>
         <div class="kpi-n">${fmt(b.t)}</div>
         <div class="kpi-splits">
           <div class="kpi-sp"><div class="l">${curL}</div><div class="v">${fmt(b.cur)}</div></div>
@@ -8280,7 +8334,7 @@ document.addEventListener('keydown',e=>{
 });
 
 
-window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof statusKeyOf!=="undefined"?statusKeyOf:undefined), statusLabelOf: (typeof statusLabelOf!=="undefined"?statusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
+window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof bssStatusKeyOf!=="undefined"?bssStatusKeyOf:undefined), statusLabelOf: (typeof bssStatusLabelOf!=="undefined"?bssStatusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
 window.BSS.__booted = false;
 window.BSS.boot = function(){
   if(window.BSS.__booted) return;
