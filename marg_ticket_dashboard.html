@@ -1570,15 +1570,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 }
 #tabUp .btn-excel:hover{opacity:.88;transform:translateY(-1px)}
 /* Per-section category buttons */
-#tabUp .sec-cat-btn{
-  padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;
-  cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);
-  transition:.15s;font-family:'Sora',sans-serif;
-}
-#tabUp .sec-cat-btn:hover{opacity:.8}
-#tabUp .sc-active-dev{background:var(--blue)!important;color:#fff!important;border-color:var(--blue)!important}
-#tabUp .sc-active-bug{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important}
-#tabUp .sc-active-other{background:var(--muted)!important;color:#fff!important;border-color:var(--muted)!important}
+/* .sec-cat-btn / .sc-active-* hata diye gaye — per-section category
+   buttons ab KPI card ki chips hain, list header nahi raha. */
 /* No data */
 #tabUp .no-data{text-align:center;padding:60px 20px;color:var(--muted)}
 #tabUp .no-data-icon{font-size:48px;margin-bottom:12px}
@@ -1700,6 +1693,18 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 }
 #tabUp .modal-close:hover{background:var(--red-l);border-color:var(--red-m);color:var(--red)}
 #tabUp .modal-body{padding:20px 24px}
+/* ── KPI card ab clickable hai ── */
+#tabUp .sum-clickable{cursor:pointer;transition:transform .14s ease, box-shadow .14s ease}
+#tabUp .sum-clickable:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(8,16,30,.12)}
+#tabUp .sum-cat-chip{cursor:pointer;transition:filter .14s ease}
+#tabUp .sum-cat-chip:hover{filter:brightness(.93)}
+/* ── Bucket list modal ──
+   Detail modal (#ticketModal) 640px ka hai; ye list wala chauda chahiye
+   kyunki andar wahi cards-grid hai jo pehle page par thi. */
+#tabUp .up-list-box{max-width:1180px}
+#tabUp .up-list-title{font-size:15px;font-weight:800;color:var(--text)}
+#tabUp .up-list-sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+#tabUp #upListBody{max-height:74vh;overflow:auto}
 #tabUp .modal-section{margin-bottom:18px}
 #tabUp .modal-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:5px}
 #tabUp .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -2761,6 +2766,23 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 
 <!-- Sections -->
   <div id="sectionsContainer"></div>
+
+<!-- Bucket list modal: KPI card / chip par click karne se khulta hai. Cards
+     wahi hain jo pehle inline list me the. Row par click → detail modal
+     (#ticketModal), jo iske upar baithta hai. -->
+<div id="upListModal" class="modal-backdrop" style="display:none" onclick="UP.closeBucket(event)">
+  <div class="modal-box up-list-box">
+    <div class="modal-header">
+      <div style="flex:1">
+        <div class="up-list-title" id="upListTitle">—</div>
+        <div class="up-list-sub" id="upListSub"></div>
+      </div>
+      <button class="btn-excel" onclick="UP.exportBucket()">⬇ Excel</button>
+      <button class="modal-close" onclick="UP.closeBucketDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="upListBody"></div>
+  </div>
+</div>
 
 </div>
 
@@ -8475,14 +8497,14 @@ function renderSummaryCards(){
   const row = document.getElementById('summaryRow');
   if(!row) return;
   row.innerHTML = SECTIONS.map(sec=>`
-    <div class="sum-card${sec.overdue?' od':''}">
+    <div class="sum-card${sec.overdue?' od':''} sum-clickable" onclick="UP.openBucket('${sec.id}','all')" title="Click to see tickets">
       <div class="sum-card-label">${sec.icon} ${sec.label}</div>
       <div class="sum-card-val" id="${sec.countEl}">0</div>
       <div class="sum-card-sub">${sec.overdue?'Deadline missed — still open':'Deadline approaching'}</div>
       <div class="sum-cat-row">
-        <span class="sum-cat-chip sum-cat-dev" id="${sec.chipDev}">Dev: 0</span>
-        <span class="sum-cat-chip sum-cat-bug" id="${sec.chipBug}">Bugs: 0</span>
-        <span class="sum-cat-chip sum-cat-oth" id="${sec.chipOth}">Other: 0</span>
+        <span class="sum-cat-chip sum-cat-dev" id="${sec.chipDev}" onclick="event.stopPropagation();UP.openBucket('${sec.id}','dev')" title="Only Development">Dev: 0</span>
+        <span class="sum-cat-chip sum-cat-bug" id="${sec.chipBug}" onclick="event.stopPropagation();UP.openBucket('${sec.id}','bug')" title="Only Bugs">Bugs: 0</span>
+        <span class="sum-cat-chip sum-cat-oth" id="${sec.chipOth}" onclick="event.stopPropagation();UP.openBucket('${sec.id}','other')" title="Only Other">Other: 0</span>
       </div>
       <div class="sum-card-bar"><div class="sum-card-bar-fill" id="${sec.barEl}" style="background:${sec.color};width:0%"></div></div>
     </div>`).join('');
@@ -8490,18 +8512,23 @@ function renderSummaryCards(){
 }
 
 // ── Detect category ──────────────────────────────────────────────────────────
+/* Pehle ye desc/remarks me keyword dhoondta tha ("bug", "error", "development"),
+   jabki TAT dashboard `bugDevClass()` se disposition par chalta hai. Nateeja:
+   ek hi ticket dono jagah alag category me girta tha aur numbers kabhi match
+   nahi karte the. Ab dono ek hi source par hain.
+   TAT ka split 5-way hai (Bug / Development / Improvement / Data Updation /
+   Others); Upcoming ke paas teen chips hain, to baaki teen "other" me jaate
+   hain. Bug aur Development ke counts ab TAT se hu-ba-hu milenge. */
 function detectCategory(rec){
-  const text = [rec.desc||'', rec.remarks||'', rec.probType||'', rec.subDisp||'', rec.mainDisp||''].join(' ').toLowerCase();
-  const devKeywords = ['development','develop','dev ','feature','enhancement','module','coding','implementation','new requirement'];
-  const bugKeywords = ['bug','error','issue','fix','crash','defect','incorrect','wrong','not working','failed'];
-  if(devKeywords.some(k=>text.includes(k))) return 'dev';
-  if(bugKeywords.some(k=>text.includes(k))) return 'bug';
+  const c = (typeof bugDevClass==='function') ? bugDevClass(rec) : 'Others';
+  if(c==='Bug')         return 'bug';
+  if(c==='Development') return 'dev';
   return 'other';
 }
 
 // ── Excel Export ─────────────────────────────────────────────────────────────
-function exportExcel(sectionId, sectionLabel, event){
-  event.stopPropagation();
+function exportExcel(sectionId, sectionLabel, event, rowsOverride){
+  if(event && event.stopPropagation) event.stopPropagation();
 
   const today = new Date(); today.setHours(0,0,0,0);
 
@@ -8517,7 +8544,10 @@ function exportExcel(sectionId, sectionLabel, event){
   const stage   = document.getElementById('filterStage').value;
 
   // Filter data for this section
-  const items = RAW.filter(r=>{
+  /* Modal se aane par jo rows screen par dikh rahi hain wahi export honi
+     chahiye (category chip laga ho sakta hai). Warna neeche wala apna
+     recompute chalta hai — wahi purana behaviour. */
+  const items = rowsOverride ? rowsOverride : RAW.filter(r=>{
     if(!r.tld) return false;
     /* Closed/support/rejected tickets deadline list me nahi aate — na Upcoming
        me, na Overdue me. Inpar kaam baaki hi nahi hai. */
@@ -8726,11 +8756,6 @@ function fillSelect(id, items, placeholder, isObj=false){
 }
 
 // ── Per-section category filter ──────────────────────────────────────────────
-function setSectionCat(secId, cat){
-  if(!window._secCats) window._secCats = {};
-  window._secCats[secId] = cat;
-  applyFilters();
-}
 
 // ── Apply filters & render ───────────────────────────────────────────────────
 function applyFilters(){
@@ -8795,101 +8820,94 @@ function applyFilters(){
     setT(sec.chipOth, 'Other: '+items.filter(({r})=>detectCategory(r)==='other').length);
   });
 
-  // Render sections
-  let html = '';
-  SECTIONS.forEach((sec,i)=>{
-    const items = buckets[sec.id];
-    const secColor = sec.color;
-    // Per-section category state
-    const secCatKey = 'secCat_'+sec.id;
-    if(!window._secCats) window._secCats = {};
-    if(!window._secCats[sec.id]) window._secCats[sec.id] = 'all';
-    const activeCat = window._secCats[sec.id];
+  /* Neeche wali inline list hata di gayi hai — ab sirf KPI cards dikhte hain
+     aur ticket list card par click karne se modal me khulti hai. Buckets
+     yahan yaad rakh lete hain taaki openBucket() ko dobara compute na karna
+     pade (filters badalne par ye function waise bhi phir chalta hai). */
+  window._upBuckets = buckets;
 
-    // Filter items by section category
-    const secItems = activeCat === 'all' ? items
-      : items.filter(({r}) => detectCategory(r) === activeCat);
-
-    const devC  = items.filter(({r})=>detectCategory(r)==='dev').length;
-    const bugC  = items.filter(({r})=>detectCategory(r)==='bug').length;
-    const othC  = items.filter(({r})=>detectCategory(r)==='other').length;
-
-    html += `<div class="section${sec.overdue?' od':''}">
-      <div class="section-hdr">
-        <div class="section-icon" style="background:${secColor.replace('var(','').replace(')','')};opacity:.15;color:#000">
-          <span style="opacity:1">${sec.icon}</span>
-        </div>
-        <div>
-          <div class="section-title">${sec.label}</div>
-          <div class="section-sub">${sec.overdue
-            ? 'Deadline passed and the ticket is still open (not closed / transferred to support / rejected)'
-            : 'Timeline deadline within this range'}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap">
-          <button onclick="UP.setSectionCat('${sec.id}','all')"   class="sec-cat-btn ${activeCat==='all'  ?'sc-active-all':''}"  style="border-color:${secColor};${activeCat==='all'  ?'background:'+secColor+';color:#fff':''}" >All (${items.length})</button>
-          <button onclick="UP.setSectionCat('${sec.id}','dev')"   class="sec-cat-btn ${activeCat==='dev'  ?'sc-active-dev':''}"  >Development (${devC})</button>
-          <button onclick="UP.setSectionCat('${sec.id}','bug')"   class="sec-cat-btn ${activeCat==='bug'  ?'sc-active-bug':''}"  >Bugs (${bugC})</button>
-          <button onclick="UP.setSectionCat('${sec.id}','other')" class="sec-cat-btn ${activeCat==='other'?'sc-active-other':''}" >Other (${othC})</button>
-          <button class="btn-excel" onclick="UP.exportExcel('${sec.id}','${sec.label}',event)">⬇ Excel</button>
-        </div>
-      </div>`;
-
-    if(!secItems.length){
-      html += `<div class="empty-section">✅ No tickets in this category for this range</div>`;
-    } else {
-      html += `<div class="cards-grid">`;
-      secItems.forEach(({r, days})=>{
-        const cat = detectCategory(r);
-        const urgClass = `u-${sec.urgency}`;
-        const testerName = mbTesterOf(r)||'—';
-        const stageLabel = STAGE_LABELS[r.sc]||r.sc||'—';
-        const desc = (r.desc||r.remarks||'No description').slice(0,100);
-        const tldFmt = new Date(r.tld+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-        /* Overdue me days NEGATIVE hota hai — usko "18 days overdue" dikhana
-           hai, "-18 days" nahi. */
-        const od = days < 0, late = Math.abs(days);
-        const daysLabel = od
-          ? (late===1 ? '🚨 1 day overdue' : `🚨 ${late} days overdue`)
-          : (days===0 ? '🔴 Due today' : days===1 ? '🔴 Tomorrow' : days<=7 ? `🔴 ${days} days` : days<=15 ? `🟠 ${days} days` : days<=30 ? `🟡 ${days} days` : `🟢 ${days} days`);
-
-        const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
-        const catCls   = cat==='dev'?'cat-dev':cat==='bug'?'cat-bug':'cat-other';
-        html += `<div class="t-card ${urgClass}" onclick="UP.openTicketDetail('${r.n}')">
-          <div class="t-card-top">
-            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1">
-              <span class="t-ticket">${r.n||'—'}</span>
-              <span class="t-category ${catCls}">${catLabel}</span>
-            </div>
-            <span class="t-days-badge">${daysLabel}</span>
-          </div>
-          <div class="t-client">${r.u||'—'}</div>
-          <div class="t-desc" title="${(r.desc||r.remarks||'').replace(/"/g,'&quot;')}">${desc}</div>
-          <div class="t-tags">
-            <span class="t-tag stage">📍 ${stageLabel}</span>
-            ${testerName!=='—'?`<span class="t-tag">🧑‍💻 ${testerName}</span>`:''}
-            ${r.r&&r.r!=='—'?`<span class="t-tag rm">👔 ${r.r}</span>`:''}
-            ${r.dev&&r.dev!=='—'?`<span class="t-tag dev">💻 ${r.dev}</span>`:''}
-          </div>
-          <div class="t-footer">
-            <span class="t-date">📅 ${tldFmt}</span>
-            ${r.p?`<span style="font-size:10px;color:var(--muted)">${r.p}</span>`:''}
-          </div>
-        </div>`;
-      });
-      html += `</div>`;
-    }
-    html += `</div>`;
-  });
-
-  if(!html || filtered.length === 0){
-    html = `<div class="no-data">
+  const box = document.getElementById('sectionsContainer');
+  if(box) box.innerHTML = filtered.length ? '' : `<div class="no-data">
       <div class="no-data-icon">🗓️</div>
       <div style="font-weight:700;font-size:15px">No upcoming deadlines found</div>
       <div style="font-size:12px;margin-top:6px;color:var(--muted)">No tickets with timeline dates in next 60 days</div>
     </div>`;
-  }
+}
 
-  document.getElementById('sectionsContainer').innerHTML = html;
+/* KPI card / chip par click → us bucket ki ticket list modal me.
+   Cards wahi hain jo pehle inline list me the — sirf jagah badli hai, taaki
+   jo detail card par dikhti thi wahi yahan bhi dikhe. */
+function openBucket(secId, cat){
+  const sec = SECTIONS.find(s=>s.id===secId);
+  if(!sec) return;
+  const all = (window._upBuckets && window._upBuckets[secId]) || [];
+  const items = (!cat || cat==='all') ? all : all.filter(({r})=>detectCategory(r)===cat);
+  const catLbl = cat==='dev'?' · Development' : cat==='bug'?' · Bugs' : cat==='other'?' · Other' : '';
+
+  document.getElementById('upListTitle').innerHTML =
+    `${sec.icon} ${sec.label}${catLbl} <span style="font-weight:600;color:var(--muted)">— ${items.length} ticket${items.length===1?'':'s'}</span>`;
+  document.getElementById('upListSub').textContent = sec.overdue
+    ? 'Deadline passed and the ticket is still open (not closed / transferred to support / rejected)'
+    : 'Timeline deadline within this range';
+
+  document.getElementById('upListBody').innerHTML = items.length
+    ? `<div class="cards-grid">${items.map(it=>upCardHtml(it, sec)).join('')}</div>`
+    : `<div class="empty-section">✅ No tickets in this category for this range</div>`;
+
+  window._upListRows = items.map(({r})=>r);
+  window._upListSec  = secId;
+  window._upListName = (sec.label + catLbl).replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_');
+  document.getElementById('upListModal').style.display='flex';
+}
+function closeBucket(e){
+  if(e && e.target!==document.getElementById('upListModal')) return;
+  document.getElementById('upListModal').style.display='none';
+}
+function closeBucketDirect(){ document.getElementById('upListModal').style.display='none'; }
+function exportBucket(){
+  const rows = window._upListRows||[];
+  if(!rows.length) return;
+  exportExcel(window._upListSec, window._upListName||'Tickets', null, rows);
+}
+
+/* Ek ticket ka card. Pehle ye renderSections() ke andar inline bana tha;
+   ab modal aur (zaroorat pade to) kahin aur, dono jagah se reuse hota hai. */
+function upCardHtml({r, days}, sec){
+  const cat = detectCategory(r);
+  const urgClass = `u-${sec.urgency}`;
+  const testerName = mbTesterOf(r)||'—';
+  const stageLabel = STAGE_LABELS[r.sc]||r.sc||'—';
+  const desc = (r.desc||r.remarks||'No description').slice(0,100);
+  const tldFmt = new Date(r.tld+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  /* Overdue me days NEGATIVE hota hai — usko "18 days overdue" dikhana
+     hai, "-18 days" nahi. */
+  const od = days < 0, late = Math.abs(days);
+  const daysLabel = od
+    ? (late===1 ? '🚨 1 day overdue' : `🚨 ${late} days overdue`)
+    : (days===0 ? '🔴 Due today' : days===1 ? '🔴 Tomorrow' : days<=7 ? `🔴 ${days} days` : days<=15 ? `🟠 ${days} days` : days<=30 ? `🟡 ${days} days` : `🟢 ${days} days`);
+  const catLabel = cat==='dev'?'Development':cat==='bug'?'Bug':'Other';
+  const catCls   = cat==='dev'?'cat-dev':cat==='bug'?'cat-bug':'cat-other';
+  return `<div class="t-card ${urgClass}" onclick="UP.openTicketDetail('${r.n}')">
+    <div class="t-card-top">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1">
+        <span class="t-ticket">${r.n||'—'}</span>
+        <span class="t-category ${catCls}">${catLabel}</span>
+      </div>
+      <span class="t-days-badge">${daysLabel}</span>
+    </div>
+    <div class="t-client">${r.u||'—'}</div>
+    <div class="t-desc" title="${(r.desc||r.remarks||'').replace(/"/g,'&quot;')}">${desc}</div>
+    <div class="t-tags">
+      <span class="t-tag stage">📍 ${stageLabel}</span>
+      ${testerName!=='—'?`<span class="t-tag">🧑‍💻 ${testerName}</span>`:''}
+      ${r.r&&r.r!=='—'?`<span class="t-tag rm">👔 ${r.r}</span>`:''}
+      ${r.dev&&r.dev!=='—'?`<span class="t-tag dev">💻 ${r.dev}</span>`:''}
+    </div>
+    <div class="t-footer">
+      <span class="t-date">📅 ${tldFmt}</span>
+      ${r.p?`<span style="font-size:10px;color:var(--muted)">${r.p}</span>`:''}
+    </div>
+  </div>`;
 }
 
 function openTicketDetail(n){
@@ -8979,7 +8997,7 @@ window.mbSignOut = window.mbSignOut || async function(){
 };
 
 
-window.UP = { applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), closeModal: (typeof closeModal!=="undefined"?closeModal:undefined), detectCategory: (typeof detectCategory!=="undefined"?detectCategory:undefined), exportExcel: (typeof exportExcel!=="undefined"?exportExcel:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), isDoneForDeadline: (typeof isDoneForDeadline!=="undefined"?isDoneForDeadline:undefined), loadData: (typeof loadData!=="undefined"?loadData:undefined), openTicketDetail: (typeof openTicketDetail!=="undefined"?openTicketDetail:undefined), populateFilters: (typeof populateFilters!=="undefined"?populateFilters:undefined), renderSummaryCards: (typeof renderSummaryCards!=="undefined"?renderSummaryCards:undefined), setSectionCat: (typeof setSectionCat!=="undefined"?setSectionCat:undefined), startLoaderTimer: (typeof startLoaderTimer!=="undefined"?startLoaderTimer:undefined), stopLoaderTimer: (typeof stopLoaderTimer!=="undefined"?stopLoaderTimer:undefined) };
+window.UP = { applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), closeModal: (typeof closeModal!=="undefined"?closeModal:undefined), detectCategory: (typeof detectCategory!=="undefined"?detectCategory:undefined), exportExcel: (typeof exportExcel!=="undefined"?exportExcel:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), isDoneForDeadline: (typeof isDoneForDeadline!=="undefined"?isDoneForDeadline:undefined), loadData: (typeof loadData!=="undefined"?loadData:undefined), openTicketDetail: (typeof openTicketDetail!=="undefined"?openTicketDetail:undefined), openBucket: (typeof openBucket!=="undefined"?openBucket:undefined), closeBucket: (typeof closeBucket!=="undefined"?closeBucket:undefined), closeBucketDirect: (typeof closeBucketDirect!=="undefined"?closeBucketDirect:undefined), exportBucket: (typeof exportBucket!=="undefined"?exportBucket:undefined), populateFilters: (typeof populateFilters!=="undefined"?populateFilters:undefined), renderSummaryCards: (typeof renderSummaryCards!=="undefined"?renderSummaryCards:undefined), startLoaderTimer: (typeof startLoaderTimer!=="undefined"?startLoaderTimer:undefined), stopLoaderTimer: (typeof stopLoaderTimer!=="undefined"?stopLoaderTimer:undefined) };
 window.UP.__booted = false;
 window.UP.boot = function(){
   if(window.UP.__booted) return;
