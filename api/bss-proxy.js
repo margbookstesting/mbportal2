@@ -184,8 +184,15 @@ function sanitizePayload(raw) {
 // Do problem: (1) koi bhi arbitrary key ticket record me ghusa sakta tha,
 // (2) `__proto__` jaisi key Object.assign ke [[Set]] se prototype tak pahunch
 // sakti thi. Isliye sirf wahi keys allow hain jo parser bhi produce karta hai.
+// `st`/`ld` jaise text fields ke alawa STAGE DATES bhi patch hoti hain. Iske
+// bina update ke baad BSS ke KPI to move ho jate the (wo `st` padhte hain) par
+// TAT dashboard ke KPI wahin atke rehte the — wo stage dates par chalte hain
+// (a/b/c/rtd/uad/e/d). Reload par bhi purana hi dikhta tha, kyunki cache me
+// dates purani rehti thi. `sc` bhi shamil hai taaki short-code stale na rahe.
 const CACHE_PATCH_KEYS = new Set(['st', 'ld', 'mainDisp', 'probType', 'subDisp',
-                                  'assignto', 'dev', 'r', 'tld', 'jira']);
+                                  'assignto', 'dev', 'r', 'tld', 'jira',
+                                  'sc', 'a', 'b', 'c', 'd', 'e', 'cld',
+                                  'rtd', 'crd', 'mgd', 'uad', 'rfd', 'rod', 'fdd', 'rjd']);
 
 function sanitizeCachePatch(raw) {
   const out = {};
@@ -343,6 +350,23 @@ module.exports = async function handler(req, res) {
       if (!rec) return res.status(404).json({ error: `Ticket ${tn} was not found between ${from} and ${to}` });
 
       return res.status(200).json({ ok: true, ticket: rec });
+    }
+
+    // ── cachepatch (resync ke baad fresh values cache me likho) ────────────
+    // Update ke turant baad client us ticket ko Marg se dobara padhta hai
+    // (action:'ticket') aur parse karke stage dates nikalta hai. Wo dates
+    // yahan bheji jati hain, warna cache me purani dates rehti aur page
+    // reload par stage phir peeche chala jata. Auth/permission check upar
+    // ho chuka hai — ye wahi patchCache use karta hai jo update karta hai,
+    // aur sanitizeCachePatch ki whitelist se guzarta hai.
+    if (action === 'cachepatch') {
+      const tn = String(body.ticketNo || '').trim();
+      if (!tn) return res.status(400).json({ error: 'ticketNo required' });
+      const cp = sanitizeCachePatch(body.patch);
+      if (!Object.keys(cp).length)
+        return res.status(200).json({ ok: true, cache: { patched: false, reason: 'nothing to patch after sanitising' } });
+      const cache = await patchCache(tn, cp);
+      return res.status(200).json({ ok: true, ticketNo: tn, cache });
     }
 
     // ── update ─────────────────────────────────────────────────────────────
