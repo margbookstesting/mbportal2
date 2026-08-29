@@ -39,6 +39,32 @@ eq('KPI card clickable hai', /onclick="UP\.openBucket\('\$\{sec\.id\}','all'\)"/
   eq('chip '+c+' clickable', new RegExp("UP\\.openBucket\\('\\$\\{sec\\.id\\}','"+c+"'\\)").test(js), true));
 eq('chip click card ke click me nahi girta', /event\.stopPropagation\(\);UP\.openBucket/.test(js), true);
 
+console.log('== 2b. modal me list (table) view hai, cards nahi ==');
+eq('modal table render karta hai', /upListHtml\(items\)/.test(js), true);
+eq('cards-grid modal me nahi bharta', /`<div class="cards-grid">\$\{items\.map/.test(js), false);
+eq('table markup banta hai', /<table class="up-list-tbl">/.test(js), true);
+eq('table CSS maujood hai', /#tabUp \.up-list-tbl\{/.test(html), true);
+eq('header sticky hai (lambi list scroll hoti hai)',
+   /#tabUp \.up-list-tbl thead th\{[\s\S]{0,120}position:sticky/.test(html), true);
+eq('row click par detail modal', /<tr onclick="UP\.openTicketDetail/.test(js), true);
+// card ke saare fields list me bhi hone chahiye
+['Ticket','Category','Deadline status','Client','Description','Stage','Tester','RM','Developer','Deadline']
+  .forEach(h=>eq('column: '+h, new RegExp('<th>'+h+'</th>').test(js), true));
+eq('overdue ko positive dikhaya jata hai (\'-18 days\' nahi)',
+   /late\+' days overdue'/.test(js), true);
+eq('user text escape hota hai', /function upEsc\(/.test(js), true);
+eq('description title me poori dikhti hai', /title="\$\{upEsc\(desc\)\}"/.test(js), true);
+
+console.log('== 2c. do modal ek saath — stacking aur Escape ==');
+eq('detail modal DOM me list ke BAAD hai (upar paint hota hai)',
+   html.indexOf('id="upListModal"') < html.indexOf('id="ticketModal"'), true);
+eq('row click detail modal kholta hai', /getElementById\('ticketModal'\)\.style\.display = 'flex'/.test(js), true);
+eq('Escape pehle detail band karta hai', /const det = document\.getElementById\('ticketModal'\)/.test(js), true);
+eq('Escape phir list band karta hai', /const lst = document\.getElementById\('upListModal'\)/.test(js), true);
+eq('scroll lock dono modal par lagta hai (.modal-backdrop selector)',
+   /mbWatchModals\('tabUp', '\.modal-backdrop'\)/.test(js), true);
+eq('backdrop click list band karta hai', /onclick="UP\.closeBucket\(event\)"/.test(html), true);
+
 console.log('== 3. dead code saaf ==');
 eq('setSectionCat hata diya gaya', /function setSectionCat/.test(js), false);
 eq('UP export se bhi hata', /setSectionCat:/.test(js), false);
