@@ -21,8 +21,6 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 const MARG_API   = 'https://dbwork.margbooks.com/api/Other/usermoveDomain';
 const LOGIN_API  = 'https://dbwork.margbooks.com/api/Auth/login';
-const MARG_ORIGIN = process.env.MARG_ORIGIN || 'http://192.167.24.89:8086';
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
 const LOGIN_EMAIL    = process.env.MARG_LOGIN_EMAIL || '';
 const LOGIN_PASSWORD = process.env.MARG_LOGIN_PASSWORD || '';
 const STATIC_TOKEN   = process.env.MARG_TOKEN || '';
@@ -56,21 +54,14 @@ function jwtExpMs(t) {
 async function margLogin() {
   const r = await fetch(LOGIN_API, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Origin': MARG_ORIGIN,
-      'Referer': MARG_ORIGIN + '/',
-      'User-Agent': UA,
-    },
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/plain, */*' },
     body: JSON.stringify({ email: LOGIN_EMAIL, password: LOGIN_PASSWORD, token: '', roleid: 0, permission: [], isotpauth: 0 }),
   });
   const text = await r.text();
   let data; try { data = JSON.parse(text); } catch { data = text; }
   if (!r.ok) throw new Error('Marg login failed (HTTP ' + r.status + ')');
   const tok = findJwt(data);
-  if (!tok) throw new Error('Token not found in login response. Structure: ' +
+  if (!tok) throw new Error('No token found in the login response. Structure: ' +
     (typeof data === 'string' ? data.slice(0, 200) : JSON.stringify(data).slice(0, 300)));
   return tok;
 }
@@ -79,23 +70,18 @@ async function getMargToken(force) {
   if (LOGIN_EMAIL && LOGIN_PASSWORD) {
     const now = Date.now();
     if (!force && _cache.token && _cache.exp - 60000 > now) return _cache.token;
-    try {
-      const tok = await margLogin();
-      _cache = { token: tok, exp: jwtExpMs(tok) || (now + 10 * 60000) };
-      return tok;
-    } catch (e) {
-      if (STATIC_TOKEN) return STATIC_TOKEN;   // manual token fallback
-      throw e;
-    }
+    const tok = await margLogin();
+    _cache = { token: tok, exp: jwtExpMs(tok) || (now + 10 * 60000) };
+    return tok;
   }
   if (STATIC_TOKEN) return STATIC_TOKEN;
-  throw new Error('Server not configured: set MARG_LOGIN_EMAIL/PASSWORD (or MARG_TOKEN)');
+  throw new Error('Server not configured: MARG_LOGIN_EMAIL/PASSWORD (ya MARG_TOKEN) set karo');
 }
 
 async function callMove(token, payload) {
   const r = await fetch(MARG_API, {
     method: 'POST',
-    headers: { 'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'en-US,en;q=0.9', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Origin': MARG_ORIGIN, 'Referer': MARG_ORIGIN + '/', 'User-Agent': UA },
+    headers: { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
   const text = await r.text();
@@ -126,10 +112,10 @@ module.exports = async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   const { countrykey, key, version, istesting, iscrv, moveBy, emailid, dbinfolinkidstr } = body || {};
 
-  if (!countrykey) return res.status(400).json({ error: 'Please select a Country' });
-  if (version === undefined || istesting === undefined) return res.status(400).json({ error: 'Please select a Domain' });
-  if (moveBy === 'email' && !String(emailid || '').trim()) return res.status(400).json({ error: 'Please enter an Email ID' });
-  if (moveBy === 'dblink' && !String(dbinfolinkidstr || '').trim()) return res.status(400).json({ error: 'Please enter a DB InfoLinkID' });
+  if (!countrykey) return res.status(400).json({ error: 'Select a country' });
+  if (version === undefined || istesting === undefined) return res.status(400).json({ error: 'Select a domain' });
+  if (moveBy === 'email' && !String(emailid || '').trim()) return res.status(400).json({ error: 'Email ID daalo' });
+  if (moveBy === 'dblink' && !String(dbinfolinkidstr || '').trim()) return res.status(400).json({ error: 'DB InfoLinkID daalo' });
 
   const payload = {
     key: String(process.env.MARG_MOVE_KEY || key || ''),
@@ -139,7 +125,7 @@ module.exports = async function handler(req, res) {
     iscrv: Number(iscrv) || 0,
     istesting: Number(istesting),
     countrykey: String(countrykey),
-    Useremailid: (p && p.email) || MARG_USER_EMAIL || '',
+    Useremailid: MARG_USER_EMAIL || (p && p.email) || '',
   };
 
   // 4) Token lao -> move call -> 401/403 par ek baar re-login + retry
@@ -149,15 +135,15 @@ module.exports = async function handler(req, res) {
 
   let r;
   try { r = await callMove(mtok, payload); }
-  catch (e) { return res.status(502).json({ error: 'Could not reach Marg API: ' + (e.message || String(e)) }); }
+  catch (e) { return res.status(502).json({ error: 'Could not reach the Marg API: ' + (e.message || String(e)) }); }
 
   if (r.status === 401 || r.status === 403) {
     try { mtok = await getMargToken(true); r = await callMove(mtok, payload); }
-    catch (e) { return res.status(502).json({ error: 'Re-login failed: ' + (e.message || String(e)) }); }
+    catch (e) { return res.status(502).json({ error: 'Re-login fail: ' + (e.message || String(e)) }); }
   }
 
   if (r.status === 401 || r.status === 403)
-    return res.status(502).json({ error: 'Marg auth failed (even after re-login)', upstreamStatus: r.status });
+    return res.status(502).json({ error: 'Marg authentication failed (even after re-login)', upstreamStatus: r.status });
   if (!r.ok)
     return res.status(502).json({ error: 'Marg API error', upstreamStatus: r.status, upstream: r.data });
 
