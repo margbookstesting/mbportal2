@@ -3837,13 +3837,69 @@ function mgPctile(sorted,p){
   const i=Math.min(sorted.length-1, Math.max(0, Math.ceil(p/100*sorted.length)-1));
   return sorted[i];
 }
-/* Ticket X tareekh ko IT ke paas khula tha? a par aata hai, d par jata hai. */
+/* ── IT BACKLOG DEFINITION ──────────────────────────────────────────────
+   Backlog = ticket ka CURRENT STAGE (as of X) in 7 stages me se ek ho:
+     Acknowledge, In Progress, Ready For Code Review, Ready For Testing,
+     Reopened From Testing, Ready For Merging, Ready For UAT,
+     Ready To Go Live.
+
+   Transfer To IT BAHAR hai: ticket IT ko mil to gaya par kaam shuru nahi
+   hua. Reopened From Testing ANDAR hai: tester ne wapas developer ko
+   bheja, kaam abhi bhi IT ke paas hai.
+
+   Pehle ye "a lag gaya aur d/cld nahi hua" tha, jo galat tha — usme
+   ye sab bhi backlog gin jate the:
+     - Transfer To IT par pade tickets (abhi acknowledge hue hi nahi)
+     - Rejected / Future Development / Reopen
+   Isse backlog number upar dikhta tha.
+
+   MG_STAGE_ORDER tie-break ke liye hai: ek hi date par do stage lage ho
+   to baad wala (list me aage wala) current maana jata hai — exit/terminal
+   stages sabse aakhir me hain, to wo tie jeetenge. */
+const MG_STAGE_ORDER = ['a','b','c','rtd','crd','mgd','uad','rfd','e','rod','fdd','rjd','d','cld'];
+const MG_IT_BACKLOG  = new Set(['b','c','rtd','crd','mgd','uad','rfd','e']);
+
+/* X tareekh ko ticket kis stage par tha — sabse latest stage date <= X. */
+function mgStageAsOf(r, X){
+  let best='', bestD='';
+  for(const k of MG_STAGE_ORDER){
+    const v=r[k];
+    if(v && v<=X && v>=bestD){ bestD=v; best=k; }
+  }
+  return bestD ? best : '';
+}
+/* Ticket X tareekh ko IT ke backlog me tha?
+   DO shart, dono zaroori:
+     1. Ticket X tak IT me aaya ho (Transfer To IT date maujood ho).
+        Bina iske purane legacy rows (sirf Acknowledge date wale, 2023 ke)
+        backlog me ghus jate the — 38 aise tickets the.
+     2. X ka current stage 8 backlog stages me se ek ho. */
 function mgOpenAsOf(r, X){
   if(!r.a || r.a > X) return false;
-  if(r.d   && r.d   <= X) return false;
-  if(r.cld && r.cld <= X) return false;
-  return true;
+  return MG_IT_BACKLOG.has(mgStageAsOf(r, X));
 }
+/* Window ke andar backlog me kitni baar ghusa aur kitni baar nikla.
+   Ye event-level count hai, isliye ye identity HAMESHA sach rehti hai:
+     backlog(to) = backlog(from-1) + entries - exits
+   Ek ticket agar ek hi hafte me ghus kar nikal gaya to dono me ginta hai. */
+function mgBacklogMoves(r, from, to){
+  const ev=MG_STAGE_ORDER.map(k=>({k,d:r[k]})).filter(x=>x.d)
+    .sort((x,y)=> x.d<y.d?-1 : x.d>y.d?1
+                : MG_STAGE_ORDER.indexOf(x.k)-MG_STAGE_ORDER.indexOf(y.k));
+  let inB=false, seenIT=false, entries=0, exits=0;
+  for(const e of ev){
+    if(e.k==='a') seenIT=true;
+    /* seenIT wahi shart hai jo mgOpenAsOf me hai — dono ko same rehna
+       chahiye, warna start + entries - exits = end toot jata hai. */
+    const nowIn=seenIT && MG_IT_BACKLOG.has(e.k);
+    if(nowIn!==inB){
+      if(e.d>=from && e.d<=to){ if(nowIn) entries++; else exits++; }
+      inB=nowIn;
+    }
+  }
+  return {entries, exits};
+}
+
 /* X tak ki sabse latest stage date — "kitne din se hila nahi" ke liye. */
 function mgLastAct(r, X){
   let m='';
@@ -3901,27 +3957,44 @@ function mgCompute(from, to){
   o.glvTat = tatPct(glv,'et');
   o._glvN  = glv.filter(r=>r.et==='I'||r.et==='O').length;
 
-  const intake=R.filter(r=>inW(r.a));          // IT me aaye
-  const exits =R.filter(r=>inW(r.d));          // IT se nikle (Close by IT)
-  o._in=intake.length; o._out=exits.length;
-  o.flow = intake.length ? exits.length/intake.length : null;
+  /* Backlog flow: entries/exits WAHI definition follow karte hain jo backlog
+     karta hai. Pehle intake = "Transfer To IT date is hafte" aur exit =
+     "Transfer To Support date is hafte" tha — us se
+     backlog(24-Aug) + intake - exits  ≠  backlog(31-Aug)
+     kyunki (a) jo ticket IT ko mila par acknowledge nahi hua wo intake me
+     ginta tha par backlog me nahi, aur (b) Rejected / Future Development /
+     Reopen backlog se nikal jate the par exit me nahi ginte the. */
+  let _entries=0, _exits=0;
+  R.forEach(r=>{ const mv=mgBacklogMoves(r, from, to); _entries+=mv.entries; _exits+=mv.exits; });
+  o._in=_entries; o._out=_exits;
+  o.flow = _entries ? _exits/_entries : null;
+
+  /* Window shuru hone se ek din pehle ka backlog — footer me reconciliation
+     dikhane ke liye (aur regression test isi identity ko pakadta hai). */
+  o._openStart = R.filter(r=>mgOpenAsOf(r, mgShift(from,-1))).length;
+
+  /* Cycle time / QA bypass / Run-vs-Change abhi bhi Transfer-To-Support (d)
+     par hain. Wo "IT ne kaam khatam kiya" ka event hai — backlog membership
+     se alag sawaal, isliye jaan-bujh kar nahi badla. */
+  const dExits = R.filter(r=>inW(r.d));
+  o._dExitN = dExits.length;
 
   /* QA bypass = Transfer to IT se seedha Close by IT, Acknowledge/In Progress
      dono skip. Wahi shart jo Dashboard tab ke "Direct: IT → Close by IT"
      card me hai. */
-  o.bypass = exits.length ? 100*exits.filter(r=>r.a && !r.b && !r.c).length/exits.length : null;
+  o.bypass = dExits.length ? 100*dExits.filter(r=>r.a && !r.b && !r.c).length/dExits.length : null;
 
-  const cyc=exits.filter(r=>r.a && r.d).map(r=>mgDayDiff(r.a,r.d)).filter(n=>n>=0).sort((x,y)=>x-y);
+  const cyc=dExits.filter(r=>r.a && r.d).map(r=>mgDayDiff(r.a,r.d)).filter(n=>n>=0).sort((x,y)=>x-y);
   o.cycP50=mgPctile(cyc,50); o.cycP90=mgPctile(cyc,90); o._cycN=cyc.length;
 
-  const disp=exits.filter(r=>lastDisp(r));
+  const disp=dExits.filter(r=>lastDisp(r));
   o.runChange = disp.length ? 100*disp.filter(isBug).length/disp.length : null;
 
   /* Developer speed spread: sabse dheere vs sabse tez ka ratio. 3 se kam
      tickets wale dev ko chhod dete hain — ek hi ticket kisi ko "10x fast"
      dikha deta hai aur number bemaani ho jata hai. */
   const byDev={};
-  exits.forEach(r=>{ if(!r.dev || !r.a || !r.d) return;
+  dExits.forEach(r=>{ if(!r.dev || !r.a || !r.d) return;
     const dd=mgDayDiff(r.a,r.d); if(dd<0) return;
     (byDev[r.dev]=byDev[r.dev]||[]).push(dd); });
   const avgs=Object.entries(byDev).filter(([,v])=>v.length>=3)
@@ -3932,13 +4005,23 @@ function mgCompute(from, to){
     o._devFast=avgs[0]; o._devSlow=avgs[avgs.length-1];
   } else { o.devSpread=null; }
 
-  const dup=mgDupShare(intake);
+  const arrived=R.filter(r=>inW(r.a));   // is hafte IT me aaye (duplicate share ke liye)
+  const dup=mgDupShare(arrived);
   o.dupShare=dup.share; o._dupTop=dup.top; o._dupN=dup.n;
 
   // ── STOCK (as of window ke aakhri din) ──
   const open=R.filter(r=>mgOpenAsOf(r,to));
   o._open=open.length;
+  o.openBacklog=open.length;   // point-in-time stock: window ke aakhri din ka backlog
 
+  /* Backlog 30 din pehle. Window ke aakhri din se 30 din peeche ka stock —
+     31-Aug wale hafte me ye 01-Aug hoga, 24-Aug wale me 25-Jul. Isse pata
+     chalta hai mahine bhar me backlog kis taraf gaya. */
+  o._d30 = mgShift(to,-30);
+  o.backlog30 = R.filter(r=>mgOpenAsOf(r, o._d30)).length;
+
+  /* Idle-based aged backlog (30+ din se koi stage change nahi). Abhi table me
+     nahi dikhta — chahiye to MG_ROWS me row add kar do. */
   o.aged30 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=30; }).length;
   o.aged90 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=90; }).length;
 
@@ -3964,11 +4047,12 @@ const MG_ROWS=[
   {sec:'Support'},
   {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'≥ 80%',  better:'up'},
   {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — only tickets with a TAT flag',     f:'pct',  target:'≥ 80%',  better:'up'},
-  {id:'aged30',    label:'Aged backlog 30d+',     note:'Open with IT, no stage change for 30+ days',  f:'num',  target:'↓ week on week', better:'down'},
+  {id:'openBacklog',label:'IT backlog (open)',    note:'Ack / In Progress / Code Review / Testing / Reopened-from-Testing / Merging / UAT / Go Live — stock on the window\u2019s last day', f:'num', target:'↓ week on week', better:'down'},
+  {id:'backlog30', label:'Backlog 30 days earlier',note:'IT backlog as it stood 30 days before the window end \u2014 shows the month-over-month direction', f:'num', target:'↓ week on week', better:'down'},
   {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
   {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
   {id:'fcr',       label:'FCR / CSAT',            note:'Needs VoIP call data',                              f:'off'},
-  {id:'flow',      label:'Backlog flow ratio',    note:'Close by IT ÷ Transfer to IT (RS exits excluded)', f:'ratio',target:'≥ 1.0',  better:'up'},
+  {id:'flow',      label:'Backlog flow ratio',    note:'Backlog exits ÷ backlog entries in the window', f:'ratio',target:'≥ 1.0',  better:'up'},
   {id:'loadTop2',  label:'Load concentration',    note:'Share of open tickets held by the top 2 testers',        f:'pct',  target:'< 50%',  better:'down'},
   {id:'acc5',      label:'Accounts with 5+ open', note:'Five or more open tickets on a single license',          f:'num',  target:'↓ week on week', better:'down'},
   {sec:'Engineering'},
@@ -4075,9 +4159,17 @@ function mgmtRenderNow(){
 
   const f=document.getElementById('mgFoot');
   if(f) f.innerHTML=
-    '<b>This week\u2019s base:</b> '+fmt(cur._in)+' tickets entered IT, '+fmt(cur._out)+' exited, '+
-    fmt(cur._open)+' still open ('+fmt(cur._assigned)+' assigned). '+
-    'Cycle time is measured on '+fmt(cur._cycN)+' tickets, duplicate share on '+fmt(cur._dupN)+', '+
+    '<b>Backlog reconciliation:</b> '+fmt(cur._openStart)+' in the backlog the day before this window, '+
+    '+'+fmt(cur._in)+' entered, −'+fmt(cur._out)+' left, = <b>'+fmt(cur._open)+'</b> at the end of '+
+    dsp(w.cur[1])+' ('+fmt(cur._assigned)+' assigned). Last week ended at '+fmt(prev._open)+'.<br>'+
+    '<b>Backlog 30 days earlier</b> is the same stock measured on '+dsp(cur._d30)+
+    ' (this week) and '+dsp(prev._d30)+' (last week).<br>'+
+    '<b>Backlog counts</b> a ticket whose stage on that day was Acknowledge, In Progress, '+
+    'Ready For Code Review, Ready For Testing, Reopened From Testing, Ready For Merging, '+
+    'Ready For UAT or Ready To Go Live. Tickets still sitting at Transfer To IT, and '+
+    'Rejected / Future Development / Reopen, are excluded. '+
+    'Cycle time, QA bypass and Run-vs-Change are measured on the '+fmt(cur._dExitN)+' tickets that hit '+
+    'Transfer To Support this week (cycle time on '+fmt(cur._cycN)+' of them), duplicate share on '+fmt(cur._dupN)+', '+
     'Acknowledge in-TAT on '+fmt(cur._ackN)+' and Go-Live in-TAT on '+fmt(cur._glvN)+' '+
     '(in-TAT % counts only tickets that already have a TAT flag — the same rule the Dashboard tab uses).<br>'+
     '<b>Before you read this:</b> Return-to-Support exits are not counted — BSS gives no date for that event, '+
