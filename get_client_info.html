@@ -414,11 +414,11 @@ function renderResults(){
       <div class="card-title">Customer Information <span class="badge">Loaded</span></div>
       <div class="card-desc">Details fetched from Marg for <strong>${esc(REC.email||'')}</strong>. <span class="pwd-toggle" onclick="showRaw()">View raw response</span></div>
       <div class="info-grid">${infoHtml}</div>
-      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field mapping confirm karni pad sakti hai.</div>':''}
+      ${missing?'<div style="margin-top:14px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 12px">⚠️ DB Info Link ID was not found in the response — actions will not work. Check “View raw response” to confirm the field mapping.</div>':''}
     </div>
     <div class="card">
       <div class="card-title">🔁 Move To Other Server</div>
-      <div class="card-desc">Country &amp; Domain select karke customer ko is server par run karo.</div>
+      <div class="card-desc">Select a Country &amp; Domain to run this customer on that server.</div>
       <div class="btn-grid">${moveBtns()}</div>
     </div>
     <div class="card">
@@ -465,7 +465,7 @@ function onAction(id){
   runAction(b);   // direct run
 }
 function revealPwd(){
-  if(REC.pwd==null||REC.pwd===''){ toast('Password details me nahi mila','err'); return; }
+  if(REC.pwd==null||REC.pwd===''){ toast('Password not found in the details','err'); return; }
   openOut('👁️ Password', REC.email||'', `<div class="sum-row"><span class="sum-k">Password</span><span class="sum-v" style="font-family:monospace;font-size:15px">${esc(REC.pwd)}</span></div>`);
 }
 function baseParams(){ return { dbinfolinkid:REC.dbinfolinkid, userlinkid:REC.userlinkid, licenceno:REC.licenceno, emailid:REC.email }; }

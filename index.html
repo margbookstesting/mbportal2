@@ -142,7 +142,7 @@ async function login(){
   const pass  = document.getElementById('pass').value;
   const btn   = document.getElementById('btn');
   hideErr();
-  if(!email||!pass){showErr('Email aur password zaroori hain');return;}
+  if(!email||!pass){showErr('Email and password are required');return;}
   if(!email.includes('@')){showErr('Valid email address daalo');return;}
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span>Signing in...';

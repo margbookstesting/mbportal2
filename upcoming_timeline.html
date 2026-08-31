@@ -539,7 +539,7 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
 if(typeof mbParseTicket !== 'function')
-  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+  console.error('assets/ticket-parser.js failed to load — the dashboard will run incomplete. Check the file path in your deploy.');
 </script>
 <!-- AUTH GUARD: login + per-dashboard permission check -->
 <script>
@@ -783,7 +783,7 @@ async function loadData(){
     RAW = merged.tickets;
     latestFetchedAt = merged.fetchedAt;
     if(merged.minSchema < MB_SCHEMA_VERSION)
-      console.warn(`ticket_cache purane schema me hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — TAT/Support dashboard se "Refresh Data" chalao.`);
+      console.warn(`ticket_cache is on an old schema (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — run "Refresh Data" from the TAT/Support dashboard.`);
 
     // Filter only tickets with tld (timeline date)
     RAW = RAW.filter(r => r.tld);

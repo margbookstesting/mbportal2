@@ -19,7 +19,7 @@
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
 if(typeof mbParseTicket !== 'function')
-  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+  console.error('assets/ticket-parser.js failed to load — the dashboard will run incomplete. Check the file path in your deploy.');
 </script>
 <!-- AUTH GUARD: login + per-dashboard permission check -->
 <script>
@@ -3501,9 +3501,9 @@ async function cacheLoad(){
 
     if(merged.minSchema < MB_SCHEMA_VERSION){
       window._mbStaleSchema = merged.minSchema;
-      console.warn(`ticket_cache me purana schema hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — kuch sections adhoore ho sakte hain. "↺ Refresh Data" chalao ya nightly job run karo.`);
+      console.warn(`ticket_cache is on an old schema (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — some sections may be incomplete. Run "↺ Refresh Data" or the nightly job.`);
       if(typeof showToast === 'function')
-        setTimeout(()=>showToast(`⚠️ Cache purane format (v${merged.minSchema}) me hai — "↺ Refresh Data" dabao`), 1200);
+        setTimeout(()=>showToast(`⚠️ Cache is in an old format (v${merged.minSchema}) — press "↺ Refresh Data"`), 1200);
     }
 
     return {
@@ -3667,7 +3667,7 @@ async function backgroundFetch(){
             showToast(`⚠️ ${label} cache save: ${saveErr.message}`);
           }
         } else {
-          console.warn(`Year ${label}: 0 tickets — cache write skipped (purani row safe hai)`);
+          console.warn(`Year ${label}: 0 tickets — cache write skipped (existing row left untouched)`);
         }
 
       }catch(yearErr){
@@ -3750,7 +3750,7 @@ async function init(){
       document.getElementById('fetchTimeBadgeText').textContent =
         `📦 ${fmt(RAW.length)} tickets · Last fetched: ${cacheAgeLabel(cached.ts)}`;
       badge.style.display = 'flex';
-      showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Latest ke liye ⟳ Refresh dabayein.`);
+      showToast(`📦 Cached data loaded (${cacheAgeLabel(cached.ts)}). Press ⟳ Refresh for the latest.`);
     }, 500);
     return;
   }

@@ -757,7 +757,7 @@ function gciRenderResults(){
         <div class="gci-dhead"><span>Details</span> ${gciDbBadge(R.status)}</div>
         <div class="dp-list">${infoHtml}</div>
         <div class="gci-raw" onclick="gciShowRaw()"><i class="ti ti-code"></i> View raw response</div>
-        ${missing?'<div class="gci-warn">⚠️ DB Info Link ID response me nahi mila — actions kaam nahi karenge. “View raw response” dekh ke field key confirm karni pad sakti hai.</div>':''}
+        ${missing?'<div class="gci-warn">⚠️ DB Info Link ID was not found in the response — actions will not work. Check “View raw response” to confirm the field key.</div>':''}
       </aside>
       <div class="gci-actions">
         <div class="gci-grplabel"><i class="ti ti-pin"></i> Pinned</div>
@@ -854,7 +854,7 @@ function gciPwdDialog(pwd2){
   if(GCI_REC.pwd) rows.push(['Password',GCI_REC.pwd]);
   const p2 = pwd2 || GCI_REC.pwd2;
   if(p2) rows.push(['Password 2',p2]);
-  if(!rows.length){ gciToast('Password details me nahi mila','err'); return; }
+  if(!rows.length){ gciToast('Password not found in the details','err'); return; }
   const html=rows.map(r=>`<div class="sum-row"><span class="sum-k">${gciEsc(r[0])}</span><span class="sum-v" style="display:flex;align-items:center;gap:10px"><code style="font-family:monospace;font-size:15px;color:#0f172a">${gciEsc(r[1])}</code><button class="gci-copy" data-copy="${gciEsc(r[1])}" onclick="gciCopy(this)">Copy</button></span></div>`).join('');
   gciOpenOut('🔑 Password', GCI_REC.email||'', html);
 }
@@ -931,7 +931,7 @@ function gciOpenChangeContact(b){
       const v = (document.getElementById('gciCfInput').value||'').trim();
       const err = validate(v);
       if(err){ gciToast(err,'err'); return; }
-      if(v === oldVal){ gciToast('New '+label.toLowerCase()+' current jaisa hi hai','err'); return; }
+      if(v === oldVal){ gciToast('New '+label.toLowerCase()+' is the same as the current one','err'); return; }
       renderConfirm(v);
     };
     setTimeout(()=>{ const i=document.getElementById('gciCfInput'); if(i){ i.focus(); i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); btn.click(); } }); } },50);

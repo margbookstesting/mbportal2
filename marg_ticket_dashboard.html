@@ -21,7 +21,7 @@
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
 if(typeof mbParseTicket !== 'function')
-  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+  console.error('assets/ticket-parser.js failed to load — the dashboard will run incomplete. Check the file path in your deploy.');
 </script>
 <!-- AUTH GUARD: login + per-dashboard permission check -->
 <script>
@@ -2338,7 +2338,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
       <div class="ai-tools">
         <input class="ai-search" id="aiSearch" placeholder="🔍 Search keyword…" oninput="aiSearchApply()" autocomplete="off">
         <button class="ai-atrisk" id="aiAtRiskBtn" onclick="aiToggleAtRisk()"
-          title="Sirf at-risk clients (expired / expiring ≤30d / no-bill 90d+) ki tickets cluster karo — ek common issue fix karne se kai at-risk clients bachte hain">💚 At-Risk Only</button>
+          title="Cluster tickets from at-risk clients only (expired / expiring ≤30d / no-bill 90d+) — fixing one common issue can save several at-risk clients">💚 At-Risk Only</button>
         <div class="ai-modes" style="display:none">
           <button class="ai-mode" id="aiModeKw" onclick="aiSetMode('kw')">⚡ Keywords</button>
           <button class="ai-mode active" id="aiModeAi" onclick="aiSetMode('ai')">🧠 AI meaning</button>
@@ -2637,7 +2637,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
           <div class="sec-accent" style="background:var(--ip,#0f766e)"></div>
           <div>
             <div class="sec-title">📈 Retention Trend — Daily Snapshots</div>
-            <div class="sec-sub">Har din ka at-risk snapshot (dashboard kholne par auto-save hota hai). Trend batata hai retention effort kaam kar raha hai ya nahi.</div>
+            <div class="sec-sub">A daily at-risk snapshot (auto-saved when the dashboard is opened). The trend shows whether the retention effort is working.</div>
           </div>
         </div>
         <div class="ret-info" id="retTrendInfo"></div>
@@ -3962,22 +3962,22 @@ function mgCompute(from, to){
 
 const MG_ROWS=[
   {sec:'Support'},
-  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date is hafte me — sirf TAT flag wale tickets par',        f:'pct',  target:'≥ 80%',  better:'up'},
-  {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — sirf TAT flag wale tickets par',     f:'pct',  target:'≥ 80%',  better:'up'},
-  {id:'aged30',    label:'Aged backlog 30d+',     note:'IT ke paas khule, 30+ din se koi stage change nahi',  f:'num',  target:'↓ har hafte', better:'down'},
-  {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — is hafte IT me aayi tickets par', f:'pct', target:'< 10%', better:'down'},
+  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — only tickets with a TAT flag',     f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'aged30',    label:'Aged backlog 30d+',     note:'Open with IT, no stage change for 30+ days',  f:'num',  target:'↓ week on week', better:'down'},
+  {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
   {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
-  {id:'fcr',       label:'FCR / CSAT',            note:'VoIP call data chahiye',                              f:'off'},
-  {id:'flow',      label:'Backlog flow ratio',    note:'Close by IT ÷ Transfer to IT (RS exits shamil nahi)', f:'ratio',target:'≥ 1.0',  better:'up'},
-  {id:'loadTop2',  label:'Load concentration',    note:'Top 2 testers ke paas khule tickets ka hissa',        f:'pct',  target:'< 50%',  better:'down'},
-  {id:'acc5',      label:'Accounts with 5+ open', note:'Ek hi license par 5 ya zyada khule tickets',          f:'num',  target:'↓ har hafte', better:'down'},
+  {id:'fcr',       label:'FCR / CSAT',            note:'Needs VoIP call data',                              f:'off'},
+  {id:'flow',      label:'Backlog flow ratio',    note:'Close by IT ÷ Transfer to IT (RS exits excluded)', f:'ratio',target:'≥ 1.0',  better:'up'},
+  {id:'loadTop2',  label:'Load concentration',    note:'Share of open tickets held by the top 2 testers',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'acc5',      label:'Accounts with 5+ open', note:'Five or more open tickets on a single license',          f:'num',  target:'↓ week on week', better:'down'},
   {sec:'Engineering'},
-  {id:'devSpread', label:'Developer speed spread',note:'Sabse dheere ÷ sabse tez (min 3 tickets per dev)',    f:'x',    target:'< 3x',   better:'down'},
-  {id:'runChange', label:'Run vs Change',         note:'Bug fixes ka hissa (baaki dev + improvement)',        f:'pct',  target:'< 50%',  better:'down'},
-  {id:'cycTime',   label:'Cycle time P50 / P90',  note:'Transfer to IT → Close by IT, din me',                f:'cyc',  target:'P90 < 30d', better:'down'},
-  {id:'volume',    label:'Delivered code volume', note:'GitLab connector chahiye',                            f:'off'},
-  {id:'rework',    label:'Rework rate',           note:'GitLab connector chahiye',                            f:'off'},
-  {id:'escaped',   label:'Escaped defects',       note:'Release tags chahiye',                                f:'off'},
+  {id:'devSpread', label:'Developer speed spread',note:'Slowest ÷ fastest (min 3 tickets per dev)',    f:'x',    target:'< 3x',   better:'down'},
+  {id:'runChange', label:'Run vs Change',         note:'Share that is bug fixes (rest is dev + improvement)',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'cycTime',   label:'Cycle time P50 / P90',  note:'Transfer to IT → Close by IT, in days',                f:'cyc',  target:'P90 < 30d', better:'down'},
+  {id:'volume',    label:'Delivered code volume', note:'Needs GitLab connector',                          f:'off'},
+  {id:'rework',    label:'Rework rate',           note:'Needs GitLab connector',                            f:'off'},
+  {id:'escaped',   label:'Escaped defects',       note:'Needs release tags',                                f:'off'},
 ];
 
 function mgFmt(v, f){
@@ -4018,8 +4018,8 @@ function mgmtRender(){
       console.error('Management tab failed:', e);
       const b=document.getElementById('mgBody');
       if(b) b.innerHTML='<tr><td colspan="6" style="padding:20px;color:#991b1b">'+
-        '<b>Report banane me dikkat aayi.</b> '+String(e&&e.message||e)+
-        ' — console dekho.</td></tr>';
+        '<b>Could not build the report.</b> '+String(e&&e.message||e)+
+        ' — see the browser console.</td></tr>';
     }
     finally{ if(ov) ov.classList.remove('active'); }
   }));
@@ -4067,7 +4067,7 @@ function mgmtRenderNow(){
   const dupEl=document.getElementById('mgDup');
   if(dupEl){
     if(cur._dupTop && cur._dupTop.length){
-      dupEl.innerHTML='<div class="mg-foot"><b>Top duplicate clusters is hafte</b><ul style="margin:8px 0 0 18px;padding:0">'+
+      dupEl.innerHTML='<div class="mg-foot"><b>Top duplicate clusters this week</b><ul style="margin:8px 0 0 18px;padding:0">'+
         cur._dupTop.map(c=>'<li>'+fmt(c.count)+' tickets — <b>'+String(c.name).replace(/</g,'&lt;')+'</b></li>').join('')+
         '</ul></div>';
     } else dupEl.innerHTML='';
@@ -4075,20 +4075,20 @@ function mgmtRenderNow(){
 
   const f=document.getElementById('mgFoot');
   if(f) f.innerHTML=
-    '<b>Is hafte ka base:</b> '+fmt(cur._in)+' tickets IT me aaye, '+fmt(cur._out)+' nikle, '+
-    fmt(cur._open)+' abhi khule ('+fmt(cur._assigned)+' assigned). '+
-    'Cycle time '+fmt(cur._cycN)+' tickets par, duplicate share '+fmt(cur._dupN)+' par, '+
-    'Acknowledge in-TAT '+fmt(cur._ackN)+' par aur Go-Live in-TAT '+fmt(cur._glvN)+' par '+
-    '(in-TAT % sirf un tickets par nikalta hai jinka TAT flag aa chuka hai — wahi Dashboard tab karta hai).<br>'+
-    '<b>Padhne se pehle:</b> Return-to-Support exits count nahi hote — BSS us event ki koi date nahi deta, '+
-    'to flow ratio thoda upar dikhega. Ek ticket do baar IT me aaya ho to ek hi baar gina jata hai '+
-    '(API har stage ki sirf latest date rakhta hai). Stock metrics us din ka haal stage dates se '+
-    'reconstruct karke nikalte hain. Ye tab upar wale Tester/RM/Dev filters ko nahi maanta — '+
-    'report hamesha poore org ki hai.<br>'+
-    '<b>Resolution + owner</b> abhi save nahi hota — wo snapshot ke saath phase 2 me aayega.';
+    '<b>This week\u2019s base:</b> '+fmt(cur._in)+' tickets entered IT, '+fmt(cur._out)+' exited, '+
+    fmt(cur._open)+' still open ('+fmt(cur._assigned)+' assigned). '+
+    'Cycle time is measured on '+fmt(cur._cycN)+' tickets, duplicate share on '+fmt(cur._dupN)+', '+
+    'Acknowledge in-TAT on '+fmt(cur._ackN)+' and Go-Live in-TAT on '+fmt(cur._glvN)+' '+
+    '(in-TAT % counts only tickets that already have a TAT flag — the same rule the Dashboard tab uses).<br>'+
+    '<b>Before you read this:</b> Return-to-Support exits are not counted — BSS gives no date for that event, '+
+    'so the flow ratio reads slightly high. A ticket that entered IT twice is counted once '+
+    '(the API keeps only the latest date per stage). Stock metrics are reconstructed from stage dates '+
+    'as they stood on that day. This tab ignores the Tester/RM/Dev filters above — '+
+    'the report is always org-wide.<br>'+
+    '<b>Resolution + owner</b> is not saved yet — that arrives in phase 2 along with snapshots.';
 }
 function mgResCell(){
-  return '<input class="mg-res" disabled placeholder="Phase 2 — snapshot ke saath">';
+  return '<input class="mg-res" disabled placeholder="Phase 2 — ships with snapshots">';
 }
 
 
@@ -6510,9 +6510,9 @@ async function cacheLoad(){
 
     if(merged.minSchema < MB_SCHEMA_VERSION){
       window._mbStaleSchema = merged.minSchema;
-      console.warn(`ticket_cache me purana schema hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — kuch sections adhoore ho sakte hain. "↺ Refresh Data" chalao ya nightly job run karo.`);
+      console.warn(`ticket_cache is on an old schema (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — some sections may be incomplete. Run "↺ Refresh Data" or the nightly job.`);
       if(typeof showToast === 'function')
-        setTimeout(()=>showToast(`⚠️ Cache purane format (v${merged.minSchema}) me hai — "↺ Refresh Data" dabao`), 1200);
+        setTimeout(()=>showToast(`⚠️ Cache is in an old format (v${merged.minSchema}) — press "↺ Refresh Data"`), 1200);
     }
 
     /* SHARED STORE. BSS aur Upcoming tabs isi page me hain — unhe cache
@@ -6681,7 +6681,7 @@ async function backgroundFetch(){
             showToast(`⚠️ ${label} cache save: ${saveErr.message}`);
           }
         } else {
-          console.warn(`Year ${label}: 0 tickets — cache write skipped (purani row safe hai)`);
+          console.warn(`Year ${label}: 0 tickets — cache write skipped (existing row left untouched)`);
         }
 
       }catch(yearErr){
@@ -7168,12 +7168,12 @@ async function retTrendLoad(){
     if(error) throw error;
     rows=data||[];
   }catch(e){
-    if(note){ note.style.display=''; note.textContent='Trend unavailable — Supabase me retention_snapshots table create karo (retention_snapshots.sql run karke).'; }
+    if(note){ note.style.display=''; note.textContent='Trend unavailable — create the retention_snapshots table in Supabase (run retention_snapshots.sql).'; }
     if(cv) cv.parentElement.style.display='none';
     return;
   }
   if(rows.length<2){
-    if(note){ note.style.display=''; note.textContent='📸 Pehla snapshot save ho gaya — trend agle dino me snapshots jama hone par dikhega.'; }
+    if(note){ note.style.display=''; note.textContent='📸 First snapshot saved — the trend appears once more snapshots build up over the coming days.'; }
     if(cv) cv.parentElement.style.display='none';
     if(info) info.textContent=rows.length+' snapshot';
     return;
@@ -7560,7 +7560,7 @@ async function aiToggleAtRisk(){
   }
   window._aiAtRiskOnly=!window._aiAtRiskOnly;
   if(btn) btn.classList.toggle('active', window._aiAtRiskOnly);
-  showToast(window._aiAtRiskOnly?'💚 At-Risk Only: sirf at-risk clients ki tickets cluster ho rahi hain':'At-Risk filter off — saari tickets');
+  showToast(window._aiAtRiskOnly?'💚 At-Risk Only: clustering tickets from at-risk clients only':'At-Risk filter off — all tickets');
   aiRun();
 }
 
@@ -8245,7 +8245,7 @@ async function openEdit(ticketNo){
     let fix = '';
     if(/migration|bss_user_id/i.test(msg))
       fix = 'Run <b>sql/2026-08-bss-dashboard.sql</b> in the Supabase SQL Editor.';
-    else if(/access nahi|permission/i.test(msg))
+    else if(/no access|access denied|permission/i.test(msg))
       fix = 'Ask an admin to tick the <b>BSS Dashboard</b> permission in Admin → Users.';
     else if(/profile/i.test(msg))
       fix = 'Ask an admin to create your user record in <b>public.users</b>.';
@@ -8467,8 +8467,8 @@ async function bssResyncTicket(ticketNo, prevSig){
       /* Cache me bhi likh do, warna page reload par stage phir peeche.
          Best-effort — fail ho to sirf console, user ko nahi rokte. */
       bssPatchCacheDates(ticketNo, parsed);
-      if(!changed) console.warn('Resync: Marg abhi bhi purana record de raha hai ('+
-        ticketNo+'). Stage move next refresh par dikhega.');
+      if(!changed) console.warn('Resync: Marg is still returning the old record ('+
+        ticketNo+'). The stage move will appear on the next refresh.');
       return;
     }
   }
@@ -8658,7 +8658,7 @@ window.BSS.boot = function(){
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
 if(typeof mbParseTicket !== 'function')
-  console.error('assets/ticket-parser.js load nahi hua — dashboard adhoora chalega. Deploy me file/path check karo.');
+  console.error('assets/ticket-parser.js failed to load — the dashboard will run incomplete. Check the file path in your deploy.');
 
 
 
@@ -8924,7 +8924,7 @@ async function loadData(){
     RAW = merged.tickets;
     latestFetchedAt = merged.fetchedAt;
     if(merged.minSchema < MB_SCHEMA_VERSION)
-      console.warn(`ticket_cache purane schema me hai (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — TAT/Support dashboard se "Refresh Data" chalao.`);
+      console.warn(`ticket_cache is on an old schema (v${merged.minSchema} < v${MB_SCHEMA_VERSION}) — run "Refresh Data" from the TAT/Support dashboard.`);
 
     // Filter only tickets with tld (timeline date)
     RAW = RAW.filter(r => r.tld);
