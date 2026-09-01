@@ -338,7 +338,7 @@ function pick(obj, cands){
 // ── Get Details ──
 async function getDetails(){
   const q=document.getElementById('q').value.trim();
-  if(!q){ toast('Email ID / Mobile daalo','err'); return; }
+  if(!q){ toast('Enter an Email ID or Mobile number','err'); return; }
   const btn=document.getElementById('getBtn'); btn.disabled=true; const old=btn.innerHTML; btn.innerHTML='<span class="spin"></span> Loading…';
   try{
     const out=await api({action:'getDetails', emailid:q});
@@ -523,7 +523,7 @@ function openInput(b){
     <div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${esc(REC.email||'')}</span></div>
     <input class="modal-input" id="cfInput" type="text" placeholder="New password" autocomplete="off"/>`;
   const btn=document.getElementById('cfBtn'); btn.className='btn-cta'; btn.textContent='Reset Password';
-  btn.onclick=()=>{ const v=(document.getElementById('cfInput').value||'').trim(); if(!v){ toast('New password daalo','err'); return; } closeConfirm(); runAction(b,{remark:v}); };
+  btn.onclick=()=>{ const v=(document.getElementById('cfInput').value||'').trim(); if(!v){ toast('Enter a new password','err'); return; } closeConfirm(); runAction(b,{remark:v}); };
   document.getElementById('confirmOverlay').classList.add('show');
   setTimeout(()=>{ const i=document.getElementById('cfInput'); if(i) i.focus(); },50);
 }
@@ -760,7 +760,7 @@ function formatResult(out){
 
 // ── Single-customer Move (reuses the generic confirm modal) ──
 function openMoveSingle(iscrv){
-  if(!REC||!REC.email){ toast('Pehle "Get Details" chalao','err'); return; }
+  if(!REC||!REC.email){ toast('Run "Get Details" first','err'); return; }
   const setting=SETTINGS.find(s=>s.iscrv===iscrv); if(!setting) return;
   document.getElementById('cfTitle').innerHTML='🔁 '+esc(setting.label);
   document.getElementById('cfDesc').textContent='Select Country & Domain, then submit to run this on the loaded customer.';

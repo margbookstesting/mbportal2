@@ -143,7 +143,7 @@ async function login(){
   const btn   = document.getElementById('btn');
   hideErr();
   if(!email||!pass){showErr('Email and password are required');return;}
-  if(!email.includes('@')){showErr('Valid email address daalo');return;}
+  if(!email.includes('@')){showErr('Enter a valid email address');return;}
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span>Signing in...';
   const {error} = await sb.auth.signInWithPassword({email,password:pass});

@@ -577,7 +577,7 @@ function gciResultError(r){
 
 async function gciGetDetails(){
   const q=(document.getElementById('gciQ').value||'').trim();
-  if(!q){ gciToast('Email ID / Mobile daalo','err'); return; }
+  if(!q){ gciToast('Enter an Email ID or Mobile number','err'); return; }
   const btn=document.getElementById('gciGetBtn'); btn.disabled=true;
   gciShowLoader('Fetching details…');
   try{
@@ -884,7 +884,7 @@ function gciOpenInput(b){
   document.getElementById('gciCfDesc').textContent=b.desc||'';
   document.getElementById('gciCfBody').innerHTML=`<div class="sum-row"><span class="sum-k">Customer</span><span class="sum-v">${gciEsc(GCI_REC.email||'')}</span></div><input class="modal-input" id="gciCfInput" type="text" placeholder="New password" autocomplete="off"/>`;
   const btn=document.getElementById('gciCfBtn'); btn.className='btn-cta'; btn.textContent='Reset Password';
-  btn.onclick=()=>{ const v=(document.getElementById('gciCfInput').value||'').trim(); if(!v){ gciToast('New password daalo','err'); return; } gciCloseConfirm(); gciRunAction(b,{remark:v}); };
+  btn.onclick=()=>{ const v=(document.getElementById('gciCfInput').value||'').trim(); if(!v){ gciToast('Enter a new password','err'); return; } gciCloseConfirm(); gciRunAction(b,{remark:v}); };
   document.getElementById('gciConfirm').classList.add('show');
   setTimeout(()=>{ const i=document.getElementById('gciCfInput'); if(i) i.focus(); },50);
 }
@@ -900,11 +900,11 @@ function gciOpenChangeContact(b){
   const placeholder = isEmail ? 'new.email@example.com' : '10-digit mobile number';
   const inputType   = isEmail ? 'email' : 'tel';
   const validate    = isEmail
-    ? v => /^\S+@\S+\.\S+$/.test(v) ? null : 'Valid email daalo (name@example.com)'
-    : v => /^\d{10}$/.test(v)      ? null : 'Valid 10-digit mobile number daalo';
+    ? v => /^\S+@\S+\.\S+$/.test(v) ? null : 'Enter a valid email (name@example.com)'
+    : v => /^\d{10}$/.test(v)      ? null : 'Enter a valid 10-digit mobile number';
 
   const dbid = GCI_REC.dbinfolinkid || '';
-  if(!dbid){ gciToast('DB Info Link ID missing — pehle "Get Details" chalao','err'); return; }
+  if(!dbid){ gciToast('DB Info Link ID missing — run "Get Details" first','err'); return; }
   if(!oldVal){
     gciToast('Current '+label.toLowerCase()+' is not available on this record — cannot change','err');
     return;
@@ -1162,7 +1162,7 @@ async function gciMoveApi({countrykey, version, istesting, iscrv, moveBy, emaili
 
 // ── Single-customer Move (Move Client / Control room reset / Only Repair DB) ──
 function gciOpenMoveSingle(iscrv){
-  if(!GCI_REC || !GCI_REC.email){ gciToast('Pehle "Get Details" chalao','err'); return; }
+  if(!GCI_REC || !GCI_REC.email){ gciToast('Run "Get Details" first','err'); return; }
   const setting=SETTINGS.find(s=>s.iscrv===iscrv);
   if(!setting) return;
   document.getElementById('gciCfTitle').innerHTML='🔁 '+gciEsc(setting.label);

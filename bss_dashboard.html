@@ -626,7 +626,7 @@ async function openEdit(ticketNo){
     let fix = '';
     if(/migration|bss_user_id/i.test(msg))
       fix = 'Run <b>sql/2026-08-bss-dashboard.sql</b> in the Supabase SQL Editor.';
-    else if(/no access|access denied|permission/i.test(msg))
+    else if(/access|denied|permission|forbidden/i.test(msg))
       fix = 'Ask an admin to tick the <b>BSS Dashboard</b> permission in Admin → Users.';
     else if(/profile/i.test(msg))
       fix = 'Ask an admin to create your user record in <b>public.users</b>.';

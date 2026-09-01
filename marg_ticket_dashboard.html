@@ -3953,6 +3953,19 @@ function mgCompute(from, to){
   o.ackTat = tatPct(ack,'bt');
   o._ackN  = ack.filter(r=>r.bt==='I'||r.bt==='O').length;
 
+  /* Transfer to Support in-TAT. dt flag TransfertoSupport_TATDetails se aata
+     hai — wahi source jo Acknowledge ka bt aur Go-Live ka et deta hai.
+
+     NOTE: Return to Support isme SHAMIL NAHI hai. BSS us event ki na date
+     deta hai na _TATDetails; poore codebase me wo sirf ek status value
+     (sc==='RS') ke roop me milta hai. Agar aage BSS
+     ReturnToSupport_TATDetails expose kare, to use yahin jodna hai. */
+  const tts=R.filter(r=>inW(r.d));
+  o.ttsTat = tatPct(tts,'dt');
+  o._ttsN  = tts.filter(r=>r.dt==='I'||r.dt==='O').length;
+
+  /* Go-Live in-TAT ab table me nahi dikhta — chahiye to MG_ROWS me row
+     wapas add kar do. */
   const glv=R.filter(r=>inW(r.e));
   o.glvTat = tatPct(glv,'et');
   o._glvN  = glv.filter(r=>r.et==='I'||r.et==='O').length;
@@ -4046,7 +4059,7 @@ function mgCompute(from, to){
 const MG_ROWS=[
   {sec:'Support'},
   {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'≥ 80%',  better:'up'},
-  {id:'glvTat',    label:'Go-Live in-TAT %',      note:'Ready to Go Live — only tickets with a TAT flag',     f:'pct',  target:'≥ 80%',  better:'up'},
+  {id:'ttsTat',    label:'Transfer to Support in-TAT %', note:'Transfer to Support date falls in this week — only tickets with a TAT flag. Return to Support is not included: BSS reports no TAT for it', f:'pct', target:'≥ 80%', better:'up'},
   {id:'openBacklog',label:'IT backlog (open)',    note:'Ack / In Progress / Code Review / Testing / Reopened-from-Testing / Merging / UAT / Go Live — stock on the window\u2019s last day', f:'num', target:'↓ week on week', better:'down'},
   {id:'backlog30', label:'Backlog 30 days earlier',note:'IT backlog as it stood 30 days before the window end \u2014 shows the month-over-month direction', f:'num', target:'↓ week on week', better:'down'},
   {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
@@ -4170,8 +4183,9 @@ function mgmtRenderNow(){
     'Rejected / Future Development / Reopen, are excluded. '+
     'Cycle time, QA bypass and Run-vs-Change are measured on the '+fmt(cur._dExitN)+' tickets that hit '+
     'Transfer To Support this week (cycle time on '+fmt(cur._cycN)+' of them), duplicate share on '+fmt(cur._dupN)+', '+
-    'Acknowledge in-TAT on '+fmt(cur._ackN)+' and Go-Live in-TAT on '+fmt(cur._glvN)+' '+
-    '(in-TAT % counts only tickets that already have a TAT flag — the same rule the Dashboard tab uses).<br>'+
+    'Acknowledge in-TAT on '+fmt(cur._ackN)+' and Transfer-to-Support in-TAT on '+fmt(cur._ttsN)+' '+
+    '(in-TAT % counts only tickets that already have a TAT flag — the same rule the Dashboard tab uses). '+
+    'Transfer-to-Support in-TAT does NOT include Return to Support: BSS reports no date or TAT for that event.<br>'+
     '<b>Before you read this:</b> Return-to-Support exits are not counted — BSS gives no date for that event, '+
     'so the flow ratio reads slightly high. A ticket that entered IT twice is counted once '+
     '(the API keeps only the latest date per stage). Stock metrics are reconstructed from stage dates '+
@@ -8337,7 +8351,7 @@ async function openEdit(ticketNo){
     let fix = '';
     if(/migration|bss_user_id/i.test(msg))
       fix = 'Run <b>sql/2026-08-bss-dashboard.sql</b> in the Supabase SQL Editor.';
-    else if(/no access|access denied|permission/i.test(msg))
+    else if(/access|denied|permission|forbidden/i.test(msg))
       fix = 'Ask an admin to tick the <b>BSS Dashboard</b> permission in Admin → Users.';
     else if(/profile/i.test(msg))
       fix = 'Ask an admin to create your user record in <b>public.users</b>.';
