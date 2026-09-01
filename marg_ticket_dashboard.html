@@ -1663,33 +1663,52 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   text-transform:uppercase;letter-spacing:.7px;text-align:left;
   padding:10px 12px;border-bottom:1.5px solid var(--border);white-space:nowrap;
 }
-#tab7 tbody td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+#tab7 tbody td{padding:13px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
 #tab7 tbody tr:last-child td{border-bottom:none;}
 #tab7 .mg-sec td{
-  background:var(--s2);font-size:10px;font-weight:800;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.7px;padding:7px 12px;
+  background:var(--s2);font-size:10.5px;font-weight:800;color:#0f766e;
+  text-transform:uppercase;letter-spacing:.9px;padding:9px 12px;
+  border-top:1px solid var(--border);
 }
-#tab7 .mg-metric{font-weight:700;color:var(--text);}
-#tab7 .mg-note{display:block;font-size:10.5px;font-weight:500;color:var(--muted2);margin-top:2px;}
-#tab7 .mg-val{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;color:var(--text);white-space:nowrap;}
-#tab7 .mg-prev{font-family:'JetBrains Mono',monospace;color:var(--muted);white-space:nowrap;}
-#tab7 .mg-trend{font-size:13px;font-weight:800;white-space:nowrap;}
+#tab7 .mg-metric{font-weight:650;color:var(--text);font-size:13.5px;line-height:1.35;}
+#tab7 .mg-note{display:block;font-size:10.5px;font-weight:500;color:var(--muted2);margin-top:3px;
+  max-width:46ch;line-height:1.45;}
+/* Ye table 30 second me padhi jati hai. Isliye "this week" ka number hero
+   hai — bada aur tabular, taaki ankh column me seedhi neeche utre. Pichhla
+   hafta reference hai, hero nahi, to chhota aur halka. */
+#tab7 .mg-val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:19px;
+  letter-spacing:-.4px;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap;}
+#tab7 .mg-prev{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-variant-numeric:tabular-nums;
+  color:var(--muted2);white-space:nowrap;}
+#tab7 .mg-trend{font-size:15px;font-weight:800;white-space:nowrap;text-align:center;}
 #tab7 .mg-up{color:#059669;}      /* behtar */
 #tab7 .mg-down{color:#dc2626;}    /* kharab */
 #tab7 .mg-flat{color:var(--muted2);}
-#tab7 .mg-target{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);white-space:nowrap;}
+#tab7 .mg-target{white-space:nowrap;}
+/* Target ab pill hai jo apna faisla khud dikhata hai: peeche hai ya nahi.
+   Rang hi khabar hai, isliye text bhi badalta nahi — sirf pill rangti hai. */
+#tab7 .mg-tgt{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11.5px;
+  padding:3px 9px;border-radius:999px;background:var(--chip,#f1f5f9);color:var(--muted);
+  border:1px solid transparent;}
+#tab7 .mg-tgt.mg-t-behind{background:#fef2f2;color:#b91c1c;border-color:#fecaca;font-weight:700;}
+#tab7 .mg-tgt.mg-t-met{background:#f0fdfa;color:#0f766e;border-color:#99f6e4;font-weight:700;}
+
+/* Status rail — row ke baaye kinare par 3px. Ye sajawat nahi hai: yahi ek
+   cheez hai jisse poori table ek nazar me scan hoti hai. */
+#tab7 tbody tr{border-left:3px solid transparent;transition:background .12s ease;}
+#tab7 tbody tr.mg-r-behind{border-left-color:#dc2626;background:linear-gradient(90deg,#fef2f2 0,transparent 220px);}
+#tab7 tbody tr.mg-r-met{border-left-color:#0d9488;}
+#tab7 tbody tr:hover{background:var(--hover,#f8fafc);}
+#tab7 tbody tr.mg-sec:hover{background:inherit;}
 #tab7 .mg-off{opacity:.55;}
 #tab7 .mg-chip{
   display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.5px;
   text-transform:uppercase;padding:3px 8px;border-radius:20px;
   background:var(--s2);color:var(--muted2);border:1px solid var(--border);
 }
-#tab7 .mg-exc{border-left:3px solid #b91c1c}
-.mg-exc b{color:#b91c1c}
-.mg-res-cell{vertical-align:top}
-.mg-res-cell .mg-res{display:block;width:100%;margin-bottom:4px}
-.mg-res-cell .mg-own{margin-bottom:2px}
-.mg-res-meta{display:block;font-size:10px;color:#94a3b8;line-height:1.3;min-height:12px}
+#tab7 .mg-exc{border-left:3px solid #dc2626;background:#fef2f2;border-color:#fecaca;}
+#tab7 .mg-exc b{color:#b91c1c;}
+#tab7 .mg-exc li{margin:3px 0;}
 .mg-snap-status{font-size:11px;margin-left:10px;color:#64748b}
 .mg-snap-status.ok{color:#0f766e}
 .mg-snap-status.warn{color:#b45309}
@@ -3102,22 +3121,20 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
           title="Freeze this week's numbers. Opening the tab already saves them automatically; use this after editing resolutions or to confirm the save worked.">💾 Save snapshot</button>
   <button class="kpi-xls" onclick="mgmtRender()">↻ Recalculate</button>
 </div>
-<datalist id="mgOwnerList"></datalist>
 
 <div class="mg-wrap">
   <table>
     <thead>
       <tr>
-        <th style="width:29%">Metric</th>
+        <th style="width:38%">Metric</th>
         <th style="width:12%">This week</th>
         <th style="width:12%">Last week</th>
         <th style="width:7%">Trend</th>
-        <th style="width:14%">Target</th>
-        <th style="width:26%">Resolution + owner</th>
+        <th style="width:16%">Target</th>
       </tr>
     </thead>
     <tbody id="mgBody">
-      <tr><td colspan="6" style="padding:26px;text-align:center;color:var(--muted)">Loading…</td></tr>
+      <tr><td colspan="5" style="padding:26px;text-align:center;color:var(--muted)">Loading…</td></tr>
     </tbody>
   </table>
 </div>
@@ -4136,7 +4153,7 @@ function mgmtRender(){
     catch(e){
       console.error('Management tab failed:', e);
       const b=document.getElementById('mgBody');
-      if(b) b.innerHTML='<tr><td colspan="6" style="padding:20px;color:#991b1b">'+
+      if(b) b.innerHTML='<tr><td colspan="5" style="padding:20px;color:#991b1b">'+
         '<b>Could not build the report.</b> '+String(e&&e.message||e)+
         ' — see the browser console.</td></tr>';
     }
@@ -4172,20 +4189,30 @@ function mgTargetMiss(value, target){
   return null;
 }
 
+/* Ek hi jagah se row ka status nikalta hai — rail ka rang, target pill ka
+   rang aur "needs attention" list teeno isi par chalte hain, warna teeno alag
+   alag jawab de sakte the. */
+function mgRowStatus(row, cur, prev){
+  if(row.sec || !row.id || row.f==='off') return null;
+  const v = row.id==='cycTime' ? cur.cycP50 : cur[row.id];
+  const p = row.id==='cycTime' ? prev.cycP50 : prev[row.id];
+  if(v===null || v===undefined) return null;
+  const miss  = mgTargetMiss(v, row.target);
+  const trend = mgTrend(v, p, row.better);
+  if(miss===true)  return {state:'behind', why:'behind target '+row.target};
+  if(miss===false) return {state:'met',    why:'on target'};
+  /* Target numeric nahi hai (baseline, week on week) — to trend hi bata sakta
+     hai ki cheez kis taraf ja rahi hai. */
+  if(trend.cls==='mg-down') return {state:'behind', why:'worsening week on week'};
+  if(trend.cls==='mg-up')   return {state:'met',    why:'improving'};
+  return null;
+}
+
 function mgExceptions(cur, prev){
   const out=[];
   MG_ROWS.forEach(row=>{
-    if(row.sec || !row.id || row.f==='off') return;
-    const v = row.id==='cycTime' ? cur.cycP50 : cur[row.id];
-    const p = row.id==='cycTime' ? prev.cycP50 : prev[row.id];
-    const t = mgTrend(v, p, row.better);
-    const miss = mgTargetMiss(v, row.target);
-    const red = (t.cls==='mg-down') || miss===true;
-    if(!red) return;
-    const r=MG_RES[row.id]||{};
-    if((r.resolution||'').trim() || (r.owner||'').trim()) return;   // owner hai = escalation nahi
-    out.push({label:row.label,
-              why: miss===true ? ('behind target '+row.target) : 'worsening week on week'});
+    const st=mgRowStatus(row, cur, prev);
+    if(st && st.state==='behind') out.push({label:row.label, why:st.why});
   });
   return out.slice(0,5);      // spec: max five
 }
@@ -4195,7 +4222,7 @@ function mgRenderExceptions(cur, prev){
   if(!el) return;
   const ex=mgExceptions(cur, prev);
   if(!ex.length){ el.innerHTML=''; return; }
-  el.innerHTML='<div class="mg-foot mg-exc"><b>Escalations — red with no resolution and no owner</b>'+
+  el.innerHTML='<div class="mg-foot mg-exc"><b>Needs attention this week</b>'+
     '<ol style="margin:8px 0 0 18px;padding:0">'+
     ex.map(e=>'<li>'+esc(e.label)+' <span style="color:#94a3b8">— '+esc(e.why)+'</span></li>').join('')+
     '</ol></div>';
@@ -4220,12 +4247,12 @@ function mgmtRenderNow(){
   const valOf=(o,id)=> id==='cycTime' ? o.cycP50 : o[id];
   let html='';
   MG_ROWS.forEach(row=>{
-    if(row.sec){ html+='<tr class="mg-sec"><td colspan="6">'+row.sec+'</td></tr>'; return; }
+    if(row.sec){ html+='<tr class="mg-sec"><td colspan="5">'+row.sec+'</td></tr>'; return; }
     if(row.f==='off'){
       html+='<tr class="mg-off"><td class="mg-metric">'+row.label+
         '<span class="mg-note">'+row.note+'</span></td>'+
         '<td colspan="3"><span class="mg-chip">Not connected</span></td>'+
-        '<td class="mg-target">'+(row.target||'—')+'</td>'+mgResCell(row.id)+'</tr>';
+        '<td class="mg-target"><span class="mg-tgt">'+(row.target||'—')+'</span></td></tr>';
       return;
     }
     let curTxt, prevTxt;
@@ -4236,34 +4263,22 @@ function mgmtRenderNow(){
       curTxt=mgFmt(cur[row.id], row.f); prevTxt=mgFmt(prev[row.id], row.f);
     }
     const t=mgTrend(valOf(cur,row.id), valOf(prev,row.id), row.better);
-    html+='<tr><td class="mg-metric">'+row.label+'<span class="mg-note">'+row.note+'</span></td>'+
+    /* Status row ke baaye kinare par ek patli rail banta hai aur target ko
+       rang deta hai — dono ek hi mgRowStatus() se aate hain. */
+    const st=mgRowStatus(row, cur, prev);
+    const rowCls=st ? ' class="mg-r-'+st.state+'"' : '';
+    const tgtCls=st ? ' mg-t-'+st.state : '';
+    html+='<tr'+rowCls+'><td class="mg-metric">'+row.label+'<span class="mg-note">'+row.note+'</span></td>'+
       '<td class="mg-val">'+curTxt+'</td>'+
       '<td class="mg-prev">'+prevTxt+'</td>'+
       '<td class="mg-trend '+t.cls+'">'+t.txt+'</td>'+
-      '<td class="mg-target">'+(row.target||'—')+'</td>'+
-      mgResCell(row.id)+'</tr>';
+      '<td class="mg-target"><span class="mg-tgt'+tgtCls+'">'+(row.target||'—')+'</span></td>'+
+      '</tr>';
   });
   document.getElementById('mgBody').innerHTML=html;
 
-  /* Resolutions network se aate hain, isliye table pehle render hota hai aur
-     values baad me bhar jati hain — report kabhi network ka intezaar na kare. */
-  (async ()=>{
-    await mgResLoad(MG_WEEK);
-    MG_ROWS.forEach(row=>{
-      if(!row.id) return;
-      const r=MG_RES[row.id]; if(!r) return;
-      const cell=document.getElementById('mgResMeta_'+row.id);
-      if(!cell) return;
-      const box=cell.parentElement;
-      const ins=box.querySelectorAll('input');
-      if(ins[0]) ins[0].value=r.resolution||'';
-      if(ins[1]) ins[1].value=r.owner||'';
-      mgResMeta(row.id);
-    });
-    mgBuildOwners();
-    mgRenderExceptions(cur, prev);   // resolutions aane ke baad hi — warna
-    mgSnapSave(false);               // jinka owner hai wo bhi escalation dikhte
-  })();
+  mgRenderExceptions(cur, prev);
+  mgSnapSave(false);          // auto snapshot, chup-chaap
 
   const dupEl=document.getElementById('mgDup');
   if(dupEl){
@@ -4296,8 +4311,7 @@ function mgmtRenderNow(){
     '(the API keeps only the latest date per stage). Stock metrics are reconstructed from stage dates '+
     'as they stood on that day. This tab ignores the Tester/RM/Dev filters above — '+
     'the report is always org-wide.<br>'+
-    '<b>Resolution + owner</b> is saved per metric per week, so last week\u2019s notes stay with last week. '+
-    'Opening this tab also freezes the week\u2019s numbers into a snapshot, which is what keeps older weeks '+
+    'Opening this tab freezes the week\u2019s numbers into a snapshot, which is what keeps older weeks '+
     'readable once they age out of the ticket cache.';
 }
 /* ═══════════════ PHASE 2 — snapshots + resolution/owner ═══════════════
@@ -4309,15 +4323,12 @@ function mgmtRenderNow(){
    dashboard chalta rehta hai, bas ek chhoti si line dikhti hai. Report
    dekhna kabhi save par nirbhar nahi hona chahiye. */
 
-let MG_RES   = {};      // metric_id -> {resolution, owner, updated_by, updated_at}
 let MG_WEEK  = '';      // abhi jo week_end screen par hai
-let MG_OWNERS= [];      // owner field ke suggestions
 let _mgSnapBusy=false;
 
 function mgWho(){ return ((window._MARG_PERM||{}).who)||''; }
 
-/* Resolution/owner user ka likha hua text hai aur seedha HTML me jata hai,
-   isliye escape zaroori — warna ek quote poori table tod deta. */
+/* Duplicate cluster ke naam aur exception labels innerHTML me jate hain. */
 function esc(v){
   return String(v==null?'':v)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -4329,92 +4340,6 @@ function mgSetStatus(msg, kind){
   if(!el) return;
   el.textContent=msg||'';
   el.className='mg-snap-status'+(kind?' '+kind:'');
-}
-
-/* Owner suggestions: pehle jo owner likhe ja chuke hain, plus is waqt ke
-   tester/dev naam. Free text hi rehta hai — datalist sirf sujhaav deta hai. */
-function mgBuildOwners(){
-  const set=new Set();
-  Object.values(MG_RES).forEach(r=>{ if(r && r.owner) set.add(String(r.owner).trim()); });
-  (Array.isArray(RAW)?RAW:[]).forEach(r=>{
-    const t=_smfTesterVal(r); if(t) set.add(String(t).trim());
-    if(r.dev) set.add(String(r.dev).trim());
-  });
-  MG_OWNERS=[...set].filter(Boolean).sort((a,b)=>a.localeCompare(b)).slice(0,200);
-  const dl=document.getElementById('mgOwnerList');
-  if(dl) dl.innerHTML=MG_OWNERS.map(o=>'<option value="'+esc(o)+'">').join('');
-}
-
-async function mgResLoad(weekEnd){
-  MG_RES={};
-  if(!weekEnd || typeof sb==='undefined' || !sb) return;
-  try{
-    const {data,error}=await sb.from('mgmt_resolutions')
-      .select('metric_id,resolution,owner,updated_by,updated_at')
-      .eq('week_end', weekEnd);
-    if(error) throw error;
-    (data||[]).forEach(r=>{ MG_RES[r.metric_id]=r; });
-  }catch(e){
-    mgSetStatus('Resolutions unavailable — run sql/2026-08-mgmt-snapshots.sql in Supabase.','warn');
-  }
-}
-
-/* Blur par save. Khali resolution AUR khali owner = row delete, taaki
-   galti se bani khali rows jama na hoti rahein. */
-async function mgResSave(metricId, field, value){
-  if(typeof sb==='undefined' || !sb || !MG_WEEK) return;
-  const cur=MG_RES[metricId]||{};
-  const next={resolution:cur.resolution||'', owner:cur.owner||''};
-  next[field]=(value||'').trim();
-  if((next.resolution===(cur.resolution||'')) && (next.owner===(cur.owner||''))) return;
-  try{
-    if(!next.resolution && !next.owner){
-      const {error}=await sb.from('mgmt_resolutions').delete()
-        .eq('week_end',MG_WEEK).eq('metric_id',metricId);
-      if(error) throw error;
-      delete MG_RES[metricId];
-      mgSetStatus('Cleared.','ok');
-    }else{
-      const row={week_end:MG_WEEK, metric_id:metricId,
-                 resolution:next.resolution||null, owner:next.owner||null,
-                 updated_by:mgWho()||null};
-      const {error}=await sb.from('mgmt_resolutions')
-        .upsert(row,{onConflict:'week_end,metric_id'});
-      if(error) throw error;
-      MG_RES[metricId]=Object.assign({},row,{updated_at:new Date().toISOString()});
-      mgSetStatus('Saved.','ok');
-    }
-    mgBuildOwners();
-    mgResMeta(metricId);
-  }catch(e){
-    mgSetStatus('Could not save: '+(e&&e.message||e),'err');
-  }
-}
-
-/* "kisne, kab" wali chhoti line — poora table dobara render kiye bina. */
-function mgResMeta(metricId){
-  const el=document.getElementById('mgResMeta_'+metricId);
-  if(!el) return;
-  const r=MG_RES[metricId];
-  if(!r || !(r.updated_by||r.updated_at)){ el.textContent=''; return; }
-  const who=r.updated_by||'—';
-  let when='';
-  try{ when=new Date(r.updated_at).toLocaleDateString('en-GB',
-        {day:'2-digit',month:'short'}); }catch(_){}
-  el.textContent=when? (who+' · '+when) : who;
-}
-
-function mgResCell(metricId){
-  if(!metricId) return '<td></td>';
-  const r=MG_RES[metricId]||{};
-  const id=esc(metricId);
-  return '<td class="mg-res-cell">'+
-    '<input class="mg-res" value="'+esc(r.resolution||'')+'" placeholder="Resolution / action" '+
-      'onchange="mgResSave(\''+id+'\',\'resolution\',this.value)">'+
-    '<input class="mg-res mg-own" list="mgOwnerList" value="'+esc(r.owner||'')+'" placeholder="Owner" '+
-      'onchange="mgResSave(\''+id+'\',\'owner\',this.value)">'+
-    '<span class="mg-res-meta" id="mgResMeta_'+id+'"></span>'+
-  '</td>';
 }
 
 /* ── snapshot ──────────────────────────────────────────────────────────────
