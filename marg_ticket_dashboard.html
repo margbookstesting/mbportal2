@@ -4104,7 +4104,10 @@ function mgCompute(from, to){
 const MG_ROWS=[
   {sec:'Support'},
   {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'95%',    better:'up'},
-  {id:'ttsTat',    label:'Transfer to Support in-TAT %', note:'Transfer to Support date falls in this week — only tickets with a TAT flag. Return to Support is not included: BSS reports no TAT for it', f:'pct', target:'≥ 80%', better:'up'},
+  /* Label report ke saath match karne ke liye "Go-Live in-TAT %" hai, par
+   calculation Transfer to Support (dt flag) ki hai — ye aapka faisla tha.
+   Note me asli baat likhi hai taaki koi number galat na samjhe. */
+  {id:'ttsTat',    label:'Go-Live in-TAT %',     note:'Measured on the Transfer to Support date, not Ready to Go Live — only tickets with a TAT flag. Return to Support is not included: BSS reports no TAT for it', f:'pct', target:'≥ 80%', better:'up'},
   {id:'aged90',    label:'Aged backlog — no movement 30d+', note:'In the IT backlog with no stage change for 30+ days; the number shown is those already past 90 days', f:'num', target:'0', better:'down'},
   {id:'dupShare',  label:'Duplicate / repeat ticket share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
   {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
