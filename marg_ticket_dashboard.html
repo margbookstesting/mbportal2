@@ -4005,17 +4005,27 @@ function mgCompute(from, to){
   o.glvTat = tatPct(glv,'et');
   o._glvN  = glv.filter(r=>r.et==='I'||r.et==='O').length;
 
-  /* Backlog flow: entries/exits WAHI definition follow karte hain jo backlog
-     karta hai. Pehle intake = "Transfer To IT date is hafte" aur exit =
-     "Transfer To Support date is hafte" tha — us se
-     backlog(24-Aug) + intake - exits  ≠  backlog(31-Aug)
-     kyunki (a) jo ticket IT ko mila par acknowledge nahi hua wo intake me
-     ginta tha par backlog me nahi, aur (b) Rejected / Future Development /
-     Reopen backlog se nikal jate the par exit me nahi ginte the. */
+  /* ── DO ALAG GINTIYAN, jaan-bujh kar ──────────────────────────────────
+     1. FLOW RATIO (report waali) = "closed ÷ created":
+          Transfer To Support date is hafte  ÷  Transfer To IT date is hafte
+        Ye seedhi, samajhne me aasan ginti hai aur PPT ke label se match
+        karti hai.
+
+     2. RECONCILIATION (footer waali) = backlog me kitni baar ghusa/nikla.
+        Ye flow ratio se alag isliye hai kyunki backlog ki apni definition
+        hai — Transfer To IT par pada ticket abhi backlog me nahi hai, aur
+        Rejected / Future Development / Reopen backlog se nikal jate hain
+        bina Transfer To Support hue.
+
+     Dono ek jaise nahi honge, aur hone bhi nahi chahiye. Ek "IT me kaam
+     aaya vs nikla" batata hai, dusra "backlog kaise badla". */
+  o._flowIn  = R.filter(r=>inW(r.a)).length;   // created  → Transfer To IT
+  o._flowOut = R.filter(r=>inW(r.d)).length;   // closed   → Transfer To Support
+  o.flow = o._flowIn ? o._flowOut/o._flowIn : null;
+
   let _entries=0, _exits=0;
   R.forEach(r=>{ const mv=mgBacklogMoves(r, from, to); _entries+=mv.entries; _exits+=mv.exits; });
   o._in=_entries; o._out=_exits;
-  o.flow = _entries ? _exits/_entries : null;
 
   /* Window shuru hone se ek din pehle ka backlog — footer me reconciliation
      dikhane ke liye (aur regression test isi identity ko pakadta hai). */
@@ -4095,22 +4105,20 @@ const MG_ROWS=[
   {sec:'Support'},
   {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'95%',    better:'up'},
   {id:'ttsTat',    label:'Transfer to Support in-TAT %', note:'Transfer to Support date falls in this week — only tickets with a TAT flag. Return to Support is not included: BSS reports no TAT for it', f:'pct', target:'≥ 80%', better:'up'},
-  {id:'openBacklog',label:'IT backlog (open)',    note:'Ack / In Progress / Code Review / Testing / Reopened-from-Testing / Merging / UAT / Go Live — stock on the window\u2019s last day', f:'num', target:'↓ week on week', better:'down'},
-  {id:'backlog30', label:'Backlog 30 days earlier',note:'IT backlog as it stood 30 days before the window end \u2014 shows the month-over-month direction', f:'num', target:'↓ week on week', better:'down'},
   {id:'aged90',    label:'Aged backlog — no movement 30d+', note:'In the IT backlog with no stage change for 30+ days; the number shown is those already past 90 days', f:'num', target:'0', better:'down'},
-  {id:'dupShare',  label:'Duplicate / repeat share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
+  {id:'dupShare',  label:'Duplicate / repeat ticket share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
   {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
-  {id:'fcr',       label:'FCR / CSAT',            note:'Needs VoIP call data',                              f:'off',  target:'50% / 65%'},
-  {id:'flow',      label:'Backlog flow ratio',    note:'Backlog exits ÷ backlog entries in the window', f:'ratio',target:'≥ 1.0',  better:'up'},
-  {id:'loadTop2',  label:'Load concentration',    note:'Share of open tickets held by the top 2 testers',        f:'pct',  target:'< 35% ea', better:'down'},
-  {id:'acc5',      label:'Accounts with 5+ open', note:'Five or more open tickets on a single license',          f:'num',  target:'0',      better:'down'},
+  {id:'fcr',       label:'First call resolution / CSAT',            note:'Needs VoIP call data',                              f:'off',  target:'50% / 65%'},
+  {id:'flow',      label:'Backlog flow ratio (closed ÷ created)', note:'Transfer to Support \u00f7 Transfer to IT, counted on this week\u2019s dates', f:'ratio',target:'\u2265 1.0',  better:'up'},
+  {id:'loadTop2',  label:'Load concentration — top 2 assignees',    note:'Share of open tickets held by the top 2 testers',        f:'pct',  target:'< 35% ea', better:'down'},
+  {id:'acc5',      label:'Accounts holding 5+ open tickets', note:'Five or more open tickets on a single license',          f:'num',  target:'0',      better:'down'},
   {sec:'Engineering'},
   {id:'devSpread', label:'Developer speed spread',note:'Slowest ÷ fastest (min 3 tickets per dev)',    f:'x',    target:'< 2.5x', better:'down'},
-  {id:'runChange', label:'Run vs Change',         note:'Share that is bug fixes (rest is dev + improvement)',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'runChange', label:'Run vs Change ratio',         note:'Share that is bug fixes (rest is dev + improvement)',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'volume',    label:'Delivered volume — MRs / net churn', note:'Needs GitLab connector',                          f:'off',  target:'baseline'},
+  {id:'rework',    label:'Rework rate (churn <21d of merge)',           note:'Needs GitLab connector',                            f:'off',  target:'< 15%'},
   {id:'cycTime',   label:'Cycle time P50 / P90',  note:'Transfer to IT → Close by IT, in days',                f:'cyc',  target:'\u2193 30% in 2 quarters', better:'down'},
-  {id:'volume',    label:'Delivered code volume', note:'Needs GitLab connector',                          f:'off',  target:'baseline'},
-  {id:'rework',    label:'Rework rate',           note:'Needs GitLab connector',                            f:'off',  target:'< 15%'},
-  {id:'escaped',   label:'Escaped defects',       note:'Needs release tags',                                f:'off',  target:'declining'},
+  {id:'escaped',   label:'Escaped defects — last release',       note:'Needs release tags',                                f:'off',  target:'declining'},
 ];
 
 function mgFmt(v, f){
@@ -4295,8 +4303,10 @@ function mgmtRenderNow(){
     '<b>Backlog reconciliation:</b> '+fmt(cur._openStart)+' in the backlog the day before this window, '+
     '+'+fmt(cur._in)+' entered, −'+fmt(cur._out)+' left, = <b>'+fmt(cur._open)+'</b> at the end of '+
     dsp(w.cur[1])+' ('+fmt(cur._assigned)+' assigned). Last week ended at '+fmt(prev._open)+'.<br>'+
-    '<b>Backlog 30 days earlier</b> is the same stock measured on '+dsp(cur._d30)+
-    ' (this week) and '+dsp(prev._d30)+' (last week).<br>'+
+    '<b>The flow ratio counts something different</b> \u2014 '+fmt(cur._flowOut)+' tickets hit Transfer To Support '+
+    'and '+fmt(cur._flowIn)+' hit Transfer To IT this week. Those two dates are not the same events as '+
+    'entering and leaving the backlog, so the flow ratio will not reconcile with the line above.<br>'+
+
     '<b>Backlog counts</b> a ticket whose stage on that day was Acknowledge, In Progress, '+
     'Ready For Code Review, Ready For Testing, Reopened From Testing, Ready For Merging, '+
     'Ready For UAT or Ready To Go Live. Tickets still sitting at Transfer To IT, and '+
