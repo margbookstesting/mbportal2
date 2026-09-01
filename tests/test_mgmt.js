@@ -25,7 +25,7 @@ function grab(name, src){
   throw new Error('unbalanced: '+name);
 }
 const NEEDED=['mgShift','mgToday','mgDayDiff','mgPctile','mgOpenAsOf','mgLastAct',
-  'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','mgCompute','mgFmt','mgTrend','_smfTesterVal',
+  'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','esc','mgResCell','mgFmtDate','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
   'aiClean','aiTokens','aiVectorize','aiCosSparse','aiNormMap','aiAddMap','aiClusterSparse',
   'lastDisp','isBug'];
 
@@ -38,6 +38,10 @@ const consts=pageJs.match(/const MG_DATE_KEYS=\[[^\]]*\];/)[0];
 vm.runInContext(consts, sandbox);
 vm.runInContext(pageJs.match(/const MG_STAGE_ORDER = \[[^\]]*\];/)[0], sandbox);
 vm.runInContext(pageJs.match(/const MG_IT_BACKLOG  = new Set\([^)]*\);/)[0], sandbox);
+vm.runInContext(pageJs.match(/const MG_ROWS=\[[\s\S]*?\n\];/)[0], sandbox);
+/* `const` vm context ke sandbox OBJECT par attach nahi hota, isliye
+   value alag se nikalni padti hai. */
+const MG_ROWS_VAL = vm.runInContext('MG_ROWS', sandbox);
 const aiStop=pageJs.match(/const AI_STOP\s*=\s*new Set\([\s\S]*?\);/);
 if(aiStop) vm.runInContext(aiStop[0], sandbox);
 
@@ -249,6 +253,192 @@ eq('ratio', sandbox.mgFmt(0.75,'ratio'), '0.75');
 eq('x',     sandbox.mgFmt(6.04,'x'), '6.0x');
 eq('null',  sandbox.mgFmt(null,'pct'), '—');
 eq('Infinity guarded', sandbox.mgFmt(Infinity,'ratio'), '—');
+
+
+
+/* ══════════════ PHASE 2 — snapshots + resolution/owner ══════════════ */
+console.log('== 8. phase 2: escaping + resolution cell ==');
+sandbox.MG_RES={}; sandbox.MG_WEEK='2026-08-27';
+
+eq('esc escapes quotes',   sandbox.esc('a"b'), 'a&quot;b');
+eq('esc escapes apostrophe', sandbox.esc("O'Brien"), 'O&#39;Brien');
+eq('esc escapes tags',     sandbox.esc('<b>x</b>'), '&lt;b&gt;x&lt;/b&gt;');
+eq('esc handles null',     sandbox.esc(null), '');
+
+/* Resolution user ka free text hai aur seedha innerHTML me jata hai. Ek
+   quote bhi bina escape ke poori table tod deti thi. */
+sandbox.MG_RES={openBacklog:{resolution:'Fix "GST" bug', owner:"O'Brien"}};
+const cell=sandbox.mgResCell('openBacklog');
+eq('cell is a full <td>',        /^<td class="mg-res-cell">/.test(cell), true);
+eq('resolution value escaped',   cell.includes('Fix &quot;GST&quot; bug'), true);
+eq('owner value escaped',        cell.includes('O&#39;Brien'), true);
+eq('raw quote never reaches html', /value="Fix "GST"/.test(cell), false);
+eq('owner input uses the datalist', cell.includes('list="mgOwnerList"'), true);
+eq('meta span is addressable',   cell.includes('id="mgResMeta_openBacklog"'), true);
+
+/* XSS: resolution me script tag daalne se kuch execute nahi hona chahiye. */
+sandbox.MG_RES={flow:{resolution:'<img src=x onerror=alert(1)>', owner:''}};
+const evil=sandbox.mgResCell('flow');
+eq('script payload neutralised', evil.includes('<img'), false);
+eq('payload shown as text',      evil.includes('&lt;img'), true);
+
+eq('empty metric id → empty cell', sandbox.mgResCell(''), '<td></td>');
+
+sandbox.MG_RES={};
+const blank=sandbox.mgResCell('aged30');
+eq('no saved row → empty inputs', (blank.match(/value=""/g)||[]).length, 2);
+
+console.log('== 9. phase 2: week key ==');
+/* week_end = window ka aakhri din. Resolution aur snapshot dono isi par
+   chalte hain, to ye galat hua to pichhle hafte ke notes is hafte dikhne
+   lagenge. */
+const w2=sandbox.mgWindows('2026-08-31');
+eq('week_end is the window end',  w2.cur[1], '2026-08-31');
+eq('prev week_end is 7 days back', w2.prev[1], '2026-08-24');
+eq('date formatter is readable',  sandbox.mgFmtDate('2026-08-31'), '31 Aug 2026');
+
+
+/* ══════ 10. spec compliance — trend arrow, targets, exceptions ══════ */
+console.log('== 10. trend shows direction of IMPROVEMENT ==');
+/* Spec: "▲ improving · ▼ worsening — direction of improvement, not of the
+   raw number." Pehle arrow raw number se banta tha, to backlog ghatne par
+   ▼ dikhta tha — sudhar bigad jaisa padha jata tha. */
+eq('backlog down = improving = ▲', sandbox.mgTrend(802, 840, 'down').txt, '▲');
+eq('backlog up = worsening = ▼',   sandbox.mgTrend(840, 802, 'down').txt, '▼');
+eq('in-TAT up = improving = ▲',    sandbox.mgTrend(60, 40, 'up').txt,  '▲');
+eq('in-TAT down = worsening = ▼',  sandbox.mgTrend(40, 60, 'up').txt,  '▼');
+eq('improving arrow is green',     sandbox.mgTrend(802, 840, 'down').cls, 'mg-up');
+eq('worsening arrow is red',       sandbox.mgTrend(840, 802, 'down').cls, 'mg-down');
+eq('flat stays flat',              sandbox.mgTrend(802, 802, 'down').txt, '→');
+
+console.log('== 11. targets match the one-page spec ==');
+const tgt={}; MG_ROWS_VAL.forEach(r=>{ if(r.id) tgt[r.id]=r.target; });
+eq('Acknowledge in-TAT 95%',  tgt.ackTat,    '95%');
+eq('Aged backlog 0',          tgt.aged90,    '0');
+eq('Duplicate share < 10%',   tgt.dupShare,  '< 10%');
+eq('QA bypass < 5%',          tgt.bypass,    '< 5%');
+eq('Flow ratio >= 1.0',       tgt.flow,      '≥ 1.0');
+eq('Load concentration < 35% ea', tgt.loadTop2, '< 35% ea');
+eq('Accounts 5+ target 0',    tgt.acc5,      '0');
+eq('Dev spread < 2.5x',       tgt.devSpread, '< 2.5x');
+eq('Rework < 15%',            tgt.rework,    '< 15%');
+eq('aged90 row exists',       !!MG_ROWS_VAL.find(r=>r.id==='aged90'), true);
+
+console.log('== 12. target-miss parser ==');
+eq('12 misses < 10%',      sandbox.mgTargetMiss(12, '< 10%'), true);
+eq('8 meets < 10%',        sandbox.mgTargetMiss(8,  '< 10%'), false);
+eq('0.7 misses >= 1.0',    sandbox.mgTargetMiss(0.7,'≥ 1.0'), true);
+eq('1.4 meets >= 1.0',     sandbox.mgTargetMiss(1.4,'≥ 1.0'), false);
+eq('40 misses bare 95%',   sandbox.mgTargetMiss(40, '95%'),   true);
+eq('96 meets bare 95%',    sandbox.mgTargetMiss(96, '95%'),   false);
+eq('3 misses target 0',    sandbox.mgTargetMiss(3,  '0'),     true);
+eq('0 meets target 0',     sandbox.mgTargetMiss(0,  '0'),     false);
+eq('6x misses < 2.5x',     sandbox.mgTargetMiss(6,  '< 2.5x'),true);
+/* Jo target insaani hai uspar chup raho — guess karke jhooti escalation
+   banane se behtar hai kuch na kehna. */
+eq('baseline → no verdict',   sandbox.mgTargetMiss(5, 'baseline'), null);
+eq('declining → no verdict',  sandbox.mgTargetMiss(5, 'declining'), null);
+eq('week-on-week → no verdict',sandbox.mgTargetMiss(5,'↓ week on week'), null);
+eq('2-quarter goal → no verdict', sandbox.mgTargetMiss(5,'↓ 30% in 2 quarters'), null);
+eq('null value → no verdict', sandbox.mgTargetMiss(null, '< 10%'), null);
+
+console.log('== 13. exceptions block ==');
+/* Spec: "a red metric with no resolution and no owner is the escalation",
+   aur "max five exceptions". */
+const bad ={dupShare:40, bypass:30, loadTop2:90, acc5:9, devSpread:9, flow:0.2, ackTat:10, aged90:7, cycP50:5};
+const good={dupShare:1,  bypass:1,  loadTop2:1,  acc5:0, devSpread:1, flow:2.0, ackTat:99, aged90:0, cycP50:5};
+sandbox.MG_RES={};
+const ex=sandbox.mgExceptions(bad, good);
+eq('capped at five',            ex.length, 5);
+eq('every entry has a reason',  ex.every(e=>e.why && e.label), true);
+eq('off rows never escalate',   ex.some(e=>/GitLab|Escaped|CSAT/.test(e.label)), false);
+
+sandbox.MG_RES={};
+eq('all healthy → no escalations', sandbox.mgExceptions(good, good).length, 0);
+
+/* Owner likh dene se escalation hat jana chahiye. */
+sandbox.MG_RES={dupShare:{resolution:'',owner:'Eng lead'}};
+const one=sandbox.mgExceptions({dupShare:40}, {dupShare:1});
+eq('owner clears the escalation', one.length, 0);
+sandbox.MG_RES={dupShare:{resolution:'Sprint scoped',owner:''}};
+eq('resolution alone also clears', sandbox.mgExceptions({dupShare:40},{dupShare:1}).length, 0);
+sandbox.MG_RES={dupShare:{resolution:'   ',owner:'  '}};
+eq('whitespace does not count as written',
+   sandbox.mgExceptions({dupShare:40},{dupShare:1}).length, 1);
+sandbox.MG_RES={};
+
+
+/* ══════ 14. INVARIANTS — har window par sach hone chahiye ══════
+   Ye rules kisi ek number ko nahi, metrics ke aapsi rishte ko pakadte hain.
+   Koi bhi definition badle to inme se kuch na kuch turant red hoga. */
+console.log('== 14. cross-metric invariants ==');
+const WINS=[['2026-08-21','2026-08-27'],['2026-08-14','2026-08-20'],
+            ['2026-06-01','2026-06-07'],['2026-07-01','2026-07-07']];
+let invBad=0;
+WINS.forEach(([f,t])=>{
+  const c=sandbox.mgCompute(f,t);
+  const rules=[
+    ['reconciliation holds',   c._openStart+c._in-c._out===c._open],
+    ['aged90 subset of aged30',c.aged90<=c.aged30],
+    ['aged30 subset of backlog',c.aged30<=c._open],
+    ['assigned <= backlog',    c._assigned<=c._open],
+    ['flow = exits/entries',   c.flow===null||Math.abs(c.flow-c._out/c._in)<1e-9],
+    ['P50 <= P90',             c.cycP50===null||c.cycP90===null||c.cycP50<=c.cycP90],
+    ['cycN <= transfer exits', c._cycN<=c._dExitN],
+    ['devSpread >= 1',         c.devSpread===null||c.devSpread>=1],
+    ['percentages within 0-100',
+      [c.ackTat,c.ttsTat,c.bypass,c.runChange,c.loadTop2,c.dupShare]
+        .every(v=>v===null||(v>=0&&v<=100))],
+    ['counts never negative',  [c._open,c.backlog30,c.aged30,c.aged90,c.acc5,c._in,c._out]
+        .every(v=>v>=0)],
+    ['openBacklog mirrors _open', c.openBacklog===c._open],
+    ['d30 is exactly 30 days back', sandbox.mgDayDiff(c._d30,t)===30],
+    ['at most 3 duplicate clusters', !c._dupTop||c._dupTop.length<=3],
+  ];
+  rules.forEach(([nm,ok])=>{ if(!ok) invBad++; eq(nm+' ('+t+')', ok, true); });
+});
+
+/* ══════ 15. degenerate input — dashboard kabhi crash na ho ══════ */
+console.log('== 15. degenerate inputs ==');
+const savedRaw=sandbox.RAW;
+
+sandbox.RAW=[];
+let z; let crashed=false;
+try{ z=sandbox.mgCompute('2026-08-21','2026-08-27'); }catch(e){ crashed=true; }
+eq('empty RAW does not throw', crashed, false);
+eq('empty → nulls, not NaN',
+   [z.ackTat,z.flow,z.dupShare,z.loadTop2,z.devSpread].every(v=>v===null), true);
+eq('empty → zero counts', z._open===0&&z.acc5===0&&z.aged90===0, true);
+eq('empty → reconciliation still holds', z._openStart+z._in-z._out, z._open);
+
+sandbox.RAW=[{n:'x'},{n:'y',a:null,b:undefined},{n:'z',a:'',b:''},{n:'w',a:0}];
+crashed=false;
+try{ z=sandbox.mgCompute('2026-08-21','2026-08-27'); }catch(e){ crashed=true; }
+eq('null/blank/zero dates do not throw', crashed, false);
+eq('blank dates never enter the backlog', z._open, 0);
+
+sandbox.RAW=[{n:'f',a:'2030-01-01',b:'2030-01-02',l:'L1',ts:'Q1'}];
+z=sandbox.mgCompute('2026-08-21','2026-08-27');
+eq('future ticket not in backlog', z._open, 0);
+eq('future ticket not an entry',   z._in, 0);
+
+sandbox.RAW=savedRaw;
+
+console.log('== 16. mgFmt never prints NaN ==');
+eq('null → dash',     sandbox.mgFmt(null,'pct'),     '—');
+eq('Infinity → dash', sandbox.mgFmt(Infinity,'ratio'),'—');
+eq('NaN → dash',      sandbox.mgFmt(NaN,'x'),        '—');
+eq('zero is shown',   sandbox.mgFmt(0,'pct'),        '0%');
+
+console.log('== 17. every live row has data behind it ==');
+const live=MG_ROWS_VAL.filter(r=>r.id && r.f!=='off');
+const probe=sandbox.mgCompute('2026-08-21','2026-08-27');
+live.forEach(r=>{
+  const key = r.id==='cycTime' ? 'cycP50' : r.id;
+  eq('mgCompute produces '+r.id, key in probe, true);
+});
+eq('off rows all carry a target',
+   MG_ROWS_VAL.filter(r=>r.f==='off').every(r=>!!r.target), true);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
