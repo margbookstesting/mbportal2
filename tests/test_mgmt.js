@@ -441,7 +441,7 @@ eq('table is 5 columns',            /colspan="6"/.test(pageHtml), false);
    Report ke saath ye table side-by-side padhi jati hai, isliye har label
    bilkul wahi shabd hone chahiye jo slide par hain, usi kram me. */
 console.log('== 18. matches the one-page report ==');
-const SPEC={Support:['Acknowledge in-TAT %','Transfer to Support in-TAT %',
+const SPEC={Support:['Acknowledge in-TAT %','Go-Live in-TAT %',
   'Aged backlog — no movement 30d+','Duplicate / repeat ticket share','QA bypass rate',
   'First call resolution / CSAT','Backlog flow ratio (closed ÷ created)','Load concentration — top 2 assignees',
   'Accounts holding 5+ open tickets'],
@@ -453,6 +453,11 @@ MG_ROWS_VAL.forEach(r=>{
   eq('row '+(_i+1)+' of '+_sec, r.label, SPEC[_sec][_i++]);
 });
 eq('Support has 9 rows',     SPEC.Support.length, 9);
+/* Row 2 ka label report se match karta hai par number Transfer-to-Support ka
+   hai. Note me ye saaf likha hona chahiye, warna koi Go-Live samajh lega. */
+eq('row 2 note says what is really measured',
+   /Transfer to Support date, not Ready to Go Live/.test(
+     MG_ROWS_VAL.find(r=>r.id==='ttsTat').note), true);
 eq('Engineering has 6 rows', SPEC.Engineering.length, 6);
 eq('15 rows total', MG_ROWS_VAL.filter(r=>r.id).length, 15);
 /* Ye do rows jaan-bujh kar hataye gaye — report me nahi hain. */
