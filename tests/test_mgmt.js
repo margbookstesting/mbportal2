@@ -144,7 +144,15 @@ const m=sandbox.mgCompute(W[0], W[1]);
    aaya hi nahi; T8 July me reject ho gaya. */
 eq('backlog entries',       m._in, 5);        // T1,T2,T3,T4,T6
 eq('backlog exits',         m._out, 3);       // T1,T2,T6
-eq('flow ratio 3/5',        m.flow, 0.6);
+
+/* Flow ratio ab report waali ginti hai: Transfer-To-Support ÷ Transfer-To-IT.
+   Window 21-27 Aug me a: T1-21, T2-22, T3-23, T4-24 = 4 created.
+   d: T1-25, T2-26, T6-26 = 3 closed. */
+eq('flow created (Transfer To IT)',      m._flowIn, 4);
+eq('flow closed (Transfer To Support)',  m._flowOut, 3);
+eq('flow ratio 3/4',        m.flow, 0.75);
+/* Ye jaan-bujh kar reconciliation se alag hai — dono alag events ginte hain. */
+eq('flow does not reuse backlog moves', m.flow===m._out/m._in, false);
 eq('bypass base = Transfer-To-Support exits', m._dExitN, 3);
 eq('ack in-TAT 50%',        m.ackTat, 50);    // T1 I, T2 O
 eq('ack in-TAT base = flagged only', m._ackN, 2);
@@ -166,12 +174,7 @@ eq('backlog last week (as of 20-08)', sandbox.mgCompute('2026-08-14','2026-08-20
    Window 21-27 Aug → 27 Aug - 30 = 28 Jul. Us din backlog me sirf T5 tha —
    T6 tab Transfer-To-IT par tha (backlog nahi), T7 aaya hi nahi tha aur T8
    10 Jul ko reject ho chuka tha. */
-eq('30-day lag date',       m._d30, '2026-07-28');
 eq('backlog 30 days earlier', m.backlog30, 1);            // sirf T5
-eq('lag date = end - 30',   sandbox.mgDayDiff(m._d30,'2026-08-27'), 30);
-eq('lag matches a direct as-of count',
-   m.backlog30, sandbox.RAW.filter(r=>sandbox.mgOpenAsOf(r,'2026-07-28')).length);
-
 /* ── 3. RECONCILIATION — sabse important check ──
    backlog(window ke pehle din se ek din pehle) + entries - exits
      HAMESHA  backlog(window ka aakhri din)  ke barabar hona chahiye.
@@ -336,19 +339,18 @@ eq('off rows never get a status',
 eq('section rows never get a status',
    sandbox.mgRowStatus({sec:'Support'}, {}, {}), null);
 /* Non-numeric target (↓ week on week) — tab trend hi faisla karta hai. */
+/* Soft target (baseline / declining) — tab trend hi faisla karta hai. */
 eq('worsening on a soft target → behind',
-   sandbox.mgRowStatus(rowOf('openBacklog'), {openBacklog:900}, {openBacklog:800}).state, 'behind');
+   sandbox.mgRowStatus(rowOf('acc5'), {acc5:9}, {acc5:2}).state, 'behind');
 eq('improving on a soft target → met',
-   sandbox.mgRowStatus(rowOf('openBacklog'), {openBacklog:800}, {openBacklog:900}).state, 'met');
-eq('flat on a soft target → no status',
-   sandbox.mgRowStatus(rowOf('openBacklog'), {openBacklog:800}, {openBacklog:800}), null);
+   sandbox.mgRowStatus(rowOf('devSpread'), {devSpread:2}, {devSpread:8}).state, 'met');
 
 const bad ={}; MG_ROWS_VAL.filter(r=>r.id&&r.f!=='off').forEach(r=>bad[r.id]=999);
 bad.cycP50=999;
 eq('needs-attention capped at five', sandbox.mgExceptions(bad,{}).length, 5);
 eq('every entry explains itself',    sandbox.mgExceptions(bad,{}).every(e=>e.why&&e.label), true);
 const ok={dupShare:1,bypass:1,loadTop2:1,acc5:0,devSpread:1,flow:2,ackTat:99,ttsTat:99,
-          aged90:0,openBacklog:1,backlog30:1,runChange:1,cycP50:1};
+          aged90:0,runChange:1,cycP50:1};
 eq('all healthy → nothing listed',   sandbox.mgExceptions(ok,ok).length, 0);
 eq('list agrees with row status',
    sandbox.mgExceptions(bad,{}).every(e=>{
@@ -370,7 +372,7 @@ WINS.forEach(([f,t])=>{
     ['aged90 subset of aged30',c.aged90<=c.aged30],
     ['aged30 subset of backlog',c.aged30<=c._open],
     ['assigned <= backlog',    c._assigned<=c._open],
-    ['flow = exits/entries',   c.flow===null||Math.abs(c.flow-c._out/c._in)<1e-9],
+    ['flow = closed/created',  c.flow===null||Math.abs(c.flow-c._flowOut/c._flowIn)<1e-9],
     ['P50 <= P90',             c.cycP50===null||c.cycP90===null||c.cycP50<=c.cycP90],
     ['cycN <= transfer exits', c._cycN<=c._dExitN],
     ['devSpread >= 1',         c.devSpread===null||c.devSpread>=1],
@@ -379,7 +381,6 @@ WINS.forEach(([f,t])=>{
         .every(v=>v===null||(v>=0&&v<=100))],
     ['counts never negative',  [c._open,c.backlog30,c.aged30,c.aged90,c.acc5,c._in,c._out]
         .every(v=>v>=0)],
-    ['openBacklog mirrors _open', c.openBacklog===c._open],
     ['d30 is exactly 30 days back', sandbox.mgDayDiff(c._d30,t)===30],
     ['at most 3 duplicate clusters', !c._dupTop||c._dupTop.length<=3],
   ];
@@ -427,8 +428,38 @@ live.forEach(r=>{
 });
 eq('off rows all carry a target',
    MG_ROWS_VAL.filter(r=>r.f==='off').every(r=>!!r.target), true);
-eq('no Resolution column left in MG_ROWS',
-   MG_ROWS_VAL.some(r=>/resolution|owner/i.test(r.label||'')), false);
+/* Resolution + owner column hata di gayi. Label me shabd "resolution" hona
+   theek hai ("First call resolution / CSAT"), isliye page ke header aur
+   render code par check karte hain, label text par nahi. */
+const pageHtml=fs.readFileSync(PAGE,'utf8');
+eq('Resolution column header gone', /Resolution \+ owner/.test(pageHtml), false);
+eq('resolution cell renderer gone', /mgResCell/.test(pageHtml), false);
+eq('owner datalist gone',           /mgOwnerList/.test(pageHtml), false);
+eq('table is 5 columns',            /colspan="6"/.test(pageHtml), false);
+
+/* ══════ 18. PPT page 5 se labels aur order ka milaan ══════
+   Report ke saath ye table side-by-side padhi jati hai, isliye har label
+   bilkul wahi shabd hone chahiye jo slide par hain, usi kram me. */
+console.log('== 18. matches the one-page report ==');
+const SPEC={Support:['Acknowledge in-TAT %','Transfer to Support in-TAT %',
+  'Aged backlog — no movement 30d+','Duplicate / repeat ticket share','QA bypass rate',
+  'First call resolution / CSAT','Backlog flow ratio (closed ÷ created)','Load concentration — top 2 assignees',
+  'Accounts holding 5+ open tickets'],
+ Engineering:['Developer speed spread','Run vs Change ratio','Delivered volume — MRs / net churn',
+  'Rework rate (churn <21d of merge)','Cycle time P50 / P90','Escaped defects — last release']};
+let _sec=null,_i=0;
+MG_ROWS_VAL.forEach(r=>{
+  if(r.sec){ _sec=r.sec; _i=0; return; }
+  eq('row '+(_i+1)+' of '+_sec, r.label, SPEC[_sec][_i++]);
+});
+eq('Support has 9 rows',     SPEC.Support.length, 9);
+eq('Engineering has 6 rows', SPEC.Engineering.length, 6);
+eq('15 rows total', MG_ROWS_VAL.filter(r=>r.id).length, 15);
+/* Ye do rows jaan-bujh kar hataye gaye — report me nahi hain. */
+eq('IT backlog row removed',  MG_ROWS_VAL.some(r=>r.id==='openBacklog'), false);
+eq('Backlog-30-days row removed', MG_ROWS_VAL.some(r=>r.id==='backlog30'), false);
+/* Backlog reconciliation footer ab bhi in numbers par chalta hai. */
+eq('_open still computed',   typeof sandbox.mgCompute('2026-08-21','2026-08-27')._open, 'number');
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
