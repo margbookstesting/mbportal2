@@ -25,7 +25,7 @@ function grab(name, src){
   throw new Error('unbalanced: '+name);
 }
 const NEEDED=['mgShift','mgToday','mgDayDiff','mgPctile','mgOpenAsOf','mgLastAct',
-  'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','esc','mgResCell','mgFmtDate','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
+  'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','esc','mgFmtDate','mgRowStatus','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
   'aiClean','aiTokens','aiVectorize','aiCosSparse','aiNormMap','aiAddMap','aiClusterSparse',
   'lastDisp','isBug'];
 
@@ -257,36 +257,15 @@ eq('Infinity guarded', sandbox.mgFmt(Infinity,'ratio'), '—');
 
 
 /* ══════════════ PHASE 2 — snapshots + resolution/owner ══════════════ */
-console.log('== 8. phase 2: escaping + resolution cell ==');
-sandbox.MG_RES={}; sandbox.MG_WEEK='2026-08-27';
-
-eq('esc escapes quotes',   sandbox.esc('a"b'), 'a&quot;b');
+console.log('== 8. escaping ==');
+eq('esc escapes quotes',     sandbox.esc('a"b'), 'a&quot;b');
 eq('esc escapes apostrophe', sandbox.esc("O'Brien"), 'O&#39;Brien');
-eq('esc escapes tags',     sandbox.esc('<b>x</b>'), '&lt;b&gt;x&lt;/b&gt;');
-eq('esc handles null',     sandbox.esc(null), '');
-
-/* Resolution user ka free text hai aur seedha innerHTML me jata hai. Ek
-   quote bhi bina escape ke poori table tod deti thi. */
-sandbox.MG_RES={openBacklog:{resolution:'Fix "GST" bug', owner:"O'Brien"}};
-const cell=sandbox.mgResCell('openBacklog');
-eq('cell is a full <td>',        /^<td class="mg-res-cell">/.test(cell), true);
-eq('resolution value escaped',   cell.includes('Fix &quot;GST&quot; bug'), true);
-eq('owner value escaped',        cell.includes('O&#39;Brien'), true);
-eq('raw quote never reaches html', /value="Fix "GST"/.test(cell), false);
-eq('owner input uses the datalist', cell.includes('list="mgOwnerList"'), true);
-eq('meta span is addressable',   cell.includes('id="mgResMeta_openBacklog"'), true);
-
-/* XSS: resolution me script tag daalne se kuch execute nahi hona chahiye. */
-sandbox.MG_RES={flow:{resolution:'<img src=x onerror=alert(1)>', owner:''}};
-const evil=sandbox.mgResCell('flow');
-eq('script payload neutralised', evil.includes('<img'), false);
-eq('payload shown as text',      evil.includes('&lt;img'), true);
-
-eq('empty metric id → empty cell', sandbox.mgResCell(''), '<td></td>');
-
-sandbox.MG_RES={};
-const blank=sandbox.mgResCell('aged30');
-eq('no saved row → empty inputs', (blank.match(/value=""/g)||[]).length, 2);
+eq('esc escapes tags',       sandbox.esc('<b>x</b>'), '&lt;b&gt;x&lt;/b&gt;');
+eq('esc escapes ampersand',  sandbox.esc('A & B'), 'A &amp; B');
+eq('esc handles null',       sandbox.esc(null), '');
+/* Duplicate cluster ke naam Marg ke ticket text se aate hain — user-supplied
+   hai, isliye innerHTML me jane se pehle escape hona chahiye. */
+eq('script payload neutralised', sandbox.esc('<img src=x onerror=alert(1)>').includes('<img'), false);
 
 console.log('== 9. phase 2: week key ==');
 /* week_end = window ka aakhri din. Resolution aur snapshot dono isi par
@@ -342,31 +321,40 @@ eq('week-on-week → no verdict',sandbox.mgTargetMiss(5,'↓ week on week'), nul
 eq('2-quarter goal → no verdict', sandbox.mgTargetMiss(5,'↓ 30% in 2 quarters'), null);
 eq('null value → no verdict', sandbox.mgTargetMiss(null, '< 10%'), null);
 
-console.log('== 13. exceptions block ==');
-/* Spec: "a red metric with no resolution and no owner is the escalation",
-   aur "max five exceptions". */
-const bad ={dupShare:40, bypass:30, loadTop2:90, acc5:9, devSpread:9, flow:0.2, ackTat:10, aged90:7, cycP50:5};
-const good={dupShare:1,  bypass:1,  loadTop2:1,  acc5:0, devSpread:1, flow:2.0, ackTat:99, aged90:0, cycP50:5};
-sandbox.MG_RES={};
-const ex=sandbox.mgExceptions(bad, good);
-eq('capped at five',            ex.length, 5);
-eq('every entry has a reason',  ex.every(e=>e.why && e.label), true);
-eq('off rows never escalate',   ex.some(e=>/GitLab|Escaped|CSAT/.test(e.label)), false);
+console.log('== 13. row status + needs-attention list ==');
+/* mgRowStatus ek hi jagah se rail ka rang, target pill aur list decide karta
+   hai — teeno ka jawab hamesha same hona chahiye. */
+const rowOf=id=>MG_ROWS_VAL.find(r=>r.id===id);
+eq('behind target → behind',
+   sandbox.mgRowStatus(rowOf('dupShare'), {dupShare:40}, {dupShare:40}).state, 'behind');
+eq('meeting target → met',
+   sandbox.mgRowStatus(rowOf('dupShare'), {dupShare:4},  {dupShare:4}).state, 'met');
+eq('null value → no status',
+   sandbox.mgRowStatus(rowOf('dupShare'), {dupShare:null}, {dupShare:1}), null);
+eq('off rows never get a status',
+   sandbox.mgRowStatus(rowOf('rework'), {rework:1}, {rework:1}), null);
+eq('section rows never get a status',
+   sandbox.mgRowStatus({sec:'Support'}, {}, {}), null);
+/* Non-numeric target (↓ week on week) — tab trend hi faisla karta hai. */
+eq('worsening on a soft target → behind',
+   sandbox.mgRowStatus(rowOf('openBacklog'), {openBacklog:900}, {openBacklog:800}).state, 'behind');
+eq('improving on a soft target → met',
+   sandbox.mgRowStatus(rowOf('openBacklog'), {openBacklog:800}, {openBacklog:900}).state, 'met');
+eq('flat on a soft target → no status',
+   sandbox.mgRowStatus(rowOf('openBacklog'), {openBacklog:800}, {openBacklog:800}), null);
 
-sandbox.MG_RES={};
-eq('all healthy → no escalations', sandbox.mgExceptions(good, good).length, 0);
-
-/* Owner likh dene se escalation hat jana chahiye. */
-sandbox.MG_RES={dupShare:{resolution:'',owner:'Eng lead'}};
-const one=sandbox.mgExceptions({dupShare:40}, {dupShare:1});
-eq('owner clears the escalation', one.length, 0);
-sandbox.MG_RES={dupShare:{resolution:'Sprint scoped',owner:''}};
-eq('resolution alone also clears', sandbox.mgExceptions({dupShare:40},{dupShare:1}).length, 0);
-sandbox.MG_RES={dupShare:{resolution:'   ',owner:'  '}};
-eq('whitespace does not count as written',
-   sandbox.mgExceptions({dupShare:40},{dupShare:1}).length, 1);
-sandbox.MG_RES={};
-
+const bad ={}; MG_ROWS_VAL.filter(r=>r.id&&r.f!=='off').forEach(r=>bad[r.id]=999);
+bad.cycP50=999;
+eq('needs-attention capped at five', sandbox.mgExceptions(bad,{}).length, 5);
+eq('every entry explains itself',    sandbox.mgExceptions(bad,{}).every(e=>e.why&&e.label), true);
+const ok={dupShare:1,bypass:1,loadTop2:1,acc5:0,devSpread:1,flow:2,ackTat:99,ttsTat:99,
+          aged90:0,openBacklog:1,backlog30:1,runChange:1,cycP50:1};
+eq('all healthy → nothing listed',   sandbox.mgExceptions(ok,ok).length, 0);
+eq('list agrees with row status',
+   sandbox.mgExceptions(bad,{}).every(e=>{
+     const row=MG_ROWS_VAL.find(r=>r.label===e.label);
+     return sandbox.mgRowStatus(row,bad,{}).state==='behind';
+   }), true);
 
 /* ══════ 14. INVARIANTS — har window par sach hone chahiye ══════
    Ye rules kisi ek number ko nahi, metrics ke aapsi rishte ko pakadte hain.
@@ -439,6 +427,8 @@ live.forEach(r=>{
 });
 eq('off rows all carry a target',
    MG_ROWS_VAL.filter(r=>r.f==='off').every(r=>!!r.target), true);
+eq('no Resolution column left in MG_ROWS',
+   MG_ROWS_VAL.some(r=>/resolution|owner/i.test(r.label||'')), false);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
