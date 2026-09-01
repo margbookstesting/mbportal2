@@ -23,6 +23,10 @@ const MARG_API   = 'https://dbwork.margbooks.com/api/Other/usermoveDomain';
 const LOGIN_API  = 'https://dbwork.margbooks.com/api/Auth/login';
 const LOGIN_EMAIL    = process.env.MARG_LOGIN_EMAIL || '';
 const LOGIN_PASSWORD = process.env.MARG_LOGIN_PASSWORD || '';
+/* Marg in headers ke bina request reject kar deta hai — ye original code me
+   the aur deploy me chhoot gaye the. */
+const MARG_ORIGIN = process.env.MARG_ORIGIN || 'http://192.167.24.89:8086';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
 const STATIC_TOKEN   = process.env.MARG_TOKEN || '';
 const MARG_USER_EMAIL = process.env.MARG_USER_EMAIL || LOGIN_EMAIL || '';
 
@@ -54,7 +58,14 @@ function jwtExpMs(t) {
 async function margLogin() {
   const r = await fetch(LOGIN_API, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/plain, */*' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Origin': MARG_ORIGIN,
+      'Referer': MARG_ORIGIN + '/',
+      'User-Agent': UA,
+    },
     body: JSON.stringify({ email: LOGIN_EMAIL, password: LOGIN_PASSWORD, token: '', roleid: 0, permission: [], isotpauth: 0 }),
   });
   const text = await r.text();
@@ -70,18 +81,24 @@ async function getMargToken(force) {
   if (LOGIN_EMAIL && LOGIN_PASSWORD) {
     const now = Date.now();
     if (!force && _cache.token && _cache.exp - 60000 > now) return _cache.token;
-    const tok = await margLogin();
-    _cache = { token: tok, exp: jwtExpMs(tok) || (now + 10 * 60000) };
-    return tok;
+    /* STATIC_TOKEN fallback: login fail ho to manual token se kaam chale. */
+    try {
+      const tok = await margLogin();
+      _cache = { token: tok, exp: jwtExpMs(tok) || (now + 10 * 60000) };
+      return tok;
+    } catch (e) {
+      if (STATIC_TOKEN) return STATIC_TOKEN;
+      throw e;
+    }
   }
   if (STATIC_TOKEN) return STATIC_TOKEN;
-  throw new Error('Server not configured: MARG_LOGIN_EMAIL/PASSWORD (ya MARG_TOKEN) set karo');
+  throw new Error('Server not configured: set MARG_LOGIN_EMAIL/PASSWORD (or MARG_TOKEN)');
 }
 
 async function callMove(token, payload) {
   const r = await fetch(MARG_API, {
     method: 'POST',
-    headers: { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    headers: { 'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'en-US,en;q=0.9', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Origin': MARG_ORIGIN, 'Referer': MARG_ORIGIN + '/', 'User-Agent': UA },
     body: JSON.stringify(payload),
   });
   const text = await r.text();
@@ -114,8 +131,8 @@ module.exports = async function handler(req, res) {
 
   if (!countrykey) return res.status(400).json({ error: 'Select a country' });
   if (version === undefined || istesting === undefined) return res.status(400).json({ error: 'Select a domain' });
-  if (moveBy === 'email' && !String(emailid || '').trim()) return res.status(400).json({ error: 'Email ID daalo' });
-  if (moveBy === 'dblink' && !String(dbinfolinkidstr || '').trim()) return res.status(400).json({ error: 'DB InfoLinkID daalo' });
+  if (moveBy === 'email' && !String(emailid || '').trim()) return res.status(400).json({ error: 'Please enter an Email ID' });
+  if (moveBy === 'dblink' && !String(dbinfolinkidstr || '').trim()) return res.status(400).json({ error: 'Please enter a DB InfoLinkID' });
 
   const payload = {
     key: String(process.env.MARG_MOVE_KEY || key || ''),
@@ -139,7 +156,7 @@ module.exports = async function handler(req, res) {
 
   if (r.status === 401 || r.status === 403) {
     try { mtok = await getMargToken(true); r = await callMove(mtok, payload); }
-    catch (e) { return res.status(502).json({ error: 'Re-login fail: ' + (e.message || String(e)) }); }
+    catch (e) { return res.status(502).json({ error: 'Re-login failed: ' + (e.message || String(e)) }); }
   }
 
   if (r.status === 401 || r.status === 403)

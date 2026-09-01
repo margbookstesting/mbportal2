@@ -170,7 +170,7 @@ async function margLogin() {
   let data; try { data = JSON.parse(text); } catch { data = text; }
   if (!r.ok) throw new Error('Marg login failed (HTTP ' + r.status + ')');
   const tok = findJwt(data);
-  if (!tok) throw new Error('Login response me token nahi mila');
+  if (!tok) throw new Error('No token found in the login response');
   return tok;
 }
 async function getMargToken(force) {
@@ -182,7 +182,7 @@ async function getMargToken(force) {
     return tok;
   }
   if (STATIC_TOKEN) return STATIC_TOKEN;
-  throw new Error('Server not configured: MARG_LOGIN_EMAIL/PASSWORD (ya MARG_TOKEN) set karo');
+  throw new Error('Server not configured: set MARG_LOGIN_EMAIL/PASSWORD (or MARG_TOKEN)');
 }
 
 async function callMarg(token, url, body) {
@@ -243,17 +243,17 @@ module.exports = async function handler(req, res) {
   if (!builder) return res.status(400).json({ error: 'Unknown action: ' + action });
 
   if (action === 'getDetails' && !String(body.emailid || '').trim())
-    return res.status(400).json({ error: 'Email ID / Mobile daalo' });
+    return res.status(400).json({ error: 'Enter an Email ID or Mobile number' });
   if (NEEDS_RECORD.has(action) && (body.dbinfolinkid === undefined || body.dbinfolinkid === null || body.dbinfolinkid === ''))
-    return res.status(400).json({ error: 'Pehle "Get Details" chalao (record load karo)' });
+    return res.status(400).json({ error: 'Run "Get Details" first to load the record' });
   if (action === 'resetPwd' && !String(body.remark || '').trim())
-    return res.status(400).json({ error: 'New password daalo' });
+    return res.status(400).json({ error: 'Enter a new password' });
   if (action === 'changeEmail'){
-    if (!String(body.newEmail||'').trim())   return res.status(400).json({ error: 'New email daalo' });
+    if (!String(body.newEmail||'').trim())   return res.status(400).json({ error: 'Enter a new email' });
     if (!String(body.oldEmail||'').trim())   return res.status(400).json({ error: 'Current email is missing on this record' });
   }
   if (action === 'changeMobile'){
-    if (!String(body.newMobile||'').trim())  return res.status(400).json({ error: 'New mobile number daalo' });
+    if (!String(body.newMobile||'').trim())  return res.status(400).json({ error: 'Enter a new mobile number' });
     if (!String(body.oldMobile||'').trim())  return res.status(400).json({ error: 'Current mobile is missing on this record' });
   }
   if (action === 'getDomainList'){
@@ -267,7 +267,7 @@ module.exports = async function handler(req, res) {
   // Legacy license API path — GET with query-string key, no Bearer token, no retry.
   if (legacy) {
     try { r = await callMargLegacy(url); }
-    catch (e) { return res.status(502).json({ error: 'Marg API reach nahi hui: ' + (e.message || String(e)) }); }
+    catch (e) { return res.status(502).json({ error: 'Could not reach the Marg API: ' + (e.message || String(e)) }); }
     if (!r.ok) return res.status(502).json({ error: 'Marg API error', upstreamStatus: r.status, upstream: r.data });
     return res.status(200).json({ ok: true, action, result: r.data });
   }
@@ -278,15 +278,15 @@ module.exports = async function handler(req, res) {
   catch (e) { return res.status(500).json({ error: e.message || String(e) }); }
 
   try { r = await callMarg(mtok, url, mbody); }
-  catch (e) { return res.status(502).json({ error: 'Marg API reach nahi hui: ' + (e.message || String(e)) }); }
+  catch (e) { return res.status(502).json({ error: 'Could not reach the Marg API: ' + (e.message || String(e)) }); }
 
   if (r.status === 401 || r.status === 403) {
     try { mtok = await getMargToken(true); r = await callMarg(mtok, url, mbody); }
-    catch (e) { return res.status(502).json({ error: 'Re-login fail: ' + (e.message || String(e)) }); }
+    catch (e) { return res.status(502).json({ error: 'Re-login failed: ' + (e.message || String(e)) }); }
   }
 
   if (r.status === 401 || r.status === 403)
-    return res.status(502).json({ error: 'Marg auth fail (re-login ke baad bhi)', upstreamStatus: r.status });
+    return res.status(502).json({ error: 'Marg authentication failed (even after re-login)', upstreamStatus: r.status });
   if (!r.ok)
     return res.status(502).json({ error: 'Marg API error', upstreamStatus: r.status, upstream: r.data });
 

@@ -35,7 +35,11 @@ const MARG_ORIGIN    = process.env.MARG_ORIGIN || 'http://192.167.24.89:8086';
 // Is page ka permission id (portal.html ke ALL_DASHBOARDS se match karta hai).
 // Page access aur update permission JAANBUJHKAR same hai: jiske paas dashboard
 // hai wo update kar sakta hai.
-const DASH_ID = 'bss-dashboard';
+// BSS ab TAT dashboard ka tab hai, isliye permission `tat-bss` hai. Purani
+// standalone id bhi maani jati hai — jinke paas pehle se `bss-dashboard` hai
+// unka access na toote (aur /bss route abhi bhi chalta hai).
+const DASH_IDS = ['tat-bss', 'bss-dashboard'];
+const DASH_ID = DASH_IDS[0];
 
 // BindDropDown master data roz nahi badalta. Har modal par fetch karna Marg par
 // bekaar load hai, isliye warm lambda me cache. TTL chhota rakha hai taaki naya
@@ -101,7 +105,7 @@ async function margToken(force) {
     return t;
   }
   if (STATIC_TOKEN) return STATIC_TOKEN;
-  throw new Error('Server not configured: MARG_LOGIN_EMAIL/PASSWORD (ya MARG_TOKEN) set karo');
+  throw new Error('Server not configured: set MARG_LOGIN_EMAIL/PASSWORD (or MARG_TOKEN)');
 }
 async function callMarg(url, { method = 'POST', body, token } = {}) {
   const headers = {
@@ -119,12 +123,26 @@ async function callMarg(url, { method = 'POST', body, token } = {}) {
 // Marg ka "Status" hamesha HTTP code me nahi aata — 200 ke saath bhi
 // {"Status":"Fail"} ho sakta hai. Dono check karna zaroori hai, warna
 // failed update bhi success dikh jayega.
+/* Marg do alag convention use karta hai, dono dekhe gaye hain:
+ *   UpdateTicketStatus        → {"Status":"1", "Message":"Updated Successfully."}
+ *                               {"Status":"0", "Message":"Invalid Bss Disposition"}
+ *   GetMBTicketStatusDetail   → {"Status":"Success", "Details":[...]}
+ * Pehle ye sirf /success/i test karta tha, to "1" par bhi FALSE lautata —
+ * yaani har SAFAL update ko failure maana jata tha. User ko
+ * "Update failed: Updated Successfully." dikhta tha, audit me success:false
+ * likha jata tha, aur 502 ki wajah se cache patch + resync dono skip ho jate.
+ */
 function margSucceeded(res) {
   if (!res.ok) return false;
   const d = res.data;
-  if (d && typeof d === 'object' && typeof d.Status === 'string')
-    return /success/i.test(d.Status);
-  return true;
+  if (!d || typeof d !== 'object') return true;   // koi body nahi → HTTP par bharosa
+  const s = d.Status;
+  if (s === undefined || s === null || s === '') return true;
+  if (typeof s === 'boolean') return s;
+  const t = String(s).trim();
+  if (t === '1' || /^(true|success)/i.test(t)) return true;
+  if (t === '0' || /^(false)/i.test(t) || /fail|error|invalid/i.test(t)) return false;
+  return true;   // anjaan value → HTTP 200 par bharosa, warna sahi update block ho jayega
 }
 function margMessage(res) {
   const d = res.data;
@@ -180,8 +198,15 @@ function sanitizePayload(raw) {
 // Do problem: (1) koi bhi arbitrary key ticket record me ghusa sakta tha,
 // (2) `__proto__` jaisi key Object.assign ke [[Set]] se prototype tak pahunch
 // sakti thi. Isliye sirf wahi keys allow hain jo parser bhi produce karta hai.
+// `st`/`ld` jaise text fields ke alawa STAGE DATES bhi patch hoti hain. Iske
+// bina update ke baad BSS ke KPI to move ho jate the (wo `st` padhte hain) par
+// TAT dashboard ke KPI wahin atke rehte the — wo stage dates par chalte hain
+// (a/b/c/rtd/uad/e/d). Reload par bhi purana hi dikhta tha, kyunki cache me
+// dates purani rehti thi. `sc` bhi shamil hai taaki short-code stale na rahe.
 const CACHE_PATCH_KEYS = new Set(['st', 'ld', 'mainDisp', 'probType', 'subDisp',
-                                  'assignto', 'dev', 'r', 'tld', 'jira']);
+                                  'assignto', 'dev', 'r', 'tld', 'jira',
+                                  'sc', 'a', 'b', 'c', 'd', 'e', 'cld',
+                                  'rtd', 'crd', 'mgd', 'uad', 'rfd', 'rod', 'fdd', 'rjd']);
 
 function sanitizeCachePatch(raw) {
   const out = {};
@@ -259,12 +284,43 @@ module.exports = async function handler(req, res) {
   const me = await supa('/auth/v1/user', { token, key: ANON_KEY });
   if (!me.ok || !me.data || !me.data.id) return res.status(401).json({ error: 'Invalid session' });
 
-  const prof = await supa(`/rest/v1/users?id=eq.${me.data.id}&select=role,dashboards,bss_user_id,name,email`);
-  const p = Array.isArray(prof.data) ? prof.data[0] : null;
-  if (!p) return res.status(403).json({ error: 'No profile — access denied' });
+  // Profile read. `bss_user_id` column tabhi hota hai jab
+  // sql/2026-08-bss-dashboard.sql chal chuki ho. Na ho to PostgREST poori
+  // query fail kar deta hai — pehle wo "No profile" 403 ban jata tha, jo
+  // bilkul misleading tha (asli wajah: migration nahi chali).
+  // Ab: column ke bina bhi READ-ONLY dashboard chalna chahiye; sirf update
+  // block ho, saaf message ke saath.
+  let prof = await supa(`/rest/v1/users?id=eq.${me.data.id}&select=role,dashboards,bss_user_id,name,email`);
+  let migrationMissing = false;
 
-  const allowed = p.role === 'admin' || (Array.isArray(p.dashboards) && p.dashboards.includes(DASH_ID));
-  if (!allowed) return res.status(403).json({ error: 'You do not have access to the BSS Dashboard' });
+  if (!prof.ok) {
+    const msg = JSON.stringify(prof.data || '');
+    if (/bss_user_id/.test(msg)) {
+      migrationMissing = true;
+      prof = await supa(`/rest/v1/users?id=eq.${me.data.id}&select=role,dashboards,name,email`);
+    }
+    if (!prof.ok)
+      return res.status(500).json({
+        error: 'Profile read failed: ' + (prof.data && (prof.data.message || prof.data.hint) || ('HTTP ' + prof.status)),
+      });
+  }
+
+  const p = Array.isArray(prof.data) ? prof.data[0] : null;
+  if (!p)
+    return res.status(403).json({
+      error: 'Your profile was not found in the public.users table (the auth account exists). ' +
+             'Ask an admin to create your user record.',
+    });
+  if (migrationMissing) p.bss_user_id = null;
+
+  const allowed = p.role === 'admin' ||
+    (Array.isArray(p.dashboards) && DASH_IDS.some(id => p.dashboards.includes(id)));
+  if (!allowed)
+    return res.status(403).json({
+      error: `You do not have access to the BSS Update tab. Ask an admin to tick "BSS Update (TAT)" in Admin → Users.`,
+      role: p.role || null,
+      dashboards: Array.isArray(p.dashboards) ? p.dashboards : [],
+    });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -305,17 +361,39 @@ module.exports = async function handler(req, res) {
 
       const list = (r.data && r.data.Details) || [];
       const rec = list.find(x => String(x.TicketNo).trim() === tn) || list[0] || null;
-      if (!rec) return res.status(404).json({ error: `Ticket ${tn} was not found (${from} → ${to})` });
+      if (!rec) return res.status(404).json({ error: `Ticket ${tn} was not found between ${from} and ${to}` });
 
       return res.status(200).json({ ok: true, ticket: rec });
     }
 
+    // ── cachepatch (resync ke baad fresh values cache me likho) ────────────
+    // Update ke turant baad client us ticket ko Marg se dobara padhta hai
+    // (action:'ticket') aur parse karke stage dates nikalta hai. Wo dates
+    // yahan bheji jati hain, warna cache me purani dates rehti aur page
+    // reload par stage phir peeche chala jata. Auth/permission check upar
+    // ho chuka hai — ye wahi patchCache use karta hai jo update karta hai,
+    // aur sanitizeCachePatch ki whitelist se guzarta hai.
+    if (action === 'cachepatch') {
+      const tn = String(body.ticketNo || '').trim();
+      if (!tn) return res.status(400).json({ error: 'ticketNo required' });
+      const cp = sanitizeCachePatch(body.patch);
+      if (!Object.keys(cp).length)
+        return res.status(200).json({ ok: true, cache: { patched: false, reason: 'nothing to patch after sanitising' } });
+      const cache = await patchCache(tn, cp);
+      return res.status(200).json({ ok: true, ticketNo: tn, cache });
+    }
+
     // ── update ─────────────────────────────────────────────────────────────
     if (action === 'update') {
+      if (migrationMissing)
+        return res.status(500).json({
+          error: 'Database migration pending: the users.bss_user_id column is missing. ' +
+                 'Run sql/2026-08-bss-dashboard.sql in the Supabase SQL Editor, then updates will work.',
+        });
       if (!p.bss_user_id)
         return res.status(400).json({
           error: 'Your account has no BSS User ID mapped. Ask an admin to set it in Admin → Users. ' +
-                 'Without it, updates cannot be audit-trailed.',
+                 'Without it the update cannot be attributed in the audit log.',
         });
 
       const { out, errors } = sanitizePayload(body.payload);
@@ -345,8 +423,16 @@ module.exports = async function handler(req, res) {
         message:     okUpdate ? null : margMessage(r),
       });
 
+      /* Marg ka apna message hi user tak jata hai — wo batata hai ki kaun sa
+         field galat hai ("Invalid Bss Disposition"), jo kisi bhi generic
+         prefix se zyada kaam ka hai. Pehle yahan "Update failed: " juda hota
+         tha, jisse success par "Update failed: Updated Successfully." jaisa
+         ulta-pulta message banta tha. */
       if (!okUpdate)
-        return res.status(502).json({ error: 'Update failed: ' + margMessage(r), marg: r.data });
+        return res.status(502).json({
+          error: margMessage(r) || 'Update failed (Marg returned no message)',
+          marg: r.data,
+        });
 
       let cache = { patched: false, reason: 'not requested' };
       if (body.cachePatch && typeof body.cachePatch === 'object') {
@@ -356,7 +442,11 @@ module.exports = async function handler(req, res) {
           : { patched: false, reason: 'nothing to patch after sanitising' };
       }
 
-      return res.status(200).json({ ok: true, ticketNo: out.TicketNo, sent: out, marg: r.data, cache });
+      return res.status(200).json({
+        ok: true, ticketNo: out.TicketNo, sent: out,
+        message: margMessage(r),   // client isi ko toast me dikhata hai
+        marg: r.data, cache,
+      });
     }
 
     return res.status(400).json({ error: 'Unknown action: ' + action });

@@ -32,7 +32,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 // assets/ticket-parser.js ke MB_SCHEMA_VERSION / MB_REQUIRED_FIELDS ke saath
 // in sync rakhna zaroori hai.
-const REQUIRED_SCHEMA  = 2;
+const REQUIRED_SCHEMA  = 3;
 const REQUIRED_FIELDS  = ['tia', 'ld', 'rtd', 'st'];
 const MIN_COUNT_RATIO  = 0.5;    // naya count purane ka kam se kam 50%
 const MAX_ROWS         = 200000; // sanity upper bound
@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
       json = zlib.gunzipSync(buf, { maxOutputLength: MAX_JSON_BYTES }).toString('utf8');
     } catch (e) {
       return res.status(400).json({
-        error: 'gz decompress failed (corrupt, ya decompressed size > ' +
+        error: 'gz decompress failed (corrupt, or decompressed size > ' +
                Math.round(MAX_JSON_BYTES / 1024 / 1024) + 'MB): ' + e.message,
       });
     }
@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
     // Client ne jo count claim kiya tha wahi mila? (truncated upload catch)
     if (count !== undefined && Array.isArray(data) && data.length !== count)
       return res.status(400).json({
-        error: `Payload truncated — the client sent ${count} records but only ${data.length} arrived. Try Refresh again.`,
+        error: `Payload truncated — the client sent ${count} records but ${data.length} arrived. Please retry the refresh.`,
       });
   }
 
