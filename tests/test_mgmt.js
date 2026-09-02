@@ -24,6 +24,16 @@ function grab(name, src){
   }
   throw new Error('unbalanced: '+name);
 }
+function grabFn(name){
+  const i=pageJs.indexOf('function '+name+'(');
+  if(i<0) return null;
+  let d=0, started=false;
+  for(let j=i;j<pageJs.length;j++){
+    if(pageJs[j]==='{'){d++;started=true;}
+    else if(pageJs[j]==='}'){d--; if(started&&d===0) return pageJs.slice(i,j+1);}
+  }
+  return null;
+}
 const NEEDED=['mgShift','mgToday','mgDayDiff','mgPctile','mgOpenAsOf','mgLastAct',
   'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','mgFirstIT','mgInScope','mgDispOf','mgInDisp','esc','mgFmtDate','mgRowStatus','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
   'aiClean','aiTokens','aiVectorize','aiCosSparse','aiNormMap','aiAddMap','aiClusterSparse',
@@ -572,6 +582,60 @@ eq('still counted in last week\u2019s queue',
 sandbox.RAW=[{n:'z', ld:'Bug', a:'2026-06-01', c:'2026-08-20'}];
 eq('empty queue → null, not 0', sandbox.mgCompute('2026-08-21','2026-08-27').loadTop2, null);
 sandbox.RAW=savedRaw;
+
+
+/* ══════ 23. Excel export — poora column dump + Currently Pending ══════ */
+console.log('== 23. excel export ==');
+vm.runInContext(pageJs.match(/const XL_COLS = \[[\s\S]*?\n\];/)[0], sandbox);
+['buildSheetRows','xlCols'].forEach(n=>{
+  const b=grabFn(n); if(b) vm.runInContext(b, sandbox);
+});
+const xh = sandbox.buildSheetRows([], 'at', 'a', 'IT')[0];
+eq('header starts with the stage columns',
+   xh.slice(0,3).join('|'), 'Stage Date|Pending Status|TAT Status');
+eq('no duplicate column names', new Set(xh).size, xh.length);
+eq('column widths match the header', sandbox.xlCols().length, xh.length);
+
+/* Har wo field jo koi bhi dashboard padhta hai, sheet me hona chahiye. */
+['Ticket No','Created Date','Status','Client Name','LicNo','Description',
+ 'RM','Tester (TransferTo)','Developer','Last Disposition',
+ 'Transfer To IT Date','Acknowledge Date','In Progress Date',
+ 'Ready For Testing Date','Code Review Date','Merging Date','Ready For UAT Date',
+ 'Reopend from Testing Date','Ready To Go Live Date','Transfer To Support Date',
+ 'Reopen Date','Future Development Date','Rejected Date','Close Date',
+ 'Acknowledge TAT','Transfer To Support TAT'].forEach(c=>{
+  eq('export has "'+c+'"', xh.includes(c), true);
+});
+
+const xr = sandbox.buildSheetRows([
+  {n:'T1', st:'Acknowledge', sc:'AK', a:'2026-08-20', b:'2026-08-21', bt:'I',
+   u:'Client A', l:'L1', desc:'gst issue', r:'RM1', t:'QA1', dev:'D1'},
+  {n:'T2', st:'In Progress', sc:'IP', a:'2026-08-20'},
+], 'bt', 'b', 'AK');
+eq('one row per ticket', xr.length, 3);
+eq('every row is the full width', xr.every(r=>r.length===xh.length), true);
+eq('missing fields become blank, never undefined',
+   xr.slice(1).every(r=>r.every(v=>v!==undefined && v!==null)), true);
+eq('pending status marks the matching stage', xr[1][1], 'Pending');
+eq('pending status marks moved-on tickets',   xr[2][1], 'Moved Forward');
+eq('TAT status reads the stage flag',         xr[1][2], 'InTAT');
+eq('no flag → No TAT',                        xr[2][2], 'No TAT');
+eq('description is exported', xr[1][xh.indexOf('Description')], 'gst issue');
+eq('stage date column follows dateKey', xr[1][0], '2026-08-21');
+
+/* "Currently Pending" sheet card ke Overall pill se match karni chahiye —
+   dono RAW par chalte hain, bina kisi filter ke. */
+console.log('== 24. Currently Pending sheet ==');
+const pageSrc = fs.readFileSync(PAGE,'utf8');
+eq('sheet exists',            /Currently Pending/.test(pageSrc), true);
+eq('it reads RAW, not cfg.data',
+   /\(RAW\|\|\[\]\)\.filter\(r=>r\.sc===cfg\.pendingSc\)/.test(pageSrc), true);
+eq('summary reports both counts',
+   /Currently Pending \(all data, no filters\)/.test(pageSrc), true);
+const pend = sandbox.buildSheetRows(
+  [{n:'P1',sc:'IT',a:'2020-01-01'},{n:'P2',sc:'IT'}], 'at','a','IT');
+eq('old tickets are not dropped by a date',  pend.length, 3);
+eq('all rows read as Pending', pend.slice(1).every(r=>r[1]==='Pending'), true);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
