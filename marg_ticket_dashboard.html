@@ -4141,17 +4141,37 @@ function mgCompute(from, to){
      table use karta hai — mbTesterOf() akela `ts` fallback miss kar deta hai
      aur tab ye row us table se alag number dikhati. */
   const byT={};
-  open.forEach(r=>{ const t=(_smfTesterVal(r)||'').trim(); if(t) byT[t]=(byT[t]||0)+1; });
+  /* Load concentration sirf TESTER KI QUEUE par nikalta hai — wo tickets jo
+     us din Ready For Testing ya Ready For UAT par pade the. Baaki backlog
+     (In Progress, Code Review, Merging) developer ke paas hai, tester ke
+     nahi, isliye usse tester ka load naapna galat tha.
+
+     Ye point-in-time hai: "last week" column 24 Aug ke stage se banta hai,
+     to jo ticket 24 ko RFT me tha aur 31 tak aage badh gaya, wo pichhle
+     hafte ginega aur is hafte nahi.
+
+     Dhyan rahe: tester ka naam CURRENT value se aata hai (assignto, warna
+     TransferTo) — API purana naam rakhta hi nahi. To agar kisi ticket ka
+     tester baad me badla, purane hafte me bhi aaj wala naam dikhega.
+     Historical assignment is data se reconstruct nahi ho sakti. */
+  const qStages=['rtd','uad'];
+  const queue=open.filter(r=>qStages.includes(mgStageAsOf(r,to)));
+  queue.forEach(r=>{ const t=(_smfTesterVal(r)||'').trim(); if(t) byT[t]=(byT[t]||0)+1; });
   const tv=Object.values(byT).sort((a,b)=>b-a), tot=tv.reduce((s,x)=>s+x,0);
   o.loadTop2 = tot ? 100*(tv.slice(0,2).reduce((s,x)=>s+x,0))/tot : null;
-  o._assigned=tot;
+  o._queueN=queue.length; o._testerN=tv.length;
+
+  /* _assigned footer ke liye hai — poore backlog me kitne tickets kisi ke
+     naam par hain. Ye loadTop2 ke base se alag hai, jaan-bujh kar. */
+  let _asg=0; open.forEach(r=>{ if((_smfTesterVal(r)||'').trim()) _asg++; });
+  o._assigned=_asg;
 
   return o;
 }
 
 const MG_ROWS=[
   {sec:'Support'},
-  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'95%',    better:'up'},
+  {id:'ackTat',    label:'Acknowledge in-TAT %',  note:'Acknowledge date falls in this week — only tickets with a TAT flag',        f:'pct',  target:'80%',    better:'up'},
   /* Label report ke saath match karne ke liye "Go-Live in-TAT %" hai, par
    calculation Transfer to Support (dt flag) ki hai — ye aapka faisla tha.
    Note me asli baat likhi hai taaki koi number galat na samjhe. */
@@ -4161,7 +4181,7 @@ const MG_ROWS=[
   {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
   {id:'fcr',       label:'First call resolution / CSAT',            note:'Needs VoIP call data',                              f:'off',  target:'50% / 65%'},
   {id:'flow',      label:'Backlog flow ratio (closed ÷ created)', note:'Transfer to Support \u00f7 Transfer to IT, counted on this week\u2019s dates', f:'ratio',target:'\u2265 1.0',  better:'up'},
-  {id:'loadTop2',  label:'Load concentration — top 2 assignees',    note:'Share of open tickets held by the top 2 testers',        f:'pct',  target:'< 35% ea', better:'down'},
+  {id:'loadTop2',  label:'Load concentration — top 2 assignees',    note:'Share of the tester queue held by the top 2 — counts only tickets sitting at Ready For Testing or Ready For UAT on that day',        f:'pct',  target:'< 35% ea', better:'down'},
   {id:'acc5',      label:'Accounts holding 5+ open tickets', note:'Five or more open tickets on a single license',          f:'num',  target:'0',      better:'down'},
   {sec:'Engineering'},
   {id:'devSpread', label:'Developer speed spread',note:'Slowest ÷ fastest (min 3 tickets per dev)',    f:'x',    target:'< 2.5x', better:'down'},
