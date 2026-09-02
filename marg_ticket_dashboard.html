@@ -6696,31 +6696,78 @@ function getStageConfig(key){
   return cfg[key];
 }
 
+/* ── Excel export ka poora column set ───────────────────────────────────────
+   Pehle sirf 14 columns jate the. Ab har wo field jata hai jo parser record
+   me hai, taaki sheet khol kar Excel me hi jo chahe filter kar sakein.
+
+   Sub-stage fields parser ke prefix scheme se aate hain (MB_SUB_STAGES):
+     rt=Ready For Testing  cr=Code Review  mg=Merging  ua=UAT
+     rf=Reopend from Testing  ro=Reopen  fd=Future Development  rj=Rejected
+   aur har prefix par  <p>d = date, <p>t = TAT flag, <p>v = actual, <p>g = by-whom. */
+const XL_COLS = [
+  ['Ticket No',              r=>r.n],
+  ['Created Date',           r=>r.tc],
+  ['Status',                 r=>r.st],
+  ['Status Code',            r=>r.sc],
+  ['Client Name',            r=>r.u],
+  ['LicNo',                  r=>r.l],
+  ['Subscription Plan',      r=>r.p],
+  ['Description',            r=>r.desc],
+  ['Ack Disposition',        r=>r.q],
+  ['Last Disposition',       r=>r.ld],
+  ['RM',                     r=>r.r],
+  ['Tester (TransferTo)',    r=>r.t],
+  ['Developer',              r=>r.dev],
+  ['Transfer To IT Agent',   r=>r.tia],
+  ['Acknowledge By',         r=>r.ta],
+  ['In Progress By',         r=>r.ti],
+  ['Transfer To Support By', r=>r.ts],
+  ['Ready To Go Live By',    r=>r.eb],
+  ['Closed By',              r=>r.clb],
+  ['Transfer To IT Date',    r=>r.a],   ['Transfer To IT TAT',   r=>r.at],
+  ['Transfer To IT SLA',     r=>r.ad],  ['Transfer To IT Actual',r=>r.av],
+  ['Acknowledge Date',       r=>r.b],   ['Acknowledge TAT',      r=>r.bt],
+  ['Acknowledge SLA',        r=>r.bd],  ['Acknowledge Actual',   r=>r.bv],
+  ['In Progress Date',       r=>r.c],   ['In Progress TAT',      r=>r.ct],
+  ['In Progress SLA',        r=>r.cd],  ['In Progress Actual',   r=>r.cv],
+  ['Ready For Testing Date', r=>r.rtd], ['Ready For Testing TAT',r=>r.rtt],
+  ['Ready For Testing By',   r=>r.rtg],
+  ['Code Review Date',       r=>r.crd], ['Code Review TAT',      r=>r.crt],
+  ['Code Review By',         r=>r.crg],
+  ['Merging Date',           r=>r.mgd], ['Merging TAT',          r=>r.mgt],
+  ['Merging By',             r=>r.mgg],
+  ['Ready For UAT Date',     r=>r.uad], ['Ready For UAT TAT',    r=>r.uat],
+  ['Ready For UAT By',       r=>r.uag],
+  ['Reopend from Testing Date', r=>r.rfd], ['Reopend from Testing By', r=>r.rfg],
+  ['Ready To Go Live Date',  r=>r.e],   ['Ready To Go Live TAT', r=>r.et],
+  ['Ready To Go Live Actual',r=>r.ev],
+  ['Transfer To Support Date', r=>r.d], ['Transfer To Support TAT', r=>r.dt],
+  ['Transfer To Support SLA',  r=>r.dd],['Transfer To Support Actual', r=>r.dv],
+  ['Reopen Date',            r=>r.rod], ['Reopen By',            r=>r.rog],
+  ['Future Development Date',r=>r.fdd], ['Future Development By',r=>r.fdg],
+  ['Rejected Date',          r=>r.rjd], ['Rejected By',          r=>r.rjg],
+  ['Close Date',             r=>r.cld],
+];
+
 function buildSheetRows(data, tatKey, dateKey, pendingSc){
-  const header = ['Ticket No','Created Date','Client Name','LicNo','Subscription Plan','Stage Date','Pending Status',
-                  'TAT Status','Ack Disposition','Tester (TransferTo)','RM','Pending','InTAT','OutTAT'];
+  /* Ye teen columns stage-specific hain, isliye fixed list ke aage lagte hain. */
+  const header = ['Stage Date','Pending Status','TAT Status'].concat(XL_COLS.map(c=>c[0]));
   const rows = [header];
-  data.forEach(r=>{
-    const tatStatus     = r[tatKey]==='I' ? 'InTAT' : r[tatKey]==='O' ? 'OutTAT' : 'No TAT';
+  (data||[]).forEach(r=>{
+    const tatStatus     = tatKey && r[tatKey]==='I' ? 'InTAT'
+                        : tatKey && r[tatKey]==='O' ? 'OutTAT' : 'No TAT';
     const pendingStatus = r.sc===pendingSc ? 'Pending' : 'Moved Forward';
-    rows.push([
-      r.n  || '',
-      r.tc || '',
-      r.u  || '',
-      r.l  || '',
-      r.p  || '',
-      r[dateKey] || '',
-      pendingStatus,
-      tatStatus,
-      r.q  || '',
-      r.t  || '',
-      r.r  || '',
-      r.sc===pendingSc ? 1 : 0,
-      r[tatKey]==='I' ? 1 : 0,
-      r[tatKey]==='O' ? 1 : 0,
-    ]);
+    rows.push([ (dateKey && r[dateKey]) || '', pendingStatus, tatStatus ]
+      .concat(XL_COLS.map(c=>{ const v=c[1](r); return (v===undefined||v===null) ? '' : v; })));
   });
   return rows;
+}
+
+/* Column widths: pehle 3 stage columns, phir Description ko chaudi jagah. */
+function xlCols(){
+  return [{wch:13},{wch:14},{wch:9}].concat(
+    XL_COLS.map(c => c[0]==='Description' ? {wch:60}
+                   : /Client Name|Ticket No/.test(c[0]) ? {wch:26} : {wch:15}));
 }
 
 function exportStage(key){
@@ -6735,10 +6782,12 @@ function exportStage(key){
     ['MARG IT Dashboard — Stage Export'],
     ['Stage', cfg.label],
     ['Date Range', `${currentFrom||'All'} to ${currentTo||'All'}`],
+    ['Note', 'InTAT / OutTAT / All Tickets sheets follow the date range above. The Currently Pending sheet ignores it and matches the card\u2019s Overall count.'],
     ['Generated On', new Date().toLocaleString('en-IN')],
     [],
     ['Metric','Count'],
-    ['Total Tickets', cfg.data.length],
+    ['Total Tickets (date range)', cfg.data.length],
+    ['Currently Pending (all data, no filters)', (RAW||[]).filter(r=>r.sc===cfg.pendingSc).length],
     ['InTAT',  intat],
     ['OutTAT', outtat],
     ['No TAT Data', notat],
@@ -6753,7 +6802,7 @@ function exportStage(key){
   // --- Sheet 2: InTAT Tickets ---
   const inRows = buildSheetRows(cfg.data.filter(r=>r[cfg.tatKey]==='I'), cfg.tatKey, cfg.dateKey, cfg.pendingSc);
   const wsIn = XLSX.utils.aoa_to_sheet(inRows);
-  wsIn['!cols'] = [{wch:14},{wch:32},{wch:10},{wch:14},{wch:12},{wch:10},{wch:18},{wch:20},{wch:18},{wch:7},{wch:8}];
+  wsIn['!cols'] = xlCols();
   XLSX.utils.book_append_sheet(wb, wsIn, 'InTAT');
 
   // --- Sheet 3: OutTAT Tickets ---
@@ -6762,11 +6811,25 @@ function exportStage(key){
   wsOut['!cols'] = wsIn['!cols'];
   XLSX.utils.book_append_sheet(wb, wsOut, 'OutTAT');
 
-  // --- Sheet 4: All Tickets ---
+  // --- Sheet 4: All Tickets (date-filtered) ---
   const allRows = buildSheetRows(cfg.data, cfg.tatKey, cfg.dateKey, cfg.pendingSc);
   const wsAll = XLSX.utils.aoa_to_sheet(allRows);
   wsAll['!cols'] = wsIn['!cols'];
   XLSX.utils.book_append_sheet(wb, wsAll, 'All Tickets');
+
+  /* --- Sheet 5: Currently Pending ---
+     Baaki sheets date range ka jawab deti hain — "is hafte kitne is stage me
+     aaye". Ye sheet card ke "Overall:" pill ka jawab deti hai — "abhi is
+     waqt kitne is stage par pade hain". Dono alag sawaal hain aur inke set
+     ek dusre ke subset bhi nahi hote, isliye alag sheet me hain.
+
+     Overall pill ki tarah ye bhi RAW par chalti hai — na date filter, na
+     Tester/RM/Dev/Status. Warna sheet ka count pill se match nahi karta. */
+  const pendRows = buildSheetRows(
+    (RAW||[]).filter(r=>r.sc===cfg.pendingSc), cfg.tatKey, cfg.dateKey, cfg.pendingSc);
+  const wsPend = XLSX.utils.aoa_to_sheet(pendRows);
+  wsPend['!cols'] = wsIn['!cols'];
+  XLSX.utils.book_append_sheet(wb, wsPend, 'Currently Pending');
 
   const fname = `MARG_${cfg.filename}_${currentFrom||'All'}_to_${currentTo||'All'}.xlsx`;
   XLSX.writeFile(wb, fname);
@@ -6781,6 +6844,7 @@ function exportExcel(){
   const sumRows = [
     ['MARG IT Dashboard — Full Export'],
     ['Date Range', `${currentFrom||'All'} to ${currentTo||'All'}`],
+    ['Note', 'InTAT / OutTAT / All Tickets sheets follow the date range above. The Currently Pending sheet ignores it and matches the card\u2019s Overall count.'],
     ['Generated On', new Date().toLocaleString('en-IN')],
     [],
     ['Stage','Total','InTAT','OutTAT','InTAT %','OutTAT %'],
