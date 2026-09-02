@@ -25,7 +25,7 @@ function grab(name, src){
   throw new Error('unbalanced: '+name);
 }
 const NEEDED=['mgShift','mgToday','mgDayDiff','mgPctile','mgOpenAsOf','mgLastAct',
-  'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','esc','mgFmtDate','mgRowStatus','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
+  'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','mgFirstIT','mgInScope','mgDispOf','mgInDisp','esc','mgFmtDate','mgRowStatus','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
   'aiClean','aiTokens','aiVectorize','aiCosSparse','aiNormMap','aiAddMap','aiClusterSparse',
   'lastDisp','isBug'];
 
@@ -38,6 +38,7 @@ const consts=pageJs.match(/const MG_DATE_KEYS=\[[^\]]*\];/)[0];
 vm.runInContext(consts, sandbox);
 vm.runInContext(pageJs.match(/const MG_STAGE_ORDER = \[[^\]]*\];/)[0], sandbox);
 vm.runInContext(pageJs.match(/const MG_IT_BACKLOG  = new Set\([^)]*\);/)[0], sandbox);
+[/const MG_DATA_FROM   = '[^']*';/,/const MG_KEEP_DISP   = new Set\([^)]*\);/,/const MG_RUN_DISP    = new Set\([^)]*\);/,/const MG_CHANGE_DISP = new Set\([^)]*\);/,/const MG_FIRST_KEYS  = \[[^\]]*\];/].forEach(p=>vm.runInContext(pageJs.match(p)[0], sandbox));
 vm.runInContext(pageJs.match(/const MG_ROWS=\[[\s\S]*?\n\];/)[0], sandbox);
 /* `const` vm context ke sandbox OBJECT par attach nahi hota, isliye
    value alag se nikalni padti hai. */
@@ -117,18 +118,18 @@ console.log('== 4. metrics on synthetic data ==');
 const W=['2026-08-21','2026-08-27'];
 sandbox.RAW=[
   // 4 IT me aaye is hafte
-  {n:'T1', a:'2026-08-21', b:'2026-08-22', bt:'I', c:'2026-08-23', d:'2026-08-25', dt:'I', dev:'D1', desc:'gst report not printing', l:'L1', ts:'QA1'},
-  {n:'T2', a:'2026-08-22', b:'2026-08-23', bt:'O', d:'2026-08-26', dt:'O', dev:'D1', desc:'gst report print issue', l:'L1', ts:'QA1'},
-  {n:'T3', a:'2026-08-23', b:'2026-08-24', desc:'gst report printing problem', l:'L1', ts:'QA1'},
-  {n:'T4', a:'2026-08-24', b:'2026-08-25', desc:'stock ledger mismatch', l:'L2', ts:'QA2'},
+  {n:'T1', ld:'Bug', a:'2026-08-21', b:'2026-08-22', bt:'I', c:'2026-08-23', d:'2026-08-25', dt:'I', dev:'D1', desc:'gst report not printing', l:'L1', ts:'QA1'},
+  {n:'T2', ld:'Bug', a:'2026-08-22', b:'2026-08-23', bt:'O', d:'2026-08-26', dt:'O', dev:'D1', desc:'gst report print issue', l:'L1', ts:'QA1'},
+  {n:'T3', ld:'Bug', a:'2026-08-23', b:'2026-08-24', desc:'gst report printing problem', l:'L1', ts:'QA1'},
+  {n:'T4', ld:'Bug', a:'2026-08-24', b:'2026-08-25', desc:'stock ledger mismatch', l:'L2', ts:'QA2'},
   // pichhle hafte ka, abhi bhi backlog me, 30+ din se nahi hila
-  {n:'T5', a:'2026-06-01', b:'2026-06-02', desc:'old one', l:'L1', ts:'QA1'},
+  {n:'T5', ld:'Bug', a:'2026-06-01', b:'2026-06-02', desc:'old one', l:'L1', ts:'QA1'},
   // go live is hafte
-  {n:'T6', a:'2026-07-01', e:'2026-08-25', et:'I', d:'2026-08-26', dev:'D2', desc:'x', l:'L3', ts:'QA2'},
+  {n:'T6', ld:'Bug', a:'2026-07-01', e:'2026-08-25', et:'I', d:'2026-08-26', dev:'D2', desc:'x', l:'L3', ts:'QA2'},
   /* Ye do backlog me NAHI aane chahiye — intake window se bahar hain to
      baaki metrics par asar nahi padta, sirf stock check karte hain. */
-  {n:'T7', a:'2026-08-20', desc:'IT ko mila par acknowledge nahi hua', l:'L4', ts:'QA3'},
-  {n:'T8', a:'2026-07-01', b:'2026-07-02', rjd:'2026-07-10', desc:'rejected', l:'L5', ts:'QA3'},
+  {n:'T7', ld:'Bug', a:'2026-08-20', desc:'IT ko mila par acknowledge nahi hua', l:'L4', ts:'QA3'},
+  {n:'T8', ld:'Bug', a:'2026-07-01', b:'2026-07-02', rjd:'2026-07-10', desc:'rejected', l:'L5', ts:'QA3'},
 ];
 const m=sandbox.mgCompute(W[0], W[1]);
 
@@ -211,15 +212,15 @@ console.log('== 4b. in-TAT denominator = sirf TAT flag wale tickets ==');
    nahi. Ye test isi parity ko pakadta hai — pehle Management 13% ki jagah
    11% dikha raha tha kyunki bina flag wale bhi denominator me the. */
 sandbox.RAW=[
-  {n:'A1', b:'2026-08-24', bt:'I'},
-  {n:'A2', b:'2026-08-24', bt:'O'},
-  {n:'A3', b:'2026-08-24'},              // TAT flag abhi nahi aaya
-  {n:'A4', b:'2026-08-24'},
-  {n:'A5', b:'2026-08-25', et:'I', e:'2026-08-25'},
-  {n:'A6', b:'2026-08-25', e:'2026-08-26'},   // go-live flag nahi
-  {n:'A7', d:'2026-08-25', dt:'I'},
-  {n:'A8', d:'2026-08-25', dt:'O'},
-  {n:'A9', d:'2026-08-26'},                   // transfer-to-support flag nahi
+  {n:'A1', ld:'Bug', a:'2026-08-20', b:'2026-08-24', bt:'I'},
+  {n:'A2', ld:'Bug', a:'2026-08-20', b:'2026-08-24', bt:'O'},
+  {n:'A3', ld:'Bug', a:'2026-08-20', b:'2026-08-24'},              // TAT flag abhi nahi aaya
+  {n:'A4', ld:'Bug', a:'2026-08-20', b:'2026-08-24'},
+  {n:'A5', ld:'Bug', a:'2026-08-20', b:'2026-08-25', et:'I', e:'2026-08-25'},
+  {n:'A6', ld:'Bug', a:'2026-08-20', b:'2026-08-25', e:'2026-08-26'},   // go-live flag nahi
+  {n:'A7', ld:'Bug', a:'2026-08-20', d:'2026-08-25', dt:'I'},
+  {n:'A8', ld:'Bug', a:'2026-08-20', d:'2026-08-25', dt:'O'},
+  {n:'A9', ld:'Bug', a:'2026-08-20', d:'2026-08-26'},                   // transfer-to-support flag nahi
 ];
 const t=sandbox.mgCompute(W[0], W[1]);
 eq('ack in-TAT ignores unflagged rows', t.ackTat, 50);   // 1 of (1 I + 1 O)
@@ -465,6 +466,77 @@ eq('IT backlog row removed',  MG_ROWS_VAL.some(r=>r.id==='openBacklog'), false);
 eq('Backlog-30-days row removed', MG_ROWS_VAL.some(r=>r.id==='backlog30'), false);
 /* Backlog reconciliation footer ab bhi in numbers par chalta hai. */
 eq('_open still computed',   typeof sandbox.mgCompute('2026-08-21','2026-08-27')._open, 'number');
+
+
+/* ══════ 19. SCOPE — date + disposition filter ══════ */
+console.log('== 19. management tab ka scope ==');
+eq('cutoff is 01-04-2026', vm.runInContext('MG_DATA_FROM', sandbox), '2026-04-01');
+eq('first IT stage = earliest IT date',
+   sandbox.mgFirstIT({a:'2026-05-10',b:'2026-05-02',cld:'2026-01-01'}), '2026-05-02');
+eq('close date does not count as a start',
+   sandbox.mgFirstIT({cld:'2026-01-01'}), '');
+eq('before cutoff → out of scope',
+   sandbox.mgInScope({a:'2026-03-31',b:'2026-05-01'}), false);
+eq('on the cutoff → in scope',
+   sandbox.mgInScope({a:'2026-04-01'}), true);
+eq('after cutoff → in scope',
+   sandbox.mgInScope({a:'2026-06-01'}), true);
+eq('no IT date at all → out of scope',
+   sandbox.mgInScope({cld:'2026-06-01'}), false);
+
+eq('Bug kept',            sandbox.mgInDisp({ld:'Bug'}), true);
+eq('Bug Urgent kept',     sandbox.mgInDisp({ld:'Bug Urgent'}), true);
+eq('Data Updation kept',  sandbox.mgInDisp({ld:'Data Updation'}), true);
+eq('Development dropped', sandbox.mgInDisp({ld:'Development'}), false);
+eq('Development Urgent dropped', sandbox.mgInDisp({ld:'Development Urgent'}), false);
+eq('Improvement dropped', sandbox.mgInDisp({ld:'Improvement'}), false);
+eq('blank disposition dropped', sandbox.mgInDisp({}), false);
+eq('Bug Approved dropped (not an exact match)', sandbox.mgInDisp({ld:'Bug Approved'}), false);
+eq('case does not matter', sandbox.mgInDisp({ld:'  BUG URGENT '}), true);
+
+/* Scope counters footer me dikhte hain — sahi rehne chahiye. */
+const sc=sandbox.mgCompute('2026-08-21','2026-08-27');
+eq('scope counts are reported', typeof sc._scopeAll==='number' && typeof sc._scopeN==='number', true);
+eq('scoped set is never larger than all', sc._scopeN<=sc._scopeAll, true);
+eq('disposition set is inside the dated set', sc._scopeN<=sc._scopeDated, true);
+
+console.log('== 20. Run vs Change ==');
+/* Ye akela metric disposition filter se chhoot par hai — Development hi
+   "change" hai, use nikal dene par denominator khatam ho jata. */
+sandbox.RAW=[
+  {n:'r1', ld:'Bug',                a:'2026-06-01', d:'2026-08-25'},
+  {n:'r2', ld:'Bug Urgent',         a:'2026-06-01', d:'2026-08-25'},
+  {n:'r3', ld:'Bug',                a:'2026-06-01', d:'2026-08-26'},
+  {n:'c1', ld:'Development',        a:'2026-06-01', d:'2026-08-25'},
+  {n:'c2', ld:'Improvement',        a:'2026-06-01', d:'2026-08-26'},
+  {n:'x1', ld:'Data Updation',      a:'2026-06-01', d:'2026-08-25'},
+  {n:'x2', ld:'',                   a:'2026-06-01', d:'2026-08-25'},
+  {n:'old',ld:'Development',        a:'2026-01-01', d:'2026-08-25'},
+];
+const rc=sandbox.mgCompute('2026-08-21','2026-08-27');
+eq('run counts Bug + Bug Urgent',    rc._rcRun, 3);
+eq('change counts Dev + Improvement',rc._rcChange, 2);
+eq('share = 3/(3+2) = 60%',          rc.runChange, 60);
+eq('Data Updation not in either side', rc._rcRun+rc._rcChange, 5);
+eq('blank disposition not counted',  rc._rcRun+rc._rcChange, 5);
+eq('date filter still applies to Run vs Change', rc._rcChange, 2);  // 'old' bahar
+
+sandbox.RAW=[{n:'b1', ld:'Bug', a:'2026-06-01', d:'2026-08-25'}];
+eq('no change tickets → 100%, not a crash',
+   sandbox.mgCompute('2026-08-21','2026-08-27').runChange, 100);
+sandbox.RAW=[];
+eq('nothing at all → null', sandbox.mgCompute('2026-08-21','2026-08-27').runChange, null);
+sandbox.RAW=savedRaw;
+
+console.log('== 21. target direction for bare numbers ==');
+/* '95%' me zyada behtar hai, '50/50' me kam behtar. Pehle dono ≥ maane
+   jate the, jisse Run vs Change 50 se neeche jaane par galat "behind"
+   dikhta tha — jabki wahi sudhar hai. */
+eq('40 beats a 50/50 target',  sandbox.mgTargetMiss(40,'50/50, then 40/60','down'), false);
+eq('78 misses a 50/50 target', sandbox.mgTargetMiss(78,'50/50, then 40/60','down'), true);
+eq('96 meets 95% (up)',        sandbox.mgTargetMiss(96,'95%','up'), false);
+eq('40 misses 95% (up)',       sandbox.mgTargetMiss(40,'95%','up'), true);
+eq('explicit operators still win', sandbox.mgTargetMiss(12,'< 10%','down'), true);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
