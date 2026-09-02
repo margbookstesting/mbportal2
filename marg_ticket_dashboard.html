@@ -3968,8 +3968,46 @@ function mgDupShare(rows){
   return {share, top, n};
 }
 
+/* ═══════════════ MANAGEMENT TAB KA SCOPE ═══════════════
+   Ye tab poore ticket cache par nahi, ek chhote scope par chalta hai:
+
+   1. DATE — ticket tabhi ginega jab uska PEHLA IT stage 01-04-2026 ya uske
+      baad ka ho. Isse pehle ke tickets poori tarah bahar hain, sirf window
+      se bahar nahi. Dhyan rahe: "Aged backlog" isi wajah se bahut kam
+      dikhega — sabse purane tickets hi scope se bahar chale jate hain.
+
+   2. DISPOSITION — sirf Bug, Bug Urgent aur Data Updation. Development,
+      Development Urgent, Improvement, aur jinka disposition khali hai, sab
+      bahar. Khali disposition data ka lagbhag aadha hissa hai, isliye is
+      tab ke numbers Dashboard tab se kaafi chhote aayenge — ye galti nahi,
+      scope hai.
+
+   Run vs Change ratio disposition filter se CHHOOT par hai (date filter
+   uspar bhi lagta hai) — usko Development ginne hi padte hain, warna
+   denominator me kuch bachta hi nahi. */
+const MG_DATA_FROM   = '2026-04-01';
+const MG_KEEP_DISP   = new Set(['bug','bug urgent','data updation']);
+const MG_RUN_DISP    = new Set(['bug','bug urgent']);
+const MG_CHANGE_DISP = new Set(['development','development urgent','improvement']);
+/* Sirf IT stages — Close/Reject/Support wali dates se ticket ki "shuruaat"
+   tay nahi hoti. */
+const MG_FIRST_KEYS  = ['a','b','c','rtd','crd','mgd','uad','rfd','e'];
+
+function mgFirstIT(r){
+  let m='';
+  for(const k of MG_FIRST_KEYS){ const v=r[k]; if(v && (!m || v<m)) m=v; }
+  return m;
+}
+function mgInScope(r){ const f=mgFirstIT(r); return !!f && f>=MG_DATA_FROM; }
+function mgDispOf(r){ return String(lastDisp(r)||'').trim().toLowerCase(); }
+function mgInDisp(r){ return MG_KEEP_DISP.has(mgDispOf(r)); }
+
 function mgCompute(from, to){
-  const R=RAW||[], o={};
+  const ALL   = RAW||[];
+  const DATED = ALL.filter(mgInScope);       // date filter — Run vs Change ke liye
+  const R     = DATED.filter(mgInDisp);      // date + disposition — baaki sab
+  const o={};
+  o._scopeAll=ALL.length; o._scopeDated=DATED.length; o._scopeN=R.length;
   const inW = d => !!d && d>=from && d<=to;
 
   // ── FLOW ──
@@ -4045,8 +4083,18 @@ function mgCompute(from, to){
   const cyc=dExits.filter(r=>r.a && r.d).map(r=>mgDayDiff(r.a,r.d)).filter(n=>n>=0).sort((x,y)=>x-y);
   o.cycP50=mgPctile(cyc,50); o.cycP90=mgPctile(cyc,90); o._cycN=cyc.length;
 
-  const disp=dExits.filter(r=>lastDisp(r));
-  o.runChange = disp.length ? 100*disp.filter(isBug).length/disp.length : null;
+  /* Run vs Change: bug-fixing ka hissa. Ye akela metric DATED par chalta hai
+     (disposition filter ke bina) — Development hi "change" hai, use nikal
+     denge to denominator hi khatam ho jayega.
+       share = (Bug + Bug Urgent) ÷ (Bug + Bug Urgent + Dev + Dev Urgent + Improvement)
+     Ratio (run ÷ change) jaan-bujh kar nahi liya: 20 me se 4 hafte aise the
+     jinme change=0 tha, aur 3 tickets ke sample par ratio 17x tak uchhal
+     jata tha. Share un hafton me bhi shant rehta hai. */
+  const rcEx = DATED.filter(r=>inW(r.d));
+  const _run = rcEx.filter(r=>MG_RUN_DISP.has(mgDispOf(r))).length;
+  const _chg = rcEx.filter(r=>MG_CHANGE_DISP.has(mgDispOf(r))).length;
+  o._rcRun=_run; o._rcChange=_chg;
+  o.runChange = (_run+_chg) ? 100*_run/(_run+_chg) : null;
 
   /* Developer speed spread: sabse dheere vs sabse tez ka ratio. 3 se kam
      tickets wale dev ko chhod dete hain — ek hi ticket kisi ko "10x fast"
@@ -4117,7 +4165,7 @@ const MG_ROWS=[
   {id:'acc5',      label:'Accounts holding 5+ open tickets', note:'Five or more open tickets on a single license',          f:'num',  target:'0',      better:'down'},
   {sec:'Engineering'},
   {id:'devSpread', label:'Developer speed spread',note:'Slowest ÷ fastest (min 3 tickets per dev)',    f:'x',    target:'< 2.5x', better:'down'},
-  {id:'runChange', label:'Run vs Change ratio',         note:'Share that is bug fixes (rest is dev + improvement)',        f:'pct',  target:'< 50%',  better:'down'},
+  {id:'runChange', label:'Run vs Change ratio',         note:'Bug + Bug Urgent as a share of bug + development + improvement \u2014 this row ignores the Bug-only filter the rest of the tab uses', f:'pct', target:'50/50, then 40/60', better:'down'},
   {id:'volume',    label:'Delivered volume — MRs / net churn', note:'Needs GitLab connector',                          f:'off',  target:'baseline'},
   {id:'rework',    label:'Rework rate (churn <21d of merge)',           note:'Needs GitLab connector',                            f:'off',  target:'< 15%'},
   {id:'cycTime',   label:'Cycle time P50 / P90',  note:'Transfer to IT → Close by IT, in days',                f:'cyc',  target:'\u2193 30% in 2 quarters', better:'down'},
@@ -4182,17 +4230,20 @@ function mgmtRender(){
    jo samajh na aaye ('baseline', 'declining', '↓ week on week') uspar
    chup rehta hai aur null deta hai — guess karke jhooti escalation banane
    se behtar hai kuch na kehna. */
-function mgTargetMiss(value, target){
+function mgTargetMiss(value, target, better){
   if(value===null||value===undefined||typeof value!=='number'||!isFinite(value)) return null;
   if(!target) return null;
   const t=String(target).replace(/,/g,'');
   const m=t.match(/(≥|>=|≤|<=|<|>)?\s*(-?\d+(?:\.\d+)?)/);
   if(!m) return null;
   if(/quarter|baseline|declin|week on week/i.test(t)) return null;
-  /* Bina operator wale target do tarah ke hain: '0' ka matlab "isse zyada
-     nahi" hai, aur '95%' ka matlab "kam se kam itna". */
+  /* Bina operator wale target ki disha row ki apni disha se aati hai.
+     'Acknowledge 95%' me zyada behtar hai (≥), par 'Run vs Change 50/50' me
+     kam behtar hai (≤). Pehle yahan hamesha ≥ maana jata tha, jisse
+     Run vs Change 50 se neeche jaane par "behind" dikhta — jabki wahi to
+     sudhar hai. */
   const n=parseFloat(m[2]);
-  const op=m[1]||(n===0?'≤':'≥');
+  const op=m[1]||(n===0||better==='down' ? '≤' : '≥');
   if(op==='<')            return value>=n;
   if(op==='≤'||op==='<=') return value>n;
   if(op==='>')            return value<=n;
@@ -4208,7 +4259,7 @@ function mgRowStatus(row, cur, prev){
   const v = row.id==='cycTime' ? cur.cycP50 : cur[row.id];
   const p = row.id==='cycTime' ? prev.cycP50 : prev[row.id];
   if(v===null || v===undefined) return null;
-  const miss  = mgTargetMiss(v, row.target);
+  const miss  = mgTargetMiss(v, row.target, row.better);
   const trend = mgTrend(v, p, row.better);
   if(miss===true)  return {state:'behind', why:'behind target '+row.target};
   if(miss===false) return {state:'met',    why:'on target'};
@@ -4319,6 +4370,13 @@ function mgmtRenderNow(){
     'Acknowledge in-TAT on '+fmt(cur._ackN)+' and Transfer-to-Support in-TAT on '+fmt(cur._ttsN)+' '+
     '(in-TAT % counts only tickets that already have a TAT flag — the same rule the Dashboard tab uses). '+
     'Transfer-to-Support in-TAT does NOT include Return to Support: BSS reports no date or TAT for that event.<br>'+
+    '<b>What this tab covers:</b> only tickets whose first IT stage is on or after '+
+    dsp(MG_DATA_FROM)+', and only Bug, Bug Urgent and Data Updation. Development, '+
+    'Development Urgent, Improvement and tickets with no disposition are excluded \u2014 '+
+    fmt(cur._scopeN)+' of '+fmt(cur._scopeAll)+' tickets qualify. That is why these counts are '+
+    'much smaller than the Dashboard tab. Run vs Change is the one exception: it keeps '+
+    'Development in, or there would be nothing to divide by ('+fmt(cur._rcRun)+' run vs '+
+    fmt(cur._rcChange)+' change this week).<br>'+
     '<b>Before you read this:</b> Return-to-Support exits are not counted — BSS gives no date for that event, '+
     'so the flow ratio reads slightly high. A ticket that entered IT twice is counted once '+
     '(the API keeps only the latest date per stage). Stock metrics are reconstructed from stage dates '+
