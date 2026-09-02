@@ -201,8 +201,7 @@ eq('Reopened-From-Testing is NOT an exit (still IT work)',
    sandbox.mgBacklogMoves({a:'2026-08-01',b:'2026-08-02',rfd:'2026-08-25'},'2026-08-21','2026-08-27'),
    {entries:0, exits:0});
 eq('aged 30d+',             m.aged30, 1);     // T5 (June)
-eq('assigned open',         m._assigned, 3);   // T3 QA1, T4 QA2, T5 QA1
-eq('top2 load = 100%',      m.loadTop2, 100); // only QA1 (2) + QA2 (1) exist
+
 eq('accounts 5+ = 0',       m.acc5, 0);
 eq('dup share > 0 (3 gst tickets cluster)', m.dupShare > 0, true);
 eq('dup base = intake with desc', m._dupN, 4);
@@ -296,7 +295,7 @@ eq('flat stays flat',              sandbox.mgTrend(802, 802, 'down').txt, '→')
 
 console.log('== 11. targets match the one-page spec ==');
 const tgt={}; MG_ROWS_VAL.forEach(r=>{ if(r.id) tgt[r.id]=r.target; });
-eq('Acknowledge in-TAT 95%',  tgt.ackTat,    '95%');
+eq('Acknowledge in-TAT 80%',  tgt.ackTat,    '80%');
 eq('Aged backlog 0',          tgt.aged90,    '0');
 eq('Duplicate share < 10%',   tgt.dupShare,  '< 10%');
 eq('QA bypass < 5%',          tgt.bypass,    '< 5%');
@@ -537,6 +536,42 @@ eq('78 misses a 50/50 target', sandbox.mgTargetMiss(78,'50/50, then 40/60','down
 eq('96 meets 95% (up)',        sandbox.mgTargetMiss(96,'95%','up'), false);
 eq('40 misses 95% (up)',       sandbox.mgTargetMiss(40,'95%','up'), true);
 eq('explicit operators still win', sandbox.mgTargetMiss(12,'< 10%','down'), true);
+
+
+/* ══════ 22. Load concentration = tester ki queue ══════ */
+console.log('== 22. load concentration base ==');
+sandbox.RAW=[
+  /* RFT/UAT par pade — queue me ginenge */
+  {n:'q1', ld:'Bug', a:'2026-06-01', b:'2026-06-02', rtd:'2026-08-20', assignto:'QA1'},
+  {n:'q2', ld:'Bug', a:'2026-06-01', b:'2026-06-02', rtd:'2026-08-20', assignto:'QA1'},
+  {n:'q3', ld:'Bug', a:'2026-06-01', b:'2026-06-02', uad:'2026-08-20', assignto:'QA2'},
+  {n:'q4', ld:'Bug', a:'2026-06-01', b:'2026-06-02', rtd:'2026-08-20', assignto:'QA3'},
+  /* backlog me hain par tester ki queue me nahi */
+  {n:'d1', ld:'Bug', a:'2026-06-01', c:'2026-08-20', assignto:'QA1'},
+  {n:'d2', ld:'Bug', a:'2026-06-01', crd:'2026-08-20', assignto:'QA1'},
+  {n:'d3', ld:'Bug', a:'2026-06-01', b:'2026-08-20', assignto:'QA1'},
+];
+const lc=sandbox.mgCompute('2026-08-21','2026-08-27');
+eq('queue = RFT + UAT only',      lc._queueN, 4);
+eq('In Progress / Code Review / Ack excluded', lc._queueN < lc._open, true);
+eq('top 2 of 4 = QA1(2)+QA2(1)',  lc.loadTop2, 75);
+eq('three testers in the queue',  lc._testerN, 3);
+eq('_assigned still spans the whole backlog', lc._assigned, 7);
+
+/* Point-in-time: jo ticket pichhle hafte RFT me tha aur is hafte aage badh
+   gaya, wo pichhle hafte ginega — is hafte nahi. */
+sandbox.RAW=[
+  {n:'m1', ld:'Bug', a:'2026-06-01', rtd:'2026-08-18', c:'2026-08-26', assignto:'QA1'},
+  {n:'m2', ld:'Bug', a:'2026-06-01', rtd:'2026-08-18', assignto:'QA2'},
+];
+eq('moved on → out of this week\u2019s queue',
+   sandbox.mgCompute('2026-08-25','2026-08-31')._queueN, 1);
+eq('still counted in last week\u2019s queue',
+   sandbox.mgCompute('2026-08-18','2026-08-24')._queueN, 2);
+
+sandbox.RAW=[{n:'z', ld:'Bug', a:'2026-06-01', c:'2026-08-20'}];
+eq('empty queue → null, not 0', sandbox.mgCompute('2026-08-21','2026-08-27').loadTop2, null);
+sandbox.RAW=savedRaw;
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
