@@ -21,19 +21,75 @@
 /* Cache payload schema version. Bump karo jab bhi field set badle.
  * api/ticket-cache.js isko validate karta hai; cacheLoad() purani rows par
  * warning deta hai. */
-var MB_SCHEMA_VERSION = 3;
+/* v4: `cdd` (In Progress duration, pehle `cd` se takrata tha), `jira`, aur
+   `sc` ab MB_STATUS_VARIANTS se banta hai — purane cache me 477 tickets 'OT'
+   me the. In sabke liye ek full refresh chahiye. */
+var MB_SCHEMA_VERSION = 4;
 
 /* Marg ticket API */
 var MB_API_URL = 'https://bssapi.margcompusoft.com/api/MargBook/GetMBTicketStatusDetail';
 
 /* Status string → short code */
-var MB_STATUS_MAP = {
-  'Transfer To IT':'IT','Acknowledge':'AK','In Progress':'IP',
-  'Ready To Go Live':'LV','Transfer To Support':'SP','Closed':'CL',
-  'Return To Support':'RS','Ready For Testing':'RT','Ready For UAT':'RU',
-  'Return to Support':'RS','Ready for Testing':'RT','Ready for UAT':'RU'
-};
+/* Status matching ka EK source. Pehle do the: yahan exact string match, aur
+   dashboard me alag variant list + substring fallback. Wo fallback hi bug
+   tha — SUP_STATUSES me 'pending' sabse pehle hai, to "Approval Pending"
+   chup-chaap "Pending" ban jata tha.
 
+   Ab dono taraf yahi list chalti hai: status ko normalize karo (lowercase,
+   _-/ ko space, extra spaces hatao) aur EXACT match karo. Koi substring
+   guessing nahi.
+
+   Ye variants asli Marg data (14,211 tickets) se liye gaye hain — har wo
+   status jo API bhejta hai, is list me hai. Naya status aaye to yahan
+   jodna hai, warna wo 'OT' me girega. */
+var MB_STATUS_VARIANTS = [
+  ['IT', ['transfer to it', 'transferred to it']],
+  ['AK', ['acknowledge', 'acknowledged']],
+  ['IP', ['in progress', 'inprogress']],
+  ['RT', ['ready for testing']],
+  ['CR', ['ready for code review']],
+  ['MG', ['ready for merging', 'ready for merge']],
+  ['RU', ['ready for uat']],
+  ['RF', ['reopend from testing', 'reopen from testing', 'reopened from testing']],
+  ['LV', ['ready to go live']],
+  ['SP', ['transfer to support', 'transferred to support']],
+  ['RS', ['return to support']],
+  ['RO', ['reopen', 're open']],
+  ['FD', ['future development']],
+  ['RJ', ['reject', 'rejected']],
+  ['PN', ['pending']],
+  ['AP', ['approval pending']],
+  ['TT', ['team testing']],
+  ['CL', ['closed', 'close']],
+];
+
+function mbNormStatus(v){
+  return String(v == null ? '' : v).toLowerCase()
+    .replace(/[_\-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+var MB_STATUS_LOOKUP = (function(){
+  var m = {};
+  for(var i = 0; i < MB_STATUS_VARIANTS.length; i++){
+    var code = MB_STATUS_VARIANTS[i][0], list = MB_STATUS_VARIANTS[i][1];
+    for(var j = 0; j < list.length; j++) m[list[j]] = code;
+  }
+  return m;
+})();
+
+function mbStatusCode(v){
+  var k = mbNormStatus(v);
+  return k ? (MB_STATUS_LOOKUP[k] || 'OT') : 'OT';
+}
+
+/* Purani exact-match table. Naya code mbStatusCode() use karta hai; ye sirf
+   isliye rakhi hai ki koi purana consumer na toote. */
+var MB_STATUS_MAP = {
+  'Transfer To IT':'IT', 'Acknowledge':'AK', 'In Progress':'IP',
+  'Ready To Go Live':'LV', 'Transfer To Support':'SP', 'Closed':'CL',
+  'Return To Support':'RS', 'Ready For Testing':'RT', 'Ready For UAT':'RU',
+  'Return to Support':'RS', 'Ready for Testing':'RT', 'Ready for UAT':'RU',
+};
 /* Stage → uska apna disposition field (API record key).
  * `ld` (last disposition) nikaalne ke liye — ticket jis stage par abhi hai. */
 var MB_STAGE_DISP_BY_SC = {
@@ -142,6 +198,9 @@ function mbParseTicket(r){
 
   /* Timeline / created */
   var tld = mbParseDate(r.TimeLineDate);       if(tld) rec.tld = tld;
+  /* JiraID API me hai (14,211 me se 988 tickets par) par cache me kabhi
+     nahi rakha gaya tha — export me chahiye, isliye ab store hota hai. */
+  if(r.JiraID && String(r.JiraID).trim())         rec.jira = String(r.JiraID).trim();
   var tc  = mbParseDate(r.TicketCreatedDate);  if(tc)  rec.tc = tc;
 
   /* 5 main stages */
@@ -162,7 +221,11 @@ function mbParseTicket(r){
   if(c){ rec.c = c;
     var ct = mbTATFlag(r.InProgress_TATDetails);    if(ct) rec.ct = ct;
     var cv = mbCompactTAT(r.InProgress_TATDetails); if(cv) rec.cv = cv;
-    if(r.InProgress_TatDuration) rec.cd = String(r.InProgress_TatDuration); }
+    /* `cd` NAHI — wo current-stage disposition ke liye hai (neeche line ~249).
+       Dono ek hi key me likhte the aur disposition baad me chalti hai, isliye
+       In Progress ka duration hamesha overwrite ho jata tha: asli data ke
+       14,211 tickets me EK bhi duration bacha nahi tha. Ab alag key. */
+    if(r.InProgress_TatDuration) rec.cdd = String(r.InProgress_TatDuration); }
   if(d){ rec.d = d;
     var dt = mbTATFlag(r.TransfertoSupport_TATDetails);    if(dt) rec.dt = dt;
     var dv = mbCompactTAT(r.TransfertoSupport_TATDetails); if(dv) rec.dv = dv;
@@ -193,7 +256,7 @@ function mbParseTicket(r){
 
   /* Raw status (Support Dashboard ke status-wise KPIs) + short code */
   if(r.Status && String(r.Status).trim()) rec.st = String(r.Status).trim();
-  rec.sc = MB_STATUS_MAP[r.Status] || 'OT';
+  rec.sc = mbStatusCode(r.Status);
 
   /* ── LAST DISPOSITION (ld) ──
    * (1) Category-aware reverse-chronological walk: aakhri stage jiski
@@ -444,7 +507,8 @@ async function mbCacheWrite(sbClient, opts){
 if(typeof module !== 'undefined' && module.exports){
   module.exports = {
     MB_SCHEMA_VERSION, MB_REQUIRED_FIELDS, MB_STATUS_MAP, MB_STAGE_DISP_BY_SC,
-    MB_DISP_FALLBACK_ORDER, MB_SUB_STAGES,
+    MB_DISP_FALLBACK_ORDER, MB_SUB_STAGES, MB_STATUS_VARIANTS, MB_STATUS_LOOKUP,
+    mbNormStatus, mbStatusCode,
     mbParseTicket, mbMergeCacheRows, mbIsRecognizedDisp, mbTATFlag, mbCompactTAT, mbParseDate,
     mbTesterOf,
   };
