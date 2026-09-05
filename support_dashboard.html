@@ -14,7 +14,7 @@
 <!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
      purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
      400 deta hai. -->
-<script src="/assets/ticket-parser.js?v=3"></script>
+<script src="/assets/ticket-parser.js?v=4"></script>
 <script>
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
@@ -1459,7 +1459,7 @@ let RAW = [];
 let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
-const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
 
 // ===== UTILS =====
 const fmt = n => n.toLocaleString('en-IN');
@@ -1491,7 +1491,7 @@ function setSelectOptions(id, values, labelFn){
 function refreshFilterOptions(){
   const clean = v => v && String(v).trim();
   const uniq  = arr => [...new Set(arr.filter(clean).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
-  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   CF_ALL.tester = uniq(RAW.flatMap(r=>[r.t,r.ta,r.ti,r.ts,r.eb]));
   CF_ALL.rm     = uniq(RAW.map(r=>r.r));
   CF_ALL.dev    = uniq(RAW.map(r=>r.dev));
@@ -1565,7 +1565,7 @@ function clearCF(key){
   const MAP={tester:'testerFilter',rm:'rmFilter',dev:'developerFilter',status:'statusFilter'};
   const sel=document.getElementById(MAP[key]);
   if(sel)[...sel.options].forEach(o=>o.selected=false);
-  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   buildCFOptions(key, CF_ALL[key], v=>key==='status'?(SL[v]||v):v);
   updateCFBadge(key);
   applyFilter();
@@ -1669,7 +1669,7 @@ function clearExtraFilters(){
     CF_STATE[key].clear();
     updateCFBadge(key);
     buildCFOptions(key, CF_ALL[key], v=>{
-      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
       return key==='status'?(SL[v]||v):v;
     });
   });
@@ -1733,32 +1733,43 @@ function isDev(r){ return r.q && /^development/i.test(String(r.q)); }
 
 // ===== SUPPORT DASHBOARD — current status handling =====
 function _normSt(s){ return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim(); }
+/* sc codes ab assets/ticket-parser.js ki MB_STATUS_VARIANTS se aate hain —
+   ek hi source. Yahan sirf UI ka label aur column mapping hai. */
 const SUP_STATUSES = [
-  {key:'pending',    label:'Pending',               cls:'c-oth', m:['pending'], col:'pend'},
-  {key:'reopen',     label:'Reopen',                cls:'c-ret', m:['reopen','re open']},
-  {key:'it',         label:'Transferred To IT',     cls:'c-it',  m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
-  {key:'ack',        label:'Acknowledged',          cls:'c-ack', m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
-  {key:'ip',         label:'In Progress',           cls:'c-ip',  m:['in progress','inprogress'], sc:'IP', col:'ip'},
-  {key:'rft',        label:'Ready For Testing',     cls:'c-tst', m:['ready for testing'], sc:'RT', col:'rft'},
-  {key:'reopentest', label:'Reopend from Testing',  cls:'c-ret', m:['reopend from testing','reopen from testing','reopened from testing']},
-  {key:'rfcr',       label:'Ready For Code Review', cls:'c-uat', m:['ready for code review']},
-  {key:'rfm',        label:'Ready For Merging',     cls:'c-uat', m:['ready for merging','ready for merge']},
-  {key:'rfu',        label:'Ready For UAT',         cls:'c-uat', m:['ready for uat'], sc:'RU'},
-  {key:'rgl',        label:'Ready to go Live',      cls:'c-glv', m:['ready to go live'], sc:'LV'},
-  {key:'rts',        label:'Return to Support',     cls:'c-ret', m:['return to support'], sc:'RS'},
-  {key:'sp',         label:'Transferred To Support',cls:'c-sup', m:['transfer to support','transferred to support'], sc:'SP', col:'sup'},
-  {key:'future',     label:'Future Development',    cls:'c-oth', m:['future development']},
-  {key:'rejected',   label:'Rejected',              cls:'c-sup', m:['rejected','reject']},
-  {key:'closed',     label:'Closed',                cls:'c-cl',  m:['closed','close'], sc:'CL', col:'closed'},
+  {key:'pending',    label:'Pending',               m:['pending'], sc:'PN', col:'pend'},
+  {key:'approval',   label:'Approval Pending',      m:['approval pending'], sc:'AP'},
+  {key:'reopen',     label:'Reopen',                m:['reopen','re open'], sc:'RO'},
+  {key:'it',         label:'Transferred To IT',     m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
+  {key:'ack',        label:'Acknowledged',          m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
+  {key:'ip',         label:'In Progress',           m:['in progress','inprogress'], sc:'IP', col:'ip'},
+  {key:'rft',        label:'Ready For Testing',     m:['ready for testing'], sc:'RT', col:'rft'},
+  {key:'reopentest', label:'Reopend from Testing',  m:['reopend from testing','reopen from testing','reopened from testing'], sc:'RF'},
+  {key:'rfcr',       label:'Ready For Code Review', m:['ready for code review'], sc:'CR'},
+  {key:'rfm',        label:'Ready For Merging',     m:['ready for merging','ready for merge'], sc:'MG'},
+  {key:'rfu',        label:'Ready For UAT',         m:['ready for uat'], sc:'RU'},
+  {key:'teamtest',   label:'Team Testing',          m:['team testing'], sc:'TT'},
+  {key:'rgl',        label:'Ready to go Live',      m:['ready to go live'], sc:'LV'},
+  {key:'rts',        label:'Return to Support',     m:['return to support'], sc:'RS'},
+  {key:'sp',         label:'Transferred To Support',m:['transfer to support','transferred to support'], sc:'SP', col:'sup'},
+  {key:'future',     label:'Future Development',    m:['future development'], sc:'FD'},
+  {key:'rejected',   label:'Rejected',              m:['rejected','reject'], sc:'RJ'},
+  {key:'closed',     label:'Closed',                m:['closed','close'], sc:'CL', col:'closed'},
 ];
 function statusKeyOf(r){
-  const raw=_normSt(r.st);
+  /* EXACT match only. Pehle ek substring fallback tha (`raw.includes(x)`)
+     jisme list ka kram maayne rakhta tha — 'pending' sabse upar hai, to
+     "Approval Pending" chup-chaap "Pending" ban jata tha. Asli data me aise
+     38 tickets the. Ab har status apni entry se hi milta hai. */
+  const raw = String(r && (r.st || '') || '').toLowerCase()
+    .replace(/[_\-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
   if(raw){
-    for(const d of SUP_STATUSES){ if(d.m.includes(raw)) return d.key; }
-    for(const d of SUP_STATUSES){ if(d.m.some(x=>raw.includes(x))) return d.key; }
+    for(const s of SUP_STATUSES){ if(s.m.indexOf(raw) !== -1) return s.key; }
   }
-  if(r.sc){ const d=SUP_STATUSES.find(x=>x.sc===r.sc); if(d) return d.key; }
-  return 'other';
+  /* Status string na mile to parser ke sc par gir jao — wo bhi usi
+     variant list se banta hai (MB_STATUS_VARIANTS). */
+  const sc = r && r.sc;
+  if(sc){ for(const s of SUP_STATUSES){ if(s.sc === sc) return s.key; } }
+  return '';
 }
 function statusLabelOf(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return d?d.label:(r.st||'Other'); }
 // 6-column bucket for tables: it/ack/ip/sup/closed else pend (catch-all)
@@ -3051,7 +3062,7 @@ function openTicketDetail(rec, stageCfg){
   document.getElementById('tdmTicketId').textContent = rec.n || '';
 
   // Build status badge
-  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   const statusLabel = (typeof statusLabelOf==='function') ? statusLabelOf(rec) : (STATUS_LABELS[rec.sc] || rec.sc || '—');
   const tatKey = stageCfg ? stageCfg.tatKey : '';
   const dateKey = stageCfg ? stageCfg.dateKey : '';
@@ -3171,7 +3182,14 @@ function getStageConfig(key){
     S_RS: { data:VIEW.filter(r=>r.sc==='RS'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RS', label:'Return to Support',   filename:'Status_ReturnToSupport'},
     S_RT: { data:VIEW.filter(r=>r.sc==='RT'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RT', label:'Ready for Testing',   filename:'Status_ReadyForTesting'},
     S_RU: { data:VIEW.filter(r=>r.sc==='RU'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RU', label:'Ready for UAT',       filename:'Status_ReadyForUAT'    },
-    S_OT: { data:VIEW.filter(r=>r.sc==='OT'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'OT', label:'Other / Pending',     filename:'Status_Other'          },
+    /* Catch-all. Pehle ye sirf sc==='OT' tha, jab Pending / Approval Pending /
+       Future Development / Reject / Reopen / Code Review / Merging /
+       Reopend-from-Testing / Team Testing sab 'OT' me girte the. Ab un sabke
+       apne codes hain, to sc==='OT' rakhne se wo 477 tickets kisi bhi card me
+       nahi aate. Isliye ab shart ULTI hai: jo bhi upar wale cards me nahi hai,
+       wo yahan aata hai. */
+    S_OT: { data:VIEW.filter(r=>['IT','AK','IP','LV','SP','CL','RS','RT','RU'].indexOf(r.sc)===-1),
+            tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'OT', label:'Other / Pending',     filename:'Status_Other'          },
   };
   return cfg[key];
 }

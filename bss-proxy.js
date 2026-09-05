@@ -89,7 +89,7 @@ async function margLogin() {
   let data; try { data = JSON.parse(text); } catch { data = text; }
   if (!r.ok) throw new Error('Marg login failed (HTTP ' + r.status + ')');
   const tok = findJwt(data);
-  if (!tok) throw new Error('Login response me token nahi mila');
+  if (!tok) throw new Error('No token found in the login response');
   return tok;
 }
 async function margToken(force) {
@@ -101,7 +101,7 @@ async function margToken(force) {
     return t;
   }
   if (STATIC_TOKEN) return STATIC_TOKEN;
-  throw new Error('Server not configured: MARG_LOGIN_EMAIL/PASSWORD (ya MARG_TOKEN) set karo');
+  throw new Error('Server not configured: set MARG_LOGIN_EMAIL/PASSWORD (or MARG_TOKEN)');
 }
 async function callMarg(url, { method = 'POST', body, token } = {}) {
   const headers = {
@@ -264,7 +264,7 @@ module.exports = async function handler(req, res) {
   if (!p) return res.status(403).json({ error: 'No profile — access denied' });
 
   const allowed = p.role === 'admin' || (Array.isArray(p.dashboards) && p.dashboards.includes(DASH_ID));
-  if (!allowed) return res.status(403).json({ error: 'BSS Dashboard ka access nahi hai' });
+  if (!allowed) return res.status(403).json({ error: 'You do not have access to the BSS Dashboard' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -305,7 +305,7 @@ module.exports = async function handler(req, res) {
 
       const list = (r.data && r.data.Details) || [];
       const rec = list.find(x => String(x.TicketNo).trim() === tn) || list[0] || null;
-      if (!rec) return res.status(404).json({ error: `Ticket ${tn} nahi mila (${from} → ${to})` });
+      if (!rec) return res.status(404).json({ error: `Ticket ${tn} was not found (${from} → ${to})` });
 
       return res.status(200).json({ ok: true, ticket: rec });
     }
@@ -314,8 +314,8 @@ module.exports = async function handler(req, res) {
     if (action === 'update') {
       if (!p.bss_user_id)
         return res.status(400).json({
-          error: 'Aapke account par BSS User ID map nahi hai. Admin → Users me set karwao. ' +
-                 'Iske bina update ka audit trail nahi banega.',
+          error: 'Your account has no BSS User ID mapped. Ask an admin to set it in Admin → Users. ' +
+                 'Without it, updates cannot be audit-trailed.',
         });
 
       const { out, errors } = sanitizePayload(body.payload);

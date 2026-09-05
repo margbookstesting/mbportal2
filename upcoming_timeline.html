@@ -534,7 +534,7 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 <!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
      purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
      400 deta hai. -->
-<script src="/assets/ticket-parser.js?v=3"></script>
+<script src="/assets/ticket-parser.js?v=4"></script>
 <script>
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
@@ -571,7 +571,10 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,
 const STAGE_LABELS = {
   IT:'Transfer to IT', AK:'Acknowledge', IP:'In Progress',
   SP:'Close by IT', LV:'Ready to Go Live', CL:'Closed',
-  RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT', OT:'Other'
+  RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT',
+  CR:'Ready for Code Review', MG:'Ready for Merging', RF:'Reopend from Testing',
+  RO:'Reopen', FD:'Future Development', RJ:'Rejected', PN:'Pending',
+  AP:'Approval Pending', TT:'Team Testing', OT:'Other'
 };
 
 /* ── "Ye ticket ab IT ke paas nahi hai" ──────────────────────────────────────
@@ -580,11 +583,11 @@ const STAGE_LABELS = {
  * deadline se ab koi farak nahi padta. Pehle inpar koi filter tha hi nahi,
  * isliye closed tickets bhi Upcoming me green hokar dikhte the.
  *
- * `sc` short-codes: CL=Closed, SP=Transfer To Support, RS=Return to Support.
- * REJECTED ka koi short-code NAHI hai — wo `sc` me OT me girta hai, isliye use
- * raw status label se pakadna padta hai. Sirf `sc` par bharosa karte to
- * Rejected tickets chup-chaap list me bane rehte. */
-const DONE_SC = { CL:1, SP:1, RS:1 };
+ * `sc` short-codes: CL=Closed, SP=Transfer To Support, RS=Return to Support,
+ * RJ=Rejected. Rejected ka code pehle nahi tha (wo OT me girta tha), isliye
+ * neeche raw-status wala fallback likha gaya tha. Ab code hai, par fallback
+ * rakha hua hai — purane cache rows me abhi bhi OT ho sakta hai. */
+const DONE_SC = { CL:1, SP:1, RS:1, RJ:1 };
 function isDoneForDeadline(r){
   if(!r) return false;
   if(DONE_SC[r.sc]) return true;

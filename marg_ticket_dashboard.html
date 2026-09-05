@@ -14,7 +14,7 @@
 <!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
      purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
      400 deta hai. -->
-<script src="/assets/ticket-parser.js?v=3"></script>
+<script src="/assets/ticket-parser.js?v=4"></script>
 <!-- BSS FIELD CROSSWALK — "BSS Update" tab ke liye zaroori -->
 <script src="/assets/bss-fields.js?v=1"></script>
 <script>
@@ -1835,6 +1835,26 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabUp .modal-btn-primary{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff}
 #tabUp .modal-btn-secondary{background:var(--s2);color:var(--text);border:1.5px solid var(--border)}
 #tabUp .modal-btn:hover{opacity:.88;transform:translateY(-1px)}
+
+#xlPickOv{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;
+  align-items:center;justify-content:center;z-index:9999}
+#xlPickOv.on{display:flex}
+.xl-pick{background:var(--surface,#fff);border-radius:14px;width:min(680px,92vw);
+  max-height:84vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.28)}
+.xl-pick-hd{display:flex;align-items:center;gap:12px;padding:14px 18px;
+  border-bottom:1px solid var(--border,#e2e8f0)}
+.xl-pick-hd b{font-size:14px}
+.xl-pick-count{font-size:11px;color:var(--muted,#64748b);margin-left:auto;
+  font-family:'JetBrains Mono',monospace}
+.xl-pick-bar{display:flex;gap:8px;padding:10px 18px;border-bottom:1px solid var(--border,#e2e8f0)}
+.xl-pick-body{overflow:auto;padding:12px 18px;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 14px}
+.xl-col{display:flex;align-items:center;gap:7px;font-size:12px;padding:5px 6px;
+  border-radius:6px;cursor:pointer}
+.xl-col:hover{background:var(--s2,#f8fafc)}
+.xl-col input{cursor:pointer}
+.xl-pick-ft{padding:12px 18px;border-top:1px solid var(--border,#e2e8f0);text-align:right}
+#xlPickGo:disabled{opacity:.4;cursor:not-allowed}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -3173,34 +3193,45 @@ let RAW = [];
 let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[], fRfT=[], fRt=[], fUa=[], fGl=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
-const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
 function _normSt(s){ return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim(); }
+/* sc codes ab assets/ticket-parser.js ki MB_STATUS_VARIANTS se aate hain —
+   ek hi source. Yahan sirf UI ka label aur column mapping hai. */
 const SUP_STATUSES = [
-  {key:'pending',    label:'Pending',               m:['pending'], col:'pend'},
-  {key:'reopen',     label:'Reopen',                m:['reopen','re open']},
+  {key:'pending',    label:'Pending',               m:['pending'], sc:'PN', col:'pend'},
+  {key:'approval',   label:'Approval Pending',      m:['approval pending'], sc:'AP'},
+  {key:'reopen',     label:'Reopen',                m:['reopen','re open'], sc:'RO'},
   {key:'it',         label:'Transferred To IT',     m:['transfer to it','transferred to it'], sc:'IT', col:'it'},
   {key:'ack',        label:'Acknowledged',          m:['acknowledge','acknowledged'], sc:'AK', col:'ack'},
   {key:'ip',         label:'In Progress',           m:['in progress','inprogress'], sc:'IP', col:'ip'},
   {key:'rft',        label:'Ready For Testing',     m:['ready for testing'], sc:'RT', col:'rft'},
-  {key:'reopentest', label:'Reopend from Testing',  m:['reopend from testing','reopen from testing','reopened from testing']},
-  {key:'rfcr',       label:'Ready For Code Review', m:['ready for code review']},
-  {key:'rfm',        label:'Ready For Merging',     m:['ready for merging','ready for merge']},
+  {key:'reopentest', label:'Reopend from Testing',  m:['reopend from testing','reopen from testing','reopened from testing'], sc:'RF'},
+  {key:'rfcr',       label:'Ready For Code Review', m:['ready for code review'], sc:'CR'},
+  {key:'rfm',        label:'Ready For Merging',     m:['ready for merging','ready for merge'], sc:'MG'},
   {key:'rfu',        label:'Ready For UAT',         m:['ready for uat'], sc:'RU'},
+  {key:'teamtest',   label:'Team Testing',          m:['team testing'], sc:'TT'},
   {key:'rgl',        label:'Ready to go Live',      m:['ready to go live'], sc:'LV'},
   {key:'rts',        label:'Return to Support',     m:['return to support'], sc:'RS'},
   {key:'sp',         label:'Transferred To Support',m:['transfer to support','transferred to support'], sc:'SP', col:'sup'},
-  {key:'future',     label:'Future Development',    m:['future development']},
-  {key:'rejected',   label:'Rejected',              m:['rejected','reject']},
+  {key:'future',     label:'Future Development',    m:['future development'], sc:'FD'},
+  {key:'rejected',   label:'Rejected',              m:['rejected','reject'], sc:'RJ'},
   {key:'closed',     label:'Closed',                m:['closed','close'], sc:'CL', col:'closed'},
 ];
 function statusKeyOf(r){
-  const raw=_normSt(r.st);
+  /* EXACT match only. Pehle ek substring fallback tha (`raw.includes(x)`)
+     jisme list ka kram maayne rakhta tha — 'pending' sabse upar hai, to
+     "Approval Pending" chup-chaap "Pending" ban jata tha. Asli data me aise
+     38 tickets the. Ab har status apni entry se hi milta hai. */
+  const raw = String(r && (r.st || '') || '').toLowerCase()
+    .replace(/[_\-\/]+/g, ' ').replace(/\s+/g, ' ').trim();
   if(raw){
-    for(const d of SUP_STATUSES){ if(d.m.includes(raw)) return d.key; }
-    for(const d of SUP_STATUSES){ if(d.m.some(x=>raw.includes(x))) return d.key; }
+    for(const s of SUP_STATUSES){ if(s.m.indexOf(raw) !== -1) return s.key; }
   }
-  if(r.sc){ const d=SUP_STATUSES.find(x=>x.sc===r.sc); if(d) return d.key; }
-  return 'other';
+  /* Status string na mile to parser ke sc par gir jao — wo bhi usi
+     variant list se banta hai (MB_STATUS_VARIANTS). */
+  const sc = r && r.sc;
+  if(sc){ for(const s of SUP_STATUSES){ if(s.sc === sc) return s.key; } }
+  return '';
 }
 function statusLabelOf(r){ const d=SUP_STATUSES.find(x=>x.key===statusKeyOf(r)); return d?d.label:(r.st||'Other'); }
 function stageDateOf(r){ return r.e || r.d || r.c || r.b || r.a || '—'; }
@@ -3235,7 +3266,7 @@ function setSelectOptions(id, values, labelFn){
 function refreshFilterOptions(){
   const clean = v => v && String(v).trim();
   const uniq  = arr => [...new Set(arr.filter(clean).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
-  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   CF_ALL.tester = uniq(RAW.flatMap(r=>[r.t,r.ta,r.ti,r.ts,r.eb]));
   CF_ALL.rm     = uniq(RAW.map(r=>r.r));
   CF_ALL.dev    = uniq(RAW.map(r=>r.dev));
@@ -3309,7 +3340,7 @@ function clearCF(key){
   const MAP={tester:'testerFilter',rm:'rmFilter',dev:'developerFilter',status:'statusFilter'};
   const sel=document.getElementById(MAP[key]);
   if(sel)[...sel.options].forEach(o=>o.selected=false);
-  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   buildCFOptions(key, CF_ALL[key], v=>key==='status'?(SL[v]||v):v);
   updateCFBadge(key);
   applyFilter();
@@ -3413,7 +3444,7 @@ function clearExtraFilters(){
     CF_STATE[key].clear();
     updateCFBadge(key);
     buildCFOptions(key, CF_ALL[key], v=>{
-      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
       return key==='status'?(SL[v]||v):v;
     });
   });
@@ -6421,6 +6452,9 @@ function openModal(key){
 }
 
 function exportModalExcel(){
+  openColumnPicker(()=>_exportModalExcel());
+}
+function _exportModalExcel(){
   if(!_modalKey) return;
   const cfg = getStageConfig(_modalKey);
   const {data, tatKey, dateKey, durKey, actKey, pendingSc, label, filename} = cfg;
@@ -6441,35 +6475,15 @@ function exportModalExcel(){
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumRows), 'Summary');
 
-  const header = ['Ticket No','Created Date','Client Name','LicNo','Subscription Plan',
-                  'Stage Date','Pending Status','SLA Duration','Actual Duration',
-                  'TAT Status','Ack Disposition','Tester','RM'];
-  const rows = [header];
-  data.forEach(r=>{
-    rows.push([
-      r.n||'', r.tc||'', r.u||'', r.l||'', r.p||'',
-      r[dateKey]||'',
-      r.sc===pendingSc?'Pending':'Moved Forward',
-      durKey ? r[durKey]||'' : '—',
-      r[actKey]||'',
-      r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
-      r.q||'', mbTesterOf(r), r.r||''
-    ]);
-  });
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:14},{wch:12},{wch:32},{wch:10},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10},{wch:8},{wch:18},{wch:20},{wch:18}];
-  XLSX.utils.book_append_sheet(wb, ws, label.slice(0,31));
-
-  // Pending only sheet
-  const pendRows = [header, ...data.filter(r=>r.sc===pendingSc).map(r=>[
-    r.n||'', r.tc||'', r.u||'', r.l||'', r.p||'',
-    r[dateKey]||'', 'Pending',
-    durKey ? r[durKey]||'' : '—',
-    r[actKey]||'',
-    r[tatKey]==='I'?'InTAT':r[tatKey]==='O'?'OutTAT':'No TAT',
-    r.q||'', mbTesterOf(r), r.r||''
-  ])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pendRows), 'Pending Only');
+  /* Ek hi column list (XL_COLS) — picker ka chunav yahan bhi lagta hai. */
+  const mkSheet = rows => {
+    const ws = XLSX.utils.aoa_to_sheet(buildSheetRows(rows, tatKey, dateKey, pendingSc));
+    ws['!cols'] = xlCols();
+    return ws;
+  };
+  XLSX.utils.book_append_sheet(wb, mkSheet(data), 'All Tickets');
+  XLSX.utils.book_append_sheet(wb, mkSheet(data.filter(r=>r.sc===pendingSc)), 'Pending Only');
+  XLSX.utils.book_append_sheet(wb, mkSheet((RAW||[]).filter(r=>r.sc===pendingSc)), 'Currently Pending');
 
   XLSX.writeFile(wb, `MARG_${filename}_Detail_${currentFrom}_to_${currentTo}.xlsx`);
   showToast(`${label} detail exported!`);
@@ -6477,14 +6491,18 @@ function exportModalExcel(){
 
 // ===== TICKET TIMELINE BUILDER =====
 function exportCurrentModal(){
+  openColumnPicker(()=>_exportCurrentModal());
+}
+function _exportCurrentModal(){
   const data=(window._modalShown&&window._modalShown.length!==undefined)?window._modalShown:_modalData;
   if(!data||!data.length){ if(typeof showToast==='function')showToast('No rows to export'); return; }
   const wb=XLSX.utils.book_new();
-  const header=['Ticket No','Current Status','Created Date','Transfer To IT','Stage Date','Timeline','RM','Developer','Tester','Client','Disposition','LicNo'];
-  const out=[header];
-  data.forEach(r=>out.push([r.n||'',statusLabelOf(r),r.tc||'',r.a||'',stageDateOf(r),r.tld||'',r.r||'',r.dev||'',mbTesterOf(r),r.u||'',bugDevClass(r),r.l||'']));
+  /* Wahi column list jo baaki exports use karte hain — ek jagah se, taaki
+     naya field jodne par teen jagah badalna na pade. */
+  const cfg = _modalKey ? getStageConfig(_modalKey) : null;
+  const out = buildSheetRows(data, cfg&&cfg.tatKey, cfg&&cfg.dateKey, cfg&&cfg.pendingSc);
   const ws=XLSX.utils.aoa_to_sheet(out);
-  ws['!cols']=[{wch:14},{wch:20},{wch:12},{wch:12},{wch:12},{wch:12},{wch:16},{wch:16},{wch:18},{wch:30},{wch:14},{wch:10}];
+  ws['!cols']=xlCols();
   const title=(document.getElementById('modalTitle').textContent||'Tickets').replace(/[^a-z0-9]/gi,'_').slice(0,40);
   XLSX.utils.book_append_sheet(wb,ws,'Tickets');
   XLSX.writeFile(wb, title+'.xlsx');
@@ -6496,7 +6514,7 @@ function buildTicketTimeline(rec, stageCfg) {
       agent: rec.t,  agentLabel:'Tester / Transfer To' },
     { key:'b',  tatKey:'bt', durKey:'bd', actKey:'bv', label:'Acknowledge',       pendingSc:'AK', color:'#d97706',
       agent: rec.ta, agentLabel:'Ack Agent' },
-    { key:'c',  tatKey:'ct', durKey:'cd', actKey:'cv', label:'In Progress',       pendingSc:'IP', color:'#059669',
+    { key:'c',  tatKey:'ct', durKey:'cdd', actKey:'cv', label:'In Progress',       pendingSc:'IP', color:'#059669',
       agent: rec.ti, agentLabel:'IP Agent' },
     { key:'e',  tatKey:'et', durKey:'',   actKey:'ev', label:'Ready to Go Live',  pendingSc:'LV', color:'#7c3aed',
       agent: rec.eb, agentLabel:'Go Live By' },
@@ -6584,7 +6602,7 @@ function openTicketDetail(rec, stageCfg){
   document.getElementById('tdmTicketId').textContent = rec.n || '';
 
   // Build status badge
-  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   const statusLabel = STATUS_LABELS[rec.sc] || rec.sc || '—';
   const tatKey = stageCfg ? stageCfg.tatKey : '';
   const dateKey = stageCfg ? stageCfg.dateKey : '';
@@ -6684,7 +6702,7 @@ function getStageConfig(key){
   const cfg = {
     IT:   { data:fIT,   tatKey:'at', dateKey:'a', durKey:'ad', actKey:'av', pendingSc:'IT', label:'Transfer to IT',    filename:'TransferToIT'    },
     ACK:  { data:fAck,  tatKey:'bt', dateKey:'b', durKey:'bd', actKey:'bv', pendingSc:'AK', label:'Acknowledge',        filename:'Acknowledge'     },
-    IP:   { data:fIP,   tatKey:'ct', dateKey:'c', durKey:'cd', actKey:'cv', pendingSc:'IP', label:'In Progress',        filename:'InProgress'      },
+    IP:   { data:fIP,   tatKey:'ct', dateKey:'c', durKey:'cdd', actKey:'cv', pendingSc:'IP', label:'In Progress',        filename:'InProgress'      },
     SUP:  { data:fSup,  tatKey:'dt', dateKey:'d', durKey:'dd', actKey:'dv', pendingSc:'SP', label:'Transfer to Support',filename:'TransferToSupport'},
     LIVE: { data:fLive, tatKey:'et', dateKey:'e', durKey:'',   actKey:'ev', pendingSc:'LV', label:'Ready to Go Live',   filename:'ReadyToGoLive'   },
     // Status-only KPIs use the current filtered dashboard view.
@@ -6713,7 +6731,16 @@ const XL_COLS = [
   ['LicNo',                  r=>r.l],
   ['Subscription Plan',      r=>r.p],
   ['Description',            r=>r.desc],
+  ['Current Disposition',    r=>r.cd],
   ['Ack Disposition',        r=>r.q],
+  ['Main Disposition',       r=>r.mainDisp],
+  ['Sub Disposition',        r=>r.subDisp],
+  ['Problem Type',           r=>r.probType],
+  ['Remarks',                r=>r.remarks],
+  ['Mobile',                 r=>r.mobile],
+  ['Email',                  r=>r.email],
+  ['Timeline Date',          r=>r.tld],
+  ['Jira ID',                r=>r.jira],
   ['Last Disposition',       r=>r.ld],
   ['RM',                     r=>r.r],
   ['Tester (TransferTo)',    r=>r.t],
@@ -6729,7 +6756,7 @@ const XL_COLS = [
   ['Acknowledge Date',       r=>r.b],   ['Acknowledge TAT',      r=>r.bt],
   ['Acknowledge SLA',        r=>r.bd],  ['Acknowledge Actual',   r=>r.bv],
   ['In Progress Date',       r=>r.c],   ['In Progress TAT',      r=>r.ct],
-  ['In Progress SLA',        r=>r.cd],  ['In Progress Actual',   r=>r.cv],
+  ['In Progress SLA',        r=>r.cdd],  ['In Progress Actual',   r=>r.cv],
   ['Ready For Testing Date', r=>r.rtd], ['Ready For Testing TAT',r=>r.rtt],
   ['Ready For Testing By',   r=>r.rtg],
   ['Code Review Date',       r=>r.crd], ['Code Review TAT',      r=>r.crt],
@@ -6749,16 +6776,65 @@ const XL_COLS = [
   ['Close Date',             r=>r.cld],
 ];
 
+
+/* ── Column picker ─────────────────────────────────────────────────────────
+   Export se pehle ek chhota dialog: sab columns tick, jo na chahiye untick
+   kar do. Chunav yaad rehta hai (memory me, page reload tak) taaki har baar
+   dobara na karna pade. */
+let XL_PICK = null;          // null = sab selected
+let _xlPending = null;       // { run:fn }
+
+function xlSelected(){
+  if(!XL_PICK) return XL_COLS.slice();
+  const keep = XL_COLS.filter(c=>XL_PICK.has(c[0]));
+  return keep.length ? keep : XL_COLS.slice();   // sab untick ho gaye to sab do
+}
+
+function openColumnPicker(run){
+  _xlPending = run;
+  const sel = XL_PICK || new Set(XL_COLS.map(c=>c[0]));
+  document.getElementById('xlPickBody').innerHTML =
+    XL_COLS.map(c=>{
+      const on = sel.has(c[0]);
+      return '<label class="xl-col"><input type="checkbox" '+(on?'checked':'')+
+             ' data-col="'+esc(c[0])+'"> <span>'+esc(c[0])+'</span></label>';
+    }).join('');
+  xlPickCount();
+  document.getElementById('xlPickOv').classList.add('on');
+}
+function closeColumnPicker(){ document.getElementById('xlPickOv').classList.remove('on'); _xlPending=null; }
+function xlPickAll(on){
+  document.querySelectorAll('#xlPickBody input').forEach(i=>{ i.checked=on; });
+  xlPickCount();
+}
+function xlPickCount(){
+  const all=document.querySelectorAll('#xlPickBody input');
+  const on=[...all].filter(i=>i.checked).length;
+  const el=document.getElementById('xlPickCount');
+  if(el) el.textContent=on+' of '+all.length+' columns';
+  const btn=document.getElementById('xlPickGo');
+  if(btn) btn.disabled = on===0;
+}
+function xlPickConfirm(){
+  const on=[...document.querySelectorAll('#xlPickBody input')].filter(i=>i.checked)
+    .map(i=>i.dataset.col);
+  XL_PICK = new Set(on);
+  const run=_xlPending;
+  closeColumnPicker();
+  if(run) run();
+}
+
 function buildSheetRows(data, tatKey, dateKey, pendingSc){
   /* Ye teen columns stage-specific hain, isliye fixed list ke aage lagte hain. */
-  const header = ['Stage Date','Pending Status','TAT Status'].concat(XL_COLS.map(c=>c[0]));
+  const cols = xlSelected();
+  const header = ['Stage Date','Pending Status','TAT Status'].concat(cols.map(c=>c[0]));
   const rows = [header];
   (data||[]).forEach(r=>{
     const tatStatus     = tatKey && r[tatKey]==='I' ? 'InTAT'
                         : tatKey && r[tatKey]==='O' ? 'OutTAT' : 'No TAT';
     const pendingStatus = r.sc===pendingSc ? 'Pending' : 'Moved Forward';
     rows.push([ (dateKey && r[dateKey]) || '', pendingStatus, tatStatus ]
-      .concat(XL_COLS.map(c=>{ const v=c[1](r); return (v===undefined||v===null) ? '' : v; })));
+      .concat(cols.map(c=>{ const v=c[1](r); return (v===undefined||v===null) ? '' : v; })));
   });
   return rows;
 }
@@ -6766,11 +6842,14 @@ function buildSheetRows(data, tatKey, dateKey, pendingSc){
 /* Column widths: pehle 3 stage columns, phir Description ko chaudi jagah. */
 function xlCols(){
   return [{wch:13},{wch:14},{wch:9}].concat(
-    XL_COLS.map(c => c[0]==='Description' ? {wch:60}
+    xlSelected().map(c => c[0]==='Description' ? {wch:60}
                    : /Client Name|Ticket No/.test(c[0]) ? {wch:26} : {wch:15}));
 }
 
 function exportStage(key){
+  openColumnPicker(()=>_exportStage(key));
+}
+function _exportStage(key){
   const cfg = getStageConfig(key);
   const wb  = XLSX.utils.book_new();
 
@@ -9109,7 +9188,10 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{persistSession:true,
 const STAGE_LABELS = {
   IT:'Transfer to IT', AK:'Acknowledge', IP:'In Progress',
   SP:'Close by IT', LV:'Ready to Go Live', CL:'Closed',
-  RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT', OT:'Other'
+  RS:'Return to Support', RT:'Ready for Testing', RU:'Ready for UAT',
+  CR:'Ready for Code Review', MG:'Ready for Merging', RF:'Reopend from Testing',
+  RO:'Reopen', FD:'Future Development', RJ:'Rejected', PN:'Pending',
+  AP:'Approval Pending', TT:'Team Testing', OT:'Other'
 };
 
 /* ── "Ye ticket ab IT ke paas nahi hai" ──────────────────────────────────────
@@ -9118,11 +9200,11 @@ const STAGE_LABELS = {
  * deadline se ab koi farak nahi padta. Pehle inpar koi filter tha hi nahi,
  * isliye closed tickets bhi Upcoming me green hokar dikhte the.
  *
- * `sc` short-codes: CL=Closed, SP=Transfer To Support, RS=Return to Support.
- * REJECTED ka koi short-code NAHI hai — wo `sc` me OT me girta hai, isliye use
- * raw status label se pakadna padta hai. Sirf `sc` par bharosa karte to
- * Rejected tickets chup-chaap list me bane rehte. */
-const DONE_SC = { CL:1, SP:1, RS:1 };
+ * `sc` short-codes: CL=Closed, SP=Transfer To Support, RS=Return to Support,
+ * RJ=Rejected. Rejected ka code pehle nahi tha (wo OT me girta tha), isliye
+ * neeche raw-status wala fallback likha gaya tha. Ab code hai, par fallback
+ * rakha hua hai — purane cache rows me abhi bhi OT ho sakta hai. */
+const DONE_SC = { CL:1, SP:1, RS:1, RJ:1 };
 function isDoneForDeadline(r){
   if(!r) return false;
   if(DONE_SC[r.sc]) return true;
@@ -9763,5 +9845,24 @@ window.UP.boot = function(){
 })();
 
 </script>
+
+<!-- Excel column picker -->
+<div class="ov" id="xlPickOv">
+  <div class="xl-pick">
+    <div class="xl-pick-hd">
+      <b>Choose columns to export</b>
+      <span class="xl-pick-count" id="xlPickCount"></span>
+      <button class="kpi-xls" onclick="closeColumnPicker()">✕ Cancel</button>
+    </div>
+    <div class="xl-pick-bar">
+      <button class="kpi-xls" onclick="xlPickAll(true)">Select all</button>
+      <button class="kpi-xls" onclick="xlPickAll(false)">Clear all</button>
+    </div>
+    <div class="xl-pick-body" id="xlPickBody" onchange="xlPickCount()"></div>
+    <div class="xl-pick-ft">
+      <button class="kpi-xls" id="xlPickGo" onclick="xlPickConfirm()">↓ Export Excel</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

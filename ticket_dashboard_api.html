@@ -14,7 +14,7 @@
 <!-- ?v= MB_SCHEMA_VERSION ke saath bump karo — warna deploy ke baad browser
      purana cached parser chalata hai aur /api/ticket-cache schema-mismatch
      400 deta hai. -->
-<script src="/assets/ticket-parser.js?v=3"></script>
+<script src="/assets/ticket-parser.js?v=4"></script>
 <script>
 /* Shared parser load hua ya nahi — file 404 ho to silent tootne se behtar hai
    saaf error, warna sab kuch "no data" jaisa dikhega. */
@@ -1490,7 +1490,7 @@ let RAW = [];
 let fIT=[], fAck=[], fIP=[], fSup=[], fLive=[];
 let VIEW = [];
 let currentFrom='', currentTo='';
-const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
 
 // ===== UTILS =====
 const fmt = n => n.toLocaleString('en-IN');
@@ -1522,7 +1522,7 @@ function setSelectOptions(id, values, labelFn){
 function refreshFilterOptions(){
   const clean = v => v && String(v).trim();
   const uniq  = arr => [...new Set(arr.filter(clean).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
-  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const SL = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   CF_ALL.tester = uniq(RAW.flatMap(r=>[r.t,r.ta,r.ti,r.ts,r.eb]));
   CF_ALL.rm     = uniq(RAW.map(r=>r.r));
   CF_ALL.dev    = uniq(RAW.map(r=>r.dev));
@@ -1596,7 +1596,7 @@ function clearCF(key){
   const MAP={tester:'testerFilter',rm:'rmFilter',dev:'developerFilter',status:'statusFilter'};
   const sel=document.getElementById(MAP[key]);
   if(sel)[...sel.options].forEach(o=>o.selected=false);
-  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   buildCFOptions(key, CF_ALL[key], v=>key==='status'?(SL[v]||v):v);
   updateCFBadge(key);
   applyFilter();
@@ -1684,7 +1684,7 @@ function clearExtraFilters(){
     CF_STATE[key].clear();
     updateCFBadge(key);
     buildCFOptions(key, CF_ALL[key], v=>{
-      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+      const SL={IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
       return key==='status'?(SL[v]||v):v;
     });
   });
@@ -3205,7 +3205,7 @@ function openTicketDetail(rec, stageCfg){
   document.getElementById('tdmTicketId').textContent = rec.n || '';
 
   // Build status badge
-  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',OT:'Other'};
+  const STATUS_LABELS = {IT:'Transfer to IT',AK:'Acknowledge',IP:'In Progress',SP:'Close by IT',LV:'Ready to Go Live',CL:'Closed',RS:'Return to Support',RT:'Ready for Testing',RU:'Ready for UAT',CR:'Ready for Code Review',MG:'Ready for Merging',RF:'Reopend from Testing',RO:'Reopen',FD:'Future Development',RJ:'Rejected',PN:'Pending',AP:'Approval Pending',TT:'Team Testing',OT:'Other'};
   const statusLabel = STATUS_LABELS[rec.sc] || rec.sc || '—';
   const tatKey = stageCfg ? stageCfg.tatKey : '';
   const dateKey = stageCfg ? stageCfg.dateKey : '';

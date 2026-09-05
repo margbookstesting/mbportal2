@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
       json = zlib.gunzipSync(buf, { maxOutputLength: MAX_JSON_BYTES }).toString('utf8');
     } catch (e) {
       return res.status(400).json({
-        error: 'gz decompress failed (corrupt, ya decompressed size > ' +
+        error: 'gz decompress failed (corrupt, or decompressed size > ' +
                Math.round(MAX_JSON_BYTES / 1024 / 1024) + 'MB): ' + e.message,
       });
     }
@@ -124,7 +124,7 @@ module.exports = async function handler(req, res) {
     // Client ne jo count claim kiya tha wahi mila? (truncated upload catch)
     if (count !== undefined && Array.isArray(data) && data.length !== count)
       return res.status(400).json({
-        error: `Payload truncated — client ne ${count} records bheje the, ${data.length} mile. Refresh dobara try karo.`,
+        error: `Payload truncated — the client sent ${count} records but only ${data.length} arrived. Try Refresh again.`,
       });
   }
 
@@ -133,7 +133,7 @@ module.exports = async function handler(req, res) {
   if (schema_version !== REQUIRED_SCHEMA)
     return res.status(400).json({
       error: `Schema mismatch — payload v${schema_version}, server needs v${REQUIRED_SCHEMA}. ` +
-             `Page purana cached JS chala raha hai; hard-refresh (Ctrl+Shift+R) karke dobara try karo.`
+             `The page is running old cached JS; hard-refresh (Ctrl+Shift+R) and try again.`
     });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_from || '')))
     return res.status(400).json({ error: 'Invalid date_from (YYYY-MM-DD required)' });
@@ -157,16 +157,16 @@ module.exports = async function handler(req, res) {
     const lost = REQUIRED_FIELDS.filter(f => (oldCounts[f] || 0) > 0 && counts[f] === 0);
     if (lost.length) {
       return res.status(400).json({
-        error: `Incomplete payload rejected — ye fields cache me hain par payload me nahi: ${lost.join(', ')}. ` +
-               `Cache safe hai, kuch overwrite nahi hua.`,
+        error: `Incomplete payload rejected — these fields exist in the cache but not in the payload: ${lost.join(', ')}. ` +
+               `The cache is safe, nothing was overwritten.`,
         lostFields: lost, oldCounts, newCounts: counts
       });
     }
     const oldTotal = old.total_count || oldCounts.total || 0;
     if (oldTotal > 0 && data.length < oldTotal * MIN_COUNT_RATIO) {
       return res.status(400).json({
-        error: `Ticket count ${oldTotal} se ${data.length} par gir gaya (>50% drop) — ` +
-               `adhoori fetch lag rahi hai, cache unchanged. Refresh dobara try karo.`,
+        error: `Ticket count dropped from ${oldTotal} to ${data.length} (>50% drop) — ` +
+               `this looks like an incomplete fetch, cache unchanged. Try Refresh again.`,
         oldTotal, newTotal: data.length
       });
     }

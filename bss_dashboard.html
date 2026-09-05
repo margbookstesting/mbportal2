@@ -10,7 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- SHARED SUPERSET TICKET PARSER — single source of truth (see file header) -->
-<script src="/assets/ticket-parser.js?v=3"></script>
+<script src="/assets/ticket-parser.js?v=4"></script>
 <!-- BSS FIELD CROSSWALK — Disposition/SubDisposition swap yahin handle hota hai -->
 <script src="/assets/bss-fields.js?v=1"></script>
 <script>
@@ -199,6 +199,9 @@ th.r,td.r{text-align:right}
 .empty{padding:44px 20px;text-align:center;color:var(--muted)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:400;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+.ro-box{background:var(--s2,#f8fafc);color:var(--muted,#64748b);
+  display:flex;align-items:center;cursor:not-allowed;user-select:none}
+.ro-box.mono{font-family:'JetBrains Mono',monospace;color:var(--text,#0f172a);font-weight:600}
 </style>
 </head>
 <body>
@@ -714,8 +717,59 @@ function renderEditForm(){
     </div>
     ${desc ? `<div class="desc-box">${esc(desc)}</div>` : ''}</div>`;
 
+  /* ── Timeline Date ke do niyam ──────────────────────────────────────────
+     1. Field tabhi dikhta hai jab ticket acknowledge ho chuka ho. Timeline
+        commitment acknowledge ke baad hi banti hai; usse pehle dikhana
+        galat data invite karta hai.
+     2. Ek baar timeline pad gayi to wo READ-ONLY hai. Dikhti hai, badalti
+        nahi. Khali ho to hi date picker milta hai.
+     Acknowledge ka pata BSS ke live record se chalta hai — ya to Acknowledge
+     ki date maujood ho, ya current status Transfer-To-IT/Pending se aage
+     nikal chuka ho. */
+  /* Acknowledge se PEHLE ke statuses. Live record ka Status hi sabse sahi
+     source hai (cache purana ho sakta hai), sc mbStatusCode() se banta hai
+     to dono taraf ek hi list chalti hai. */
+  const PRE_ACK_SC = ['IT','PN','AP','','OT'];
+  const _tlAcked = (function(){
+    const live = rd.values.currentStatus;
+    if(live && typeof mbStatusCode==='function'){
+      return PRE_ACK_SC.indexOf(mbStatusCode(live)) === -1;
+    }
+    /* Live status na mile to cache ki acknowledge date par gir jao. */
+    const row = (LIST_ROWS||[]).find(x=>x && x.n===EDIT.ticketNo);
+    if(row && row.b) return true;
+    if(row && row.sc) return PRE_ACK_SC.indexOf(row.sc) === -1;
+    return false;
+  })();
+  const _tlExisting = (function(){
+    if(rd.values.timelineDate) return String(rd.values.timelineDate).slice(0,10);
+    const row = (LIST_ROWS||[]).find(x=>x && x.n===EDIT.ticketNo);
+    return (row && row.tld) ? String(row.tld).slice(0,10) : '';
+  })();
+
   const fields=BSS_CROSSWALK.map(f=>{
     const val=EDIT.form[f.key];
+
+    if(f.key==='timelineDate'){
+      if(!_tlAcked){
+        /* Field bheja hi nahi jayega — form me hai hi nahi to save par
+           payload me bhi nahi jayega. */
+        delete EDIT.form.timelineDate;
+        return `<div class="fld" id="fld-timelineDate">
+          <label>${esc(f.label)}</label>
+          <div class="inp ro-box">Available after the ticket is acknowledged</div>
+          <div class="e" id="er-timelineDate"></div></div>`;
+      }
+      if(_tlExisting){
+        EDIT.form.timelineDate = _tlExisting;   // save par jaise ka waisa jaye
+        return `<div class="fld" id="fld-timelineDate">
+          <label>${esc(f.label)}</label>
+          <div class="inp ro-box mono" title="Already committed — cannot be changed here">${esc(_tlExisting)}</div>
+          <div class="hint">Set once. To change it, update the ticket in BSS.</div>
+          <div class="e" id="er-timelineDate"></div></div>`;
+      }
+    }
+
     if(f.type==='text'||f.type==='date'){
       return `<div class="fld" id="fld-${f.key}">
         <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
