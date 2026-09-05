@@ -32,7 +32,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 // assets/ticket-parser.js ke MB_SCHEMA_VERSION / MB_REQUIRED_FIELDS ke saath
 // in sync rakhna zaroori hai.
-const REQUIRED_SCHEMA  = 3;
+const REQUIRED_SCHEMA  = 4;
 const REQUIRED_FIELDS  = ['tia', 'ld', 'rtd', 'st'];
 const MIN_COUNT_RATIO  = 0.5;    // naya count purane ka kam se kam 50%
 const MAX_ROWS         = 200000; // sanity upper bound
