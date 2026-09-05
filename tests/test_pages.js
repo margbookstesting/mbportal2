@@ -104,7 +104,13 @@ console.log('\n== 5. parser retention rules ==');
 eq(ctx.mbParseTicket({ TicketNo: 'X' }), null, 'record with nothing is dropped');
 eq(ctx.mbParseTicket({ TicketNo: 'X', Status: 'Ready For Testing' }).sc, 'RT', 'status-only RT kept');
 eq(ctx.mbParseTicket({ TicketNo: 'X', Status: 'Pending' }).st, 'Pending', 'unmapped status kept with raw label');
-eq(ctx.mbParseTicket({ TicketNo: 'X', Status: 'Pending' }).sc, 'OT', 'unmapped status -> OT');
+/* 'Pending' ab mapped hai (PN) — pehle wo OT me girta tha aur isliye kisi
+   bhi KPI me nahi ginta tha. Asli data me aise 477 tickets the. OT ke liye
+   ab ek sach me anjaan status chahiye. */
+eq(ctx.mbParseTicket({ TicketNo: 'X', Status: 'Pending' }).sc, 'PN', 'Pending -> PN');
+eq(ctx.mbParseTicket({ TicketNo: 'X', Status: 'Approval Pending' }).sc, 'AP', 'Approval Pending -> AP (not PN)');
+eq(ctx.mbParseTicket({ TicketNo: 'X', Status: 'Some Brand New Status' }).sc, 'OT', 'genuinely unmapped status -> OT');
+eq(ctx.mbParseTicket({ TicketNo: 'X', Status: '  in_progress  ' }).sc, 'IP', 'normalised match');
 eq(ctx.mbParseTicket({ TicketNo: 'X', TransfertoITDate: '16-06-2026', Status: 'Transfer To IT' }).a, '2026-06-16', 'DD-MM-YYYY converted');
 eq(ctx.mbParseTicket({ TicketNo: 'X', TransfertoITDate: '1900-01-01T00:00:00', Status: 'Pending' }).a, undefined, 'sentinel 1900 date dropped');
 // ld: unrecognized disposition must be skipped in favour of an earlier recognized one

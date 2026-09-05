@@ -3,6 +3,7 @@
    test aur page kabhi alag na ho jayen. */
 const fs=require('fs'), vm=require('vm');
 const path=require('path');
+const PARSER_ABS=require('path').join(__dirname,'..','assets','ticket-parser.js');
 const ROOT=path.join(__dirname,'..');
 const PAGE=path.join(ROOT,'marg_ticket_dashboard.html');
 const PARSER=path.join(ROOT,'assets/ticket-parser.js');
@@ -587,7 +588,8 @@ sandbox.RAW=savedRaw;
 /* ══════ 23. Excel export — poora column dump + Currently Pending ══════ */
 console.log('== 23. excel export ==');
 vm.runInContext(pageJs.match(/const XL_COLS = \[[\s\S]*?\n\];/)[0], sandbox);
-['buildSheetRows','xlCols'].forEach(n=>{
+vm.runInContext('var XL_PICK = null;', sandbox);   // null = sab columns
+['xlSelected','buildSheetRows','xlCols'].forEach(n=>{
   const b=grabFn(n); if(b) vm.runInContext(b, sandbox);
 });
 const xh = sandbox.buildSheetRows([], 'at', 'a', 'IT')[0];
@@ -636,6 +638,138 @@ const pend = sandbox.buildSheetRows(
   [{n:'P1',sc:'IT',a:'2020-01-01'},{n:'P2',sc:'IT'}], 'at','a','IT');
 eq('old tickets are not dropped by a date',  pend.length, 3);
 eq('all rows read as Pending', pend.slice(1).every(r=>r[1]==='Pending'), true);
+
+
+/* ══════ 25. status matching — ek hi source, exact match ══════
+   Pehle do system the: parser exact string match karta tha, dashboard
+   variants + SUBSTRING fallback. Substring hi bug tha — SUP_STATUSES me
+   'pending' sabse upar hai, to "Approval Pending" chup-chaap "Pending" ban
+   jata tha (asli data me 38 tickets). Ab dono MB_STATUS_VARIANTS se chalte
+   hain aur match sirf exact hota hai. */
+console.log('== 25. status codes ==');
+const P = require(PARSER_ABS);
+eq('Pending is its own code',        P.mbStatusCode('Pending'), 'PN');
+eq('Approval Pending is not Pending',P.mbStatusCode('Approval Pending'), 'AP');
+eq('Team Testing mapped',            P.mbStatusCode('Team Testing'), 'TT');
+eq('Future Development mapped',      P.mbStatusCode('Future Development'), 'FD');
+eq('Reject mapped',                  P.mbStatusCode('Reject'), 'RJ');
+eq('Rejected is the same code',      P.mbStatusCode('Rejected'), 'RJ');
+eq('Reopen mapped',                  P.mbStatusCode('Reopen'), 'RO');
+eq('Reopend from Testing mapped',    P.mbStatusCode('Reopend from Testing'), 'RF');
+eq('Code Review mapped',             P.mbStatusCode('Ready For Code Review'), 'CR');
+eq('Merging mapped',                 P.mbStatusCode('Ready For Merging'), 'MG');
+eq('case is ignored',                P.mbStatusCode('TRANSFER TO IT'), 'IT');
+eq('extra spaces ignored',           P.mbStatusCode('  In   Progress '), 'IP');
+eq('underscores ignored',            P.mbStatusCode('in_progress'), 'IP');
+eq('unknown falls to OT',            P.mbStatusCode('Some Brand New Status'), 'OT');
+eq('null falls to OT',               P.mbStatusCode(null), 'OT');
+eq('blank falls to OT',              P.mbStatusCode('   '), 'OT');
+/* Substring guessing wapas na aa jaye. */
+eq('no substring guessing',          P.mbStatusCode('Transfer To IT Pending'), 'OT');
+eq('no variant is listed twice', (()=>{
+  const seen=new Set();
+  for(const [,list] of P.MB_STATUS_VARIANTS)
+    for(const v of list){ if(seen.has(v)) return false; seen.add(v); }
+  return true;
+})(), true);
+eq('every variant is already normalised',
+   P.MB_STATUS_VARIANTS.every(([,l])=>l.every(v=>v===P.mbNormStatus(v))), true);
+
+console.log('== 26. cd / cdd no longer collide ==');
+/* `cd` do cheezon ke liye use ho raha tha: In Progress ka TAT duration aur
+   current-stage disposition. Disposition baad me likhti thi, isliye duration
+   HAMESHA overwrite ho jata tha — asli 14,211 tickets me ek bhi nahi bacha. */
+const cdRec = P.mbParseTicket({
+  TicketNo:'X', Status:'In Progress',
+  InProgressDate:'2026-08-20T00:00:00', InProgress_TatDuration:'168 Hr',
+  Inprogress_Disp:'Bug'
+});
+eq('duration lands in cdd', cdRec.cdd, '168 Hr');
+eq('disposition lands in cd', cdRec.cd, 'Bug');
+eq('cd is never the duration', cdRec.cd === cdRec.cdd, false);
+const noDisp = P.mbParseTicket({
+  TicketNo:'Y', Status:'In Progress',
+  InProgressDate:'2026-08-20T00:00:00', InProgress_TatDuration:'24 Hr'
+});
+eq('duration survives with no disposition', noDisp.cdd, '24 Hr');
+
+console.log('== 27. schema bump ==');
+/* cdd, jira aur naye sc codes purane cache me nahi hain — server ka
+   REQUIRED_SCHEMA isi ke barabar hona chahiye, warna Refresh Data toot
+   jayega (ek baar pehle ho chuka hai). */
+eq('parser is on schema 4', P.MB_SCHEMA_VERSION, 4);
+const cacheSrc = fs.readFileSync(path.join(ROOT,'api/ticket-cache.js'),'utf8');
+const req = (cacheSrc.match(/REQUIRED_SCHEMA\s*=\s*(\d+)/)||[])[1];
+eq('server requires the same schema', Number(req), P.MB_SCHEMA_VERSION);
+const pageSrc2 = fs.readFileSync(PAGE,'utf8');
+eq('parser cache-buster was bumped too',
+   /ticket-parser\.js\?v=4/.test(pageSrc2), true);
+
+console.log('== 28. column picker ==');
+const MG_XLCOLS_LEN = vm.runInContext('XL_COLS.length', sandbox);
+eq('default selection is every column', sandbox.xlSelected().length, MG_XLCOLS_LEN);
+vm.runInContext('XL_PICK = new Set(["Ticket No","Client Name"]);', sandbox);
+eq('only the ticked columns are exported', sandbox.xlSelected().length, 2);
+eq('header shrinks with the selection',
+   sandbox.buildSheetRows([], 'at','a','IT')[0].length, 5);   // 3 stage + 2
+eq('widths still line up with the header',
+   sandbox.xlCols().length, sandbox.buildSheetRows([], 'at','a','IT')[0].length);
+const picked = sandbox.buildSheetRows([{n:'T',u:'C',l:'L1',a:'2026-08-20'}], 'at','a','IT');
+eq('rows shrink too', picked[1].length, 5);
+/* Sab untick kar dena galti hai, khali file nahi — sab wapas de do. */
+vm.runInContext('XL_PICK = new Set();', sandbox);
+eq('clearing everything falls back to all', sandbox.xlSelected().length, MG_XLCOLS_LEN);
+vm.runInContext('XL_PICK = null;', sandbox);
+eq('reset restores every column', sandbox.xlSelected().length, MG_XLCOLS_LEN);
+eq('picker gates all three exports',
+   (pageSrc2.match(/openColumnPicker\(/g)||[]).length >= 4, true);
+
+
+/* ══════ 29. REGRESSION guards — jo cheezein badalni NAHI chahiye ══════
+   Ye tests us regression se aaye hain jo status codes badalne par mila:
+   477 tickets 'OT' se nikal kar apne codes me chale gaye, aur support
+   dashboard ka "Other / Pending" card (jo sc==='OT' filter karta tha)
+   khali ho gaya tha. Card ab catch-all hai. */
+console.log('== 29. status regression guards ==');
+const supSrc = fs.readFileSync(path.join(ROOT,'support_dashboard.html'),'utf8');
+eq('Other card is a catch-all, not sc===OT',
+   /S_OT:[\s\S]{0,400}?indexOf\(r\.sc\)===-1/.test(supSrc), true);
+eq('Other card no longer filters sc===OT directly',
+   /S_OT: \{ data:VIEW\.filter\(r=>r\.sc==='OT'\)/.test(supSrc), false);
+
+/* Har naya code kisi na kisi label map me hona chahiye, warna UI par kachcha
+   code ("FD", "AP") dikhega. */
+const labelSrc = fs.readFileSync(PAGE,'utf8');
+['CR','MG','RF','RO','FD','RJ','PN','AP','TT'].forEach(c=>{
+  eq('label exists for '+c, new RegExp("\\b"+c+":'").test(labelSrc), true);
+});
+
+/* Rejected ka ab code hai; deadline list use pehle raw status se pakadti thi.
+   Dono raaste same jawab dein, warna closed tickets list me wapas aa jayenge. */
+eq('Rejected counts as done via code', /DONE_SC = \{ CL:1, SP:1, RS:1, RJ:1 \}/.test(labelSrc), true);
+eq('raw-status fallback still there', /\/\^reject\/\.test\(st\)/.test(labelSrc), true);
+
+console.log('== 30. parser field stability ==');
+/* sc, cdd, jira ke alawa parser ka koi field nahi badalna chahiye —
+   asli 14,211 tickets par ye verify kiya gaya tha. */
+const sample = {
+  TicketNo:'MB - 1', Status:'Acknowledge', LicNo:'L1',
+  TicketCreatedDate:'2026-06-01T10:00:00',
+  TransfertoITDate:'2026-06-02T10:00:00', TransferToIT_TATDetails:'0 days :InTAT',
+  AcknowledgeDate:'2026-06-03T10:00:00', Ack_TATDetails:'0 days :OutTAT',
+  Ack_TatDuration:'16 Hr', Ack_Disp:'Bug'
+};
+const rec = P.mbParseTicket(sample);
+eq('ticket no kept',      rec.n,  'MB - 1');
+eq('created date parsed', rec.tc, '2026-06-01');
+eq('transfer date parsed',rec.a,  '2026-06-02');
+eq('ack date parsed',     rec.b,  '2026-06-03');
+eq('in-TAT flag',         rec.at, 'I');
+eq('out-of-TAT flag',     rec.bt, 'O');
+eq('ack duration',        rec.bd, '16 Hr');
+eq('status code',         rec.sc, 'AK');
+eq('no stray cdd without In Progress', rec.cdd, undefined);
+eq('no stray jira',       rec.jira, undefined);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
