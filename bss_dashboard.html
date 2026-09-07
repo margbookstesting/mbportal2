@@ -372,6 +372,14 @@ input[type="date"].inp::-webkit-datetime-edit{padding:0}
 /* Update pane ki min-height — Details tab lamba hota hai, tab switch karne par
    modal uchhalta tha. Ab dono ki height ek jaisi shuru hoti hai. */
 #edPaneUpdate,#edPaneDetails{min-height:430px}
+
+/* Chhote field lambe field ke barabar na khinche.
+   Comment (textarea) apni row ka sabse ooncha cell hai. Grid ka default
+   `align-items:stretch` uske bagal wale Jira ID cell ko bhi utna hi ooncha
+   kar deta tha, aur `.fld` ke andar ki rows fail kar label aur input ke beech
+   khali jagah bana deti thi — input neeche khisak jata tha. */
+.fgrid{align-items:start}
+.ed-row{align-items:start}
 </style>
 </head>
 <body>
