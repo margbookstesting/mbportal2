@@ -755,8 +755,28 @@ function openAgentList(kind,name){
 function closeList(){document.getElementById('ovList').classList.remove('on');LIST_REBUILD=null;}
 
 /* ── Edit modal ── */
+/* ── Ticket fetch + hover prefetch ──────────────────────────────────────────
+   Modal khulne ka time lagbhag poora is ek network call ka hai. Hover par
+   pehle hi shuru kar dete hain — user ko click se pehle hi 200-400ms mil
+   jate hain. Fail ho to chup rehta hai; openEdit apna normal error path
+   chalata rahega. */
+let _edPrefetch = null;
+async function edFetchTicket(ticketNo){
+  const {data:{session}} = await sb.auth.getSession();
+  const r = await fetch('/api/bss-proxy',{method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({action:'ticket',ticketNo})});
+  return r.json();
+}
+function edPrefetch(ticketNo){
+  if(!ticketNo || (_edPrefetch && _edPrefetch.n===ticketNo)) return;
+  if(typeof DD==='undefined' || !DD) return;   // dropdown master hi nahi, rehne do
+  _edPrefetch = {n:ticketNo, p:edFetchTicket(ticketNo).catch(()=>null)};
+}
+
 async function openEdit(ticketNo){
   EDIT={ticketNo,raw:null,read:null,form:{}};
+  _edDetailBuilt=false; _edDetailRD=null;
   document.getElementById('edTicketNo').textContent=ticketNo;
   document.getElementById('edStatus').textContent='';
   document.getElementById('edSave').disabled=true;
@@ -784,19 +804,22 @@ async function openEdit(ticketNo){
     return;
   }
   try{
-    const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch('/api/bss-proxy',{method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({action:'ticket',ticketNo})});
-    const j=await r.json();
+    /* Prefetch: list me row par hover karte hi ye fetch shuru ho jata hai, to
+       click tak response aksar aa chuka hota hai aur form turant khulta hai.
+       Hover na hua ho to yahan normal fetch chalta hai — behaviour same. */
+    const j = await (_edPrefetch && _edPrefetch.n===ticketNo
+      ? _edPrefetch.p
+      : edFetchTicket(ticketNo));
     if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
     EDIT.raw=j.ticket;
     /* Stage maps parser se pass kar rahe hain — bss-fields.js me duplicate
        nahi karte, warna wahi drift ka bug wapas aa jayega. */
     EDIT.read=bssReadTicket(j.ticket,DD,MB_STAGE_DISP_BY_SC,MB_DISP_FALLBACK_ORDER);
-    /* Diagnostic: live response me kaun se BSS fields mile. Alias theek karne
-       ke liye — console me ek baar dekh lena kaafi hai. */
-    console.table(bssReadAudit(j.ticket));
+    /* Diagnostic ab default OFF hai. console.table() har ticket par chalta
+       tha aur DevTools khuli hone par khud ek noticeable delay banata hai —
+       jabki ye sirf alias debug karne ke liye tha, ek baar dekh lena kaafi
+       hota hai. Chahiye to console me: MB_BSS_AUDIT = true */
+    if(window.MB_BSS_AUDIT) console.table(bssReadAudit(j.ticket));
     renderEditForm();
   }catch(e){
     document.getElementById('edBody').innerHTML=
@@ -850,8 +873,18 @@ const ED_TL_AGENT = {a:'tia', b:'ta', c:'ti', e:'eb', d:'ts', cld:'clb', rtd:'rt
 const ED_TL_TAT   = {a:['at','av'], b:['bt','bv'], c:['ct','cv'], e:['et','ev'], d:['dt','dv'],
                      rtd:['rtt','rtv'], uad:['uat','uav']};
 
+/* RAW me 28k+ tickets hote hain — har call par linear scan mehnga hai aur
+   modal khulne par ye do baar chal raha tha. Ab ek ticket ke liye ek hi baar. */
+let _edRowCache = {n:null, row:null};
+function edRow0(){
+  if(_edRowCache.n === EDIT.ticketNo) return _edRowCache.row;
+  const r = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+  _edRowCache = {n:EDIT.ticketNo, row:r};
+  return r;
+}
+
 function edDetailHTML(rd){
-  const row = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+  const row = edRow0();
   const v   = (rd && rd.values) || {};
   const pick = (a,b)=> (a!==undefined && a!==null && a!=='') ? a : b;
   const desc = pick(v.description, row.desc) || '';
@@ -930,8 +963,13 @@ const ED_GROUPS = [
 const ED_SKIP = ['remarks'];
 
 /* Tab switch — dono pane pehle se render ho chuke hain, sirf display toggle. */
+let _edDetailRD = null, _edDetailBuilt = false;
 function edShowTab(which){
   const u = which !== 'details';
+  if(!u && !_edDetailBuilt){
+    const pd0=document.getElementById('edPaneDetails');
+    if(pd0 && _edDetailRD){ pd0.innerHTML = edDetailHTML(_edDetailRD); _edDetailBuilt = true; }
+  }
   const pu=document.getElementById('edPaneUpdate'), pd=document.getElementById('edPaneDetails');
   const tu=document.getElementById('edTabUpdate'),  td=document.getElementById('edTabDetails');
   if(!pu||!pd) return;
@@ -1001,7 +1039,7 @@ function renderEditForm(){
      Acknowledge ka pata LIVE record ke status se chalta hai (cache purana ho
      sakta hai); wo na mile to cache par gir jate hain. */
   const PRE_ACK_SC = ['IT','PN','AP','','OT'];
-  const _tlRow = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+  const _tlRow = edRow0();
   const _tlAcked = (function(){
     const live = rd.values.currentStatus;
     if(live && typeof mbStatusCode==='function')
@@ -1075,7 +1113,7 @@ function renderEditForm(){
      Modal khud scroll karta hai, isliye andar ka scroll sirf do scrollbars
      banata aur text kaatta. */
   const _d = (function(){
-    const r0 = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+    const r0 = edRow0();
     const t = (rd.values.description || r0.desc || r0.remarks || '').toString().trim();
     return t ? `<div class="ed-ctx">${esc(t).replace(/\n/g,'<br>')}</div>` : '';
   })();
@@ -1083,7 +1121,13 @@ function renderEditForm(){
   document.getElementById('edBody').innerHTML =
     notes +
     `<div id="edPaneUpdate" role="tabpanel">${_d}${fields}</div>
-     <div id="edPaneDetails" role="tabpanel" style="display:none">${edDetailHTML(rd)}</div>`;
+     <div id="edPaneDetails" role="tabpanel" style="display:none"></div>`;
+  /* Details ka HTML pehle yahin ban jata tha — chahe user kabhi khole ya na
+     khole. Uska matlab tha: har ticket par poora stage timeline + saare cards
+     banana, jabki 90% baar sirf Update chahiye hota hai. Ab wo tabhi banta
+     hai jab Details pehli baar khuli. */
+  _edDetailRD = rd;
+  _edDetailBuilt = false;
   edShowTab('update');   /* naya ticket hamesha Update tab par khule */
   bssSelectFields().forEach(f=>fillSelect(f.key));
   document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
@@ -1230,6 +1274,13 @@ function exportAll(){saveXLSX(VIEW,'bss_all_tickets.xlsx');}
  * (jaise "Support agent's concern", O'Brien) handler nahi tod sakte —
  * attribute value ko browser decode karta hai, to escaping se bacha nahi ja
  * sakta tha. Delegation is poore class of bug ko khatam kar deta hai. */
+/* Hover par ticket ka live data pehle hi manga lete hain — user ke click
+   tak response aksar aa chuka hota hai aur modal turant bhar jata hai.
+   Click bhi usi delegation se, taaki apostrophe wale ticket numbers na todein. */
+document.addEventListener('mouseover',e=>{
+  const t=e.target.closest && e.target.closest('[data-tno]');
+  if(t) edPrefetch(t.getAttribute('data-tno'));
+}, {passive:true});
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-tno]');
   if(t){ openEdit(t.getAttribute('data-tno')); return; }
