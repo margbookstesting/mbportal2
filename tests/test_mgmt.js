@@ -913,5 +913,48 @@ eq('a filter that matches nothing gives 0, not everything',
 eq('filters never inflate a count',
    pick33(r=>r.l==='L1','IT') <= pick33(ALL,'IT'), true);
 
+
+/* ══════ 34. Build stamp ══════
+   Har dashboard ke header me dikhta hai. Maqsad: khol kar turant pata chale
+   ki LIVE par kaunsa build hai — deploy hua ya nahi, guess na karna pade.
+   Schema bhi saath dikhta hai, to cache mismatch bhi wahin nazar aa jaye. */
+console.log('== 34. build stamp ==');
+eq('build date is set',   /^\d{4}-\d{2}-\d{2}$/.test(P.MB_BUILD), true);
+const verLabel = P.mbVersionLabel();
+eq('label carries the build',  verLabel.includes(P.MB_BUILD), true);
+eq('label carries the schema', verLabel.includes('schema v'+P.MB_SCHEMA_VERSION), true);
+/* Stamp parser ke END me chalta hai. Upar hone par `var MB_SCHEMA_VERSION`
+   hoist to hota par value undefined hoti — label me "schema vundefined". */
+eq('no undefined leaks into the label', /undefined/.test(verLabel), false);
+
+['marg_ticket_dashboard.html','support_dashboard.html','bss_dashboard.html',
+ 'upcoming_timeline.html','ticket_dashboard_api.html'].forEach(p=>{
+  const src = fs.readFileSync(path.join(ROOT,p),'utf8');
+  eq(p+' has the stamp span',  (src.match(/id="mbVersion"/g)||[]).length, 1);
+  eq(p+' has the stamp style', /\.mb-ver\{/.test(src), true);
+  eq(p+' loads the current parser', /ticket-parser\.js\?v=4/.test(src), true);
+});
+
+
+/* ══════ 35. Dono BSS update modals ek jaise ══════
+   BSS ticket update DO jagah se hota hai — standalone bss_dashboard.html,
+   aur TAT dashboard ka "BSS Update" tab. Dono ka apna renderEditForm() hai.
+   Pehle sirf standalone wale me detail cards aur timeline rules lagaye the,
+   jisse TAT wala modal purana hi reh gaya. Ye test dono ko sync me rakhta hai. */
+console.log('== 35. both BSS update modals match ==');
+['bss_dashboard.html','marg_ticket_dashboard.html'].forEach(p=>{
+  const src = fs.readFileSync(path.join(ROOT,p),'utf8');
+  eq(p+' builds the detail cards',   /function edDetailHTML/.test(src), true);
+  eq(p+' has the field helpers',     /function edField/.test(src) && /function edSection/.test(src), true);
+  eq(p+' renders them under the form', /\+ edDetailHTML\(rd\)/.test(src), true);
+  eq(p+' knows the pre-ack statuses', /PRE_ACK_SC = \['IT','PN','AP','','OT'\]/.test(src), true);
+  eq(p+' hides timeline before ack',  /Available after the ticket is acknowledged/.test(src), true);
+  eq(p+' drops it from the payload',  /delete EDIT\.form\.timelineDate/.test(src), true);
+  eq(p+' locks an existing timeline', /Set once\. To change it, update the ticket in BSS/.test(src), true);
+  eq(p+' keeps the locked value',     /EDIT\.form\.timelineDate = _tlExisting/.test(src), true);
+  eq(p+' detects ack from live status', /mbStatusCode\(live\)/.test(src), true);
+  eq(p+' styles read-only boxes',     /\.ro-box\{/.test(src), true);
+});
+
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
