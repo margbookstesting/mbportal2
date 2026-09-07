@@ -990,8 +990,14 @@ console.log('== 35. both BSS update modals match ==');
   /* Details ab LAZY hai — pehli baar tab kholne par banta hai. Pehle wo
      update form ke saath hi ban jata tha, chahe user kabhi khole ya na
      khole, aur modal dhima ho gaya tha. */
+  /* Details tab bhi Update jaisa split hai: description baayein, cards
+     daayein. Dono lazily bharte hain — pehli baar tab kholne par. */
   eq(p+' renders details lazily',
-     /pd0\.innerHTML = edDetailHTML\(_edDetailRD\)/.test(src), true);
+     /r\.innerHTML = edDetailHTML\(_edDetailRD, true\)/.test(src), true);
+  eq(p+' splits the details tab too',
+     /id="edDetailL"/.test(src) && /id="edDetailR"/.test(src), true);
+  eq(p+' shares one description builder',
+     /function edDescHTML/.test(src), true);
   eq(p+' does not build details up front',
      /\$\{edDetailHTML\(rd\)\}/.test(src), false);
   eq(p+' builds them only once',
