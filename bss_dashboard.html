@@ -1078,6 +1078,37 @@ function edTimelineError(v){
   return s > max ? ('Timeline cannot be later than ' + max + ' (' + ED_TIMELINE_MAX_DAYS + ' days from today)') : '';
 }
 
+/* ── Enter se agle field par ─────────────────────────────────────────────────
+   Data entry keyboard se hoti hai. Enter par form submit nahi hota (koi
+   <form> hai hi nahi) — pehle Enter kuch karta hi nahi tha aur haath mouse
+   par jana padta tha. Ab Enter agle control par le jata hai; aakhri field par
+   seedha save. Shift+Enter peechhe.
+
+   Native <select> par Enter browser ka default hai (option choose karna), to
+   wahan bhi tabhi aage badhte hain jab dropdown khula na ho. */
+function edFormControls(){
+  const pane = document.getElementById('edPaneUpdate');
+  if(!pane) return [];
+  return [...pane.querySelectorAll('input.inp, select.inp, textarea.inp')]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+}
+function edEnterNav(e){
+  if(e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey) return;
+  const el = e.target;
+  if(!el.classList || !el.classList.contains('inp')) return;
+  const list = edFormControls();
+  const i = list.indexOf(el);
+  if(i === -1) return;
+  e.preventDefault();
+  const next = list[i + (e.shiftKey ? -1 : 1)];
+  if(next){ next.focus(); if(next.select) try{ next.select(); }catch(_){} }
+  else {
+    /* Aakhri field par Enter = save. */
+    const sv = document.getElementById('edSave');
+    if(sv && !sv.disabled) sv.click();
+  }
+}
+
 function renderEditForm(){
   const rd=EDIT.read, v=rd.values;
   EDIT.form={};
@@ -1181,8 +1212,10 @@ function renderEditForm(){
         <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
         <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
                value="${esc(val==null?'':val)}"${maxAttr}
-               oninput="onFieldChange('${f.key}',this.value)">
-        <div class="e" id="er-${f.key}"></div></div>`;
+               oninput="onFieldChange('${f.key}',this.value)"
+               onchange="onFieldChange('${f.key}',this.value)">
+        <div class="e" id="er-${f.key}"></div>
+        ${f.key==='timelineDate' ? `<div class="hint" id="hint-timelineDate">Up to ${edMaxTimeline()}</div>` : ''}</div>`;
     }
     return `<div class="fld" id="fld-${f.key}">
       <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
@@ -1218,7 +1251,9 @@ function renderEditForm(){
      leti thi aur fields neeche dhakel deti thi — lambi description par
      dropdown tak pahunchne ke liye scroll karna padta tha. */
   edLoaderStop();
-  document.getElementById('edBody').innerHTML =
+  const _body = document.getElementById('edBody');
+  if(!_body.dataset.navBound){ _body.addEventListener('keydown', edEnterNav); _body.dataset.navBound='1'; }
+  _body.innerHTML =
     notes +
     `<div id="edPaneUpdate" role="tabpanel">
        <div class="ed-split">
@@ -1279,6 +1314,10 @@ function onFieldChange(key,val){
     const er  = document.getElementById('er-timelineDate');
     if(er)  er.textContent = msg;
     if(fld) fld.classList.toggle('err', !!msg);
+    /* Error aur hint dono ek hi row me — dono ek saath dikhein to field
+       lambi ho jati hai aur grid ki alignment tootti hai. */
+    const hn = document.getElementById('hint-timelineDate');
+    if(hn) hn.style.display = msg ? 'none' : '';
   }
   EDIT.form[key]=val===''?undefined:val;
   /* Parent badla to children reset — warna invalid combo bach jayega */
