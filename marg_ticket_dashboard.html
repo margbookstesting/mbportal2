@@ -3657,6 +3657,21 @@ function monthCompareHtml(data, cls, tatKey){
       </div>
     </div>`;
 }
+/* Overall pill ke liye rows: date filter NAHI, baaki sab HAAN — aur tester
+   filter usi field par jis par us stage ka bada number chalta hai.
+
+   Pehle ye VIEW use karta tha, jiska tester filter broad hai (t/ta/ti/ts/eb
+   me se koi bhi). Us se ek ticket jisme tester sirf Ack Agent hai, wo
+   "Transfer to IT" ke Overall me gin jata par bade number me nahi — do
+   number do alag tarah se filter hote. Ab dono ek hi field dekhte hain:
+     Transfer to IT / Acknowledge / In Progress / RfT / UAT → TransferTo (t)
+     Close by IT                                            → TransferToSupportBy (ts)
+     Ready to Go Live                                       → ReadyToGoLiveBy (eb) */
+function pendingRowsFor(sc, testerField){
+  return testerRowsFor(getBaseFilteredRows(), testerField || 't')
+    .filter(r => r.sc === sc);
+}
+
 function buildFiltered(from, to){
   VIEW = getGlobalFilteredRows();
   // Common filters (ticket/RM/Dev/Status) first, THEN the tester filter applied per-stage
@@ -5287,16 +5302,16 @@ function resetAll(){
 // ===== KPI CARDS =====
 function renderKPIs(){
   const stages = [
-    { label:'Transfer to IT',   data:fIT,   tatKey:'at', cls:'c-it',   key:'IT',   pendingFn: () => RAW.filter(r=>r.sc==='IT').length   },
-    { label:'Acknowledge',      data:fAck,  tatKey:'bt', cls:'c-ack',  key:'ACK',  pendingFn: () => RAW.filter(r=>r.sc==='AK').length  },
+    { label:'Transfer to IT',   data:fIT,   tatKey:'at', cls:'c-it',   key:'IT',   pendingFn: () => pendingRowsFor('IT','t').length   },
+    { label:'Acknowledge',      data:fAck,  tatKey:'bt', cls:'c-ack',  key:'ACK',  pendingFn: () => pendingRowsFor('AK','t').length  },
     // Acknowledge By — moved to Tester section (rendered separately)
-    { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => RAW.filter(r=>r.sc==='IP').length   },
-    { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => RAW.filter(r=>r.sc==='SP').length  },
+    { label:'In Progress',      data:fIP,   tatKey:'ct', cls:'c-ip',   key:'IP',   pendingFn: () => pendingRowsFor('IP','t').length   },
+    { label:'Close by IT',      data:fSup,  tatKey:'dt', cls:'c-sup',  key:'SUP',  pendingFn: () => pendingRowsFor('SP','ts').length  },
     // curStatus flag hata diya gaya: teeno ab date-filtered arrays par hain
     // (buildFiltered dekho), isliye "Overall:" pill IP/ACK jaisa hi dikhta hai.
-    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT', pendingFn: () => RAW.filter(r=>r.sc==='RT').length  },
-    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU', pendingFn: () => RAW.filter(r=>r.sc==='RU').length  },
-    { label:'Ready for Go Live',data:fGl,   tatKey:'et', cls:'c-glv',  key:'RGL', pendingFn: () => RAW.filter(r=>r.sc==='LV').length  },
+    { label:'Ready for Testing',data:fRt,   tatKey:'rtt',cls:'c-tst',  key:'RFT', pendingFn: () => pendingRowsFor('RT','t').length  },
+    { label:'Ready for UAT',    data:fUa,   tatKey:'uat',cls:'c-uat',  key:'RFU', pendingFn: () => pendingRowsFor('RU','t').length  },
+    { label:'Ready for Go Live',data:fGl,   tatKey:'et', cls:'c-glv',  key:'RGL', pendingFn: () => pendingRowsFor('LV','eb').length  },
   ];
 
   // Status-only KPIs use the current filtered dashboard view.
@@ -6447,7 +6462,9 @@ function openModal(key){
   const cfg = getStageConfig(key);
   if(!cfg){ return; }
   /* View Details ab "abhi is stage par kaun pada hai" dikhata hai — wahi set
-     jo card ke `Overall:` pill me hai. Date filter yahan NAHI lagta.
+     jo card ke `Overall:` pill me hai, aur usi VIEW se, taaki pill ka number
+     aur modal ka Total hamesha barabar rahein. Date filter nahi lagta;
+     baaki saare filters lagte hain.
 
      Pehle `cfg.data` jata tha, jo date-range wala set hai (card ka bada
      number). Isse ek stage kholne par doosre stage ke tickets bhi dikhte the
@@ -6457,7 +6474,7 @@ function openModal(key){
      Card ka bada number date-range hi rehta hai — wo jaan-bujh kar alag
      sawaal hai, isliye modal ka Total us number se match nahi karega. */
   const rows = cfg.pendingSc
-    ? (RAW || []).filter(r => r.sc === cfg.pendingSc)
+    ? pendingRowsFor(cfg.pendingSc, cfg.testerField)
     : (cfg.data || []);
   _openSecModal(rows, (cfg.label || 'Tickets') + ' — Ticket Details');
 }
@@ -6494,7 +6511,7 @@ function _exportModalExcel(){
   };
   XLSX.utils.book_append_sheet(wb, mkSheet(data), 'All Tickets');
   XLSX.utils.book_append_sheet(wb, mkSheet(data.filter(r=>r.sc===pendingSc)), 'Pending Only');
-  XLSX.utils.book_append_sheet(wb, mkSheet((RAW||[]).filter(r=>r.sc===pendingSc)), 'Currently Pending');
+  XLSX.utils.book_append_sheet(wb, mkSheet(pendingRowsFor(pendingSc, cfg.testerField)), 'Currently Pending');
 
   XLSX.writeFile(wb, `MARG_${filename}_Detail_${currentFrom}_to_${currentTo}.xlsx`);
   showToast(`${label} detail exported!`);
@@ -6710,17 +6727,19 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModalDirect(
 
 // ===== PER-STAGE EXCEL EXPORT =====
 function getStageConfig(key){
+  /* testerField = wo field jis par is stage ka tester filter chalta hai.
+     Bada number (buildFiltered) aur Overall pill dono isi ko dekhte hain. */
   const cfg = {
-    IT:   { data:fIT,   tatKey:'at', dateKey:'a', durKey:'ad', actKey:'av', pendingSc:'IT', label:'Transfer to IT',    filename:'TransferToIT'    },
-    ACK:  { data:fAck,  tatKey:'bt', dateKey:'b', durKey:'bd', actKey:'bv', pendingSc:'AK', label:'Acknowledge',        filename:'Acknowledge'     },
-    IP:   { data:fIP,   tatKey:'ct', dateKey:'c', durKey:'cdd', actKey:'cv', pendingSc:'IP', label:'In Progress',        filename:'InProgress'      },
-    SUP:  { data:fSup,  tatKey:'dt', dateKey:'d', durKey:'dd', actKey:'dv', pendingSc:'SP', label:'Transfer to Support',filename:'TransferToSupport'},
-    LIVE: { data:fLive, tatKey:'et', dateKey:'e', durKey:'',   actKey:'ev', pendingSc:'LV', label:'Ready to Go Live',   filename:'ReadyToGoLive'   },
+    IT:   { data:fIT,   tatKey:'at', dateKey:'a', durKey:'ad', actKey:'av', testerField:'t', pendingSc:'IT', label:'Transfer to IT',    filename:'TransferToIT'    },
+    ACK:  { data:fAck,  tatKey:'bt', dateKey:'b', durKey:'bd', actKey:'bv', testerField:'t', pendingSc:'AK', label:'Acknowledge',        filename:'Acknowledge'     },
+    IP:   { data:fIP,   tatKey:'ct', dateKey:'c', durKey:'cdd', actKey:'cv', testerField:'t', pendingSc:'IP', label:'In Progress',        filename:'InProgress'      },
+    SUP:  { data:fSup,  tatKey:'dt', dateKey:'d', durKey:'dd', actKey:'dv', testerField:'ts', pendingSc:'SP', label:'Transfer to Support',filename:'TransferToSupport'},
+    LIVE: { data:fLive, tatKey:'et', dateKey:'e', durKey:'',   actKey:'ev', testerField:'eb', pendingSc:'LV', label:'Ready to Go Live',   filename:'ReadyToGoLive'   },
     // Status-only KPIs use the current filtered dashboard view.
-    RTS:  { data:VIEW.filter(r=>r.sc==='RS'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', pendingSc:'RS', label:'Return to Support',  filename:'ReturnToSupport'  },
-    RFT:  { data:fRt,  tatKey:'rtt', dateKey:'rtd', durKey:'', actKey:'rtv', pendingSc:'RT', label:'Ready for Testing',  filename:'ReadyForTesting'  },
-    RFU:  { data:fUa,  tatKey:'uat', dateKey:'uad', durKey:'', actKey:'uav', pendingSc:'RU', label:'Ready for UAT',      filename:'ReadyForUAT'      },
-    RGL:  { data:fGl,  tatKey:'et', dateKey:'e', durKey:'', actKey:'ev', pendingSc:'LV', label:'Ready for Go Live', filename:'ReadyForGoLive' },
+    RTS:  { data:VIEW.filter(r=>r.sc==='RS'), tatKey:'', dateKey:'tc', durKey:'', actKey:'', testerField:'t', pendingSc:'RS', label:'Return to Support',  filename:'ReturnToSupport'  },
+    RFT:  { data:fRt,  tatKey:'rtt', dateKey:'rtd', durKey:'', actKey:'rtv', testerField:'t', pendingSc:'RT', label:'Ready for Testing',  filename:'ReadyForTesting'  },
+    RFU:  { data:fUa,  tatKey:'uat', dateKey:'uad', durKey:'', actKey:'uav', testerField:'t', pendingSc:'RU', label:'Ready for UAT',      filename:'ReadyForUAT'      },
+    RGL:  { data:fGl,  tatKey:'et', dateKey:'e', durKey:'', actKey:'ev', testerField:'eb', pendingSc:'LV', label:'Ready for Go Live', filename:'ReadyForGoLive' },
   };
   return cfg[key];
 }
@@ -6877,7 +6896,7 @@ function _exportStage(key){
     [],
     ['Metric','Count'],
     ['Total Tickets (date range)', cfg.data.length],
-    ['Currently Pending (all data, no filters)', (RAW||[]).filter(r=>r.sc===cfg.pendingSc).length],
+    ['Currently Pending (ignores the date range only)', (VIEW||[]).filter(r=>r.sc===cfg.pendingSc).length],
     ['InTAT',  intat],
     ['OutTAT', outtat],
     ['No TAT Data', notat],
@@ -6913,10 +6932,11 @@ function _exportStage(key){
      waqt kitne is stage par pade hain". Dono alag sawaal hain aur inke set
      ek dusre ke subset bhi nahi hote, isliye alag sheet me hain.
 
-     Overall pill ki tarah ye bhi RAW par chalti hai — na date filter, na
-     Tester/RM/Dev/Status. Warna sheet ka count pill se match nahi karta. */
+     Overall pill ki tarah ye bhi VIEW par chalti hai — date filter nahi
+     lagta, baaki sab lagte hain. Warna sheet ka count pill se match nahi
+     karta. */
   const pendRows = buildSheetRows(
-    (RAW||[]).filter(r=>r.sc===cfg.pendingSc), cfg.tatKey, cfg.dateKey, cfg.pendingSc);
+    pendingRowsFor(cfg.pendingSc, cfg.testerField), cfg.tatKey, cfg.dateKey, cfg.pendingSc);
   const wsPend = XLSX.utils.aoa_to_sheet(pendRows);
   wsPend['!cols'] = wsIn['!cols'];
   XLSX.utils.book_append_sheet(wb, wsPend, 'Currently Pending');
