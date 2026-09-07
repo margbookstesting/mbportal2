@@ -72,9 +72,6 @@ body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--te
 /* ── Filters ── */
 .wrap{padding:12px 18px 32px;max-width:1600px;margin:0 auto}
 .filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-.inp{border:1.5px solid var(--border2);border-radius:var(--r2);padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);min-width:0}
-.inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.12)}
-select.inp{cursor:pointer}
 .f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
 .f-grp{display:flex;flex-direction:column}
 
@@ -169,16 +166,7 @@ th.r,td.r{text-align:right}
 /* ── Edit form ── */
 /* 12 updatable fields. 2 columns me 6 rows banti thi aur modal scroll karta
    tha; 3 columns me 4 rows — normal laptop par sab kuch bina scroll dikhta hai. */
-.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px 13px}
-@media(max-width:1100px){.fgrid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:700px){.fgrid{grid-template-columns:1fr}}
-.fld label{display:block;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.fld .inp{width:100%}
-.fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.1)}
-.fld .e{color:#dc2626;font-size:10.5px;margin-top:3px;display:none}
-.fld.err .e{display:block}
 .req{color:#dc2626}
-.hint{font-size:9.5px;color:var(--muted2);margin-top:2px;line-height:1.3}
 .note{border-radius:var(--r2);padding:8px 11px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
 .note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
 .note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
@@ -199,48 +187,91 @@ th.r,td.r{text-align:right}
 .empty{padding:44px 20px;text-align:center;color:var(--muted)}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:400;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
-.ro-box{background:var(--s2,#f8fafc);color:var(--muted,#64748b);
-  display:flex;align-items:center;cursor:not-allowed;user-select:none}
-.ro-box.mono{font-family:'JetBrains Mono',monospace;color:var(--text,#0f172a);font-weight:600}
 
-/* Ticket detail cards — TAT dashboard ke detail modal jaisa hi look,
-   taaki dono jagah ek hi tarah padha ja sake. */
-.tdm-section{ margin-bottom:12px; }
-.tdm-section-title{
-  font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px;
-  color:var(--muted); margin-bottom:7px; padding-bottom:5px;
-  border-bottom:1.5px solid var(--border); display:flex; align-items:center; gap:6px;
-}
-.tdm-grid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-.tdm-grid-3{ grid-template-columns:1fr 1fr 1fr; }
-.tdm-grid-4{ grid-template-columns:1fr 1fr 1fr 1fr; }
-.tdm-field{ background:var(--s2); border-radius:6px; padding:7px 10px; border:1px solid var(--border); }
-.tdm-field-label{ font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted2); margin-bottom:2px; }
-.tdm-field-value{ font-size:12px; font-weight:600; color:var(--text); line-height:1.3; }
-.tdm-field-value.mono{ font-family:"JetBrains Mono",monospace; color:var(--it); }
-.tdm-field-value.muted{ color:var(--muted); font-weight:400; font-size:11px; }
-.tdm-desc-box{
-  background:var(--s2); border:1px solid var(--border); border-radius:6px;
-  padding:8px 10px; font-size:12px; color:var(--text2); line-height:1.6;
-  min-height:40px;
-}
-.tdm-desc-box.empty{ color:var(--muted2); font-style:italic; font-size:11px; }
-.ed-detail-hd{margin:18px 0 10px;padding-top:14px;border-top:2px solid var(--border2);
-  font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
 
 /* Build stamp — header me chhota sa, taaki pata rahe kaunsa build live hai. */
 .mb-ver{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.3px;
   opacity:.55;margin-left:8px;white-space:nowrap;font-weight:500}
 
-.ed-tabs{display:flex;gap:4px;margin:14px 0 12px;border-bottom:1px solid var(--border)}
-.ed-tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;
-  padding:8px 14px;font:inherit;font-size:13px;font-weight:700;color:var(--muted);
-  cursor:pointer;border-radius:0}
+
+
+/* ── BSS update form: compact aur aligned ──────────────────────────────────
+   Pehle select browser ki default height lete the (~34px) aur alag-alag
+   dikhte the. Ab sab controls ek hi 30px height par hain.
+
+   Hint text ("Select Main Disposition first") pehle field ke neeche jud kar
+   us column ko lamba kar deta tha, jisse agli row ke fields aage-peeche ho
+   jate the. Ab har field grid row hai jisme hint ki jagah reserve hai —
+   hint ho ya na ho, sab fields ek line me rehte hain. */
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 12px;align-items:start}
+.fld{display:grid;grid-template-rows:auto 30px 13px;min-width:0}
+.fld label{display:block;font-size:9px;font-weight:800;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.5px;margin:0 0 3px;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fld .inp{width:100%;height:30px;margin:0}
+.fld .hint,.fld .e{font-size:9px;line-height:13px;margin:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fld .e{color:#dc2626;display:none}
+.fld.err .e{display:block}
+.fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 2px rgba(220,38,38,.1)}
+.inp{border:1px solid var(--border2);border-radius:6px;padding:0 9px;
+  font-family:inherit;font-size:12px;color:var(--text);background:var(--surface);
+  min-width:0;height:30px;line-height:normal}
+.inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 2px rgba(13,148,136,.14)}
+.inp:hover:not(:focus):not(.ro-box){border-color:var(--muted2)}
+select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;
+  padding-right:26px;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 9px center}
+.ro-box{background:var(--s2);color:var(--muted);display:flex;align-items:center;
+  cursor:not-allowed;user-select:none;font-size:11px;border-style:dashed;
+  height:30px;padding:0 9px;border-radius:6px;border:1px dashed var(--border2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro-box.mono{font-family:'JetBrains Mono',monospace;color:var(--text);
+  font-weight:700;font-size:12px;border-style:solid}
+@media(max-width:1100px){.fgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.fgrid{grid-template-columns:1fr}}
+
+.ed-tabs{display:flex;gap:2px;margin:14px 0 12px;border-bottom:1px solid var(--border)}
+.ed-tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  padding:7px 15px;font:inherit;font-size:12px;font-weight:800;color:var(--muted2);
+  cursor:pointer;border-radius:0;margin-bottom:-1px;letter-spacing:.3px;text-transform:uppercase}
 .ed-tab:hover{color:var(--text)}
 .ed-tab.on{color:#0f766e;border-bottom-color:#0d9488}
-.ed-grp{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
-  color:var(--muted2);margin:14px 0 8px}
+.ed-grp{font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--muted2);margin:16px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
 .ed-grp:first-of-type{margin-top:2px}
+.ed-sec{margin-bottom:16px}
+.ed-sec-t{font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--muted2);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.ed-row{display:grid;gap:8px;margin-bottom:8px;align-items:stretch}
+.ed-row:last-child{margin-bottom:0}
+.ed-row-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.ed-row-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.ed-row-4{grid-template-columns:1fr}}
+.ed-f{background:var(--s2);border-radius:6px;padding:6px 9px;min-width:0}
+.ed-f-l{font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted2);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-f-v{font-size:12px;font-weight:600;color:var(--text);line-height:1.35;overflow-wrap:anywhere}
+.ed-f-v.mono{font-family:'JetBrains Mono',monospace;font-weight:700}
+.ed-f-v.muted{color:var(--muted2);font-weight:500}
+.ed-desc{background:var(--s2);border-radius:6px;padding:9px 11px;font-size:12px;
+  line-height:1.6;color:var(--text);overflow-wrap:anywhere}
+.ed-desc.empty{color:var(--muted2);font-style:italic}
+.ed-rem{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--muted)}
+.ed-tld{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:7px 11px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#92400e}
+.ed-ok{display:inline-block;background:#ecfdf5;color:#047857;border-radius:20px;
+  padding:0 8px;font-size:10px;font-weight:800;line-height:16px;vertical-align:1px}
+.ed-bad{display:inline-block;background:#fef2f2;color:#b91c1c;border-radius:20px;
+  padding:0 8px;font-size:10px;font-weight:800;line-height:16px;vertical-align:1px}
+.ed-tl{border-left:2px solid var(--border);padding-left:14px;display:flex;
+  flex-direction:column;gap:11px;margin-left:3px}
+.ed-tl-i{position:relative}
+.ed-tl-i::before{content:'';position:absolute;left:-20px;top:4px;width:7px;height:7px;
+  border-radius:50%;background:#0d9488;box-shadow:0 0 0 2px var(--surface)}
+.ed-tl-n{font-size:12px;font-weight:700;color:var(--text);line-height:1.3}
+.ed-tl-m{font-size:11px;color:var(--muted);margin-top:1px;line-height:1.55}
 </style>
 </head>
 <body>
@@ -713,85 +744,109 @@ async function openEdit(ticketNo){
 function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
 
 
-/* ── Ticket detail cards ────────────────────────────────────────────────────
-   Update fields UPAR rehte hain (wahi to kaam ka hissa hai), aur uske neeche
-   poori ticket detail — TAT dashboard ke "Customer Ticket Details" modal
-   jaisa hi layout, taaki dono jagah ek hi tarah se padha ja sake.
-
-   Data do jagah se aata hai: cache ki row (RAW) me saari stage dates aur
-   agent naam hote hain, aur `rd.values` me BSS ka LIVE record. Live ko
-   preference di hai jahan dono me ho. */
+/* ── Details tab ───────────────────────────────────────────────────────────
+   Order wahi jo maanga gaya tha:
+     Description → Disposition & Problem → Timeline Date → Stage & TAT
+     → Customer Details → Stage Timeline
+   Ticket meta (Ticket / Created / Status / Source) tabs ke UPAR wale strip me
+   pehle se hai, isliye yahan dobara nahi. */
 function edField(label, val, mono){
   const v = (val===undefined||val===null||val==='') ? '' : String(val);
-  const cls = mono ? 'mono' : (v ? '' : 'muted');
-  return '<div class="tdm-field"><div class="tdm-field-label">'+esc(label)+'</div>'
-       + '<div class="tdm-field-value '+cls+'">'+(v?esc(v):'—')+'</div></div>';
+  return '<div class="ed-f"><div class="ed-f-l">'+esc(label)+'</div>'
+       + '<div class="ed-f-v'+(mono?' mono':'')+(v?'':' muted')+'">'+(v?esc(v):'—')+'</div></div>';
 }
 function edSection(title, inner){
-  return '<div class="tdm-section"><div class="tdm-section-title">'+title+'</div>'+inner+'</div>';
+  return '<div class="ed-sec"><div class="ed-sec-t">'+esc(title)+'</div>'+inner+'</div>';
 }
+function edRow(n, inner){ return '<div class="ed-row ed-row-'+n+'">'+inner+'</div>'; }
+
+function edDate(d, withDay){
+  if(!d) return '';
+  try{
+    const dt = new Date(String(d).slice(0,10)+'T00:00:00');
+    if(isNaN(dt)) return String(d);
+    return dt.toLocaleDateString('en-IN', withDay
+      ? {weekday:'short', day:'2-digit', month:'short', year:'numeric'}
+      : {day:'2-digit', month:'short', year:'numeric'});
+  }catch(_){ return String(d); }
+}
+
+/* Current stage ke hisaab se date / SLA / actual / TAT flag. */
+const ED_STAGE_KEYS = {
+  IT:['a','ad','av','at'], AK:['b','bd','bv','bt'], IP:['c','cdd','cv','ct'],
+  RT:['rtd','','rtv','rtt'], RU:['uad','','uav','uat'], LV:['e','','ev','et'],
+  SP:['d','dd','dv','dt'], CL:['cld','','',''],
+};
+const ED_TIMELINE = [
+  ['tc','Created'],['a','Transfer to IT'],['b','Acknowledge'],['c','In Progress'],
+  ['rtd','Ready For Testing'],['crd','Ready For Code Review'],['mgd','Ready For Merging'],
+  ['uad','Ready For UAT'],['rfd','Reopend from Testing'],['e','Ready To Go Live'],
+  ['rod','Reopen'],['fdd','Future Development'],['rjd','Rejected'],
+  ['d','Transfer To Support'],['cld','Closed'],
+];
+const ED_TL_AGENT = {a:'tia', b:'ta', c:'ti', e:'eb', d:'ts', cld:'clb', rtd:'rtg', crd:'crg', mgd:'mgg', uad:'uag'};
+const ED_TL_TAT   = {a:['at','av'], b:['bt','bv'], c:['ct','cv'], e:['et','ev'], d:['dt','dv'],
+                     rtd:['rtt','rtv'], uad:['uat','uav']};
+
 function edDetailHTML(rd){
   const row = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
   const v   = (rd && rd.values) || {};
   const pick = (a,b)=> (a!==undefined && a!==null && a!=='') ? a : b;
+  const desc = pick(v.description, row.desc) || '';
+  const rem  = row.remarks || '';
 
-  const desc = pick(v.description, row.desc) || row.remarks || '';
-  const dateFmt = d => { if(!d) return ''; try{
-      return new Date(String(d).slice(0,10)+'T00:00:00')
-        .toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-    }catch(_){ return String(d); } };
+  const sk = ED_STAGE_KEYS[row.sc] || ['','','',''];
+  const tatFlag = sk[3] ? row[sk[3]] : '';
+  const tatHtml = tatFlag==='I' ? '<span class="ed-ok">In TAT</span>'
+                : tatFlag==='O' ? '<span class="ed-bad">Out of TAT</span>'
+                : '<span class="ed-f-v muted">No TAT data</span>';
 
-  const STAGES=[['a','Transfer to IT'],['b','Acknowledge'],['c','In Progress'],
-    ['rtd','Ready For Testing'],['crd','Ready For Code Review'],['mgd','Ready For Merging'],
-    ['uad','Ready For UAT'],['rfd','Reopend from Testing'],['e','Ready To Go Live'],
-    ['rod','Reopen'],['fdd','Future Development'],['rjd','Rejected'],
-    ['d','Transfer To Support'],['cld','Closed']];
-  const done = STAGES.filter(x=>row[x[0]]);
-  const timeline = done.length
-    ? '<div class="tdm-grid tdm-grid-4">'+done.map(x=>edField(x[1], row[x[0]], true)).join('')+'</div>'
-    : '<div class="tdm-desc-box empty">No stage dates recorded yet</div>';
+  const tl = ED_TIMELINE.filter(x=>row[x[0]]).map(x=>{
+    const [k,label]=x;
+    const agent = ED_TL_AGENT[k] ? (row[ED_TL_AGENT[k]]||'') : '';
+    const tt = ED_TL_TAT[k] || [];
+    const fl = tt[0] ? row[tt[0]] : '';
+    const dur= tt[1] ? row[tt[1]] : '';
+    const badge = fl==='I' ? '<span class="ed-ok">In TAT'+(dur?' · '+esc(dur):'')+'</span>'
+                : fl==='O' ? '<span class="ed-bad">Out of TAT'+(dur?' · '+esc(dur):'')+'</span>' : '';
+    return '<div class="ed-tl-i"><div class="ed-tl-n">'+esc(label)+'</div>'
+         + '<div class="ed-tl-m">'+esc(edDate(row[k], true))
+         + (agent?' · '+esc(agent):'') + (badge?' '+badge:'') + '</div></div>';
+  }).join('');
 
-  return '<div class="ed-detail-hd">Ticket details</div>'
-    + edSection('📝 Description / Remarks',
-        '<div class="tdm-desc-box'+(desc?'':' empty')+'">'
-        + (desc ? esc(desc).replace(/\n/g,'<br>') : 'No description available')+'</div>')
-    + edSection('🎫 Ticket Info', '<div class="tdm-grid tdm-grid-4">'
-        + edField('Ticket ID', pick(v.ticketNo, row.n), true)
-        + edField('Created Date', pick(v.createdDate, row.tc))
-        + edField('Status', pick(v.currentStatus, row.st))
-        + edField('Jira ID', pick(v.jiraId, row.jira), true) + '</div>')
-    + edSection('👤 Customer Details', '<div class="tdm-grid tdm-grid-4">'
-        + edField('Licence No', row.l)
-        + edField('Customer Name', row.u)
-        + edField('Subscription Plan', row.p)
-        + edField('RM', row.r) + '</div>'
-        + '<div class="tdm-grid tdm-grid-3" style="margin-top:7px">'
-        + edField('Mobile', row.mobile)
-        + edField('Email', row.email) + '</div>')
-    + edSection('📅 Stage & TAT', '<div class="tdm-grid tdm-grid-3">'
-        + '<div class="tdm-field" style="border:2px solid '+(row.tld?'#f59e0b':'var(--border)')
-        + ';background:'+(row.tld?'#fffbeb':'var(--s2)')+'">'
-        + '<div class="tdm-field-label" style="color:'+(row.tld?'#92400e':'var(--muted2)')+'">📅 Timeline Date</div>'
-        + '<div class="tdm-field-value" style="font-family:JetBrains Mono,monospace'
-        + (row.tld?';color:#92400e;font-weight:800':'')+'">'
-        + (row.tld ? esc(dateFmt(row.tld))
-                   : '<span style="color:var(--muted2);font-weight:400;font-size:11px">Not set</span>')
-        + '</div></div>'
-        + edField('Developer', row.dev)
-        + edField('Current Disposition', row.cd) + '</div>')
-    + edSection('🧑‍💼 Agent Details', '<div class="tdm-grid tdm-grid-4">'
-        + edField('Transfer To', row.t)
-        + edField('Ack Agent', row.ta)
-        + edField('IP Agent', row.ti)
-        + edField('Support Agent', row.ts) + '</div>')
-    + edSection('📋 Disposition & Problem', '<div class="tdm-grid tdm-grid-4">'
-        + edField('Main Disposition', row.mainDisp)
-        + edField('Sub Disposition', row.subDisp)
-        + edField('Problem Type', row.probType)
-        + edField('Ack Disposition', row.q) + '</div>')
-    + edSection('🗓️ Stage Timeline', timeline);
+  return edSection('Description / remarks',
+        '<div class="ed-desc'+(desc||rem?'':' empty')+'">'
+        + (desc ? esc(desc).replace(/\n/g,'<br>')
+                : (rem ? esc(rem).replace(/\n/g,'<br>') : 'No description available'))
+        + (desc && rem ? '<div class="ed-rem">'+esc(rem).replace(/\n/g,'<br>')+'</div>' : '')
+        + '</div>')
+    + edSection('Disposition and problem',
+        edRow(4, edField('Main disposition', row.mainDisp)
+               + edField('Sub disposition',  row.subDisp)
+               + edField('Problem type',     row.probType)
+               + edField('Disposition',      row.cd))
+      + edRow(4, edField('RM',        row.r)
+               + edField('Developer', row.dev)
+               + edField('Tester',    (typeof mbTesterOf==='function' ? mbTesterOf(row) : row.t))
+               + edField('Ack agent', row.ta)))
+    + edSection('Timeline date',
+        row.tld ? '<div class="ed-tld">'+esc(edDate(row.tld, true))+'</div>'
+                : '<div class="ed-desc empty">Not set</div>')
+    + edSection('Stage and TAT',
+        edRow(4, edField('Stage date',      edDate(sk[0] ? row[sk[0]] : '', true))
+               + edField('SLA duration',    sk[1] ? row[sk[1]] : '')
+               + edField('Actual duration', sk[2] ? row[sk[2]] : '')
+               + '<div class="ed-f"><div class="ed-f-l">TAT status</div><div class="ed-f-v">'+tatHtml+'</div></div>'))
+    + edSection('Customer details',
+        edRow(4, edField('Licence no',        row.l, true)
+               + edField('Customer name',     row.u)
+               + edField('Subscription plan', row.p)
+               + edField('Email',             row.email))
+      + edRow(4, edField('Mobile', row.mobile, true)))
+    + edSection('Stage timeline',
+        tl ? '<div class="ed-tl">'+tl+'</div>'
+           : '<div class="ed-desc empty">No stage dates recorded yet</div>');
 }
-
 
 /* ── Update tab ke field groups ─────────────────────────────────────────────
    12 fields ek saath bikhre hue the. Ab char groups me, order: Tester → RM →
@@ -800,11 +855,14 @@ function edDetailHTML(rd){
    `remarks` jaan-bujh kar bahar hai. Field form me nahi hai to EDIT.form me
    bhi nahi aata, aur bssBuildPayload() missing key ko skip kar deta hai —
    yaani BSS me Remarks jaise ka waisa reh jata hai. Details tab me wo
-   read-only dikhta rehta hai. */
+   read-only dikhta rehta hai.
+
+   Keys BSS_CROSSWALK se hi aani chahiye — 'assignTo' likhne par field
+   chup-chaap "Other" group me gir gaya tha; asli key 'assignedTo' hai. */
 const ED_GROUPS = [
   ['Required',       ['subDisposition','disposition']],
   ['Classification', ['mainDisposition','problemType','subProblemType']],
-  ['People',         ['assignTo','rm','developer']],
+  ['People',         ['assignedTo','rm','developer']],
   ['Tracking',       ['timelineDate','jiraId','bssComment']],
 ];
 const ED_SKIP = ['remarks'];
@@ -869,8 +927,9 @@ function renderEditForm(){
   const cur=`<div class="note ok" style="background:var(--s2);border-color:var(--border2);color:var(--text2)">
     <div class="meta-row">
       <span><b>Ticket</b> <span class="mono">${esc(rd.values.ticketNo||EDIT.ticketNo)}</span></span>
-      <span><b>Created</b> ${esc(rd.values.createdDate?String(rd.values.createdDate).slice(0,10):'—')}</span>
+      <span><b>Created</b> ${esc(edDate(rd.values.createdDate)||'—')}</span>
       <span><b>Status</b> ${esc(rd.values.currentStatus||'—')}</span>
+      <span><b>Source</b> Customer</span>
     </div>
     ${desc ? `<div class="desc-box">${esc(desc)}</div>` : ''}</div>`;
 
