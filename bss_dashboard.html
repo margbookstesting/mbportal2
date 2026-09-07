@@ -353,16 +353,6 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
 .ed-f-tld .ed-f-v{color:#92400e}
 .ed-tl{margin-top:14px}
 
-/* ── type=date ke liye alag padding ──
-   Native date input ke andar teen segment (dd / mm / yyyy) aur calendar icon
-   hote hain. 3-column grid me `.inp` ka 11px padding + icon milkar itni jagah
-   kha jate the ki browser beech ka `mm` daba deta tha — screen par
-   "dd-----yyyy" dikhta tha. Padding kam, icon compact. */
-input[type="date"].inp{padding-left:8px;padding-right:2px;letter-spacing:-.1px}
-input[type="date"].inp::-webkit-calendar-picker-indicator{
-  padding:0;margin:0;opacity:.55;cursor:pointer;flex-shrink:0}
-input[type="date"].inp::-webkit-calendar-picker-indicator:hover{opacity:1}
-input[type="date"].inp::-webkit-datetime-edit{padding:0}
 
 /* Comment do column leta hai aur uski height alag hai, isliye .fld ka fixed
    grid row use nahi karta. */
@@ -380,6 +370,14 @@ input[type="date"].inp::-webkit-datetime-edit{padding:0}
    khali jagah bana deti thi — input neeche khisak jata tha. */
 .fgrid{align-items:start}
 .ed-row{align-items:start}
+
+/* type=date par sirf itna: padding thodi kam taaki teeno segment (dd / mm /
+   yyyy) aur calendar icon aaram se aa jayein.
+
+   Pehle yahan letter-spacing aur ::-webkit-datetime-edit ke overrides bhi the
+   — un se Chrome ka apna segment rendering bigad gaya tha aur khali field
+   "dd-----yyyy" dikhati thi. Browser ko apna kaam karne dena hi theek hai. */
+input[type="date"].inp{padding-left:9px;padding-right:6px}
 </style>
 </head>
 <body>
