@@ -950,8 +950,12 @@ console.log('== 35. both BSS update modals match ==');
   eq(p+' opens on Update',           /id="edPaneDetails"[^>]*display:none/.test(src), true);
   eq(p+' has a tab switcher',        /function edShowTab/.test(src), true);
   eq(p+' groups the update fields',  /const ED_GROUPS = \[/.test(src), true);
+  /* Key BSS_CROSSWALK se aani chahiye — 'assignTo' likhne par field chup-chaap
+     "Other" group me gir gaya tha. Asli key 'assignedTo' hai. */
   eq(p+' orders people Tester, RM, Developer',
-     /\['assignTo','rm','developer'\]/.test(src), true);
+     /\['assignedTo','rm','developer'\]/.test(src), true);
+  eq(p+' uses a real crosswalk key',
+     /\['assignTo','rm','developer'\]/.test(src), false);
   /* Remarks update nahi hota. Form me na hone se EDIT.form me bhi nahi aata,
      aur bssBuildPayload() missing key skip karta hai — BSS me wo field jaise
      ka waisa reh jata hai. */
