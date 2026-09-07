@@ -949,24 +949,37 @@ console.log('== 35. both BSS update modals match ==');
   eq(p+' has both tabs',             /id="edTabUpdate"/.test(src) && /id="edTabDetails"/.test(src), true);
   eq(p+' opens on Update',           /id="edPaneDetails"[^>]*display:none/.test(src), true);
   eq(p+' has a tab switcher',        /function edShowTab/.test(src), true);
-  eq(p+' groups the update fields',  /const ED_GROUPS = \[/.test(src), true);
-  /* Key BSS_CROSSWALK se aani chahiye — 'assignTo' likhne par field chup-chaap
-     "Other" group me gir gaya tha. Asli key 'assignedTo' hai. */
+  /* Group headings hata di — 11 fields ke liye char headings sirf jagah kha
+     rahi thi. Ab ek flat 4-column grid, order ED_ORDER se. */
+  eq(p+' has a flat field order',    /const ED_ORDER = \[/.test(src), true);
+  eq(p+' no longer shows group headings', /class="ed-grp"/.test(src), false);
+  /* Key BSS_CROSSWALK se aani chahiye — 'assignTo' likhne par field pehle
+     chup-chaap chhoot gaya tha. Asli key 'assignedTo' hai. */
   eq(p+' orders people Tester, RM, Developer',
-     /\['assignedTo','rm','developer'\]/.test(src), true);
-  eq(p+' uses a real crosswalk key',
-     /\['assignTo','rm','developer'\]/.test(src), false);
+     /'assignedTo','rm','developer'/.test(src), true);
+  eq(p+' uses a real crosswalk key', /'assignTo','rm'/.test(src), false);
+  eq(p+' fits four fields per row',
+     /\.fgrid\{[^}]*repeat\(4,minmax\(0,1fr\)\)/.test(src), true);
   /* Remarks update nahi hota. Form me na hone se EDIT.form me bhi nahi aata,
      aur bssBuildPayload() missing key skip karta hai — BSS me wo field jaise
      ka waisa reh jata hai. */
   eq(p+' drops remarks from the form', /const ED_SKIP = \['remarks'\]/.test(src), true);
   eq(p+' clears it from the payload',  /delete EDIT\.form\[f\.key\]/.test(src), true);
   eq(p+' drops Assign To from details', /edField\('Assign To'/.test(src), false);
-  eq(p+' keeps a home for ungrouped fields', /Other<\/div>/.test(src), true);
+  /* Naya field BSS_CROSSWALK me jude aur ED_ORDER me na ho to chup-chaap
+     gayab na ho — aakhir me aa jaye. */
+  eq(p+' still renders fields missing from the order', /_rest/.test(src), true);
   eq(p+' builds the detail cards',   /function edDetailHTML/.test(src), true);
   eq(p+' has the field helpers',     /function edField/.test(src) && /function edSection/.test(src), true);
-  eq(p+' renders them in the Details pane',
-     /id="edPaneDetails"[\s\S]{0,80}\$\{edDetailHTML\(rd\)\}/.test(src), true);
+  /* Details ab LAZY hai — pehli baar tab kholne par banta hai. Pehle wo
+     update form ke saath hi ban jata tha, chahe user kabhi khole ya na
+     khole, aur modal dhima ho gaya tha. */
+  eq(p+' renders details lazily',
+     /pd0\.innerHTML = edDetailHTML\(_edDetailRD\)/.test(src), true);
+  eq(p+' does not build details up front',
+     /\$\{edDetailHTML\(rd\)\}/.test(src), false);
+  eq(p+' builds them only once',
+     /_edDetailBuilt = true/.test(src), true);
   eq(p+' no longer appends them under the form',
      /\`<div class="fgrid">\$\{fields\}<\/div>\` \+ edDetailHTML\(rd\)/.test(src), false);
   eq(p+' knows the pre-ack statuses', /PRE_ACK_SC = \['IT','PN','AP','','OT'\]/.test(src), true);
