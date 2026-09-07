@@ -352,6 +352,26 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
 .ed-f-tld .ed-f-l{color:#92400e}
 .ed-f-tld .ed-f-v{color:#92400e}
 .ed-tl{margin-top:14px}
+
+/* ── type=date ke liye alag padding ──
+   Native date input ke andar teen segment (dd / mm / yyyy) aur calendar icon
+   hote hain. 3-column grid me `.inp` ka 11px padding + icon milkar itni jagah
+   kha jate the ki browser beech ka `mm` daba deta tha — screen par
+   "dd-----yyyy" dikhta tha. Padding kam, icon compact. */
+input[type="date"].inp{padding-left:8px;padding-right:2px;letter-spacing:-.1px}
+input[type="date"].inp::-webkit-calendar-picker-indicator{
+  padding:0;margin:0;opacity:.55;cursor:pointer;flex-shrink:0}
+input[type="date"].inp::-webkit-calendar-picker-indicator:hover{opacity:1}
+input[type="date"].inp::-webkit-datetime-edit{padding:0}
+
+/* Comment do column leta hai aur uski height alag hai, isliye .fld ka fixed
+   grid row use nahi karta. */
+.fld-wide{grid-column:span 2;grid-template-rows:auto auto 12px}
+.ed-ta{height:auto;min-height:72px;padding:8px 11px;line-height:1.5;resize:vertical;
+  font-family:inherit}
+/* Update pane ki min-height — Details tab lamba hota hai, tab switch karne par
+   modal uchhalta tha. Ab dono ki height ek jaisi shuru hoti hai. */
+#edPaneUpdate,#edPaneDetails{min-height:430px}
 </style>
 </head>
 <body>
@@ -1023,9 +1043,10 @@ function edDetailHTML(rd, skipDesc){
    `remarks` bahar hai: form me na ho to EDIT.form me bhi nahi aata, aur
    bssBuildPayload() missing key skip karta hai — BSS me wo field jaise ka
    waisa reh jata hai. */
-const ED_ORDER = ['subDisposition','disposition','mainDisposition','problemType',
-                  'subProblemType','assignedTo','rm','developer',
-                  'timelineDate','jiraId','bssComment'];
+const ED_ORDER = ['subDisposition','disposition','timelineDate',
+                  'mainDisposition','problemType','subProblemType',
+                  'assignedTo','rm','developer',
+                  'jiraId','bssComment'];
 const ED_SKIP = ['remarks'];
 
 /* Tab switch — dono pane pehle se render ho chuke hain, sirf display toggle. */
@@ -1096,6 +1117,9 @@ function edEnterNav(e){
   if(e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey) return;
   const el = e.target;
   if(!el.classList || !el.classList.contains('inp')) return;
+  /* Textarea me Enter = nayi line. Wahan jump karne se comment likha hi nahi
+     ja sakta. Aage badhne ke liye Tab ya Shift+Enter. */
+  if(el.tagName === 'TEXTAREA' && !e.shiftKey) return;
   const list = edFormControls();
   const i = list.indexOf(el);
   if(i === -1) return;
@@ -1203,6 +1227,17 @@ function renderEditForm(){
           <div class="hint">Set once. To change it, update the ticket in BSS.</div>
           <div class="e" id="er-timelineDate"></div></div>`;
       }
+    }
+
+    /* BSS Comment me lambi baat likhi jati hai — ek line ka input tang tha.
+       Textarea, do column chaudi. */
+    if(f.key==='bssComment'){
+      return `<div class="fld fld-wide" id="fld-${f.key}">
+        <label>${esc(f.label)}</label>
+        <textarea class="inp ed-ta" id="in-${f.key}" rows="3"
+          placeholder="Adds a new comment"
+          oninput="onFieldChange('${f.key}',this.value)">${esc(val==null?'':val)}</textarea>
+        <div class="e" id="er-${f.key}"></div></div>`;
     }
 
     if(f.type==='text'||f.type==='date'){
