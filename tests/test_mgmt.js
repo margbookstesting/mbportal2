@@ -958,8 +958,24 @@ console.log('== 35. both BSS update modals match ==');
   eq(p+' orders people Tester, RM, Developer',
      /'assignedTo','rm','developer'/.test(src), true);
   eq(p+' uses a real crosswalk key', /'assignTo','rm'/.test(src), false);
-  eq(p+' fits four fields per row',
-     /\.fgrid\{[^}]*repeat\(4,minmax\(0,1fr\)\)/.test(src), true);
+  /* Update tab do columns me: baayein description (320px, apna scroll),
+     daayein 3 fields per row. Pehle description poori chaudai leti thi aur
+     fields ko neeche dhakel deti thi. */
+  eq(p+' splits description and fields',
+     /class="ed-split"/.test(src) && /ed-split-l/.test(src) && /ed-split-r/.test(src), true);
+  eq(p+' gives the description a fixed left column',
+     /\.ed-split\{[^}]*320px minmax\(0,1fr\)/.test(src), true);
+  eq(p+' fits three fields per row',
+     /\.fgrid\{[^}]*repeat\(3,minmax\(0,1fr\)\)/.test(src), true);
+  eq(p+' stacks the columns on narrow screens',
+     /max-width:1000px\)\{[^}]*\.ed-split\{grid-template-columns:1fr\}/.test(src), true);
+  /* Loader: ring + timer. Bar indeterminate hai — BSS me ek hi request hoti
+     hai, uska percentage pata nahi chalta, to 0-se-100 dikhana jhooth hota. */
+  eq(p+' shows a loader while the ticket loads', /function edLoaderHTML/.test(src), true);
+  eq(p+' counts real seconds',  /function edLoaderStart/.test(src), true);
+  eq(p+' uses an indeterminate bar', /ldr-track indet/.test(src), true);
+  eq(p+' clears the timer on every exit',
+     (src.match(/edLoaderStop\(\)/g)||[]).length >= 3, true);
   /* Remarks update nahi hota. Form me na hone se EDIT.form me bhi nahi aata,
      aur bssBuildPayload() missing key skip karta hai — BSS me wo field jaise
      ka waisa reh jata hai. */
