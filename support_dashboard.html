@@ -1050,6 +1050,10 @@ td.grp-l { border-left:1px solid var(--border); }
 .kpi-xls{ font-size:10px !important; padding:2px 8px !important; }
 @media(max-width:1200px){ .kpi-row{ grid-template-columns:repeat(4,1fr) !important; } }
 @media(max-width:760px){ .kpi-row{ grid-template-columns:repeat(2,1fr) !important; } }
+
+/* Build stamp — header me chhota sa, taaki pata rahe kaunsa build live hai. */
+.mb-ver{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.3px;
+  opacity:.55;margin-left:8px;white-space:nowrap;font-weight:500}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1091,7 +1095,7 @@ td.grp-l { border-left:1px solid var(--border); }
       <div class="brand-icon">🛟</div>
       <div class="brand-text">
         <div class="brand-name">MARG · Support Dashboard</div>
-        <div class="brand-tagline">Current status counts &nbsp;·&nbsp; Disposition-wise &nbsp;·&nbsp; Client &amp; Plan view</div>
+        <div class="brand-tagline">Current status counts &nbsp;·&nbsp; Disposition-wise &nbsp;·&nbsp; Client &amp; Plan view<span class="mb-ver" id="mbVersion"></span></div>
       </div>
     </div>
     <div class="topbar-actions">

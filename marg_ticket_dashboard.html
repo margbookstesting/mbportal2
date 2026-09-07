@@ -1855,6 +1855,17 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 .xl-col input{cursor:pointer}
 .xl-pick-ft{padding:12px 18px;border-top:1px solid var(--border,#e2e8f0);text-align:right}
 #xlPickGo:disabled{opacity:.4;cursor:not-allowed}
+
+/* Build stamp — header me chhota sa, taaki pata rahe kaunsa build live hai. */
+.mb-ver{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.3px;
+  opacity:.55;margin-left:8px;white-space:nowrap;font-weight:500}
+
+/* BSS update modal: read-only field boxes (timeline lock). */
+.ro-box{background:var(--s2,#f8fafc);color:var(--muted,#64748b);
+  display:flex;align-items:center;cursor:not-allowed;user-select:none}
+.ro-box.mono{font-family:'JetBrains Mono',monospace;color:var(--text,#0f172a);font-weight:600}
+.ed-detail-hd{margin:18px 0 10px;padding-top:14px;border-top:2px solid var(--border2);
+  font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -1881,7 +1892,7 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
       <div class="brand-icon">📊</div>
       <div class="brand-text">
         <div class="brand-name">MARG · IT Operations Dashboard</div>
-        <div class="brand-tagline">Transfer to IT &nbsp;·&nbsp; Acknowledge &nbsp;·&nbsp; In Progress &nbsp;·&nbsp; Go Live &nbsp;·&nbsp; Support</div>
+        <div class="brand-tagline">Transfer to IT &nbsp;·&nbsp; Acknowledge &nbsp;·&nbsp; In Progress &nbsp;·&nbsp; Go Live &nbsp;·&nbsp; Support<span class="mb-ver" id="mbVersion"></span></div>
       </div>
     </div>
     <div class="topbar-actions">
@@ -8825,6 +8836,86 @@ async function openEdit(ticketNo){
 }
 function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
 
+/* ── Ticket detail cards ────────────────────────────────────────────────────
+   Update fields UPAR rehte hain (wahi to kaam ka hissa hai), aur uske neeche
+   poori ticket detail — TAT dashboard ke "Customer Ticket Details" modal
+   jaisa hi layout, taaki dono jagah ek hi tarah se padha ja sake.
+
+   Data do jagah se aata hai: cache ki row (RAW) me saari stage dates aur
+   agent naam hote hain, aur `rd.values` me BSS ka LIVE record. Live ko
+   preference di hai jahan dono me ho. */
+function edField(label, val, mono){
+  const v = (val===undefined||val===null||val==='') ? '' : String(val);
+  const cls = mono ? 'mono' : (v ? '' : 'muted');
+  return '<div class="tdm-field"><div class="tdm-field-label">'+esc(label)+'</div>'
+       + '<div class="tdm-field-value '+cls+'">'+(v?esc(v):'—')+'</div></div>';
+}
+function edSection(title, inner){
+  return '<div class="tdm-section"><div class="tdm-section-title">'+title+'</div>'+inner+'</div>';
+}
+function edDetailHTML(rd){
+  const row = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+  const v   = (rd && rd.values) || {};
+  const pick = (a,b)=> (a!==undefined && a!==null && a!=='') ? a : b;
+
+  const desc = pick(v.description, row.desc) || row.remarks || '';
+  const dateFmt = d => { if(!d) return ''; try{
+      return new Date(String(d).slice(0,10)+'T00:00:00')
+        .toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+    }catch(_){ return String(d); } };
+
+  const STAGES=[['a','Transfer to IT'],['b','Acknowledge'],['c','In Progress'],
+    ['rtd','Ready For Testing'],['crd','Ready For Code Review'],['mgd','Ready For Merging'],
+    ['uad','Ready For UAT'],['rfd','Reopend from Testing'],['e','Ready To Go Live'],
+    ['rod','Reopen'],['fdd','Future Development'],['rjd','Rejected'],
+    ['d','Transfer To Support'],['cld','Closed']];
+  const done = STAGES.filter(x=>row[x[0]]);
+  const timeline = done.length
+    ? '<div class="tdm-grid tdm-grid-4">'+done.map(x=>edField(x[1], row[x[0]], true)).join('')+'</div>'
+    : '<div class="tdm-desc-box empty">No stage dates recorded yet</div>';
+
+  return '<div class="ed-detail-hd">Ticket details</div>'
+    + edSection('📝 Description / Remarks',
+        '<div class="tdm-desc-box'+(desc?'':' empty')+'">'
+        + (desc ? esc(desc).replace(/\n/g,'<br>') : 'No description available')+'</div>')
+    + edSection('🎫 Ticket Info', '<div class="tdm-grid tdm-grid-4">'
+        + edField('Ticket ID', pick(v.ticketNo, row.n), true)
+        + edField('Created Date', pick(v.createdDate, row.tc))
+        + edField('Status', pick(v.currentStatus, row.st))
+        + edField('Jira ID', pick(v.jiraId, row.jira), true) + '</div>')
+    + edSection('👤 Customer Details', '<div class="tdm-grid tdm-grid-4">'
+        + edField('Licence No', row.l)
+        + edField('Customer Name', row.u)
+        + edField('Subscription Plan', row.p)
+        + edField('RM', row.r) + '</div>'
+        + '<div class="tdm-grid tdm-grid-3" style="margin-top:7px">'
+        + edField('Mobile', row.mobile)
+        + edField('Email', row.email)
+        + edField('Assign To', row.assignto) + '</div>')
+    + edSection('📅 Stage & TAT', '<div class="tdm-grid tdm-grid-3">'
+        + '<div class="tdm-field" style="border:2px solid '+(row.tld?'#f59e0b':'var(--border)')
+        + ';background:'+(row.tld?'#fffbeb':'var(--s2)')+'">'
+        + '<div class="tdm-field-label" style="color:'+(row.tld?'#92400e':'var(--muted2)')+'">📅 Timeline Date</div>'
+        + '<div class="tdm-field-value" style="font-family:JetBrains Mono,monospace'
+        + (row.tld?';color:#92400e;font-weight:800':'')+'">'
+        + (row.tld ? esc(dateFmt(row.tld))
+                   : '<span style="color:var(--muted2);font-weight:400;font-size:11px">Not set</span>')
+        + '</div></div>'
+        + edField('Developer', row.dev)
+        + edField('Current Disposition', row.cd) + '</div>')
+    + edSection('🧑‍💼 Agent Details', '<div class="tdm-grid tdm-grid-4">'
+        + edField('Transfer To', row.t)
+        + edField('Ack Agent', row.ta)
+        + edField('IP Agent', row.ti)
+        + edField('Support Agent', row.ts) + '</div>')
+    + edSection('📋 Disposition & Problem', '<div class="tdm-grid tdm-grid-4">'
+        + edField('Main Disposition', row.mainDisp)
+        + edField('Sub Disposition', row.subDisp)
+        + edField('Problem Type', row.probType)
+        + edField('Ack Disposition', row.q) + '</div>')
+    + edSection('🗓️ Stage Timeline', timeline);
+}
+
 function renderEditForm(){
   const rd=EDIT.read, v=rd.values;
   EDIT.form={};
@@ -8878,8 +8969,46 @@ function renderEditForm(){
     </div>
     ${desc ? `<div class="desc-box">${esc(desc)}</div>` : ''}</div>`;
 
+  /* ── Timeline Date ke do niyam ──────────────────────────────────────────
+     1. Field tabhi dikhta hai jab ticket acknowledge ho chuka ho — timeline
+        commitment acknowledge ke baad hi banti hai.
+     2. Ek baar pad gayi to READ-ONLY. Dikhti hai, badalti nahi.
+     Wahi niyam standalone BSS dashboard par bhi hain. */
+  const PRE_ACK_SC = ['IT','PN','AP','','OT'];
+  const _tlRow = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+  const _tlAcked = (function(){
+    const live = rd.values.currentStatus;
+    if(live && typeof mbStatusCode==='function')
+      return PRE_ACK_SC.indexOf(mbStatusCode(live)) === -1;
+    if(_tlRow.b) return true;
+    if(_tlRow.sc) return PRE_ACK_SC.indexOf(_tlRow.sc) === -1;
+    return false;
+  })();
+  const _tlExisting = rd.values.timelineDate
+    ? String(rd.values.timelineDate).slice(0,10)
+    : (_tlRow.tld ? String(_tlRow.tld).slice(0,10) : '');
+
   const fields=BSS_CROSSWALK.map(f=>{
     const val=EDIT.form[f.key];
+
+    if(f.key==='timelineDate'){
+      if(!_tlAcked){
+        delete EDIT.form.timelineDate;      // payload me bhi na jaye
+        return `<div class="fld" id="fld-timelineDate">
+          <label>${esc(f.label)}</label>
+          <div class="inp ro-box">Available after the ticket is acknowledged</div>
+          <div class="e" id="er-timelineDate"></div></div>`;
+      }
+      if(_tlExisting){
+        EDIT.form.timelineDate = _tlExisting;
+        return `<div class="fld" id="fld-timelineDate">
+          <label>${esc(f.label)}</label>
+          <div class="inp ro-box mono">${esc(_tlExisting)}</div>
+          <div class="hint">Set once. To change it, update the ticket in BSS.</div>
+          <div class="e" id="er-timelineDate"></div></div>`;
+      }
+    }
+
     if(f.type==='text'||f.type==='date'){
       return `<div class="fld" id="fld-${f.key}">
         <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
@@ -8895,7 +9024,11 @@ function renderEditForm(){
       <div class="e" id="er-${f.key}"></div></div>`;
   }).join('');
 
-  document.getElementById('edBody').innerHTML=notes+cur+`<div class="fgrid">${fields}</div>`;
+  /* Update fields upar, poori ticket detail neeche — wahi cards jo
+     "Customer Ticket Details" modal me hain, taaki dono jagah ek hi tarah
+     se padha ja sake aur context ke liye doosri tab na kholni pade. */
+  document.getElementById('edBody').innerHTML =
+    notes + cur + `<div class="fgrid">${fields}</div>` + edDetailHTML(rd);
   bssSelectFields().forEach(f=>fillSelect(f.key));
   document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
 }

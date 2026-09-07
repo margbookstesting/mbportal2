@@ -227,6 +227,10 @@ th.r,td.r{text-align:right}
 .tdm-desc-box.empty{ color:var(--muted2); font-style:italic; font-size:11px; }
 .ed-detail-hd{margin:18px 0 10px;padding-top:14px;border-top:2px solid var(--border2);
   font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
+
+/* Build stamp — header me chhota sa, taaki pata rahe kaunsa build live hai. */
+.mb-ver{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.3px;
+  opacity:.55;margin-left:8px;white-space:nowrap;font-weight:500}
 </style>
 </head>
 <body>
@@ -234,7 +238,7 @@ th.r,td.r{text-align:right}
 <div class="hdr">
   <div>
     <h1>MARG · BSS Dashboard</h1>
-    <div class="sub">Current status · Tester / Developer / RM · BSS ticket update</div>
+    <div class="sub">Current status · Tester / Developer / RM · BSS ticket update<span class="mb-ver" id="mbVersion"></span></div>
   </div>
   <a href="portal.html" class="btn btn-ghost">← Portal</a>
   <button class="btn btn-red" onclick="signOut()">Sign Out</button>
