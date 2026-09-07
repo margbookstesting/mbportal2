@@ -957,6 +957,11 @@ console.log('== 35. both BSS update modals match ==');
      chup-chaap chhoot gaya tha. Asli key 'assignedTo' hai. */
   eq(p+' orders people Tester, RM, Developer',
      /'assignedTo','rm','developer'/.test(src), true);
+  /* Comment (textarea) apni row ka sabse ooncha cell hai. Grid ka default
+     stretch uske bagal wale Jira cell ko bhi utna ooncha kar deta tha aur
+     label-input ke beech khali jagah aa jaati thi. */
+  eq(p+' does not stretch short fields to match the textarea',
+     /\.fgrid\{align-items:start\}/.test(src), true);
   eq(p+' uses a real crosswalk key', /'assignTo','rm'/.test(src), false);
   /* Update tab do columns me: baayein description (320px, apna scroll),
      daayein 3 fields per row. Pehle description poori chaudai leti thi aur
