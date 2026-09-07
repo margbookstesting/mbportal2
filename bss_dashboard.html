@@ -371,13 +371,19 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
 .fgrid{align-items:start}
 .ed-row{align-items:start}
 
-/* type=date par sirf itna: padding thodi kam taaki teeno segment (dd / mm /
-   yyyy) aur calendar icon aaram se aa jayein.
 
-   Pehle yahan letter-spacing aur ::-webkit-datetime-edit ke overrides bhi the
-   — un se Chrome ka apna segment rendering bigad gaya tha aur khali field
-   "dd-----yyyy" dikhati thi. Browser ko apna kaam karne dena hi theek hai. */
-input[type="date"].inp{padding-left:9px;padding-right:6px}
+/* ── type=date ─────────────────────────────────────────────────────────────
+   Isi app ka Management tab wala date filter (#tab7 .mg-bar input[type=date])
+   JetBrains Mono par chalta hai aur uska `dd-mm-yyyy` theek dikhta hai. Yahan
+   `.inp` ka `font-family:inherit` Sora de raha tha, jisme Chrome ke date
+   segments ("dd" / "mm" / "yyyy") theek render nahi hote — beech ka `mm`
+   gayab ho kar "dd-----yyyy" dikhta tha.
+
+   Isliye wahi font yahan bhi, aur baaki sab browser ke bharose. Internal
+   pseudo-elements (::-webkit-datetime-edit waghairah) ko chhedna hi galti
+   thi — unse rendering aur bigadti hai. */
+input[type="date"].inp{font-family:'JetBrains Mono',monospace;
+  font-size:12px;padding:0 8px}
 </style>
 </head>
 <body>
