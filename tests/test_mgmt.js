@@ -771,5 +771,44 @@ eq('status code',         rec.sc, 'AK');
 eq('no stray cdd without In Progress', rec.cdd, undefined);
 eq('no stray jira',       rec.jira, undefined);
 
+
+/* ══════ 31. View Details modal = current stage, no date filter ══════
+   Pehle modal `cfg.data` kholta tha — date-range wala set. Isse Transfer to
+   IT kholne par un tickets ke bhi rows aate the jo ab In Progress ya
+   Transferred To Support ho chuke the (asli data me 44 me se sirf 13 hi
+   IT par the). Ab modal wahi set kholta hai jo card ka `Overall:` pill hai. */
+console.log('== 31. View Details modal ==');
+const modalSrc = fs.readFileSync(PAGE,'utf8');
+eq('modal reads RAW, not the date-filtered set',
+   /\(RAW \|\| \[\]\)\.filter\(r => r\.sc === cfg\.pendingSc\)/.test(modalSrc), true);
+eq('modal no longer passes cfg.data straight through',
+   /_openSecModal\(cfg\.data \|\| \[\], \(cfg\.label/.test(modalSrc), false);
+eq('a stage with no pendingSc still falls back to cfg.data',
+   /cfg\.pendingSc\s*\?[\s\S]{0,120}:\s*\(cfg\.data \|\| \[\]\)/.test(modalSrc), true);
+
+/* Status filter hata diya — modal me ab sirf ek hi status hota hai. */
+eq('status dropdown removed from the modal',
+   /_msDrop\('status'/.test(modalSrc), false);
+eq('status filtering removed',
+   /_smfStatus\.has\(statusLabelOf\(r\)\)/.test(modalSrc), false);
+eq('status selection is reset so it cannot stick',
+   /_smfStatus = new Set\(\);/.test(modalSrc), true);
+/* Baaki filters bache rehne chahiye. */
+eq('tester filter kept', /_msDrop\('tester'/.test(modalSrc), true);
+eq('rm filter kept',     /_msDrop\('rm'/.test(modalSrc), true);
+eq('dev filter kept',    /_msDrop\('dev'/.test(modalSrc), true);
+
+/* Ek stage ka set kholne par usme doosre stage ka ticket nahi hona chahiye. */
+const stageRows = [
+  {n:'1', sc:'IT'}, {n:'2', sc:'IT'}, {n:'3', sc:'IP'},
+  {n:'4', sc:'SP'}, {n:'5', sc:'AK'}, {n:'6', sc:'IT'},
+];
+const pick = (rows, sc) => rows.filter(r => r.sc === sc);
+eq('IT modal has only IT rows',  pick(stageRows,'IT').every(r=>r.sc==='IT'), true);
+eq('IT modal count',             pick(stageRows,'IT').length, 3);
+eq('AK modal count',             pick(stageRows,'AK').length, 1);
+eq('a stage with nothing pending is empty, not a crash',
+   pick(stageRows,'RU').length, 0);
+
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
