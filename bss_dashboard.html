@@ -231,6 +231,16 @@ th.r,td.r{text-align:right}
 /* Build stamp — header me chhota sa, taaki pata rahe kaunsa build live hai. */
 .mb-ver{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.3px;
   opacity:.55;margin-left:8px;white-space:nowrap;font-weight:500}
+
+.ed-tabs{display:flex;gap:4px;margin:14px 0 12px;border-bottom:1px solid var(--border)}
+.ed-tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;
+  padding:8px 14px;font:inherit;font-size:13px;font-weight:700;color:var(--muted);
+  cursor:pointer;border-radius:0}
+.ed-tab:hover{color:var(--text)}
+.ed-tab.on{color:#0f766e;border-bottom-color:#0d9488}
+.ed-grp{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--muted2);margin:14px 0 8px}
+.ed-grp:first-of-type{margin-top:2px}
 </style>
 </head>
 <body>
@@ -757,8 +767,7 @@ function edDetailHTML(rd){
         + edField('RM', row.r) + '</div>'
         + '<div class="tdm-grid tdm-grid-3" style="margin-top:7px">'
         + edField('Mobile', row.mobile)
-        + edField('Email', row.email)
-        + edField('Assign To', row.assignto) + '</div>')
+        + edField('Email', row.email) + '</div>')
     + edSection('📅 Stage & TAT', '<div class="tdm-grid tdm-grid-3">'
         + '<div class="tdm-field" style="border:2px solid '+(row.tld?'#f59e0b':'var(--border)')
         + ';background:'+(row.tld?'#fffbeb':'var(--s2)')+'">'
@@ -781,6 +790,35 @@ function edDetailHTML(rd){
         + edField('Problem Type', row.probType)
         + edField('Ack Disposition', row.q) + '</div>')
     + edSection('🗓️ Stage Timeline', timeline);
+}
+
+
+/* ── Update tab ke field groups ─────────────────────────────────────────────
+   12 fields ek saath bikhre hue the. Ab char groups me, order: Tester → RM →
+   Developer.
+
+   `remarks` jaan-bujh kar bahar hai. Field form me nahi hai to EDIT.form me
+   bhi nahi aata, aur bssBuildPayload() missing key ko skip kar deta hai —
+   yaani BSS me Remarks jaise ka waisa reh jata hai. Details tab me wo
+   read-only dikhta rehta hai. */
+const ED_GROUPS = [
+  ['Required',       ['subDisposition','disposition']],
+  ['Classification', ['mainDisposition','problemType','subProblemType']],
+  ['People',         ['assignTo','rm','developer']],
+  ['Tracking',       ['timelineDate','jiraId','bssComment']],
+];
+const ED_SKIP = ['remarks'];
+
+/* Tab switch — dono pane pehle se render ho chuke hain, sirf display toggle. */
+function edShowTab(which){
+  const u = which !== 'details';
+  const pu=document.getElementById('edPaneUpdate'), pd=document.getElementById('edPaneDetails');
+  const tu=document.getElementById('edTabUpdate'),  td=document.getElementById('edTabDetails');
+  if(!pu||!pd) return;
+  pu.style.display = u ? '' : 'none';
+  pd.style.display = u ? 'none' : '';
+  if(tu){ tu.classList.toggle('on', u);  tu.setAttribute('aria-selected', String(u)); }
+  if(td){ td.classList.toggle('on', !u); td.setAttribute('aria-selected', String(!u)); }
 }
 
 function renderEditForm(){
@@ -866,7 +904,10 @@ function renderEditForm(){
     return (row && row.tld) ? String(row.tld).slice(0,10) : '';
   })();
 
-  const fields=BSS_CROSSWALK.map(f=>{
+  const _fh={};
+  BSS_CROSSWALK.forEach(f=>{
+    if(ED_SKIP.indexOf(f.key)!==-1){ delete EDIT.form[f.key]; return; }
+    _fh[f.key]=(()=>{
     const val=EDIT.form[f.key];
 
     if(f.key==='timelineDate'){
@@ -902,12 +943,32 @@ function renderEditForm(){
       ${f.type==='cascade'?`<div class="hint">Select ${esc(bssField(f.parent).label)} first</div>`:''}
       ${f.key==='bssComment'?`<div class="hint">Adds a new comment to the BSS comment log (it does not overwrite)</div>`:''}
       <div class="e" id="er-${f.key}"></div></div>`;
+    })();
+  });
+
+  /* Group ke hisaab se. Koi naya field kisi group me na ho to chup-chaap
+     gayab na ho — "Other" me aa jayega. */
+  const _used=new Set();
+  let fields = ED_GROUPS.map(([title,keys])=>{
+    const inner = keys.map(k=>{ _used.add(k); return _fh[k]||''; }).join('');
+    return inner.trim() ? `<div class="ed-grp">${title}</div><div class="fgrid">${inner}</div>` : '';
   }).join('');
+  const _left = BSS_CROSSWALK.filter(f=>!_used.has(f.key) && _fh[f.key]);
+  if(_left.length)
+    fields += `<div class="ed-grp">Other</div><div class="fgrid">${_left.map(f=>_fh[f.key]).join('')}</div>`;
 
   /* Update fields sabse upar — wahi is screen ka kaam hai. Read-only detail
      uske neeche, taaki context dekhne ke liye doosri tab na kholni pade. */
   document.getElementById('edBody').innerHTML =
-    notes + cur + `<div class="fgrid">${fields}</div>` + edDetailHTML(rd);
+    notes + cur +
+    `<div class="ed-tabs" role="tablist">
+       <button class="ed-tab on" id="edTabUpdate"  role="tab" aria-selected="true"
+               onclick="edShowTab('update')">Update</button>
+       <button class="ed-tab" id="edTabDetails" role="tab" aria-selected="false"
+               onclick="edShowTab('details')">Details</button>
+     </div>
+     <div id="edPaneUpdate" role="tabpanel">${fields}</div>
+     <div id="edPaneDetails" role="tabpanel" style="display:none">${edDetailHTML(rd)}</div>`;
   bssSelectFields().forEach(f=>fillSelect(f.key));
   document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
 }
