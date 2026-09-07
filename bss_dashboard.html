@@ -157,8 +157,6 @@ th.r,td.r{text-align:right}
 .ov.on{display:flex}
 .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
 .mdl.sm{max-width:1260px}
-.mdl-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
-.mdl-t{font-size:15px;font-weight:700}
 .mdl-b{overflow:auto;padding:0}
 .mdl-b.pad{padding:14px 18px}
 
@@ -213,24 +211,8 @@ th.r,td.r{text-align:right}
 /* ── Header: pehchan aur context ek hi line me ──
    Pehle ticket number header me AUR neeche meta strip me, dono jagah aata
    tha. Ab ek hi baar. */
-.ed-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:13px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
-.ed-head-t{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}
-.ed-head-id{font-family:'JetBrains Mono',monospace;font-weight:700;color:#0f766e}
-.ed-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;
-  color:var(--muted);align-items:center}
-.ed-meta b{font-weight:800;font-size:9px;letter-spacing:.6px;
-  text-transform:uppercase;color:var(--muted2);margin-right:5px}
-.ed-meta span{color:var(--text);font-weight:600}
 
 /* ── Tabs: asli segmented control, plain text nahi ── */
-.ed-tabs{display:flex;gap:6px;padding:12px 20px 0;background:var(--surface)}
-.ed-tab{appearance:none;background:var(--s2);border:1px solid var(--border2);
-  border-radius:7px;padding:0 18px;height:32px;font:inherit;font-size:12px;
-  font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.2px;
-  transition:.12s;display:inline-flex;align-items:center}
-.ed-tab:hover{color:var(--text);border-color:var(--muted2)}
-.ed-tab.on{background:#0d9488;border-color:#0d9488;color:#fff}
 
 /* ── Form ──
    Har field ek fixed grid hai: label → 32px control → 14px hint.
@@ -316,6 +298,28 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
   .ed-row-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.fgrid{grid-template-columns:1fr}
   .ed-row-4{grid-template-columns:1fr}}
+
+/* ── Modal header: pehchan (left) · meta · tabs (right) · close ──
+   Sab kuch ek hi row me. Ticket number sirf yahan — pehle body me bhi ek
+   header block tha, to do baar dikhta tha. */
+.mdl-h{padding:11px 18px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface)}
+.mdl-t{font-size:14px;font-weight:700;white-space:nowrap}
+.ed-meta{display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+  padding-left:14px;border-left:1px solid var(--border)}
+.ed-meta span{font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap}
+.ed-meta b{font-weight:800;font-size:8.5px;letter-spacing:.7px;
+  text-transform:uppercase;color:var(--muted2);margin-right:6px}
+
+/* Tabs ek segmented control me — dekhte hi pata chale ki switch kar sakte hain. */
+.ed-tabs{display:inline-flex;gap:0;background:var(--s2);border-radius:8px;
+  padding:3px;border:1px solid var(--border2)}
+.ed-tab{appearance:none;background:none;border:0;border-radius:6px;padding:0 16px;
+  height:26px;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);
+  cursor:pointer;letter-spacing:.2px;transition:.12s;display:inline-flex;
+  align-items:center;white-space:nowrap}
+.ed-tab:hover:not(.on){color:var(--text);background:var(--surface)}
+.ed-tab.on{background:#0d9488;color:#fff;box-shadow:0 1px 3px rgba(13,148,136,.35)}
 </style>
 </head>
 <body>
@@ -389,7 +393,14 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
   <div class="mdl sm">
     <div class="mdl-h">
       <div class="mdl-t">Update ticket · <span class="mono" id="edTicketNo"></span></div>
+      <span class="ed-meta" id="edMeta"></span>
       <div class="sp" style="flex:1"></div>
+      <div class="ed-tabs" id="edTabs" role="tablist">
+        <button class="ed-tab on" id="edTabUpdate" role="tab" aria-selected="true"
+                onclick="showTab('update')">Update</button>
+        <button class="ed-tab" id="edTabDetails" role="tab" aria-selected="false"
+                onclick="showTab('details')">Details</button>
+      </div>
       <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeEdit()">✕ Close</button>
     </div>
     <div class="mdl-b pad" id="edBody"></div>
@@ -967,17 +978,14 @@ function renderEditForm(){
   /* Description read-only hai — UpdateTicketStatus me ye field hai hi nahi.
      Par update karne wale ko ticket ka context chahiye, isliye yahan dikha
      rahe hain. Lamba ho sakta hai, to scroll ke saath. */
-  /* Ticket ki pehchan aur context header row me — pehle ticket number
-     header me AUR neeche meta strip me dono jagah aata tha, aur description
-     bhi yahan aur Details tab me dobara. Ab dono ek hi baar. */
-  const cur = `<div class="ed-head">
-    <div class="ed-head-t">Update ticket · <span class="ed-head-id">${esc(rd.values.ticketNo||EDIT.ticketNo)}</span></div>
-    <div class="ed-meta">
-      <div><b>Created</b><span>${esc(edDate(rd.values.createdDate)||'—')}</span></div>
-      <div><b>Status</b><span>${esc(rd.values.currentStatus||'—')}</span></div>
-      <div><b>Source</b><span>Customer</span></div>
-    </div>
-  </div>`;
+  /* Ticket number, Created/Status/Source aur tabs — sab modal ke SHELL
+     header me hain. Pehle body me apna header block bhi tha, isliye ticket
+     number do baar dikhta tha. */
+  const meta = document.getElementById('edMeta');
+  if(meta) meta.innerHTML =
+    `<span><b>Created</b>${esc(edDate(rd.values.createdDate)||'—')}</span>`
+  + `<span><b>Status</b>${esc(rd.values.currentStatus||'—')}</span>`
+  + `<span><b>Source</b>Customer</span>`;
 
   /* ── Timeline Date ke do niyam ──
      1. Field tabhi dikhta hai jab ticket acknowledge ho chuka ho.
@@ -1054,15 +1062,10 @@ function renderEditForm(){
   /* Update fields sabse upar — wahi is screen ka kaam hai. Read-only detail
      uske neeche, taaki context dekhne ke liye doosri tab na kholni pade. */
   document.getElementById('edBody').innerHTML =
-    notes + cur +
-    `<div class="ed-tabs" role="tablist">
-       <button class="ed-tab on" id="edTabUpdate"  role="tab" aria-selected="true"
-               onclick="edShowTab('update')">Update</button>
-       <button class="ed-tab" id="edTabDetails" role="tab" aria-selected="false"
-               onclick="edShowTab('details')">Details</button>
-     </div>
-     <div id="edPaneUpdate" role="tabpanel">${fields}</div>
+    notes +
+    `<div id="edPaneUpdate" role="tabpanel">${fields}</div>
      <div id="edPaneDetails" role="tabpanel" style="display:none">${edDetailHTML(rd)}</div>`;
+  edShowTab('update');   /* naya ticket hamesha Update tab par khule */
   bssSelectFields().forEach(f=>fillSelect(f.key));
   document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
 }

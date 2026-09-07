@@ -1384,8 +1384,6 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .ov.on{display:flex}
 #tabBss .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
 #tabBss .mdl.sm{max-width:1260px}
-#tabBss .mdl-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface)}
-#tabBss .mdl-t{font-size:15px;font-weight:700}
 #tabBss .mdl-b{overflow:auto;padding:0}
 #tabBss .mdl-b.pad{padding:14px 18px}
 /* ── Edit form ── */
@@ -1869,24 +1867,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 /* ── Header: pehchan aur context ek hi line me ──
    Pehle ticket number header me AUR neeche meta strip me, dono jagah aata
    tha. Ab ek hi baar. */
-#tabBss .ed-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  padding:13px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
-#tabBss .ed-head-t{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap}
-#tabBss .ed-head-id{font-family:'JetBrains Mono',monospace;font-weight:700;color:#0f766e}
-#tabBss .ed-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;
-  color:var(--muted);align-items:center}
-#tabBss .ed-meta b{font-weight:800;font-size:9px;letter-spacing:.6px;
-  text-transform:uppercase;color:var(--muted2);margin-right:5px}
-#tabBss .ed-meta span{color:var(--text);font-weight:600}
 
 /* ── Tabs: asli segmented control, plain text nahi ── */
-#tabBss .ed-tabs{display:flex;gap:6px;padding:12px 20px 0;background:var(--surface)}
-#tabBss .ed-tab{appearance:none;background:var(--s2);border:1px solid var(--border2);
-  border-radius:7px;padding:0 18px;height:32px;font:inherit;font-size:12px;
-  font-weight:700;color:var(--muted);cursor:pointer;letter-spacing:.2px;
-  transition:.12s;display:inline-flex;align-items:center}
-#tabBss .ed-tab:hover{color:var(--text);border-color:var(--muted2)}
-#tabBss .ed-tab.on{background:#0d9488;border-color:#0d9488;color:#fff}
 
 /* ── Form ──
    Har field ek fixed grid hai: label → 32px control → 14px hint.
@@ -1972,6 +1954,28 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   #tabBss .ed-row-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){#tabBss .fgrid{grid-template-columns:1fr}
   #tabBss .ed-row-4{grid-template-columns:1fr}}
+
+/* ── Modal header: pehchan (left) · meta · tabs (right) · close ──
+   Sab kuch ek hi row me. Ticket number sirf yahan — pehle body me bhi ek
+   header block tha, to do baar dikhta tha. */
+#tabBss .mdl-h{padding:11px 18px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface)}
+#tabBss .mdl-t{font-size:14px;font-weight:700;white-space:nowrap}
+#tabBss .ed-meta{display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+  padding-left:14px;border-left:1px solid var(--border)}
+#tabBss .ed-meta span{font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap}
+#tabBss .ed-meta b{font-weight:800;font-size:8.5px;letter-spacing:.7px;
+  text-transform:uppercase;color:var(--muted2);margin-right:6px}
+
+/* Tabs ek segmented control me — dekhte hi pata chale ki switch kar sakte hain. */
+#tabBss .ed-tabs{display:inline-flex;gap:0;background:var(--s2);border-radius:8px;
+  padding:3px;border:1px solid var(--border2)}
+#tabBss .ed-tab{appearance:none;background:none;border:0;border-radius:6px;padding:0 16px;
+  height:26px;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);
+  cursor:pointer;letter-spacing:.2px;transition:.12s;display:inline-flex;
+  align-items:center;white-space:nowrap}
+#tabBss .ed-tab:hover:not(.on){color:var(--text);background:var(--surface)}
+#tabBss .ed-tab.on{background:#0d9488;color:#fff;box-shadow:0 1px 3px rgba(13,148,136,.35)}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -2909,7 +2913,14 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   <div class="mdl sm">
     <div class="mdl-h">
       <div class="mdl-t">Update ticket · <span class="mono" id="edTicketNo"></span></div>
+      <span class="ed-meta" id="edMeta"></span>
       <div class="sp" style="flex:1"></div>
+      <div class="ed-tabs" id="edTabs" role="tablist">
+        <button class="ed-tab on" id="edTabUpdate" role="tab" aria-selected="true"
+                onclick="BSS.showTab('update')">Update</button>
+        <button class="ed-tab" id="edTabDetails" role="tab" aria-selected="false"
+                onclick="BSS.showTab('details')">Details</button>
+      </div>
       <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="BSS.closeEdit()">✕ Close</button>
     </div>
     <div class="mdl-b pad" id="edBody"></div>
@@ -9121,17 +9132,14 @@ function renderEditForm(){
   /* Description read-only hai — UpdateTicketStatus me ye field hai hi nahi.
      Par update karne wale ko ticket ka context chahiye, isliye yahan dikha
      rahe hain. Lamba ho sakta hai, to scroll ke saath. */
-  /* Ticket ki pehchan aur context header row me — pehle ticket number
-     header me AUR neeche meta strip me dono jagah aata tha, aur description
-     bhi yahan aur Details tab me dobara. Ab dono ek hi baar. */
-  const cur = `<div class="ed-head">
-    <div class="ed-head-t">Update ticket · <span class="ed-head-id">${esc(rd.values.ticketNo||EDIT.ticketNo)}</span></div>
-    <div class="ed-meta">
-      <div><b>Created</b><span>${esc(edDate(rd.values.createdDate)||'—')}</span></div>
-      <div><b>Status</b><span>${esc(rd.values.currentStatus||'—')}</span></div>
-      <div><b>Source</b><span>Customer</span></div>
-    </div>
-  </div>`;
+  /* Ticket number, Created/Status/Source aur tabs — sab modal ke SHELL
+     header me hain. Pehle body me apna header block bhi tha, isliye ticket
+     number do baar dikhta tha. */
+  const meta = document.getElementById('edMeta');
+  if(meta) meta.innerHTML =
+    `<span><b>Created</b>${esc(edDate(rd.values.createdDate)||'—')}</span>`
+  + `<span><b>Status</b>${esc(rd.values.currentStatus||'—')}</span>`
+  + `<span><b>Source</b>Customer</span>`;
 
   /* ── Timeline Date ke do niyam ──
      1. Field tabhi dikhta hai jab ticket acknowledge ho chuka ho.
@@ -9207,15 +9215,10 @@ function renderEditForm(){
      "Customer Ticket Details" modal me hain, taaki dono jagah ek hi tarah
      se padha ja sake aur context ke liye doosri tab na kholni pade. */
   document.getElementById('edBody').innerHTML =
-    notes + cur +
-    `<div class="ed-tabs" role="tablist">
-       <button class="ed-tab on" id="edTabUpdate"  role="tab" aria-selected="true"
-               onclick="BSS.showTab('update')">Update</button>
-       <button class="ed-tab" id="edTabDetails" role="tab" aria-selected="false"
-               onclick="BSS.showTab('details')">Details</button>
-     </div>
-     <div id="edPaneUpdate" role="tabpanel">${fields}</div>
+    notes +
+    `<div id="edPaneUpdate" role="tabpanel">${fields}</div>
      <div id="edPaneDetails" role="tabpanel" style="display:none">${edDetailHTML(rd)}</div>`;
+  edShowTab('update');   /* naya ticket hamesha Update tab par khule */
   bssSelectFields().forEach(f=>fillSelect(f.key));
   document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
 }
