@@ -194,8 +194,6 @@ th.r,td.r{text-align:right}
    us column ko lamba kar deta tha, jisse agli row ke fields aage-peeche ho
    jate the. Ab har field grid row hai jisme hint ki jagah reserve hai —
    hint ho ya na ho, sab fields ek line me rehte hain. */
-.fld .hint,.fld .e{font-size:9px;line-height:13px;margin:0;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -218,15 +216,8 @@ th.r,td.r{text-align:right}
    Har field ek fixed grid hai: label → 32px control → 14px hint.
    Hint ki jagah HAMESHA reserve hai, warna jis column me hint ho wo lamba ho
    jata tha aur agli row ke fields aage-peeche ho jate the. */
-.fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px}
-.fld{display:grid;grid-template-rows:auto 32px 14px;min-width:0}
-.fld label{font-size:9px;font-weight:800;color:var(--muted2);
-  text-transform:uppercase;letter-spacing:.6px;margin:0 0 5px;line-height:1.2;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fld .req{color:#dc2626}
 .fld .inp{width:100%;height:32px;margin:0}
-.fld .hint,.fld .e{font-size:9.5px;line-height:14px;margin:0;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted2)}
 .fld .e{color:#dc2626;display:none}
 .fld.err .e{display:block}
 .fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.09)}
@@ -247,10 +238,6 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
   font-weight:700;font-size:12.5px;border-style:solid;background:var(--surface)}
 
 /* ── Group heading: label aur uske fields ke beech saans ── */
-.ed-grp{font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;
-  color:var(--muted2);margin:22px 0 12px;padding-bottom:7px;
-  border-bottom:1px solid var(--border)}
-.ed-grp:first-of-type{margin-top:4px}
 
 /* ── Details tab: asli cards, flat rows nahi ── */
 .ed-sec{margin-bottom:20px}
@@ -323,11 +310,43 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
 
 /* Ticket ka context — Update tab par bhi. Scroll nahi: description kitna bhi
    lamba ho poora dikhta hai, modal khud scroll karta hai. */
-.ed-ctx{background:var(--s2);border:1px solid var(--border);border-radius:8px;
-  padding:11px 14px;font-size:12.5px;line-height:1.65;color:var(--text);
-  margin-bottom:4px;white-space:pre-wrap;overflow-wrap:anywhere;overflow:visible;
-  max-height:none}
 .ed-desc{overflow:visible;max-height:none}
+
+/* 4 fields per row — modal ki poori chaudai ka istemaal. Lamba text ellipsis
+   me katta hai; poora dekhne ke liye control par hover karo (title). */
+
+.fld{display:grid;grid-template-rows:auto 32px 12px;min-width:0}
+.fld label{font-size:8.5px;font-weight:800;color:var(--muted2);text-transform:uppercase;
+  letter-spacing:.5px;margin:0 0 4px;line-height:1.2;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.fld .hint,.fld .e{font-size:8.5px;line-height:12px;margin:0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;color:var(--muted2)}
+.fld .e{color:#dc2626;display:none}
+
+/* ── Update tab: description (left) + fields (right) ──
+   admin_activity ke .gci-grid jaisa hi — fixed left column, baaki jagah
+   fields ko. Left column apna scroll leta hai, to lambi description fields
+   ko neeche nahi dhakelti. */
+.ed-split{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
+.ed-split-l{min-width:0;position:sticky;top:0;max-height:62vh;overflow:auto}
+.ed-split-r{min-width:0}
+.ed-ctx{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:11px 13px;font-size:12px;line-height:1.6;color:var(--text);
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.ed-ctx.empty{color:var(--muted2);font-style:italic}
+.fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px 12px}
+@media(max-width:1150px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1000px){.ed-split{grid-template-columns:1fr}
+  .ed-split-l{position:static;max-height:none}}
+@media(max-width:700px){.fgrid{grid-template-columns:1fr}}
+
+.ed-load{padding:44px 20px;text-align:center}
+.ed-load .ldr-ring{margin:0 auto 16px}
+.ed-load .ldr-title{font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px}
+.ed-load .ldr-msg{font-size:11px;color:var(--muted);margin-bottom:14px}
+.ed-load .ldr-track{max-width:230px;margin:0 auto}
+.ed-load-sec{margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:20px;
+  font-weight:700;color:#0d9488;letter-spacing:-.5px}
 </style>
 </head>
 <body>
@@ -782,13 +801,46 @@ function edPrefetch(ticketNo){
   _edPrefetch = {n:ticketNo, p:edFetchTicket(ticketNo).catch(()=>null)};
 }
 
+
+/* ── Ticket load karte waqt ka loader ────────────────────────────────────────
+   Ring + title + message + timer, main dashboard jaisa hi.
+
+   Progress bar INDETERMINATE hai (aage-peeche chalti hui), percentage nahi:
+   BSS me ek hi request jati hai aur uska percentage pata hi nahi chalta.
+   0-se-100 dikhana jhooth hota, isliye bar sirf "chal raha hai" batati hai
+   aur timer asli seconds ginta hai. */
+let _edTimer = null;
+function edLoaderHTML(){
+  return `<div class="ed-load">
+    <div class="ldr-ring"><svg viewBox="0 0 60 60">
+      <circle class="l-track" cx="30" cy="30" r="24"/>
+      <circle class="l-arc" cx="30" cy="30" r="24" transform="rotate(-90 30 30)"/>
+    </svg></div>
+    <div class="ldr-title">Loading ticket…</div>
+    <div class="ldr-msg" id="edLoadMsg">Fetching live data from BSS</div>
+    <div class="ldr-track indet"><div class="ldr-fill"></div></div>
+    <div class="ed-load-sec" id="edLoadSec">0s</div>
+  </div>`;
+}
+function edLoaderStart(){
+  clearInterval(_edTimer);
+  const t0 = Date.now();
+  _edTimer = setInterval(()=>{
+    const el = document.getElementById('edLoadSec');
+    if(!el){ clearInterval(_edTimer); _edTimer=null; return; }
+    el.textContent = Math.round((Date.now()-t0)/1000) + 's';
+  }, 250);
+}
+function edLoaderStop(){ clearInterval(_edTimer); _edTimer = null; }
+
 async function openEdit(ticketNo){
   EDIT={ticketNo,raw:null,read:null,form:{}};
   _edDetailBuilt=false; _edDetailRD=null;
   document.getElementById('edTicketNo').textContent=ticketNo;
   document.getElementById('edStatus').textContent='';
   document.getElementById('edSave').disabled=true;
-  document.getElementById('edBody').innerHTML='<div class="empty"><span class="spin"></span> Loading live ticket data…</div>';
+  document.getElementById('edBody').innerHTML = edLoaderHTML();
+  edLoaderStart();
   document.getElementById('ovEdit').classList.add('on');
 
   if(!DD){ await loadDropdowns(); }
@@ -806,6 +858,7 @@ async function openEdit(ticketNo){
       fix = 'Set the <b>MARG_LOGIN_EMAIL</b> / <b>MARG_LOGIN_PASSWORD</b> env vars in Vercel.';
     else
       fix = 'Is /api/bss-proxy deployed? Check the response in the Network tab.';
+    edLoaderStop();
     document.getElementById('edBody').innerHTML=
       `<div class="note err"><b>Could not load the dropdown master.</b><br>
          <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${esc(msg)}</span><br><br>${fix}</div>`;
@@ -832,7 +885,7 @@ async function openEdit(ticketNo){
     renderEditForm();
   }catch(e){
     document.getElementById('edBody').innerHTML=
-      `<div class="note err"><b>Could not load ticket:</b> ${esc(e.message||e)}</div>`;
+      (edLoaderStop(), `<div class="note err"><b>Could not load ticket:</b> ${esc(e.message||e)}</div>`);
   }
 }
 function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
@@ -952,23 +1005,17 @@ function edDetailHTML(rd){
            : '<div class="ed-desc empty">No stage dates recorded yet</div>');
 }
 
-/* ── Update tab ke field groups ─────────────────────────────────────────────
-   12 fields ek saath bikhre hue the. Ab char groups me, order: Tester → RM →
-   Developer.
+/* ── Update tab: field order ───────────────────────────────────────────────
+   Group headings (Required / Classification / People / Tracking) hata di —
+   11 fields ke liye char headings sirf jagah kha rahi thi; har heading apni
+   line aur separator leti thi. Order phir bhi logical hai.
 
-   `remarks` jaan-bujh kar bahar hai. Field form me nahi hai to EDIT.form me
-   bhi nahi aata, aur bssBuildPayload() missing key ko skip kar deta hai —
-   yaani BSS me Remarks jaise ka waisa reh jata hai. Details tab me wo
-   read-only dikhta rehta hai.
-
-   Keys BSS_CROSSWALK se hi aani chahiye — 'assignTo' likhne par field
-   chup-chaap "Other" group me gir gaya tha; asli key 'assignedTo' hai. */
-const ED_GROUPS = [
-  ['Required',       ['subDisposition','disposition']],
-  ['Classification', ['mainDisposition','problemType','subProblemType']],
-  ['People',         ['assignedTo','rm','developer']],
-  ['Tracking',       ['timelineDate','jiraId','bssComment']],
-];
+   `remarks` bahar hai: form me na ho to EDIT.form me bhi nahi aata, aur
+   bssBuildPayload() missing key skip karta hai — BSS me wo field jaise ka
+   waisa reh jata hai. */
+const ED_ORDER = ['subDisposition','disposition','mainDisposition','problemType',
+                  'subProblemType','assignedTo','rm','developer',
+                  'timelineDate','jiraId','bssComment'];
 const ED_SKIP = ['remarks'];
 
 /* Tab switch — dono pane pehle se render ho chuke hain, sirf display toggle. */
@@ -1103,16 +1150,12 @@ function renderEditForm(){
     })();
   });
 
-  /* Group ke hisaab se. Koi naya field kisi group me na ho to chup-chaap
-     gayab na ho — "Other" me aa jayega. */
-  const _used=new Set();
-  let fields = ED_GROUPS.map(([title,keys])=>{
-    const inner = keys.map(k=>{ _used.add(k); return _fh[k]||''; }).join('');
-    return inner.trim() ? `<div class="ed-grp">${title}</div><div class="fgrid">${inner}</div>` : '';
-  }).join('');
-  const _left = BSS_CROSSWALK.filter(f=>!_used.has(f.key) && _fh[f.key]);
-  if(_left.length)
-    fields += `<div class="ed-grp">Other</div><div class="fgrid">${_left.map(f=>_fh[f.key]).join('')}</div>`;
+  /* Chune hue order me, phir jo bacha wo aakhir me — naya field jude to
+     chup-chaap gayab na ho. */
+  const _seen = new Set(ED_ORDER);
+  const _rest = BSS_CROSSWALK.filter(f=>!_seen.has(f.key) && _fh[f.key]).map(f=>f.key);
+  const fields = '<div class="fgrid">'
+    + ED_ORDER.concat(_rest).map(k=>_fh[k]||'').join('') + '</div>';
 
   /* Update fields sabse upar — wahi is screen ka kaam hai. Read-only detail
      uske neeche, taaki context dekhne ke liye doosri tab na kholni pade. */
@@ -1127,9 +1170,19 @@ function renderEditForm(){
     return t ? `<div class="ed-ctx">${esc(t).replace(/\n/g,'<br>')}</div>` : '';
   })();
 
+  /* Update tab do columns me: baayein description (fixed 320px, apna scroll),
+     daayein update fields. Pehle description fields ke upar poori chaudai
+     leti thi aur fields neeche dhakel deti thi — lambi description par
+     dropdown tak pahunchne ke liye scroll karna padta tha. */
+  edLoaderStop();
   document.getElementById('edBody').innerHTML =
     notes +
-    `<div id="edPaneUpdate" role="tabpanel">${_d}${fields}</div>
+    `<div id="edPaneUpdate" role="tabpanel">
+       <div class="ed-split">
+         <div class="ed-split-l">${_d || '<div class="ed-ctx empty">No description</div>'}</div>
+         <div class="ed-split-r">${fields}</div>
+       </div>
+     </div>
      <div id="edPaneDetails" role="tabpanel" style="display:none"></div>`;
   /* Details ka HTML pehle yahin ban jata tha — chahe user kabhi khole ya na
      khole. Uska matlab tha: har ticket par poora stage timeline + saare cards
@@ -1142,6 +1195,13 @@ function renderEditForm(){
   document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
 }
 
+/* Chuni hui value `title` me bhi — 4-column grid me lamba text ellipsis me
+   katta hai, hover par poora dikh jata hai. */
+function edSyncTitle(el){
+  if(!el) return;
+  const o = el.options && el.options[el.selectedIndex];
+  el.title = (o && o.value) ? o.text : '';
+}
 function fillSelect(key){
   const f=bssField(key), el=document.getElementById('in-'+key);
   if(!el) return;
@@ -1160,8 +1220,10 @@ function fillSelect(key){
     const nm=bssNameById(DD,key,cur);
     el.insertAdjacentHTML('beforeend',`<option value="${esc(cur)}" selected>${esc(nm)} (current)</option>`);
   }
+  edSyncTitle(el);
 }
 function onFieldChange(key,val){
+  edSyncTitle(document.getElementById('in-'+key));
   EDIT.form[key]=val===''?undefined:val;
   /* Parent badla to children reset — warna invalid combo bach jayega */
   BSS_CROSSWALK.filter(f=>f.parent===key).forEach(child=>{
