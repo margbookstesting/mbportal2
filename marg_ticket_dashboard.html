@@ -9210,6 +9210,30 @@ function edShowTab(which){
   if(sv) sv.style.display = u ? '' : 'none';
 }
 
+/* ── Timeline date ki hadd ─────────────────────────────────────────────────
+   Aaj se 12 din se aage ki timeline nahi di ja sakti. Ye front-end guard hai:
+   date picker me aage ke din grey ho jate hain (max attribute), aur typing se
+   koi aage ki date daal bhi de to save block ho jata hai.
+
+   Server par ye check nahi hai — agar zaroori ho to BSS/proxy me bhi lagana
+   padega, warna API se seedha aage ki date bheji ja sakti hai. */
+const ED_TIMELINE_MAX_DAYS = 12;
+function edMaxTimeline(){
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + ED_TIMELINE_MAX_DAYS);
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+/* Khali date theek hai (field optional hai). Sirf aage ki date galat hai —
+   peechhe ki date par rok nahi, kabhi backdate karni pad sakti hai. */
+function edTimelineError(v){
+  const s = String(v||'').slice(0,10);
+  if(!s) return '';
+  const max = edMaxTimeline();
+  return s > max ? ('Timeline cannot be later than ' + max + ' (' + ED_TIMELINE_MAX_DAYS + ' days from today)') : '';
+}
+
 function renderEditForm(){
   const rd=EDIT.read, v=rd.values;
   EDIT.form={};
@@ -9305,10 +9329,13 @@ function renderEditForm(){
     }
 
     if(f.type==='text'||f.type==='date'){
+      /* Timeline par max — picker me aage ke din chunne hi nahi denge. */
+      const maxAttr = f.key==='timelineDate' ? ` max="${edMaxTimeline()}"` : '';
       return `<div class="fld" id="fld-${f.key}">
         <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
         <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
-               value="${esc(val==null?'':val)}" oninput="BSS.onFieldChange('${f.key}',this.value)">
+               value="${esc(val==null?'':val)}"${maxAttr}
+               oninput="BSS.onFieldChange('${f.key}',this.value)">
         <div class="e" id="er-${f.key}"></div></div>`;
     }
     return `<div class="fld" id="fld-${f.key}">
@@ -9400,6 +9427,14 @@ function fillSelect(key){
 }
 function onFieldChange(key,val){
   edSyncTitle(document.getElementById('in-'+key));
+  /* Turant feedback — save tak intezaar nahi. */
+  if(key==='timelineDate'){
+    const msg = edTimelineError(val);
+    const fld = document.getElementById('fld-timelineDate');
+    const er  = document.getElementById('er-timelineDate');
+    if(er)  er.textContent = msg;
+    if(fld) fld.classList.toggle('err', !!msg);
+  }
   EDIT.form[key]=val===''?undefined:val;
   /* Parent badla to children reset — warna invalid combo bach jayega */
   BSS_CROSSWALK.filter(f=>f.parent===key).forEach(child=>{
@@ -9503,6 +9538,11 @@ async function submitUpdate(){
   if(!EDIT) return;
   const bssId=ME&&ME.bss_user_id;
   const errs=bssValidate(EDIT.form,DD,bssId);
+  /* Timeline ki hadd bss-fields.js ki validate me nahi hai (wo shared file
+     hai), isliye yahan jodte hain — same shape me, taaki showErrors() usi
+     field ko highlight kar sake. */
+  const _tlMsg = edTimelineError(EDIT.form.timelineDate);
+  if(_tlMsg) errs.push({field:'timelineDate', msg:_tlMsg});
   if(errs.length){showErrors(errs);toast('⚠️ Please fix '+errs.length+' field'+(errs.length>1?'s':''),4000);return;}
   showErrors([]);
 
