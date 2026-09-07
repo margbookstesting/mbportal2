@@ -319,36 +319,41 @@ async function signOut(){await sb.auth.signOut();location.replace('index.html');
    par ek hi ticket ka status same dikhe. Alag rakhne par drift ho jati. ── */
 function _normSt(s){return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim();}
 const STATUSES=[
-  {key:'pending',   label:'Pending',              c:'--oth'},
-  {key:'reopen',    label:'Reopen',               c:'--ret'},
-  {key:'it',        label:'Transferred To IT',    c:'--it'},
-  {key:'ack',       label:'Acknowledged',         c:'--ack'},
-  {key:'ip',        label:'In Progress',          c:'--ip'},
-  {key:'rft',       label:'Ready For Testing',    c:'--tst'},
-  {key:'reopentest',label:'Reopend from Testing', c:'--ret'},
-  {key:'rfcr',      label:'Ready For Code Review',c:'--uat'},
-  {key:'rfm',       label:'Ready For Merging',    c:'--uat'},
-  {key:'rfu',       label:'Ready For UAT',        c:'--uat'},
-  {key:'rgl',       label:'Ready to go Live',     c:'--glv'},
-  {key:'rts',       label:'Return to Support',    c:'--ret'},
-  {key:'sp',        label:'Transferred To Support',c:'--sup'},
-  {key:'future',    label:'Future Development',   c:'--oth'},
-  {key:'rejected',  label:'Rejected',             c:'--sup'},
-  {key:'closed',    label:'Closed',               c:'--cl'},
+  {key:'pending',   label:'Pending',              c:'--oth', sc:'PN'},
+  {key:'approval',  label:'Approval Pending',     c:'--oth', sc:'AP'},
+  {key:'reopen',    label:'Reopen',               c:'--ret', sc:'RO'},
+  {key:'it', sc:'IT',        label:'Transferred To IT',    c:'--it'},
+  {key:'ack', sc:'AK',       label:'Acknowledged',         c:'--ack'},
+  {key:'ip', sc:'IP',        label:'In Progress',          c:'--ip'},
+  {key:'rft', sc:'RT',       label:'Ready For Testing',    c:'--tst'},
+  {key:'reopentest', sc:'RF',label:'Reopend from Testing', c:'--ret'},
+  {key:'rfcr', sc:'CR',      label:'Ready For Code Review',c:'--uat'},
+  {key:'rfm', sc:'MG',       label:'Ready For Merging',    c:'--uat'},
+  {key:'rfu',       label:'Ready For UAT',        c:'--uat', sc:'RU'},
+  {key:'teamtest',  label:'Team Testing',         c:'--tst', sc:'TT'},
+  {key:'rgl', sc:'LV',       label:'Ready to go Live',     c:'--glv'},
+  {key:'rts', sc:'RS',       label:'Return to Support',    c:'--ret'},
+  {key:'sp', sc:'SP',        label:'Transferred To Support',c:'--sup'},
+  {key:'future', sc:'FD',    label:'Future Development',   c:'--oth'},
+  {key:'rejected', sc:'RJ',  label:'Rejected',             c:'--sup'},
+  {key:'closed', sc:'CL',    label:'Closed',               c:'--cl'},
 ];
-const MATCH={pending:['pending'],reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
+const MATCH={pending:['pending'],approval:['approval pending'],teamtest:['team testing'],reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
  ack:['acknowledge','acknowledged'],ip:['in progress','inprogress'],rft:['ready for testing'],
  reopentest:['reopend from testing','reopen from testing','reopened from testing'],
  rfcr:['ready for code review'],rfm:['ready for merging','ready for merge'],rfu:['ready for uat'],
  rgl:['ready to go live'],rts:['return to support'],sp:['transfer to support','transferred to support'],
  future:['future development'],rejected:['rejected','reject'],closed:['closed','close']};
-const SC2KEY={IT:'it',AK:'ack',IP:'ip',RT:'rft',RU:'rfu',LV:'rgl',SP:'sp',RS:'rts',CL:'closed'};
+const SC2KEY={IT:'it',AK:'ack',IP:'ip',RT:'rft',RU:'rfu',LV:'rgl',SP:'sp',RS:'rts',CL:'closed',
+  CR:'rfcr',MG:'rfm',RF:'reopentest',RO:'reopen',FD:'future',RJ:'rejected',PN:'pending',AP:'approval',TT:'teamtest'};
 
 function statusKeyOf(r){
+  /* EXACT match only. Pehle ek substring fallback tha (`raw.includes(x)`)
+     jisme list ka kram maayne rakhta tha — 'pending' sabse upar hai, to
+     "Approval Pending" chup-chaap "Pending" ban jata tha. */
   const raw=_normSt(r.st);
   if(raw){
     for(const d of STATUSES) if((MATCH[d.key]||[]).includes(raw)) return d.key;
-    for(const d of STATUSES) if((MATCH[d.key]||[]).some(x=>raw.includes(x))) return d.key;
   }
   if(r.sc&&SC2KEY[r.sc]) return SC2KEY[r.sc];
   return 'pending';
@@ -591,8 +596,10 @@ function listColumns(){
     ['License',          r=>esc(r.l||'—')],
   ];
 }
-function renderList(rows,title){
+let LIST_REBUILD=null;   // list dobara banane ke liye, save ke baad
+function renderList(rows,title,rebuild){
   LIST_ROWS=rows; LIST_TITLE=title;
+  if(rebuild!==undefined) LIST_REBUILD=rebuild;
   document.getElementById('listTitle').textContent=title;
   document.getElementById('listCount').textContent=`${fmt(rows.length)} tickets`;
   const cols=listColumns();
@@ -605,13 +612,15 @@ function renderList(rows,title){
 }
 function openList(key){
   const d=STATUSES.find(x=>x.key===key);
-  renderList(VIEW.filter(r=>statusKeyOf(r)===key),`${d?d.label:key} — Ticket Details`);
+  renderList(VIEW.filter(r=>statusKeyOf(r)===key), `${d?d.label:key} — Ticket Details`,
+             ()=>openList(key));
 }
 function openAgentList(kind,name){
   const g=kind==='Tester'?testerOf:kind==='Developer'?devOf:rmOf;
-  renderList(VIEW.filter(r=>g(r)===name),`${kind}: ${name} — Ticket Details`);
+  renderList(VIEW.filter(r=>g(r)===name), `${kind}: ${name} — Ticket Details`,
+             ()=>openAgentList(kind,name));
 }
-function closeList(){document.getElementById('ovList').classList.remove('on');}
+function closeList(){document.getElementById('ovList').classList.remove('on');LIST_REBUILD=null;}
 
 /* ── Edit modal ── */
 async function openEdit(ticketNo){
@@ -879,9 +888,23 @@ async function submitUpdate(){
       const dv=bssNameById(DD,'developer',EDIT.form.developer); if(dv) row.dev=dv;
       const rr=bssNameById(DD,'rm',EDIT.form.rm); if(rr) row.r=rr;
       if(EDIT.form.timelineDate) row.tld=EDIT.form.timelineDate;
-      delete row.sc;   /* st ab authoritative hai; purana short-code hata do */
+      /* Pehle yahan `delete row.sc` hota tha. Par KPI counts sc PAR chalte
+         hain (VIEW.filter(r=>r.sc==='IT') waghairah) — sc hata dene se wo
+         ticket har count se gayab ho jata tha aur numbers update hi nahi
+         dikhte the. Ab naye status se sc dobara compute hota hai. */
+      if(s && typeof mbStatusCode==='function') row.sc = mbStatusCode(s);
+      else delete row.sc;
+      /* Current-stage disposition bhi badal gayi — BSS list usi ko dikhati hai. */
+      if(l) row.cd = l;
     }
-    closeEdit(); applyFilters();
+    closeEdit();
+    applyFilters();          // KPI + agent counts dobara
+    /* Drill-down list khuli ho to wo bhi dobara banao — warna user wahi
+       purana status dekhta rehta hai aur lagta hai kuch update hi nahi hua.
+       Ticket ab list ki shart pe khara na utre to apne aap nikal jayega. */
+    if(LIST_REBUILD && document.getElementById('ovList').classList.contains('on')){
+      try{ LIST_REBUILD(); }catch(_){}
+    }
   }catch(e){
     st.textContent='';
     toast('❌ '+(e.message||e),8000);
