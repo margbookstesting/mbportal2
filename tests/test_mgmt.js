@@ -944,9 +944,27 @@ eq('no undefined leaks into the label', /undefined/.test(verLabel), false);
 console.log('== 35. both BSS update modals match ==');
 ['bss_dashboard.html','marg_ticket_dashboard.html'].forEach(p=>{
   const src = fs.readFileSync(path.join(ROOT,p),'utf8');
+  /* Update aur Details ek modal me, do tab. Pehle detail cards seedha update
+     form ke neeche chipka diye the — dono screens ek me mil gayi thi. */
+  eq(p+' has both tabs',             /id="edTabUpdate"/.test(src) && /id="edTabDetails"/.test(src), true);
+  eq(p+' opens on Update',           /id="edPaneDetails"[^>]*display:none/.test(src), true);
+  eq(p+' has a tab switcher',        /function edShowTab/.test(src), true);
+  eq(p+' groups the update fields',  /const ED_GROUPS = \[/.test(src), true);
+  eq(p+' orders people Tester, RM, Developer',
+     /\['assignTo','rm','developer'\]/.test(src), true);
+  /* Remarks update nahi hota. Form me na hone se EDIT.form me bhi nahi aata,
+     aur bssBuildPayload() missing key skip karta hai — BSS me wo field jaise
+     ka waisa reh jata hai. */
+  eq(p+' drops remarks from the form', /const ED_SKIP = \['remarks'\]/.test(src), true);
+  eq(p+' clears it from the payload',  /delete EDIT\.form\[f\.key\]/.test(src), true);
+  eq(p+' drops Assign To from details', /edField\('Assign To'/.test(src), false);
+  eq(p+' keeps a home for ungrouped fields', /Other<\/div>/.test(src), true);
   eq(p+' builds the detail cards',   /function edDetailHTML/.test(src), true);
   eq(p+' has the field helpers',     /function edField/.test(src) && /function edSection/.test(src), true);
-  eq(p+' renders them under the form', /\+ edDetailHTML\(rd\)/.test(src), true);
+  eq(p+' renders them in the Details pane',
+     /id="edPaneDetails"[\s\S]{0,80}\$\{edDetailHTML\(rd\)\}/.test(src), true);
+  eq(p+' no longer appends them under the form',
+     /\`<div class="fgrid">\$\{fields\}<\/div>\` \+ edDetailHTML\(rd\)/.test(src), false);
   eq(p+' knows the pre-ack statuses', /PRE_ACK_SC = \['IT','PN','AP','','OT'\]/.test(src), true);
   eq(p+' hides timeline before ack',  /Available after the ticket is acknowledged/.test(src), true);
   eq(p+' drops it from the payload',  /delete EDIT\.form\.timelineDate/.test(src), true);
