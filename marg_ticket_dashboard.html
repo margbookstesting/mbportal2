@@ -2003,6 +2003,11 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .ed-load .ldr-track{max-width:230px;margin:0 auto}
 #tabBss .ed-load-sec{margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:20px;
   font-weight:700;color:#0d9488;letter-spacing:-.5px}
+
+#tabBss .ed-f-tld{background:#fffbeb;border-color:#fcd34d}
+#tabBss .ed-f-tld .ed-f-l{color:#92400e}
+#tabBss .ed-f-tld .ed-f-v{color:#92400e}
+#tabBss .ed-tl{margin-top:14px}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -9111,63 +9116,59 @@ function edDescHTML(rd){
 }
 
 function edDetailHTML(rd, skipDesc){
+  /* Section headings (Disposition and problem / Timeline date / Stage and TAT
+     / Customer details) hata di — har heading apni line aur separator leti
+     thi, aur "Timeline date" ne to poori row akele le li thi. Ab sab ek hi
+     4-column grid me, wahi order. Timeline date bhi ek normal field hai, bas
+     amber highlight ke saath. */
   const row = edRow0();
-  const v   = (rd && rd.values) || {};
-  const pick = (a,b)=> (a!==undefined && a!==null && a!=='') ? a : b;
-  const desc = pick(v.description, row.desc) || '';
-  const rem  = row.remarks || '';
+  const sk  = ED_STAGE_KEYS[row.sc] || ['','','',''];
+  const tf  = sk[3] ? row[sk[3]] : '';
+  const tat = tf==='I' ? '<span class="ed-ok">In TAT</span>'
+            : tf==='O' ? '<span class="ed-bad">Out of TAT</span>'
+            : '<span class="ed-f-v muted">No TAT data</span>';
 
-  const sk = ED_STAGE_KEYS[row.sc] || ['','','',''];
-  const tatFlag = sk[3] ? row[sk[3]] : '';
-  const tatHtml = tatFlag==='I' ? '<span class="ed-ok">In TAT</span>'
-                : tatFlag==='O' ? '<span class="ed-bad">Out of TAT</span>'
-                : '<span class="ed-f-v muted">No TAT data</span>';
-
-  const tl = ED_TIMELINE.filter(x=>row[x[0]]).map(x=>{
-    const [k,label]=x;
-    const agent = ED_TL_AGENT[k] ? (row[ED_TL_AGENT[k]]||'') : '';
+  const tl = ED_TIMELINE.filter(x=>row[x[0]]).map(([k,label])=>{
+    const ag = ED_TL_AGENT[k] ? (row[ED_TL_AGENT[k]]||'') : '';
     const tt = ED_TL_TAT[k] || [];
-    const fl = tt[0] ? row[tt[0]] : '';
-    const dur= tt[1] ? row[tt[1]] : '';
-    const badge = fl==='I' ? '<span class="ed-ok">In TAT'+(dur?' · '+esc(dur):'')+'</span>'
-                : fl==='O' ? '<span class="ed-bad">Out of TAT'+(dur?' · '+esc(dur):'')+'</span>' : '';
+    const fl = tt[0] ? row[tt[0]] : '', du = tt[1] ? row[tt[1]] : '';
+    const badge = fl==='I' ? '<span class="ed-ok">In TAT'+(du?' · '+esc(du):'')+'</span>'
+                : fl==='O' ? '<span class="ed-bad">Out of TAT'+(du?' · '+esc(du):'')+'</span>' : '';
     return '<div class="ed-tl-i"><div class="ed-tl-n">'+esc(label)+'</div>'
          + '<div class="ed-tl-m">'+esc(edDate(row[k], true))
-         + (agent?' · '+esc(agent):'') + (badge?' '+badge:'') + '</div></div>';
+         + (ag?' · '+esc(ag):'') + (badge?' '+badge:'') + '</div></div>';
   }).join('');
 
+  const tld = row.tld
+    ? '<div class="ed-f ed-f-tld"><div class="ed-f-l">Timeline date</div>'
+      + '<div class="ed-f-v mono">'+esc(edDate(row.tld, true))+'</div></div>'
+    : edField('Timeline date', '');
+
   return (skipDesc ? '' : edSection('Description / remarks',
-        '<div class="ed-desc'+(desc||rem?'':' empty')+'">'
-        + (desc ? esc(desc).replace(/\n/g,'<br>')
-                : (rem ? esc(rem).replace(/\n/g,'<br>') : 'No description available'))
-        + (desc && rem ? '<div class="ed-rem">'+esc(rem).replace(/\n/g,'<br>')+'</div>' : '')
+        '<div class="ed-desc'+((row.desc||row.remarks)?'':' empty')+'">'
+        + (esc(row.desc||row.remarks||'No description available').replace(/\n/g,'<br>'))
         + '</div>'))
-    + edSection('Disposition and problem',
-        edRow(4, edField('Main disposition', row.mainDisp)
-               + edField('Sub disposition',  row.subDisp)
-               + edField('Problem type',     row.probType)
-               + edField('Disposition',      row.cd))
-      + edRow(4, edField('RM',        row.r)
-               + edField('Developer', row.dev)
-               + edField('Tester',    (typeof mbTesterOf==='function' ? mbTesterOf(row) : row.t))
-               + edField('Ack agent', row.ta)))
-    + edSection('Timeline date',
-        row.tld ? '<div class="ed-tld">'+esc(edDate(row.tld, true))+'</div>'
-                : '<div class="ed-desc empty">Not set</div>')
-    + edSection('Stage and TAT',
-        edRow(4, edField('Stage date',      edDate(sk[0] ? row[sk[0]] : '', true))
-               + edField('SLA duration',    sk[1] ? row[sk[1]] : '')
-               + edField('Actual duration', sk[2] ? row[sk[2]] : '')
-               + '<div class="ed-f"><div class="ed-f-l">TAT status</div><div class="ed-f-v">'+tatHtml+'</div></div>'))
-    + edSection('Customer details',
-        edRow(4, edField('Licence no',        row.l, true)
-               + edField('Customer name',     row.u)
-               + edField('Subscription plan', row.p)
-               + edField('Email',             row.email))
-      + edRow(4, edField('Mobile', row.mobile, true)))
-    + edSection('Stage timeline',
-        tl ? '<div class="ed-tl">'+tl+'</div>'
-           : '<div class="ed-desc empty">No stage dates recorded yet</div>');
+    + edRow(4, edField('Main disposition', row.mainDisp)
+             + edField('Sub disposition',  row.subDisp)
+             + edField('Problem type',     row.probType)
+             + edField('Disposition',      row.cd))
+    + edRow(4, edField('RM',        row.r)
+             + edField('Developer', row.dev)
+             + edField('Tester',    (typeof mbTesterOf==='function' ? mbTesterOf(row) : row.t))
+             + edField('Ack agent', row.ta))
+    + edRow(4, tld
+             + edField('Stage date',      edDate(sk[0] ? row[sk[0]] : '', true))
+             + edField('SLA duration',    sk[1] ? row[sk[1]] : '')
+             + edField('Actual duration', sk[2] ? row[sk[2]] : ''))
+    + edRow(4, '<div class="ed-f"><div class="ed-f-l">TAT status</div><div class="ed-f-v">'+tat+'</div></div>'
+             + edField('Licence no',        row.l, true)
+             + edField('Customer name',     row.u)
+             + edField('Subscription plan', row.p))
+    + edRow(4, edField('Email',  row.email)
+             + edField('Mobile', row.mobile, true)
+             + edField('Jira ID', row.jira, true)
+             + edField('Status',  row.st))
+    + (tl ? '<div class="ed-tl">'+tl+'</div>' : '');
 }
 
 /* ── Update tab: field order ───────────────────────────────────────────────
