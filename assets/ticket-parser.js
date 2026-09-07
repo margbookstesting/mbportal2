@@ -21,6 +21,28 @@
 /* Cache payload schema version. Bump karo jab bhi field set badle.
  * api/ticket-cache.js isko validate karta hai; cacheLoad() purani rows par
  * warning deta hai. */
+/* ── BUILD STAMP ────────────────────────────────────────────────────────────
+   Ye ek hi jagah se aata hai aur har dashboard ke header me dikhta hai.
+   Maqsad: khol kar turant pata chale ki LIVE par kaunsa build hai — deploy
+   hua ya nahi, ye guess karne ki zaroorat na pade.
+
+   Naya deploy karte waqt MB_BUILD ki date badal dena. Schema apne aap
+   MB_SCHEMA_VERSION se aata hai, to cache mismatch bhi yahin dikh jayega. */
+var MB_BUILD = '2026-09-07';
+
+function mbVersionLabel(){
+  return 'build ' + MB_BUILD + ' · schema v' + MB_SCHEMA_VERSION;
+}
+
+/* Har page ke header me <span id="mbVersion"> me ye bhar deta hai.
+   Chup-chaap fail hota hai — version stamp kabhi dashboard nahi todna
+   chahiye. */
+function mbStampVersion(){
+  try{
+    var el = document.getElementById('mbVersion');
+    if(el) el.textContent = mbVersionLabel();
+  }catch(_){}
+}
 /* v4: `cdd` (In Progress duration, pehle `cd` se takrata tha), `jira`, aur
    `sc` ab MB_STATUS_VARIANTS se banta hai — purane cache me 477 tickets 'OT'
    me the. In sabke liye ek full refresh chahiye. */
@@ -510,6 +532,15 @@ if(typeof module !== 'undefined' && module.exports){
     MB_DISP_FALLBACK_ORDER, MB_SUB_STAGES, MB_STATUS_VARIANTS, MB_STATUS_LOOKUP,
     mbNormStatus, mbStatusCode,
     mbParseTicket, mbMergeCacheRows, mbIsRecognizedDisp, mbTATFlag, mbCompactTAT, mbParseDate,
-    mbTesterOf,
+    mbTesterOf, MB_BUILD, mbVersionLabel,
   };
+}
+
+/* Stamp sabse aakhir me lagta hai. Upar rakhne par `var MB_SCHEMA_VERSION`
+   hoist to hota hai par uski value abhi undefined hoti — label me
+   "schema vundefined" chala jata. */
+if(typeof document !== 'undefined'){
+  if(document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', mbStampVersion);
+  else mbStampVersion();
 }
