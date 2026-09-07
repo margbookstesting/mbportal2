@@ -1976,6 +1976,14 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
   align-items:center;white-space:nowrap}
 #tabBss .ed-tab:hover:not(.on){color:var(--text);background:var(--surface)}
 #tabBss .ed-tab.on{background:#0d9488;color:#fff;box-shadow:0 1px 3px rgba(13,148,136,.35)}
+
+/* Ticket ka context — Update tab par bhi. Scroll nahi: description kitna bhi
+   lamba ho poora dikhta hai, modal khud scroll karta hai. */
+#tabBss .ed-ctx{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:11px 14px;font-size:12.5px;line-height:1.65;color:var(--text);
+  margin-bottom:4px;white-space:pre-wrap;overflow-wrap:anywhere;overflow:visible;
+  max-height:none}
+#tabBss .ed-desc{overflow:visible;max-height:none}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -9214,9 +9222,20 @@ function renderEditForm(){
   /* Update fields upar, poori ticket detail neeche — wahi cards jo
      "Customer Ticket Details" modal me hain, taaki dono jagah ek hi tarah
      se padha ja sake aur context ke liye doosri tab na kholni pade. */
+  /* Description Update tab par bhi chahiye — update karne wale ko ticket ka
+     context saamne dikhna chahiye, tab switch kiye bina.
+     Scroll jaan-bujh kar NAHI: description kitna bhi lamba ho, poora dikhega.
+     Modal khud scroll karta hai, isliye andar ka scroll sirf do scrollbars
+     banata aur text kaatta. */
+  const _d = (function(){
+    const r0 = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+    const t = (rd.values.description || r0.desc || r0.remarks || '').toString().trim();
+    return t ? `<div class="ed-ctx">${esc(t).replace(/\n/g,'<br>')}</div>` : '';
+  })();
+
   document.getElementById('edBody').innerHTML =
     notes +
-    `<div id="edPaneUpdate" role="tabpanel">${fields}</div>
+    `<div id="edPaneUpdate" role="tabpanel">${_d}${fields}</div>
      <div id="edPaneDetails" role="tabpanel" style="display:none">${edDetailHTML(rd)}</div>`;
   edShowTab('update');   /* naya ticket hamesha Update tab par khule */
   bssSelectFields().forEach(f=>fillSelect(f.key));
