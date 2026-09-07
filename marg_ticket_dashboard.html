@@ -1382,8 +1382,8 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 /* ── Modals ── */
 #tabBss .ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:20000;padding:18px}
 #tabBss .ov.on{display:flex}
-#tabBss .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
-#tabBss .mdl.sm{max-width:1260px}
+#tabBss .mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1560px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+#tabBss .mdl.sm{max-width:1560px}
 #tabBss .mdl-b{overflow:auto;padding:0}
 #tabBss .mdl-b.pad{padding:14px 18px}
 /* ── Edit form ── */
@@ -2870,7 +2870,9 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
       </svg>
     </div>
     <div class="ldr-title">Loading BSS Update…</div>
-    <div class="ldr-msg">Preparing ticket list…</div>
+    <div class="ldr-msg" id="bssLoadMsg">Preparing ticket list…</div>
+    <div class="ldr-track indet"><div class="ldr-fill"></div></div>
+    <div class="ed-load-sec" id="bssLoadSec">0s</div>
   </div>
 </div>
 <!-- BSS ka apna header hata diya gaya tha (TAT ka header upar hai), par uske
@@ -9099,7 +9101,16 @@ function edRow0(){
   return r;
 }
 
-function edDetailHTML(rd){
+/* Description alag — dono tabs ke left column me yahi jata hai. */
+function edDescHTML(rd){
+  const row = edRow0();
+  const v = (rd && rd.values) || {};
+  const d = (v.description || row.desc || row.remarks || '').toString().trim();
+  return d ? `<div class="ed-ctx">${esc(d).replace(/\n/g,'<br>')}</div>`
+           : '<div class="ed-ctx empty">No description</div>';
+}
+
+function edDetailHTML(rd, skipDesc){
   const row = edRow0();
   const v   = (rd && rd.values) || {};
   const pick = (a,b)=> (a!==undefined && a!==null && a!=='') ? a : b;
@@ -9125,12 +9136,12 @@ function edDetailHTML(rd){
          + (agent?' · '+esc(agent):'') + (badge?' '+badge:'') + '</div></div>';
   }).join('');
 
-  return edSection('Description / remarks',
+  return (skipDesc ? '' : edSection('Description / remarks',
         '<div class="ed-desc'+(desc||rem?'':' empty')+'">'
         + (desc ? esc(desc).replace(/\n/g,'<br>')
                 : (rem ? esc(rem).replace(/\n/g,'<br>') : 'No description available'))
         + (desc && rem ? '<div class="ed-rem">'+esc(rem).replace(/\n/g,'<br>')+'</div>' : '')
-        + '</div>')
+        + '</div>'))
     + edSection('Disposition and problem',
         edRow(4, edField('Main disposition', row.mainDisp)
                + edField('Sub disposition',  row.subDisp)
@@ -9178,7 +9189,13 @@ function edShowTab(which){
   const u = which !== 'details';
   if(!u && !_edDetailBuilt){
     const pd0=document.getElementById('edPaneDetails');
-    if(pd0 && _edDetailRD){ pd0.innerHTML = edDetailHTML(_edDetailRD); _edDetailBuilt = true; }
+    const l=document.getElementById('edDetailL'), r=document.getElementById('edDetailR');
+    if(l && r && _edDetailRD){
+      /* Update tab jaisa hi split — description baayein, cards daayein. */
+      l.innerHTML = edDescHTML(_edDetailRD);
+      r.innerHTML = edDetailHTML(_edDetailRD, true);
+      _edDetailBuilt = true;
+    }
   }
   const pu=document.getElementById('edPaneUpdate'), pd=document.getElementById('edPaneDetails');
   const tu=document.getElementById('edTabUpdate'),  td=document.getElementById('edTabDetails');
@@ -9336,7 +9353,12 @@ function renderEditForm(){
          <div class="ed-split-r">${fields}</div>
        </div>
      </div>
-     <div id="edPaneDetails" role="tabpanel" style="display:none"></div>`;
+     <div id="edPaneDetails" role="tabpanel" style="display:none">
+       <div class="ed-split">
+         <div class="ed-split-l" id="edDetailL"></div>
+         <div class="ed-split-r" id="edDetailR"></div>
+       </div>
+     </div>`;
   /* Details ka HTML pehle yahin ban jata tha — chahe user kabhi khole ya na
      khole. Uska matlab tha: har ticket par poora stage timeline + saare cards
      banana, jabki 90% baar sirf Update chahiye hota hai. Ab wo tabhi banta
@@ -9612,6 +9634,20 @@ window.BSS.__booted = false;
 window.BSS.boot = function(){
   if(window.BSS.__booted) return;
   window.BSS.__booted = true;
+
+  /* Boot loader ka timer. Pehle sirf ring aur text tha — user ko pata hi
+     nahi chalta tha ki kuch chal bhi raha hai ya atak gaya. Bar
+     indeterminate hai: boot me koi network call nahi hoti, sirf render, to
+     percentage dikhana jhooth hota. */
+  (function(){
+    const t0=Date.now();
+    const iv=setInterval(()=>{
+      const el=document.getElementById('bssLoadSec');
+      const ov=document.getElementById('bssLoaderOverlay');
+      if(!el || !ov || !ov.classList.contains('active')){ clearInterval(iv); return; }
+      el.textContent = Math.round((Date.now()-t0)/1000)+'s';
+    },250);
+  })();
 
   /* Modal khule to background scroll band — dekho mbWatchModals(). */
   try{ mbWatchModals('tabBss', '.ov'); }catch(e){ console.warn('BSS scroll lock:', e); }
