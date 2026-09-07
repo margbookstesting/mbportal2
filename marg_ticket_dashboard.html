@@ -5026,7 +5026,6 @@ function applySecFilters(){
   if(_smfTester.size) rows=rows.filter(r=>_smfTester.has(_smfTesterVal(r)));
   if(_smfRM.size)     rows=rows.filter(r=>_smfRM.has((r.r||'').trim()));
   if(_smfDev.size)    rows=rows.filter(r=>_smfDev.has((r.dev||'').trim()));
-  if(_smfStatus.size) rows=rows.filter(r=>_smfStatus.has(statusLabelOf(r)));
   window._modalShown=rows;
   const lbl=document.getElementById('modalFilterLabel'); if(lbl) lbl.textContent=`Showing ${fmt(rows.length)} of ${fmt(_modalData.length)}`;
   renderModalTable(rows);
@@ -5054,15 +5053,15 @@ function _renderModalHeader(){
   // ── Multi-select dropdown options: Tester / RM / Developer / Status ──
   const uniq=(arr)=>[...new Set(arr.filter(v=>v&&String(v).trim()).map(v=>String(v).trim()))].sort((a,b)=>a.localeCompare(b));
   const testers=uniq(data.map(r=>_smfTesterVal(r))), rms=uniq(data.map(r=>r.r)), devs=uniq(data.map(r=>r.dev));
-  // Status uses LABELS for both dropdown values AND filter matching (labels
-  // are unique across SUP_STATUSES + 'Other', so this stays keyed by label).
-  const statusLabels = uniq(data.map(r=>statusLabelOf(r)));
+  /* Status filter hata diya gaya — modal me ab sirf ek hi stage ke tickets
+     aate hain, to filter ka koi matlab nahi tha. _smfStatus reset hota
+     rehta hai taaki purana chunav chipak na jaye. */
+  _smfStatus = new Set();
 
   // Clear stale selections whose values no longer exist in refreshed data
   if(_smfTester.size) _smfTester = new Set([..._smfTester].filter(v => testers.includes(v)));
   if(_smfRM.size)     _smfRM     = new Set([..._smfRM].filter(v => rms.includes(v)));
   if(_smfDev.size)    _smfDev    = new Set([..._smfDev].filter(v => devs.includes(v)));
-  if(_smfStatus.size) _smfStatus = new Set([..._smfStatus].filter(v => statusLabels.includes(v)));
 
   // ── Date range picker (only when opts.useMultiStageDates) ──
   // RT/RU/LV current statuses bypass this filter (always shown).
@@ -5085,7 +5084,6 @@ function _renderModalHeader(){
       ${_msDrop('tester', 'Tester', testers)}
       ${_msDrop('rm', 'RM', rms)}
       ${_msDrop('dev', 'Developer', devs)}
-      ${_msDrop('status', 'Status', statusLabels)}
       <span id="modalFilterLabel" style="margin-left:auto;font-size:10px;color:var(--muted);align-self:center;font-weight:600"></span>
     </div>`;
 }
@@ -6448,7 +6446,20 @@ function setModalFilter(f){
 function openModal(key){
   const cfg = getStageConfig(key);
   if(!cfg){ return; }
-  _openSecModal(cfg.data || [], (cfg.label || 'Tickets') + ' — Ticket Details');
+  /* View Details ab "abhi is stage par kaun pada hai" dikhata hai — wahi set
+     jo card ke `Overall:` pill me hai. Date filter yahan NAHI lagta.
+
+     Pehle `cfg.data` jata tha, jo date-range wala set hai (card ka bada
+     number). Isse ek stage kholne par doosre stage ke tickets bhi dikhte the
+     — jaise Transfer to IT kholne par "Transferred To Support" aur
+     "In Progress" wale rows, kyunki wo bhi is range me IT se guzre the.
+
+     Card ka bada number date-range hi rehta hai — wo jaan-bujh kar alag
+     sawaal hai, isliye modal ka Total us number se match nahi karega. */
+  const rows = cfg.pendingSc
+    ? (RAW || []).filter(r => r.sc === cfg.pendingSc)
+    : (cfg.data || []);
+  _openSecModal(rows, (cfg.label || 'Tickets') + ' — Ticket Details');
 }
 
 function exportModalExcel(){

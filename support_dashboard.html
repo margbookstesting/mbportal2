@@ -1179,6 +1179,7 @@ td.grp-l { border-left:1px solid var(--border); }
               <th class="r" style="color:#d97706">Acknowledge</th>
               <th class="r" style="color:#0891b2">In Progress</th>
               <th class="r" style="color:#0284c7">Ready For Testing</th>
+              <th class="r" style="color:#be185d">Reopen</th>
               <th class="r" style="color:#7c3aed">Transfer to Support</th>
               <th class="r">Total</th>
             </tr>
@@ -2147,7 +2148,7 @@ function renderKPIs(){
 let _agentITRows = [];
 function renderAgentIT(){
   const tbody=document.querySelector('#tAgentIT tbody'); if(!tbody) return;
-  const blank={it:0,ack:0,ip:0,rft:0,sup:0,tot:0};
+  const blank={it:0,ack:0,ip:0,rft:0,reopen:0,sup:0,tot:0};
   const map={};
   VIEW.forEach(r=>{
     const agent=(r.tia && r.tia.trim())?r.tia.trim():null;
@@ -2156,6 +2157,14 @@ function renderAgentIT(){
     map[agent].tot++;
     const cc=stage6(r);
     if(cc && map[agent][cc]!==undefined) map[agent][cc]++;
+    /* Reopen ko stage6() se NAHI nikala. stage6 SUP_STATUSES ke `col` par
+       chalta hai aur wahi function disposition-wise, licence-wise aur
+       plan-wise tables bhi use karte hain — wahan `col` jodne se un sabke
+       totals badal jate (reopen tickets abhi unme ginte hi nahi). Isliye
+       yahan alag se ginte hain, sirf is table ke liye.
+       Note: ye sirf status "Reopen" hai; "Reopend from Testing" alag status
+       hai aur isme shamil nahi. */
+    if(statusKeyOf(r)==='reopen') map[agent].reopen++;
   });
   // Agar agent ke 5 dikhaye-jaane-wale stage columns (IT/ACK/IP/RFT/SUP) sab
   // 0 hain — bhale hi uska Total (sab statuses milaake) 0 na ho, jaise saare
@@ -2164,20 +2173,20 @@ function renderAgentIT(){
   // Sorted by the "Transfer to Support" column, highest to lowest (ties
   // broken by Total) — as requested, instead of sorting by Total.
   const rows=Object.entries(map).map(([agent,v])=>({agent,...v}))
-    .filter(r=> (r.it+r.ack+r.ip+r.rft+r.sup)>0)
+    .filter(r=> (r.it+r.ack+r.ip+r.rft+r.reopen+r.sup)>0)
     .sort((a,b)=> b.sup-a.sup || b.tot-a.tot);
   _agentITRows=rows;
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:14px">No data in selected range</td></tr>';
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:14px">No data in selected range</td></tr>';
     return;
   }
-  const T=rows.reduce((a,r)=>{['it','ack','ip','rft','sup','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
+  const T=rows.reduce((a,r)=>{['it','ack','ip','rft','reopen','sup','tot'].forEach(k=>a[k]+=r[k]);return a;},{...blank});
   const c=(v,col)=> v?`<span style="color:${col};font-weight:700">${fmt(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
   tbody.innerHTML = rows.map((r,i)=>`<tr onclick="openAgentITTickets(${i})" style="cursor:pointer" title="Click for tickets">
-    <td><strong>${sdEsc(r.agent)}</strong></td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td><td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.rft,'#0284c7')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td>
+    <td><strong>${sdEsc(r.agent)}</strong></td><td class="r dc">${c(r.it,'#0d9488')}</td><td class="r dc">${c(r.ack,'#d97706')}</td><td class="r dc">${c(r.ip,'#0891b2')}</td><td class="r dc">${c(r.rft,'#0284c7')}</td><td class="r dc">${c(r.reopen,'#be185d')}</td><td class="r dc">${c(r.sup,'#7c3aed')}</td>
     <td class="r dc"><strong>${fmt(r.tot)}</strong></td>
   </tr>`).join('')
-  + `<tr class="total-row"><td><strong>Grand Total</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td><td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.rft)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td>
+  + `<tr class="total-row"><td><strong>Grand Total</strong></td><td class="r dc"><strong>${fmt(T.it)}</strong></td><td class="r dc"><strong>${fmt(T.ack)}</strong></td><td class="r dc"><strong>${fmt(T.ip)}</strong></td><td class="r dc"><strong>${fmt(T.rft)}</strong></td><td class="r dc"><strong>${fmt(T.reopen)}</strong></td><td class="r dc"><strong>${fmt(T.sup)}</strong></td>
     <td class="r dc"><strong>${fmt(T.tot)}</strong></td></tr>`;
 }
 function openAgentITTickets(i){
