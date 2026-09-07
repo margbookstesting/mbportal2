@@ -630,8 +630,8 @@ eq('stage date column follows dateKey', xr[1][0], '2026-08-21');
 console.log('== 24. Currently Pending sheet ==');
 const pageSrc = fs.readFileSync(PAGE,'utf8');
 eq('sheet exists',            /Currently Pending/.test(pageSrc), true);
-eq('it reads VIEW, not cfg.data',
-   /\(VIEW\|\|\[\]\)\.filter\(r=>r\.sc===cfg\.pendingSc\)/.test(pageSrc), true);
+eq('it uses the same helper as the pill',
+   /pendingRowsFor\(cfg\.pendingSc, cfg\.testerField\)/.test(pageSrc), true);
 eq('summary reports both counts',
    /Currently Pending \(ignores the date range only\)/.test(pageSrc), true);
 const pend = sandbox.buildSheetRows(
@@ -779,8 +779,8 @@ eq('no stray jira',       rec.jira, undefined);
    IT par the). Ab modal wahi set kholta hai jo card ka `Overall:` pill hai. */
 console.log('== 31. View Details modal ==');
 const modalSrc = fs.readFileSync(PAGE,'utf8');
-eq('modal reads VIEW, not the date-filtered set',
-   /\(VIEW \|\| \[\]\)\.filter\(r => r\.sc === cfg\.pendingSc\)/.test(modalSrc), true);
+eq('modal uses the same helper as the pill',
+   /pendingRowsFor\(cfg\.pendingSc, cfg\.testerField\)/.test(modalSrc), true);
 eq('modal no longer passes cfg.data straight through',
    /_openSecModal\(cfg\.data \|\| \[\], \(cfg\.label/.test(modalSrc), false);
 eq('a stage with no pendingSc still falls back to cfg.data',
@@ -820,14 +820,28 @@ console.log('== 32. Overall + modal respect the filters ==');
 const pillSrc = fs.readFileSync(PAGE,'utf8');
 eq('no Overall pill still reads RAW',
    /pendingFn: \(\) => RAW\.filter/.test(pillSrc), false);
-eq('every Overall pill reads VIEW',
-   (pillSrc.match(/pendingFn: \(\) => VIEW\.filter/g)||[]).length, 7);
-eq('modal reads VIEW too',
-   /\(VIEW \|\| \[\]\)\.filter\(r => r\.sc === cfg\.pendingSc\)/.test(pillSrc), true);
-eq('Currently Pending sheet reads VIEW',
-   /\(VIEW\|\|\[\]\)\.filter\(r=>r\.sc===cfg\.pendingSc\)/.test(pillSrc), true);
-eq('modal export sheet reads VIEW',
-   /mkSheet\(\(VIEW\|\|\[\]\)\.filter\(r=>r\.sc===pendingSc\)\)/.test(pillSrc), true);
+/* Overall ab stage-aware helper se aata hai — VIEW ka broad tester filter
+   (t/ta/ti/ts/eb me se koi bhi) bade number se match nahi karta tha. */
+eq('every Overall pill uses the stage-aware helper',
+   (pillSrc.match(/pendingFn: \(\) => pendingRowsFor\(/g)||[]).length, 7);
+eq('no pill uses the broad VIEW filter',
+   /pendingFn: \(\) => VIEW\.filter/.test(pillSrc), false);
+eq('Close by IT keys off TransferToSupportBy',
+   /pendingRowsFor\('SP','ts'\)/.test(pillSrc), true);
+eq('Ready to Go Live keys off ReadyToGoLiveBy',
+   /pendingRowsFor\('LV','eb'\)/.test(pillSrc), true);
+eq('the IT-side stages key off TransferTo',
+   (pillSrc.match(/pendingRowsFor\('(IT|AK|IP|RT|RU)','t'\)/g)||[]).length, 5);
+eq('helper drops the date filter but keeps the rest',
+   /getBaseFilteredRows\(\)[\s\S]{0,80}\.filter\(r => r\.sc === sc\)/.test(pillSrc), true);
+eq('every stage config carries a testerField',
+   (pillSrc.match(/testerField:'(t|ts|eb)'/g)||[]).length >= 9, true);
+eq('modal uses the same helper too',
+   /pendingRowsFor\(cfg\.pendingSc, cfg\.testerField\)/.test(pillSrc), true);
+eq('Currently Pending sheet uses the helper',
+   /buildSheetRows\(\s*pendingRowsFor\(cfg\.pendingSc, cfg\.testerField\)/.test(pillSrc), true);
+eq('modal export sheet uses the helper',
+   /mkSheet\(pendingRowsFor\(pendingSc, cfg\.testerField\)\)/.test(pillSrc), true);
 
 /* Pill ka number aur modal ka Total hamesha barabar hone chahiye — dono ek
    hi expression se aate hain, isliye filter kuch bhi ho, fark nahi padna
@@ -847,6 +861,57 @@ const modalOf = (view, sc) => view.filter(r => r.sc === sc);
 });
 eq('dev filter narrows IT from 3 to 1', pillOf(pool.filter(r=>r.dev==='D1'),'IT'), 1);
 eq('empty filter gives zero, not everything', pillOf(pool.filter(r=>r.dev==='NOBODY'),'IT'), 0);
+
+
+/* ══════ 33. HAR filter Overall par lagta hai ══════
+   Sirf tester nahi — ticket search, licence, RM, Dev, Status sab.
+   pendingRowsFor() getBaseFilteredRows() se shuru hota hai (jisme ye paanchon
+   hain) aur usme tester field-wise jodta hai. Date filter jaan-bujh kar bahar
+   hai. Ye asli 14,211 tickets par verify kiya gaya tha. */
+console.log('== 33. all filters reach the Overall pill ==');
+const filtSrc = fs.readFileSync(PAGE,'utf8');
+const helper = (filtSrc.match(/function pendingRowsFor\([\s\S]*?\n\}/)||[''])[0];
+eq('helper starts from getBaseFilteredRows',
+   /getBaseFilteredRows\(\)/.test(helper), true);
+eq('helper layers the tester filter on top',
+   /testerRowsFor\(/.test(helper), true);
+eq('helper never touches the date range',
+   /currentFrom|currentTo|dateKey/.test(helper), false);
+eq('helper narrows to one status code',
+   /r\.sc === sc/.test(helper), true);
+
+/* getBaseFilteredRows me paanchon filter maujood hone chahiye — koi ek
+   nikal gaya to Overall us filter ko chup-chaap ignore karne lagega. */
+const baseFn = (filtSrc.match(/function getBaseFilteredRows\([\s\S]*?\n\}/)||[''])[0];
+eq('base filter reads the ticket box',  /ticketSearch/.test(baseFn), true);
+eq('base filter reads the licence box', /licenseSearch/.test(baseFn), true);
+eq('base filter reads RM',              /CF_STATE\.rm/.test(baseFn), true);
+eq('base filter reads Dev',             /CF_STATE\.dev/.test(baseFn), true);
+eq('base filter reads Status',          /CF_STATE\.status/.test(baseFn), true);
+eq('base filter has no date logic',     /currentFrom|currentTo/.test(baseFn), false);
+
+/* Behaviour: har filter count ghatata hai, kabhi badhata nahi; kuch na mile
+   to 0 aata hai, poora data nahi. */
+const pool33 = [
+  {n:'MB - 1', sc:'IT', l:'L1', r:'RM1', dev:'D1', t:'T1'},
+  {n:'MB - 2', sc:'IT', l:'L2', r:'RM2', dev:'D2', t:'T2'},
+  {n:'MB - 3', sc:'AK', l:'L1', r:'RM1', dev:'D1', t:'T1'},
+  {n:'MB - 4', sc:'IP', l:'L1', r:'RM2', dev:'D1', t:'T2'},
+];
+const pick33 = (pred, sc) => pool33.filter(pred).filter(r=>r.sc===sc).length;
+const ALL = () => true;
+eq('no filter → 2 at IT',        pick33(ALL,'IT'), 2);
+eq('ticket filter → 1 at IT',    pick33(r=>r.n==='MB - 1','IT'), 1);
+eq('licence filter → 1 at IT',   pick33(r=>r.l==='L1','IT'), 1);
+eq('RM filter → 1 at IT',        pick33(r=>r.r==='RM1','IT'), 1);
+eq('dev filter → 1 at IT',       pick33(r=>r.dev==='D1','IT'), 1);
+eq('tester filter → 1 at IT',    pick33(r=>r.t==='T1','IT'), 1);
+eq('combined filters narrow further',
+   pick33(r=>r.l==='L1'&&r.dev==='D2','IT'), 0);
+eq('a filter that matches nothing gives 0, not everything',
+   pick33(r=>r.n==='MB - 999','IT'), 0);
+eq('filters never inflate a count',
+   pick33(r=>r.l==='L1','IT') <= pick33(ALL,'IT'), true);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
