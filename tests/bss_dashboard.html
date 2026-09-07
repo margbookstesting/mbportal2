@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMGQ5NDg4Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDg5MWIyIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1CPC90ZXh0Pjwvc3ZnPg=="/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MARG · BSS Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SHARED SUPERSET TICKET PARSER — single source of truth (see file header) -->
+<script src="/assets/ticket-parser.js?v=4"></script>
+<!-- BSS FIELD CROSSWALK — Disposition/SubDisposition swap yahin handle hota hai -->
+<script src="/assets/bss-fields.js?v=1"></script>
+<script>
+if(typeof mbParseTicket !== 'function')
+  console.error('assets/ticket-parser.js failed to load — the dashboard will not work correctly.');
+if(typeof bssBuildPayload !== 'function')
+  console.error('assets/bss-fields.js failed to load — the update form will not work.');
+</script>
+<!-- AUTH GUARD: login + per-dashboard permission -->
+<script>
+(async function(){
+  const _SU='https://xsxchyqhhyfvuxbofxna.supabase.co';
+  const _SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+  const _DASH='bss-dashboard';
+  for(let i=0;i<60 && !(window.supabase&&window.supabase.createClient);i++){await new Promise(r=>setTimeout(r,50));}
+  if(!(window.supabase&&window.supabase.createClient)){location.replace('index.html');return;}
+  const _g=window.supabase.createClient(_SU,_SK,{auth:{persistSession:true,storage:window.sessionStorage}});
+  const {data:{session}}=await _g.auth.getSession();
+  if(!session){location.replace('index.html');return;}
+  try{
+    const {data:_p}=await _g.from('users').select('role,dashboards').eq('id',session.user.id).single();
+    const _ok=_p&&(_p.role==='admin'||(_p.dashboards||[]).includes(_DASH));
+    if(!_ok){location.replace('portal.html');return;}
+  }catch(e){/* profile read fail -> logged-in user allowed */}
+})();
+</script>
+<style>
+:root{
+  --bg:#f0f2f9; --surface:#fff; --s2:#f7f8fd; --border:#e8eaf4; --border2:#d4d8ec;
+  --navy:#08101e; --navy2:#0f1d34; --text:#111827; --text2:#374151; --muted:#6b7280; --muted2:#9ca3af;
+  --it:#0d9488; --ack:#0891b2; --ip:#0f766e; --tst:#b45309; --uat:#0284c7;
+  --glv:#15803d; --cl:#475569; --oth:#b45309; --sup:#dc2626; --ret:#0891b2;
+  --sh-s:0 1px 3px rgba(8,16,30,.06),0 1px 2px rgba(8,16,30,.04);
+  --sh-m:0 4px 16px rgba(8,16,30,.08),0 1px 3px rgba(8,16,30,.04);
+  --sh-l:0 12px 48px rgba(8,16,30,.12),0 4px 8px rgba(8,16,30,.06);
+  --r:12px; --r2:7px; --r3:5px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sora',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── Header ── */
+.hdr{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:60;box-shadow:var(--sh-m)}
+.hdr h1{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.hdr .sub{font-size:10.5px;opacity:.72;margin-top:1px}
+.hdr .sp{flex:1}
+.btn{border:none;border-radius:var(--r2);padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:rgba(255,255,255,.12);color:#fff}
+.btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.22)}
+.btn-red{background:#dc2626;color:#fff}
+.btn-teal{background:linear-gradient(135deg,#0d9488,#0f766e);color:#fff}
+.btn-teal:hover:not(:disabled){filter:brightness(1.08)}
+.btn-sm{padding:5px 10px;font-size:11px}
+.pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:11px;display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+.dot.stale{background:#f59e0b;box-shadow:0 0 8px #f59e0b}
+
+/* ── Filters ── */
+.wrap{padding:12px 18px 32px;max-width:1600px;margin:0 auto}
+.filters{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;box-shadow:var(--sh-s);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.f-lab{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;display:block}
+.f-grp{display:flex;flex-direction:column}
+
+/* ── KPI cards ── */
+.sec-h{display:flex;align-items:center;gap:10px;margin:14px 0 7px}
+.sec-t{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.sec-l{flex:1;height:1px;background:var(--border2)}
+/* COMPACT KPIs — saare 16 status cards ek screen par aane chahiye, bilkul
+   Support Dashboard jaise. Pehle breakpoint 1400px par tha, isliye 1365px ke
+   normal laptop par sirf 4 columns dikhte the aur cards bade the — 16 KPI
+   dekhne ke liye scroll karna padta tha. */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:1200px){.kpi-row{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:760px){.kpi-row{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.kpi-row{grid-template-columns:1fr}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-s);transition:.16s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-m)}
+.kpi-top{height:4px}
+.kpi-b{padding:7px 10px 5px}
+.kpi-s{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
+.kpi-n{font-size:21px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--text)}
+.kpi-splits{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:4px}
+.kpi-sp{background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:3px 2px;text-align:center}
+.kpi-sp .l{font-size:7px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.3px}
+.kpi-sp .v{font-size:11px;font-weight:700;color:var(--text2);margin-top:1px}
+.kpi-f{border-top:1px solid var(--border);padding:4px 10px;display:flex;justify-content:space-between;align-items:center;background:var(--s2)}
+.lnk{font-size:10px;font-weight:600;color:#0d9488;cursor:pointer;background:none;border:none;font-family:inherit;padding:2px 4px;border-radius:4px}
+.lnk:hover{background:rgba(13,148,136,.1)}
+
+/* ── Tables ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh-s);overflow:hidden;margin-bottom:16px}
+.card-h{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-t{font-size:13px;font-weight:700}
+.card-s{font-size:10.5px;color:var(--muted)}
+.tw{overflow:auto;max-height:420px}
+/* LIST MODAL: sticky header ke liye scroll container WAHI hona chahiye jisme
+   table hai. Pehle .tw par `max-height:none` tha — wo kabhi scroll nahi karta
+   tha, aur asli scroll .mdl-b me hota tha. Sticky th apne nearest scrolling
+   ancestor (.tw, jisme overflow:auto hai) se bind hota hai — aur wo scroll na
+   kare to header chipakta hi nahi. Isliye height yahan, aur .mdl-b ka scroll
+   band. */
+.tw-scroll{overflow:auto;max-height:calc(94vh - 132px)}
+.mdl-b.no-scroll{overflow:hidden}
+
+/* Sticky header ko solid + elevated rakho, warna scroll par rows uske
+   peeche se dikhti hain. */
+#tblList th{
+  background:var(--s2);
+  box-shadow:inset 0 -1px 0 var(--border2), 0 2px 6px rgba(8,16,30,.06);
+}
+/* Ticket No column bhi sticky — 14 columns hain, horizontally scroll karte
+   waqt ticket number gayab ho jata tha aur row pehchanna mushkil. */
+#tblList th:first-child{position:sticky;left:0;top:0;z-index:4}
+#tblList td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);
+  box-shadow:inset -1px 0 0 var(--border)}
+#tblList tbody tr:hover td:first-child{background:var(--s2)}
+/* Section tables (Tester/Developer/RM) me andar ka scroll nahi chahiye — poori
+   list dikhni chahiye, page hi scroll ho. Sticky th yahan STATIC kar rahe hain:
+   overflow visible hone par sticky ka nearest scroll container page ban jata
+   hai, aur header page ke apne sticky header ke neeche chipak kar overlap
+   karta hai. */
+.tw-full{overflow:visible;max-height:none}
+.tw-full th{position:static}
+/* Totals row */
+tfoot td{
+  padding:9px 10px;border-top:2px solid var(--border2);background:var(--s2);
+  font-weight:800;color:var(--text);position:sticky;bottom:0;
+}
+tfoot td.r{text-align:right}
+tfoot .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{background:var(--s2);color:var(--muted);font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:9px 10px;text-align:left;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border2);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+tbody tr:hover{background:var(--s2)}
+th.r,td.r{text-align:right}
+.tno{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0d9488;cursor:pointer;white-space:nowrap}
+.tno:hover{text-decoration:underline}
+.muted{color:var(--muted2)}
+.badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--s2);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
+
+/* ── Modals ── */
+.ov{position:fixed;inset:0;background:rgba(8,16,30,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200;padding:18px}
+.ov.on{display:flex}
+.mdl{background:var(--surface);border-radius:16px;box-shadow:var(--sh-l);width:100%;max-width:1240px;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.mdl.sm{max-width:1260px}
+.mdl-b{overflow:auto;padding:0}
+.mdl-b.pad{padding:14px 18px}
+
+/* ── Edit form ── */
+/* 12 updatable fields. 2 columns me 6 rows banti thi aur modal scroll karta
+   tha; 3 columns me 4 rows — normal laptop par sab kuch bina scroll dikhta hai. */
+.req{color:#dc2626}
+.note{border-radius:var(--r2);padding:8px 11px;font-size:11.5px;margin-bottom:10px;line-height:1.5}
+.note.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+.note.err{background:#fff1f2;border:1px solid #fecdd3;color:#991b1b}
+.note.ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.note.info{background:#f0f9ff;border:1px solid #bae6fd;color:#075985}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-size:12px}
+.kv .k{color:var(--muted);font-weight:600}
+.kv .v{color:var(--text);font-weight:500;word-break:break-word}
+.meta-row b{color:var(--muted);font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;margin-right:3px}
+.spin{width:15px;height:15px;border:2px solid var(--border2);border-top-color:#0d9488;border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:44px 20px;text-align:center;color:var(--muted)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 20px;border-radius:var(--r2);font-size:12.5px;box-shadow:var(--sh-l);z-index:400;opacity:0;transition:.25s;pointer-events:none;max-width:88vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+
+
+/* Build stamp — header me chhota sa, taaki pata rahe kaunsa build live hai. */
+.mb-ver{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.3px;
+  opacity:.55;margin-left:8px;white-space:nowrap;font-weight:500}
+
+
+
+/* ── BSS update form: compact aur aligned ──────────────────────────────────
+   Pehle select browser ki default height lete the (~34px) aur alag-alag
+   dikhte the. Ab sab controls ek hi 30px height par hain.
+
+   Hint text ("Select Main Disposition first") pehle field ke neeche jud kar
+   us column ko lamba kar deta tha, jisse agli row ke fields aage-peeche ho
+   jate the. Ab har field grid row hai jisme hint ki jagah reserve hai —
+   hint ho ya na ho, sab fields ek line me rehte hain. */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BSS UPDATE MODAL
+   Ye screen din me dozens baar khulti hai aur kaam ek hi hai: char-paanch
+   dropdown badal kar save karna. Isliye form hi hero hai — baaki sab peeche.
+
+   NOTE: marg_ticket_dashboard.html me BSS ka poora CSS `#tabBss` se scoped
+   hai. Yahan bina scope ke likhne par `#tabBss .inp` jeet jata tha aur naya
+   design lagta hi nahi tha — isliye scope zaroori hai.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Header: pehchan aur context ek hi line me ──
+   Pehle ticket number header me AUR neeche meta strip me, dono jagah aata
+   tha. Ab ek hi baar. */
+
+/* ── Tabs: asli segmented control, plain text nahi ── */
+
+/* ── Form ──
+   Har field ek fixed grid hai: label → 32px control → 14px hint.
+   Hint ki jagah HAMESHA reserve hai, warna jis column me hint ho wo lamba ho
+   jata tha aur agli row ke fields aage-peeche ho jate the. */
+.fld .req{color:#dc2626}
+.fld .inp{width:100%;height:32px;margin:0}
+.fld .e{color:#dc2626;display:none}
+.fld.err .e{display:block}
+.fld.err .inp{border-color:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.09)}
+.inp{border:1px solid var(--border2);border-radius:7px;padding:0 11px;
+  font-family:inherit;font-size:12.5px;font-weight:500;color:var(--text);
+  background:var(--surface);min-width:0;height:32px;transition:.12s}
+.inp:hover:not(:focus):not(.ro-box){border-color:var(--muted2)}
+.inp:focus{outline:none;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,.13)}
+select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:28px;
+  text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2394a3b8' stroke-width='1.7' stroke-linecap='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 10px center}
+.ro-box{background:var(--s2);color:var(--muted);display:flex;align-items:center;
+  cursor:not-allowed;user-select:none;font-size:11.5px;height:32px;padding:0 11px;
+  border-radius:7px;border:1px dashed var(--border2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ro-box.mono{font-family:'JetBrains Mono',monospace;color:var(--text);
+  font-weight:700;font-size:12.5px;border-style:solid;background:var(--surface)}
+
+/* ── Group heading: label aur uske fields ke beech saans ── */
+
+/* ── Details tab: asli cards, flat rows nahi ── */
+.ed-sec{margin-bottom:20px}
+.ed-sec-t{font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;
+  color:var(--muted2);margin-bottom:10px;padding-bottom:7px;
+  border-bottom:1px solid var(--border)}
+.ed-row{display:grid;gap:10px;margin-bottom:10px}
+.ed-row:last-child{margin-bottom:0}
+.ed-row-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ed-f{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;min-width:0}
+.ed-f-l{font-size:9px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--muted2);margin-bottom:4px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.ed-f-v{font-size:12.5px;font-weight:600;color:var(--text);line-height:1.4;
+  overflow-wrap:anywhere}
+.ed-f-v.mono{font-family:'JetBrains Mono',monospace;font-weight:700}
+.ed-f-v.muted{color:var(--muted2);font-weight:500}
+.ed-desc{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:11px 13px;font-size:12.5px;line-height:1.65;color:var(--text);
+  overflow-wrap:anywhere}
+.ed-desc.empty{color:var(--muted2);font-style:italic}
+.ed-rem{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);
+  color:var(--muted)}
+.ed-tld{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;
+  padding:9px 13px;font-family:'JetBrains Mono',monospace;font-size:13px;
+  font-weight:700;color:#92400e}
+.ed-ok,.ed-bad{display:inline-block;border-radius:20px;padding:0 9px;
+  font-size:10px;font-weight:800;line-height:17px;vertical-align:1px}
+.ed-ok{background:#ecfdf5;color:#047857}
+.ed-bad{background:#fef2f2;color:#b91c1c}
+.ed-tl{border-left:2px solid var(--border);padding-left:16px;display:flex;
+  flex-direction:column;gap:13px;margin-left:4px}
+.ed-tl-i{position:relative}
+.ed-tl-i::before{content:'';position:absolute;left:-22px;top:4px;width:8px;height:8px;
+  border-radius:50%;background:#0d9488;box-shadow:0 0 0 3px var(--surface)}
+.ed-tl-n{font-size:12.5px;font-weight:700;color:var(--text);line-height:1.3}
+.ed-tl-m{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.6}
+
+/* ── Footer: actions right me, primary alag ── */
+.mdl-f{padding:12px 20px;border-top:1px solid var(--border);display:flex;
+  gap:10px;align-items:center;background:var(--s2);justify-content:flex-end}
+.mdl-f .ed-status{margin-right:auto;font-size:11px;color:var(--muted)}
+@media(max-width:1000px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ed-row-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.fgrid{grid-template-columns:1fr}
+  .ed-row-4{grid-template-columns:1fr}}
+
+/* ── Modal header: pehchan (left) · meta · tabs (right) · close ──
+   Sab kuch ek hi row me. Ticket number sirf yahan — pehle body me bhi ek
+   header block tha, to do baar dikhta tha. */
+.mdl-h{padding:11px 18px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface)}
+.mdl-t{font-size:14px;font-weight:700;white-space:nowrap}
+.ed-meta{display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+  padding-left:14px;border-left:1px solid var(--border)}
+.ed-meta span{font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap}
+.ed-meta b{font-weight:800;font-size:8.5px;letter-spacing:.7px;
+  text-transform:uppercase;color:var(--muted2);margin-right:6px}
+
+/* Tabs ek segmented control me — dekhte hi pata chale ki switch kar sakte hain. */
+.ed-tabs{display:inline-flex;gap:0;background:var(--s2);border-radius:8px;
+  padding:3px;border:1px solid var(--border2)}
+.ed-tab{appearance:none;background:none;border:0;border-radius:6px;padding:0 16px;
+  height:26px;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);
+  cursor:pointer;letter-spacing:.2px;transition:.12s;display:inline-flex;
+  align-items:center;white-space:nowrap}
+.ed-tab:hover:not(.on){color:var(--text);background:var(--surface)}
+.ed-tab.on{background:#0d9488;color:#fff;box-shadow:0 1px 3px rgba(13,148,136,.35)}
+
+/* Ticket ka context — Update tab par bhi. Scroll nahi: description kitna bhi
+   lamba ho poora dikhta hai, modal khud scroll karta hai. */
+.ed-desc{overflow:visible;max-height:none}
+
+/* 4 fields per row — modal ki poori chaudai ka istemaal. Lamba text ellipsis
+   me katta hai; poora dekhne ke liye control par hover karo (title). */
+.fgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px 12px}
+@media(max-width:1150px){.fgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:880px){.fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.fgrid{grid-template-columns:1fr}}
+
+.fld{display:grid;grid-template-rows:auto 32px 12px;min-width:0}
+.fld label{font-size:8.5px;font-weight:800;color:var(--muted2);text-transform:uppercase;
+  letter-spacing:.5px;margin:0 0 4px;line-height:1.2;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.fld .hint,.fld .e{font-size:8.5px;line-height:12px;margin:0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;color:var(--muted2)}
+.fld .e{color:#dc2626;display:none}
+.ed-ctx{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;font-size:12px;line-height:1.55;color:var(--text);margin-bottom:14px;
+  white-space:pre-wrap;overflow-wrap:anywhere;overflow:visible;max-height:none}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>MARG · BSS Dashboard</h1>
+    <div class="sub">Current status · Tester / Developer / RM · BSS ticket update<span class="mb-ver" id="mbVersion"></span></div>
+  </div>
+  <a href="portal.html" class="btn btn-ghost">← Portal</a>
+  <button class="btn btn-red" onclick="signOut()">Sign Out</button>
+  <div class="sp"></div>
+  <div class="pill"><span class="dot" id="dot"></span><span id="metaTxt">Loading…</span></div>
+  <button class="btn btn-ghost" id="btnRefresh" onclick="refreshCache()">↺ Refresh Data</button>
+  <button class="btn btn-teal" onclick="exportAll()">↓ Export</button>
+</div>
+
+<div class="wrap">
+
+  <div class="filters">
+    <div class="f-grp"><span class="f-lab">Ticket No</span>
+      <input class="inp" id="fTicket" placeholder="🔍 MB - 036939" style="width:170px" onkeydown="if(event.key==='Enter')applyFilters()"></div>
+    <div class="f-grp"><span class="f-lab">License</span>
+      <input class="inp" id="fLic" placeholder="🎫 License…" style="width:150px" onkeydown="if(event.key==='Enter')applyFilters()"></div>
+    <div class="f-grp"><span class="f-lab">Status</span>
+      <select class="inp" id="fStatus" style="width:180px"><option value="">All statuses</option></select></div>
+    <div class="f-grp"><span class="f-lab">Tester</span>
+      <select class="inp" id="fTester" style="width:160px"><option value="">All testers</option></select></div>
+    <div class="f-grp"><span class="f-lab">RM</span>
+      <select class="inp" id="fRM" style="width:150px"><option value="">All RMs</option></select></div>
+    <div class="f-grp"><span class="f-lab">Developer</span>
+      <select class="inp" id="fDev" style="width:160px"><option value="">All developers</option></select></div>
+    <div class="f-grp"><span class="f-lab">&nbsp;</span>
+      <div style="display:flex;gap:7px">
+        <button class="btn btn-teal" onclick="applyFilters()">Apply</button>
+        <button class="btn btn-ghost" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="clearFilters()">Clear</button>
+      </div></div>
+    <div class="sp" style="flex:1"></div>
+    <div style="font-size:11px;color:var(--muted)" id="filterInfo"></div>
+  </div>
+
+  <div class="sec-h"><span class="sec-t">⚡ Current Status — Ticket Count</span><span class="sec-l"></span></div>
+  <div class="kpi-row" id="kpis"></div>
+
+  <div class="sec-h"><span class="sec-t">👤 Tester-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw tw-full"><table id="tblTester"></table></div></div>
+
+  <div class="sec-h"><span class="sec-t">💻 Developer-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw tw-full"><table id="tblDev"></table></div></div>
+
+  <div class="sec-h"><span class="sec-t">🤝 RM-wise</span><span class="sec-l"></span></div>
+  <div class="card"><div class="tw tw-full"><table id="tblRM"></table></div></div>
+</div>
+
+<!-- ── Ticket list modal ── -->
+<div class="ov" id="ovList" onclick="if(event.target===this)closeList()">
+  <div class="mdl">
+    <div class="mdl-h">
+      <div class="mdl-t" id="listTitle">Ticket Details</div>
+      <span class="badge" id="listCount"></span>
+      <div class="sp" style="flex:1"></div>
+      <button class="btn btn-teal btn-sm" onclick="exportList()">↓ Export Excel</button>
+      <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeList()">✕ Close</button>
+    </div>
+    <div class="mdl-b no-scroll"><div class="tw tw-scroll"><table id="tblList"></table></div></div>
+  </div>
+</div>
+
+<!-- ── BSS update modal ── -->
+<div class="ov" id="ovEdit" onclick="if(event.target===this)closeEdit()">
+  <div class="mdl sm">
+    <div class="mdl-h">
+      <div class="mdl-t">Update ticket · <span class="mono" id="edTicketNo"></span></div>
+      <span class="ed-meta" id="edMeta"></span>
+      <div class="sp" style="flex:1"></div>
+      <div class="ed-tabs" id="edTabs" role="tablist">
+        <button class="ed-tab on" id="edTabUpdate" role="tab" aria-selected="true"
+                onclick="showTab('update')">Update</button>
+        <button class="ed-tab" id="edTabDetails" role="tab" aria-selected="false"
+                onclick="showTab('details')">Details</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeEdit()">✕ Close</button>
+    </div>
+    <div class="mdl-b pad" id="edBody"></div>
+    <div class="mdl-f">
+      <span class="ed-status" id="edStatus"></span>
+      <button class="btn btn-ghost" style="background:var(--s2);color:var(--text2);border:1px solid var(--border2)" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-teal" id="edSave" onclick="submitUpdate()">Update ticket</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===========================================================================
+ * BSS DASHBOARD
+ * ---------------------------------------------------------------------------
+ * DATA SOURCES — jaanbujhkar do alag hain:
+ *   LIST / KPI  → ticket_cache (Supabase). Tez hai, 27k tickets client-side.
+ *   EDIT MODAL  → LIVE Marg API (/api/bss-proxy action:ticket). Cache se NAHI.
+ *
+ * Modal live kyun: (1) cache me kuch BSS fields hain hi nahi (JiraID,
+ * Sub-Problem Type), (2) cache nightly hai — user purani value dekh kar
+ * "update" karta to wo current value ko purani se overwrite kar deta.
+ * =========================================================================== */
+const SUPA_URL='https://xsxchyqhhyfvuxbofxna.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeGNoeXFoaHlmdnV4Ym9meG5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MTMzNTAsImV4cCI6MjA5Njk4OTM1MH0.P4VYTv-fizFW7nknhP4h1BetBGJ6yLLD90lkUUYgt-4';
+/* sessionStorage — auth guard bhi wahi use karta hai. Default localStorage
+   hota to getSession() null deta aur /api/bss-proxy ko token hi na milta. */
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,storage:window.sessionStorage}});
+
+let RAW=[], VIEW=[], DD=null, DD_ERR=null, ME=null, LIST_ROWS=[], LIST_TITLE='', EDIT=null;
+
+const fmt=n=>Number(n||0).toLocaleString('en-IN');
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
+async function signOut(){await sb.auth.signOut();location.replace('index.html');}
+
+/* ── Status defs — support_dashboard.html se identical, taaki dono dashboards
+   par ek hi ticket ka status same dikhe. Alag rakhne par drift ho jati. ── */
+function _normSt(s){return String(s||'').toLowerCase().replace(/[_\-\/]/g,' ').replace(/\s+/g,' ').trim();}
+const STATUSES=[
+  {key:'pending',   label:'Pending',              c:'--oth', sc:'PN'},
+  {key:'approval',  label:'Approval Pending',     c:'--oth', sc:'AP'},
+  {key:'reopen',    label:'Reopen',               c:'--ret', sc:'RO'},
+  {key:'it', sc:'IT',        label:'Transferred To IT',    c:'--it'},
+  {key:'ack', sc:'AK',       label:'Acknowledged',         c:'--ack'},
+  {key:'ip', sc:'IP',        label:'In Progress',          c:'--ip'},
+  {key:'rft', sc:'RT',       label:'Ready For Testing',    c:'--tst'},
+  {key:'reopentest', sc:'RF',label:'Reopend from Testing', c:'--ret'},
+  {key:'rfcr', sc:'CR',      label:'Ready For Code Review',c:'--uat'},
+  {key:'rfm', sc:'MG',       label:'Ready For Merging',    c:'--uat'},
+  {key:'rfu',       label:'Ready For UAT',        c:'--uat', sc:'RU'},
+  {key:'teamtest',  label:'Team Testing',         c:'--tst', sc:'TT'},
+  {key:'rgl', sc:'LV',       label:'Ready to go Live',     c:'--glv'},
+  {key:'rts', sc:'RS',       label:'Return to Support',    c:'--ret'},
+  {key:'sp', sc:'SP',        label:'Transferred To Support',c:'--sup'},
+  {key:'future', sc:'FD',    label:'Future Development',   c:'--oth'},
+  {key:'rejected', sc:'RJ',  label:'Rejected',             c:'--sup'},
+  {key:'closed', sc:'CL',    label:'Closed',               c:'--cl'},
+];
+const MATCH={pending:['pending'],approval:['approval pending'],teamtest:['team testing'],reopen:['reopen','re open'],it:['transfer to it','transferred to it'],
+ ack:['acknowledge','acknowledged'],ip:['in progress','inprogress'],rft:['ready for testing'],
+ reopentest:['reopend from testing','reopen from testing','reopened from testing'],
+ rfcr:['ready for code review'],rfm:['ready for merging','ready for merge'],rfu:['ready for uat'],
+ rgl:['ready to go live'],rts:['return to support'],sp:['transfer to support','transferred to support'],
+ future:['future development'],rejected:['rejected','reject'],closed:['closed','close']};
+const SC2KEY={IT:'it',AK:'ack',IP:'ip',RT:'rft',RU:'rfu',LV:'rgl',SP:'sp',RS:'rts',CL:'closed',
+  CR:'rfcr',MG:'rfm',RF:'reopentest',RO:'reopen',FD:'future',RJ:'rejected',PN:'pending',AP:'approval',TT:'teamtest'};
+
+function statusKeyOf(r){
+  /* EXACT match only. Pehle ek substring fallback tha (`raw.includes(x)`)
+     jisme list ka kram maayne rakhta tha — 'pending' sabse upar hai, to
+     "Approval Pending" chup-chaap "Pending" ban jata tha. */
+  const raw=_normSt(r.st);
+  if(raw){
+    for(const d of STATUSES) if((MATCH[d.key]||[]).includes(raw)) return d.key;
+  }
+  if(r.sc&&SC2KEY[r.sc]) return SC2KEY[r.sc];
+  return 'pending';
+}
+function statusLabelOf(r){const d=STATUSES.find(x=>x.key===statusKeyOf(r));return d?d.label:(r.st||'Other');}
+function stageDateOf(r){return r.e||r.d||r.c||r.b||r.a||'';}
+/* Shared helper — dekho assets/ticket-parser.js ka mbTesterOf(). */
+const testerOf=r=>mbTesterOf(r);
+const devOf=r=>(r.dev||'').trim();
+const rmOf=r=>(r.r||'').trim();
+
+/* Month buckets. Basis = ticket CREATED date (r.tc), warna r.tld/stage date.
+   Jaanbujhkar created chuna hai kyunki detail table bhi "Created" dikhata hai —
+   dono ka basis same rehna chahiye, warna counts aur rows match nahi karenge. */
+function bucketOf(r){
+  const d=r.tc||r.tld||stageDateOf(r); if(!d) return 'older';
+  const now=new Date(), cm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const pm=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const pms=pm.getFullYear()+'-'+String(pm.getMonth()+1).padStart(2,'0');
+  const s=String(d).slice(0,7);
+  return s===cm?'cur':(s===pms?'prev':'older');
+}
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ── Cache load ── */
+async function cacheLoad(){
+  try{
+    const {data,error}=await sb.from('ticket_cache').select('*');
+    if(error){console.warn('cacheLoad:',error.message);return null;}
+    if(!data||!data.length) return null;
+    const m=mbMergeCacheRows(data);
+    if(m.minSchema<MB_SCHEMA_VERSION)
+      console.warn(`ticket_cache is on an older schema (v${m.minSchema}) — run Refresh Data.`);
+    return m.tickets.length?m:null;
+  }catch(e){console.warn('cacheLoad failed:',e);return null;}
+}
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    const {data:p}=await sb.from('users').select('name,email,role,bss_user_id').eq('id',session.user.id).single();
+    ME=p||null;
+  }
+  const c=await cacheLoad();
+  if(!c){document.getElementById('metaTxt').textContent='No cached data';
+    document.getElementById('kpis').innerHTML='<div class="empty">Cache is empty — click “↺ Refresh Data”.</div>';return;}
+  RAW=c.tickets; VIEW=RAW.slice();
+  const ts=c.fetchedAt?new Date(c.fetchedAt):null;
+  document.getElementById('metaTxt').textContent=
+    `${fmt(RAW.length)} tickets · Last fetched: ${ts?ts.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}):'—'}`;
+  if(ts&&(Date.now()-ts.getTime())>36*3600*1000) document.getElementById('dot').classList.add('stale');
+  buildFilterOptions(); render();
+  loadDropdowns();   /* background — modal turant khule */
+}
+
+/* ── Dropdowns (BindDropDown via proxy) ── */
+async function loadDropdowns(force){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session) return null;
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({action:'dropdowns',force:!!force})});
+    const j=await r.json();
+    if(!r.ok||j.error){
+      /* Asli server message yaad rakho — modal me "console dekho" likhna
+         bekaar hai, user ko wahi batao jo karna hai. */
+      DD_ERR = (j && j.error) ? j.error : ('HTTP '+r.status);
+      console.warn('dropdowns:',DD_ERR, j);
+      return null;
+    }
+    DD_ERR=null;
+    DD=j.dropdowns;
+    /* Master data me cascade toota hua hai — kuch Problem Types aise parent ko
+       refer karte hain jo Main Disposition list me hai hi nahi. Wo cascade se
+       kabhi reachable nahi honge. Chup-chaap gayab hone se behtar hai console
+       me saaf batana. */
+    const h=bssDropdownHealth(DD);
+    if(h.orphanParents.length)
+      console.warn(`BindDropDown: ${h.orphanProblemTypes} Problem Types reference parents (${h.orphanParents.join(', ')}) that are missing from the Main Disposition list — they will not appear in the cascade. This is a Marg master-data issue.`);
+    Object.keys(h.duplicateNames||{}).forEach(k=>console.warn(`BindDropDown: duplicate names in "${k}" —`,h.duplicateNames[k]));
+    return DD;
+  }catch(e){console.warn('dropdowns failed:',e);return null;}
+}
+
+/* ── Filters ── */
+function buildFilterOptions(){
+  const st=document.getElementById('fStatus');
+  st.innerHTML='<option value="">All statuses</option>'+
+    STATUSES.map(d=>`<option value="${d.key}">${esc(d.label)}</option>`).join('');
+  const uniq=f=>[...new Set(RAW.map(f).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const fill=(id,label,vals)=>{document.getElementById(id).innerHTML=
+    `<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');};
+  fill('fTester','All testers',uniq(testerOf));
+  fill('fRM','All RMs',uniq(rmOf));
+  fill('fDev','All developers',uniq(devOf));
+}
+function applyFilters(){
+  const tn=document.getElementById('fTicket').value.trim().toLowerCase();
+  const lc=document.getElementById('fLic').value.trim().toLowerCase();
+  const sk=document.getElementById('fStatus').value;
+  const ts=document.getElementById('fTester').value, rm=document.getElementById('fRM').value, dv=document.getElementById('fDev').value;
+  VIEW=RAW.filter(r=>{
+    if(tn&&!String(r.n||'').toLowerCase().includes(tn)) return false;
+    if(lc&&!String(r.l||'').toLowerCase().includes(lc)) return false;
+    if(sk&&statusKeyOf(r)!==sk) return false;
+    if(ts&&testerOf(r)!==ts) return false;
+    if(rm&&rmOf(r)!==rm) return false;
+    if(dv&&devOf(r)!==dv) return false;
+    return true;
+  });
+  const on=[tn,lc,sk,ts,rm,dv].filter(Boolean).length;
+  document.getElementById('filterInfo').textContent=
+    on?`${fmt(VIEW.length)} of ${fmt(RAW.length)} tickets · ${on} filter${on>1?'s':''}`:`${fmt(RAW.length)} tickets`;
+  render();
+}
+function clearFilters(){
+  ['fTicket','fLic','fStatus','fTester','fRM','fDev'].forEach(id=>document.getElementById(id).value='');
+  VIEW=RAW.slice();document.getElementById('filterInfo').textContent=`${fmt(RAW.length)} tickets`;render();
+}
+
+/* ── Render ── */
+function render(){renderKPIs();renderAgents();}
+
+function renderKPIs(){
+  const now=new Date(), curL=MON[now.getMonth()], prevL=MON[(now.getMonth()+11)%12];
+  const by={}; STATUSES.forEach(d=>by[d.key]={t:0,cur:0,prev:0,older:0});
+  VIEW.forEach(r=>{const k=statusKeyOf(r);if(!by[k])return;by[k].t++;by[k][bucketOf(r)]++;});
+  document.getElementById('kpis').innerHTML=STATUSES.map(d=>{
+    const b=by[d.key];
+    return `<div class="kpi">
+      <div class="kpi-top" style="background:var(${d.c})"></div>
+      <div class="kpi-b">
+        <div class="kpi-s" style="color:var(${d.c})">${esc(d.label)}</div>
+        <div class="kpi-n">${fmt(b.t)}</div>
+        <div class="kpi-splits">
+          <div class="kpi-sp"><div class="l">${curL}</div><div class="v">${fmt(b.cur)}</div></div>
+          <div class="kpi-sp"><div class="l">${prevL}</div><div class="v">${fmt(b.prev)}</div></div>
+          <div class="kpi-sp"><div class="l">Older</div><div class="v">${fmt(b.older)}</div></div>
+        </div>
+      </div>
+      <div class="kpi-f">
+        <button class="lnk" onclick="openList('${d.key}')">🔍 View Details</button>
+        <button class="lnk" onclick="exportStatus('${d.key}')">↓ Excel</button>
+      </div></div>`;
+  }).join('');
+}
+
+/* Tester / Developer / RM sections — teeno ka shape same hai, isliye ek hi
+   builder. Har row par status-wise count + total, click par list modal. */
+function agentTable(getter,label){
+  const map=new Map();
+  VIEW.forEach(r=>{
+    const a=getter(r); if(!a) return;
+    if(!map.has(a)) map.set(a,{name:a,total:0,by:{}});
+    const e=map.get(a); e.total++;
+    const k=statusKeyOf(r); e.by[k]=(e.by[k]||0)+1;
+  });
+  const rows=[...map.values()].sort((a,b)=>b.total-a.total);
+
+  /* 16 statuses me se ye 8 columns dikhte hain. Baaki ko "Other" me jodte hain
+     — warna row ka Total dikhaye gaye columns ke sum se match nahi karta aur
+     tickets gayab lagte hain (jaise DC-JHA: total 1001, columns ka sum 929). */
+  const cols=['pending','it','ack','ip','rft','rfu','sp','closed'];
+  const otherOf=e=>{
+    let shown=0; cols.forEach(c=>shown+=(e.by[c]||0));
+    return e.total-shown;
+  };
+
+  const head=`<thead><tr><th>${esc(label)}</th><th class="r">Total</th>`+
+    cols.map(c=>`<th class="r">${esc(STATUSES.find(s=>s.key===c).label)}</th>`).join('')+
+    `<th class="r" title="All remaining statuses: Reopen, Reopend from Testing, Code Review, Merging, Return to Support, Future Development, Rejected">Other</th></tr></thead>`;
+
+  const span=cols.length+3;
+  if(!rows.length) return head+`<tbody><tr><td colspan="${span}"><div class="empty">No data</div></td></tr></tbody>`;
+
+  const body=rows.map(e=>{
+    const oth=otherOf(e);
+    return `<tr>
+     <td style="font-weight:600">${esc(e.name)}</td>
+     <td class="r"><span class="badge" style="cursor:pointer" data-agent-kind="${esc(label)}" data-agent-name="${esc(e.name)}">${fmt(e.total)}</span></td>
+     ${cols.map(c=>`<td class="r ${e.by[c]?'':'muted'}">${fmt(e.by[c]||0)}</td>`).join('')}
+     <td class="r ${oth?'':'muted'}">${fmt(oth)}</td>
+   </tr>`;
+  }).join('');
+
+  /* TOTALS — har column ka sum. Grand total = sum of shown + Other, to ye row
+     hamesha reconcile karta hai. */
+  const tot={total:0,other:0,by:{}};
+  rows.forEach(e=>{
+    tot.total+=e.total;
+    tot.other+=otherOf(e);
+    cols.forEach(c=>tot.by[c]=(tot.by[c]||0)+(e.by[c]||0));
+  });
+  const foot=`<tfoot><tr>
+     <td><span class="lbl">Total · ${fmt(rows.length)} ${esc(label.toLowerCase())}${rows.length===1?'':'s'}</span></td>
+     <td class="r">${fmt(tot.total)}</td>
+     ${cols.map(c=>`<td class="r">${fmt(tot.by[c])}</td>`).join('')}
+     <td class="r">${fmt(tot.other)}</td>
+   </tr></tfoot>`;
+
+  return head+`<tbody>${body}</tbody>`+foot;
+}
+function renderAgents(){
+  document.getElementById('tblTester').innerHTML=agentTable(testerOf,'Tester');
+  document.getElementById('tblDev').innerHTML=agentTable(devOf,'Developer');
+  document.getElementById('tblRM').innerHTML=agentTable(rmOf,'RM');
+}
+
+/* ── Ticket list modal ── */
+/* Columns = BSS fields. `—` ka matlab: ye field cache me hai hi nahi
+   (JiraID, Sub-Problem Type) — ticket kholne par LIVE value dikhegi. */
+function listColumns(){
+  return [
+    /* data-attribute + event delegation, onclick me value interpolate NAHI.
+       Pehle `onclick="openEdit('${esc(r.n)}')"` tha — esc() apostrophe ko
+       &#39; kar deta hai, par browser attribute value ko DECODE karke JS
+       parse karta hai, to `MB - O'BRIEN` jaisa koi bhi naam handler tod deta
+       tha (SyntaxError, row click dead). Backslash bhi wahi karta tha. */
+    ['Ticket No',        r=>`<span class="tno" data-tno="${esc(r.n)}">${esc(r.n)}</span>`],
+    ['Created',          r=>esc(r.tc||'—')],
+    ['Current Status',   r=>esc(statusLabelOf(r))],
+    ['Timeline',         r=>esc(r.tld||'—')],
+    /* BSS UI ka "Disposition" = current stage ki disposition (`cd`, schema v3),
+        NOT `ld`. `ld` sirf 6 recognized values leta hai — MB - 037392 par
+        ld="Bug" jabki BSS UI "Future Development" dikhata hai. */
+    ['Disposition',      r=>r.cd?esc(r.cd):'<span class="muted" title="Not in cache yet — refresh the cache (schema v3) or open the ticket for the live value">—</span>'],
+    ['Main Disposition', r=>esc(r.mainDisp||'—')],
+    /* Parser raw keys store karta hai: subDisp = r.SubDisposition,
+       probType = r.Problemtype. Live data (MB - 036741) se confirmed:
+       SubDisposition = UI "Problem Type", Problemtype = UI "Sub-Problem Type".
+       Isliye ye jodi ULTI lagti hai par sahi hai. */
+    ['Problem Type',     r=>esc(r.subDisp||'—')],
+    ['Sub-Problem Type', r=>esc(r.probType||'—')],
+    ['Jira ID',          r=>r.jira?esc(r.jira):'<span class="muted" title="Not stored in the cache — open the ticket to see the live value">—</span>'],
+    ['Assign To (Tester)',r=>esc(testerOf(r)||'—')],
+    ['RM',               r=>esc(rmOf(r)||'—')],
+    ['Developer',        r=>esc(devOf(r)||'—')],
+    ['Client',           r=>esc(r.u||'—')],
+    ['License',          r=>esc(r.l||'—')],
+  ];
+}
+let LIST_REBUILD=null;   // list dobara banane ke liye, save ke baad
+function renderList(rows,title,rebuild){
+  LIST_ROWS=rows; LIST_TITLE=title;
+  if(rebuild!==undefined) LIST_REBUILD=rebuild;
+  document.getElementById('listTitle').textContent=title;
+  document.getElementById('listCount').textContent=`${fmt(rows.length)} tickets`;
+  const cols=listColumns();
+  const head=`<thead><tr>${cols.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead>`;
+  const body=rows.length
+    ? rows.map(r=>`<tr>${cols.map(c=>`<td>${c[1](r)}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}"><div class="empty">No tickets</div></td></tr>`;
+  document.getElementById('tblList').innerHTML=head+`<tbody>${body}</tbody>`;
+  document.getElementById('ovList').classList.add('on');
+}
+function openList(key){
+  const d=STATUSES.find(x=>x.key===key);
+  renderList(VIEW.filter(r=>statusKeyOf(r)===key), `${d?d.label:key} — Ticket Details`,
+             ()=>openList(key));
+}
+function openAgentList(kind,name){
+  const g=kind==='Tester'?testerOf:kind==='Developer'?devOf:rmOf;
+  renderList(VIEW.filter(r=>g(r)===name), `${kind}: ${name} — Ticket Details`,
+             ()=>openAgentList(kind,name));
+}
+function closeList(){document.getElementById('ovList').classList.remove('on');LIST_REBUILD=null;}
+
+/* ── Edit modal ── */
+/* ── Ticket fetch + hover prefetch ──────────────────────────────────────────
+   Modal khulne ka time lagbhag poora is ek network call ka hai. Hover par
+   pehle hi shuru kar dete hain — user ko click se pehle hi 200-400ms mil
+   jate hain. Fail ho to chup rehta hai; openEdit apna normal error path
+   chalata rahega. */
+let _edPrefetch = null;
+async function edFetchTicket(ticketNo){
+  const {data:{session}} = await sb.auth.getSession();
+  const r = await fetch('/api/bss-proxy',{method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+    body:JSON.stringify({action:'ticket',ticketNo})});
+  const j = await r.json().catch(()=>({}));
+  /* HTTP status yahin check hota hai. Caller ke paas ab `r` nahi hota
+     (prefetch se aane par response object hai hi nahi), isliye error
+     yahan se throw karna zaroori hai. */
+  if(!r.ok || (j && j.error)) throw new Error((j && j.error) || ('HTTP '+r.status));
+  /* 200 mila par body kharab/khali — bina iske `EDIT.raw` undefined ho jata
+     aur form chup-chaap khali render hota, jaise ticket me kuch hai hi nahi. */
+  if(!j || !j.ticket) throw new Error('Empty response from BSS');
+  return j;
+}
+function edPrefetch(ticketNo){
+  if(!ticketNo || (_edPrefetch && _edPrefetch.n===ticketNo)) return;
+  if(typeof DD==='undefined' || !DD) return;   // dropdown master hi nahi, rehne do
+  _edPrefetch = {n:ticketNo, p:edFetchTicket(ticketNo).catch(()=>null)};
+}
+
+async function openEdit(ticketNo){
+  EDIT={ticketNo,raw:null,read:null,form:{}};
+  _edDetailBuilt=false; _edDetailRD=null;
+  document.getElementById('edTicketNo').textContent=ticketNo;
+  document.getElementById('edStatus').textContent='';
+  document.getElementById('edSave').disabled=true;
+  document.getElementById('edBody').innerHTML='<div class="empty"><span class="spin"></span> Loading live ticket data…</div>';
+  document.getElementById('ovEdit').classList.add('on');
+
+  if(!DD){ await loadDropdowns(); }
+  if(!DD){
+    /* Server ne jo bataya wahi dikhao, aur uske hisaab se next step. */
+    const msg = DD_ERR || 'Unknown error (network?)';
+    let fix = '';
+    if(/migration|bss_user_id/i.test(msg))
+      fix = 'Run <b>sql/2026-08-bss-dashboard.sql</b> in the Supabase SQL Editor.';
+    else if(/access|denied|permission|forbidden/i.test(msg))
+      fix = 'Ask an admin to tick the <b>BSS Dashboard</b> permission in Admin → Users.';
+    else if(/profile/i.test(msg))
+      fix = 'Ask an admin to create your user record in <b>public.users</b>.';
+    else if(/not configured|MARG_LOGIN/i.test(msg))
+      fix = 'Set the <b>MARG_LOGIN_EMAIL</b> / <b>MARG_LOGIN_PASSWORD</b> env vars in Vercel.';
+    else
+      fix = 'Is /api/bss-proxy deployed? Check the response in the Network tab.';
+    document.getElementById('edBody').innerHTML=
+      `<div class="note err"><b>Could not load the dropdown master.</b><br>
+         <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${esc(msg)}</span><br><br>${fix}</div>`;
+    return;
+  }
+  try{
+    /* Prefetch: list me row par hover karte hi ye fetch shuru ho jata hai, to
+       click tak response aksar aa chuka hota hai aur form turant khulta hai.
+       Hover na hua ho to yahan normal fetch chalta hai — behaviour same. */
+    /* Prefetch fail hua ho to `null` aata hai — us case me normal fetch. */
+    let j = null;
+    if(_edPrefetch && _edPrefetch.n===ticketNo) j = await _edPrefetch.p;
+    if(!j) j = await edFetchTicket(ticketNo);
+    if(j.error) throw new Error(j.error);
+    EDIT.raw=j.ticket;
+    /* Stage maps parser se pass kar rahe hain — bss-fields.js me duplicate
+       nahi karte, warna wahi drift ka bug wapas aa jayega. */
+    EDIT.read=bssReadTicket(j.ticket,DD,MB_STAGE_DISP_BY_SC,MB_DISP_FALLBACK_ORDER);
+    /* Diagnostic ab default OFF hai. console.table() har ticket par chalta
+       tha aur DevTools khuli hone par khud ek noticeable delay banata hai —
+       jabki ye sirf alias debug karne ke liye tha, ek baar dekh lena kaafi
+       hota hai. Chahiye to console me: MB_BSS_AUDIT = true */
+    if(window.MB_BSS_AUDIT) console.table(bssReadAudit(j.ticket));
+    renderEditForm();
+  }catch(e){
+    document.getElementById('edBody').innerHTML=
+      `<div class="note err"><b>Could not load ticket:</b> ${esc(e.message||e)}</div>`;
+  }
+}
+function closeEdit(){document.getElementById('ovEdit').classList.remove('on');EDIT=null;}
+
+
+/* ── Details tab ───────────────────────────────────────────────────────────
+   Order wahi jo maanga gaya tha:
+     Description → Disposition & Problem → Timeline Date → Stage & TAT
+     → Customer Details → Stage Timeline
+   Ticket meta (Ticket / Created / Status / Source) tabs ke UPAR wale strip me
+   pehle se hai, isliye yahan dobara nahi. */
+function edField(label, val, mono){
+  const v = (val===undefined||val===null||val==='') ? '' : String(val);
+  return '<div class="ed-f"><div class="ed-f-l">'+esc(label)+'</div>'
+       + '<div class="ed-f-v'+(mono?' mono':'')+(v?'':' muted')+'">'+(v?esc(v):'—')+'</div></div>';
+}
+function edSection(title, inner){
+  return '<div class="ed-sec"><div class="ed-sec-t">'+esc(title)+'</div>'+inner+'</div>';
+}
+function edRow(n, inner){ return '<div class="ed-row ed-row-'+n+'">'+inner+'</div>'; }
+
+function edDate(d, withDay){
+  if(!d) return '';
+  try{
+    const dt = new Date(String(d).slice(0,10)+'T00:00:00');
+    if(isNaN(dt)) return String(d);
+    return dt.toLocaleDateString('en-IN', withDay
+      ? {weekday:'short', day:'2-digit', month:'short', year:'numeric'}
+      : {day:'2-digit', month:'short', year:'numeric'});
+  }catch(_){ return String(d); }
+}
+
+/* Current stage ke hisaab se date / SLA / actual / TAT flag. */
+const ED_STAGE_KEYS = {
+  IT:['a','ad','av','at'], AK:['b','bd','bv','bt'], IP:['c','cdd','cv','ct'],
+  RT:['rtd','','rtv','rtt'], RU:['uad','','uav','uat'], LV:['e','','ev','et'],
+  SP:['d','dd','dv','dt'], CL:['cld','','',''],
+};
+const ED_TIMELINE = [
+  ['tc','Created'],['a','Transfer to IT'],['b','Acknowledge'],['c','In Progress'],
+  ['rtd','Ready For Testing'],['crd','Ready For Code Review'],['mgd','Ready For Merging'],
+  ['uad','Ready For UAT'],['rfd','Reopend from Testing'],['e','Ready To Go Live'],
+  ['rod','Reopen'],['fdd','Future Development'],['rjd','Rejected'],
+  ['d','Transfer To Support'],['cld','Closed'],
+];
+const ED_TL_AGENT = {a:'tia', b:'ta', c:'ti', e:'eb', d:'ts', cld:'clb', rtd:'rtg', crd:'crg', mgd:'mgg', uad:'uag'};
+const ED_TL_TAT   = {a:['at','av'], b:['bt','bv'], c:['ct','cv'], e:['et','ev'], d:['dt','dv'],
+                     rtd:['rtt','rtv'], uad:['uat','uav']};
+
+/* RAW me 28k+ tickets hote hain — har call par linear scan mehnga hai aur
+   modal khulne par ye do baar chal raha tha. Ab ek ticket ke liye ek hi baar. */
+let _edRowCache = {n:null, row:null};
+function edRow0(){
+  if(_edRowCache.n === EDIT.ticketNo) return _edRowCache.row;
+  const r = (RAW||[]).find(x=>x && x.n===EDIT.ticketNo) || {};
+  _edRowCache = {n:EDIT.ticketNo, row:r};
+  return r;
+}
+
+function edDetailHTML(rd){
+  const row = edRow0();
+  const v   = (rd && rd.values) || {};
+  const pick = (a,b)=> (a!==undefined && a!==null && a!=='') ? a : b;
+  const desc = pick(v.description, row.desc) || '';
+  const rem  = row.remarks || '';
+
+  const sk = ED_STAGE_KEYS[row.sc] || ['','','',''];
+  const tatFlag = sk[3] ? row[sk[3]] : '';
+  const tatHtml = tatFlag==='I' ? '<span class="ed-ok">In TAT</span>'
+                : tatFlag==='O' ? '<span class="ed-bad">Out of TAT</span>'
+                : '<span class="ed-f-v muted">No TAT data</span>';
+
+  const tl = ED_TIMELINE.filter(x=>row[x[0]]).map(x=>{
+    const [k,label]=x;
+    const agent = ED_TL_AGENT[k] ? (row[ED_TL_AGENT[k]]||'') : '';
+    const tt = ED_TL_TAT[k] || [];
+    const fl = tt[0] ? row[tt[0]] : '';
+    const dur= tt[1] ? row[tt[1]] : '';
+    const badge = fl==='I' ? '<span class="ed-ok">In TAT'+(dur?' · '+esc(dur):'')+'</span>'
+                : fl==='O' ? '<span class="ed-bad">Out of TAT'+(dur?' · '+esc(dur):'')+'</span>' : '';
+    return '<div class="ed-tl-i"><div class="ed-tl-n">'+esc(label)+'</div>'
+         + '<div class="ed-tl-m">'+esc(edDate(row[k], true))
+         + (agent?' · '+esc(agent):'') + (badge?' '+badge:'') + '</div></div>';
+  }).join('');
+
+  return edSection('Description / remarks',
+        '<div class="ed-desc'+(desc||rem?'':' empty')+'">'
+        + (desc ? esc(desc).replace(/\n/g,'<br>')
+                : (rem ? esc(rem).replace(/\n/g,'<br>') : 'No description available'))
+        + (desc && rem ? '<div class="ed-rem">'+esc(rem).replace(/\n/g,'<br>')+'</div>' : '')
+        + '</div>')
+    + edSection('Disposition and problem',
+        edRow(4, edField('Main disposition', row.mainDisp)
+               + edField('Sub disposition',  row.subDisp)
+               + edField('Problem type',     row.probType)
+               + edField('Disposition',      row.cd))
+      + edRow(4, edField('RM',        row.r)
+               + edField('Developer', row.dev)
+               + edField('Tester',    (typeof mbTesterOf==='function' ? mbTesterOf(row) : row.t))
+               + edField('Ack agent', row.ta)))
+    + edSection('Timeline date',
+        row.tld ? '<div class="ed-tld">'+esc(edDate(row.tld, true))+'</div>'
+                : '<div class="ed-desc empty">Not set</div>')
+    + edSection('Stage and TAT',
+        edRow(4, edField('Stage date',      edDate(sk[0] ? row[sk[0]] : '', true))
+               + edField('SLA duration',    sk[1] ? row[sk[1]] : '')
+               + edField('Actual duration', sk[2] ? row[sk[2]] : '')
+               + '<div class="ed-f"><div class="ed-f-l">TAT status</div><div class="ed-f-v">'+tatHtml+'</div></div>'))
+    + edSection('Customer details',
+        edRow(4, edField('Licence no',        row.l, true)
+               + edField('Customer name',     row.u)
+               + edField('Subscription plan', row.p)
+               + edField('Email',             row.email))
+      + edRow(4, edField('Mobile', row.mobile, true)))
+    + edSection('Stage timeline',
+        tl ? '<div class="ed-tl">'+tl+'</div>'
+           : '<div class="ed-desc empty">No stage dates recorded yet</div>');
+}
+
+/* ── Update tab: field order ───────────────────────────────────────────────
+   Group headings (Required / Classification / People / Tracking) hata di —
+   11 fields ke liye char headings sirf jagah kha rahi thi; har heading apni
+   line aur separator leti thi. Order phir bhi logical hai.
+
+   `remarks` bahar hai: form me na ho to EDIT.form me bhi nahi aata, aur
+   bssBuildPayload() missing key skip karta hai — BSS me wo field jaise ka
+   waisa reh jata hai. */
+const ED_ORDER = ['subDisposition','disposition','mainDisposition','problemType',
+                  'subProblemType','assignedTo','rm','developer',
+                  'timelineDate','jiraId','bssComment'];
+const ED_SKIP = ['remarks'];
+
+/* Tab switch — dono pane pehle se render ho chuke hain, sirf display toggle. */
+let _edDetailRD = null, _edDetailBuilt = false;
+function edShowTab(which){
+  const u = which !== 'details';
+  if(!u && !_edDetailBuilt){
+    const pd0=document.getElementById('edPaneDetails');
+    if(pd0 && _edDetailRD){ pd0.innerHTML = edDetailHTML(_edDetailRD); _edDetailBuilt = true; }
+  }
+  const pu=document.getElementById('edPaneUpdate'), pd=document.getElementById('edPaneDetails');
+  const tu=document.getElementById('edTabUpdate'),  td=document.getElementById('edTabDetails');
+  if(!pu||!pd) return;
+  pu.style.display = u ? '' : 'none';
+  pd.style.display = u ? 'none' : '';
+  if(tu){ tu.classList.toggle('on', u);  tu.setAttribute('aria-selected', String(u)); }
+  if(td){ td.classList.toggle('on', !u); td.setAttribute('aria-selected', String(!u)); }
+  /* Details read-only hai — wahan "Update ticket" button ka koi matlab nahi. */
+  const sv=document.getElementById('edSave');
+  if(sv) sv.style.display = u ? '' : 'none';
+}
+
+function renderEditForm(){
+  const rd=EDIT.read, v=rd.values;
+  EDIT.form={};
+  bssSelectFields().forEach(f=>{ if(v[f.key]!=null) EDIT.form[f.key]=v[f.key]; });
+  ['timelineDate','jiraId','remarks','bssComment'].forEach(k=>{
+    if(v[k]!=null) EDIT.form[k]=k==='timelineDate'?String(v[k]).slice(0,10):String(v[k]);
+  });
+
+  let notes='';
+  if(!ME||!ME.bss_user_id)
+    notes+=`<div class="note err"><b>Updates are disabled.</b> Your account has no BSS User ID mapped.
+      Ask an admin to set it in Admin → Users (from the BindDropDown Users list). Until then this is view-only.</div>`;
+  if(rd.ambiguous.length)
+    notes+=`<div class="note warn"><b>Heads up:</b> ${rd.ambiguous.map(a=>
+      `"${esc(a.name)}" appears ${a.ids.length} times in the master list (IDs ${a.ids.join(', ')})`).join('; ')}.
+      Please re-select these fields yourself before saving, otherwise the wrong ID may be sent.</div>`;
+  /* "These fields were not returned…" note hata diya gaya hai. Live data se
+     confirm hua ki wo fields BSS me genuinely KHALI hote hain (MB - 036741:
+     Assignto/Developer/RM/JiraID/Remarks sab ""), to har ticket par ek warning
+     dikhana sirf shor tha. Asli problems (unresolved value, cascade mismatch)
+     neeche alag se report hoti hain. rd.missing ab bhi console audit me hai. */
+
+  /* Value AAYI par master list me match nahi hui. Pehle ye chup-chaap blank ho
+     jata tha aur dikhta tha jaise BSS me kuch set hi nahi hai. */
+  if(rd.unresolved.length)
+    notes+=`<div class="note warn"><b>Could not match these to the dropdown master:</b>
+      ${rd.unresolved.map(u=>`<b>${esc(u.label)}</b> = "${esc(u.name)}" (not found in <code>${esc(u.list)}</code>)`).join('; ')}.
+      BSS has a value here but it is not in the current master list, so the field shows blank.
+      Pick the correct option before saving, or leave the whole field alone.</div>`;
+
+  /* Cascade parent mismatch — child ki value valid hai par doosre parent ke
+     neeche. Aise me child dropdown khali dikhega aur wajah pata nahi chalti. */
+  if(rd.parentMismatch.length)
+    notes+=`<div class="note warn"><b>Cascade mismatch:</b>
+      ${rd.parentMismatch.map(m=>`<b>${esc(m.label)}</b> = "${esc(m.name)}" belongs to ${esc(m.parentLabel)}
+        "${esc(m.actualParentName||'—')}", not the one currently selected`).join('; ')}.
+      BSS stores it this way, but the two dropdowns disagree — re-select ${esc(rd.parentMismatch[0].parentLabel)}
+      and the fields under it before saving.</div>`;
+
+  /* Description read-only hai — UpdateTicketStatus me ye field hai hi nahi.
+     Par update karne wale ko ticket ka context chahiye, isliye yahan dikha
+     rahe hain. Lamba ho sakta hai, to scroll ke saath. */
+  /* Ticket number, Created/Status/Source aur tabs — sab modal ke SHELL
+     header me hain. Pehle body me apna header block bhi tha, isliye ticket
+     number do baar dikhta tha. */
+  const meta = document.getElementById('edMeta');
+  if(meta) meta.innerHTML =
+    `<span><b>Created</b>${esc(edDate(rd.values.createdDate)||'—')}</span>`
+  + `<span><b>Status</b>${esc(rd.values.currentStatus||'—')}</span>`
+  + `<span><b>Source</b>Customer</span>`;
+
+  /* ── Timeline Date ke do niyam ──
+     1. Field tabhi dikhta hai jab ticket acknowledge ho chuka ho.
+     2. Ek baar pad gayi to READ-ONLY — dikhti hai, badalti nahi.
+     Acknowledge ka pata LIVE record ke status se chalta hai (cache purana ho
+     sakta hai); wo na mile to cache par gir jate hain. */
+  const PRE_ACK_SC = ['IT','PN','AP','','OT'];
+  const _tlRow = edRow0();
+  const _tlAcked = (function(){
+    const live = rd.values.currentStatus;
+    if(live && typeof mbStatusCode==='function')
+      return PRE_ACK_SC.indexOf(mbStatusCode(live)) === -1;
+    if(_tlRow.b) return true;
+    if(_tlRow.sc) return PRE_ACK_SC.indexOf(_tlRow.sc) === -1;
+    return false;
+  })();
+  const _tlExisting = rd.values.timelineDate
+    ? String(rd.values.timelineDate).slice(0,10)
+    : (_tlRow.tld ? String(_tlRow.tld).slice(0,10) : '');
+
+  const _fh={};
+  BSS_CROSSWALK.forEach(f=>{
+    if(ED_SKIP.indexOf(f.key)!==-1){ delete EDIT.form[f.key]; return; }
+    _fh[f.key]=(()=>{
+    const val=EDIT.form[f.key];
+
+    if(f.key==='timelineDate'){
+      if(!_tlAcked){
+        /* Field bheja hi nahi jayega — form me hai hi nahi to save par
+           payload me bhi nahi jayega. */
+        delete EDIT.form.timelineDate;
+        return `<div class="fld" id="fld-timelineDate">
+          <label>${esc(f.label)}</label>
+          <div class="inp ro-box">Available after the ticket is acknowledged</div>
+          <div class="e" id="er-timelineDate"></div></div>`;
+      }
+      if(_tlExisting){
+        EDIT.form.timelineDate = _tlExisting;   // save par jaise ka waisa jaye
+        return `<div class="fld" id="fld-timelineDate">
+          <label>${esc(f.label)}</label>
+          <div class="inp ro-box mono" title="Already committed — cannot be changed here">${esc(_tlExisting)}</div>
+          <div class="hint">Set once. To change it, update the ticket in BSS.</div>
+          <div class="e" id="er-timelineDate"></div></div>`;
+      }
+    }
+
+    if(f.type==='text'||f.type==='date'){
+      return `<div class="fld" id="fld-${f.key}">
+        <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+        <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
+               value="${esc(val==null?'':val)}" oninput="onFieldChange('${f.key}',this.value)">
+        <div class="e" id="er-${f.key}"></div></div>`;
+    }
+    return `<div class="fld" id="fld-${f.key}">
+      <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <select class="inp" id="in-${f.key}" onchange="onFieldChange('${f.key}',this.value)"></select>
+      ${f.type==='cascade'?`<div class="hint">Select ${esc(bssField(f.parent).label)} first</div>`:''}
+      ${f.key==='bssComment'?`<div class="hint">Adds a new comment to the BSS comment log (it does not overwrite)</div>`:''}
+      <div class="e" id="er-${f.key}"></div></div>`;
+    })();
+  });
+
+  /* Chune hue order me, phir jo bacha wo aakhir me — naya field jude to
+     chup-chaap gayab na ho. */
+  const _seen = new Set(ED_ORDER);
+  const _rest = BSS_CROSSWALK.filter(f=>!_seen.has(f.key) && _fh[f.key]).map(f=>f.key);
+  const fields = '<div class="fgrid">'
+    + ED_ORDER.concat(_rest).map(k=>_fh[k]||'').join('') + '</div>';
+
+  /* Update fields sabse upar — wahi is screen ka kaam hai. Read-only detail
+     uske neeche, taaki context dekhne ke liye doosri tab na kholni pade. */
+  /* Description Update tab par bhi chahiye — update karne wale ko ticket ka
+     context saamne dikhna chahiye, tab switch kiye bina.
+     Scroll jaan-bujh kar NAHI: description kitna bhi lamba ho, poora dikhega.
+     Modal khud scroll karta hai, isliye andar ka scroll sirf do scrollbars
+     banata aur text kaatta. */
+  const _d = (function(){
+    const r0 = edRow0();
+    const t = (rd.values.description || r0.desc || r0.remarks || '').toString().trim();
+    return t ? `<div class="ed-ctx">${esc(t).replace(/\n/g,'<br>')}</div>` : '';
+  })();
+
+  document.getElementById('edBody').innerHTML =
+    notes +
+    `<div id="edPaneUpdate" role="tabpanel">${_d}${fields}</div>
+     <div id="edPaneDetails" role="tabpanel" style="display:none"></div>`;
+  /* Details ka HTML pehle yahin ban jata tha — chahe user kabhi khole ya na
+     khole. Uska matlab tha: har ticket par poora stage timeline + saare cards
+     banana, jabki 90% baar sirf Update chahiye hota hai. Ab wo tabhi banta
+     hai jab Details pehli baar khuli. */
+  _edDetailRD = rd;
+  _edDetailBuilt = false;
+  edShowTab('update');   /* naya ticket hamesha Update tab par khule */
+  bssSelectFields().forEach(f=>fillSelect(f.key));
+  document.getElementById('edSave').disabled=!(ME&&ME.bss_user_id);
+}
+
+/* Chuni hui value `title` me bhi — 4-column grid me lamba text ellipsis me
+   katta hai, hover par poora dikh jata hai. */
+function edSyncTitle(el){
+  if(!el) return;
+  const o = el.options && el.options[el.selectedIndex];
+  el.title = (o && o.value) ? o.text : '';
+}
+function fillSelect(key){
+  const f=bssField(key), el=document.getElementById('in-'+key);
+  if(!el) return;
+  const opts=f.type==='cascade'
+    ? bssCascadeOptions(DD,key,EDIT.form[f.parent])
+    : bssOptions(DD,key);
+  const cur=EDIT.form[key];
+  /* Duplicate IDs (jaise AssignTo me 43 do baar) — dono dikhao, par value ek
+     hi hai. Chhupana galat hoga: user ko pata hona chahiye ki list me kya hai. */
+  el.innerHTML='<option value="">— select —</option>'+
+    opts.map((o,i)=>`<option value="${o.ID}" ${String(o.ID)===String(cur)&&opts.findIndex(x=>String(x.ID)===String(cur))===i?'selected':''}>${esc(o.Name)}</option>`).join('');
+  if(cur!=null&&!opts.some(o=>String(o.ID)===String(cur))){
+    /* Current value is list me nahi (cascade parent alag hai, ya master se hat
+       gaya). Silently drop karne ke bajaye dikhao — warna user ko lagega field
+       khali tha aur save par wo value ud jayegi. */
+    const nm=bssNameById(DD,key,cur);
+    el.insertAdjacentHTML('beforeend',`<option value="${esc(cur)}" selected>${esc(nm)} (current)</option>`);
+  }
+  edSyncTitle(el);
+}
+function onFieldChange(key,val){
+  edSyncTitle(document.getElementById('in-'+key));
+  EDIT.form[key]=val===''?undefined:val;
+  /* Parent badla to children reset — warna invalid combo bach jayega */
+  BSS_CROSSWALK.filter(f=>f.parent===key).forEach(child=>{
+    EDIT.form[child.key]=undefined;
+    fillSelect(child.key);
+    BSS_CROSSWALK.filter(g=>g.parent===child.key).forEach(gc=>{EDIT.form[gc.key]=undefined;fillSelect(gc.key);});
+  });
+  const fl=document.getElementById('fld-'+key); if(fl) fl.classList.remove('err');
+}
+
+function showErrors(errs){
+  BSS_CROSSWALK.forEach(f=>{const e=document.getElementById('fld-'+f.key);if(e)e.classList.remove('err');});
+  errs.forEach(x=>{
+    const fl=document.getElementById('fld-'+x.field), er=document.getElementById('er-'+x.field);
+    if(fl)fl.classList.add('err'); if(er)er.textContent=x.msg;
+  });
+  const g=errs.filter(x=>!document.getElementById('fld-'+x.field));
+  if(g.length) toast(g[0].msg,6000);
+}
+
+async function submitUpdate(){
+  if(!EDIT) return;
+  const bssId=ME&&ME.bss_user_id;
+  const errs=bssValidate(EDIT.form,DD,bssId);
+  if(errs.length){showErrors(errs);toast('⚠️ Please fix '+errs.length+' field'+(errs.length>1?'s':''),4000);return;}
+  showErrors([]);
+
+  const btn=document.getElementById('edSave'), st=document.getElementById('edStatus');
+  btn.disabled=true; st.innerHTML='<span class="spin"></span> Updating…';
+  try{
+    const payload=bssBuildPayload(EDIT.form,EDIT.ticketNo,bssId);
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch('/api/bss-proxy',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({
+        action:'update', payload,
+        before:EDIT.read?EDIT.read.values:null,
+        /* Cache patch: sirf wahi fields jo cache me dikhte hain. Status ka raw
+           label bhejte hain (st), kyunki KPI/list wahi padhte hain. */
+        cachePatch:{
+          st: bssNameById(DD,'subDisposition',EDIT.form.subDisposition)||undefined,
+          ld: bssNameById(DD,'disposition',EDIT.form.disposition)||undefined,
+          mainDisp: bssNameById(DD,'mainDisposition',EDIT.form.mainDisposition)||undefined,
+          probType: bssNameById(DD,'problemType',EDIT.form.problemType)||undefined,
+          subDisp: bssNameById(DD,'subProblemType',EDIT.form.subProblemType)||undefined,
+          assignto: bssNameById(DD,'assignedTo',EDIT.form.assignedTo)||undefined,
+          dev: bssNameById(DD,'developer',EDIT.form.developer)||undefined,
+          r: bssNameById(DD,'rm',EDIT.form.rm)||undefined,
+          tld: EDIT.form.timelineDate||undefined,
+        }
+      })});
+    const j=await r.json();
+    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+
+    st.textContent='';
+    toast('✅ '+EDIT.ticketNo+' updated'+(j.cache&&j.cache.patched?' (cache updated too)':''),4500);
+    if(j.cache&&!j.cache.patched)
+      console.warn('Cache patch skipped:',j.cache.reason,'— the dashboard may show stale values until the next refresh.');
+
+    /* Local row bhi update karo taaki KPI/table turant sahi dikhe */
+    const patch=j.cache&&j.cache.patched?null:null;
+    const row=RAW.find(x=>x.n===EDIT.ticketNo);
+    if(row){
+      const s=bssNameById(DD,'subDisposition',EDIT.form.subDisposition); if(s) row.st=s;
+      const l=bssNameById(DD,'disposition',EDIT.form.disposition); if(l) row.ld=l;
+      const a=bssNameById(DD,'assignedTo',EDIT.form.assignedTo); if(a) row.assignto=a;
+      const dv=bssNameById(DD,'developer',EDIT.form.developer); if(dv) row.dev=dv;
+      const rr=bssNameById(DD,'rm',EDIT.form.rm); if(rr) row.r=rr;
+      if(EDIT.form.timelineDate) row.tld=EDIT.form.timelineDate;
+      /* Pehle yahan `delete row.sc` hota tha. Par KPI counts sc PAR chalte
+         hain (VIEW.filter(r=>r.sc==='IT') waghairah) — sc hata dene se wo
+         ticket har count se gayab ho jata tha aur numbers update hi nahi
+         dikhte the. Ab naye status se sc dobara compute hota hai. */
+      if(s && typeof mbStatusCode==='function') row.sc = mbStatusCode(s);
+      else delete row.sc;
+      /* Current-stage disposition bhi badal gayi — BSS list usi ko dikhati hai. */
+      if(l) row.cd = l;
+    }
+    closeEdit();
+    applyFilters();          // KPI + agent counts dobara
+    /* Drill-down list khuli ho to wo bhi dobara banao — warna user wahi
+       purana status dekhta rehta hai aur lagta hai kuch update hi nahi hua.
+       Ticket ab list ki shart pe khara na utre to apne aap nikal jayega. */
+    if(LIST_REBUILD && document.getElementById('ovList').classList.contains('on')){
+      try{ LIST_REBUILD(); }catch(_){}
+    }
+  }catch(e){
+    st.textContent='';
+    toast('❌ '+(e.message||e),8000);
+    console.error('update failed:',e);
+  }finally{
+    const b=document.getElementById('edSave'); if(b) b.disabled=!(ME&&ME.bss_user_id);
+  }
+}
+
+/* ── Refresh / export ── */
+async function refreshCache(){
+  toast('Use "Refresh Data" on the TAT or Support Dashboard — those pages write the cache.',6000);
+}
+function rowsToAOA(rows){
+  const cols=listColumns();
+  const head=cols.map(c=>c[0]);
+  const strip=h=>String(h).replace(/<[^>]*>/g,'').trim();
+  return [head].concat(rows.map(r=>cols.map(c=>strip(c[1](r)))));
+}
+function saveXLSX(rows,name){
+  if(!rows.length){toast('No tickets to export');return;}
+  const ws=XLSX.utils.aoa_to_sheet(rowsToAOA(rows));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tickets');
+  XLSX.writeFile(wb,name);
+}
+function exportList(){saveXLSX(LIST_ROWS,`bss_${LIST_TITLE.replace(/[^a-z0-9]+/gi,'_').slice(0,40)}.xlsx`);}
+function exportStatus(key){const d=STATUSES.find(x=>x.key===key);saveXLSX(VIEW.filter(r=>statusKeyOf(r)===key),`bss_${key}.xlsx`);}
+function exportAll(){saveXLSX(VIEW,'bss_all_tickets.xlsx');}
+
+/* ── Event delegation ──────────────────────────────────────────────────────
+ * Ticket no aur agent name inline onclick me NAHI jaate. Wo data-attributes
+ * me hain aur yahan padhe jaate hain. Isse quotes/backslash/HTML wale naam
+ * (jaise "Support agent's concern", O'Brien) handler nahi tod sakte —
+ * attribute value ko browser decode karta hai, to escaping se bacha nahi ja
+ * sakta tha. Delegation is poore class of bug ko khatam kar deta hai. */
+/* Hover par ticket ka live data pehle hi manga lete hain — user ke click
+   tak response aksar aa chuka hota hai aur modal turant bhar jata hai.
+   Click bhi usi delegation se, taaki apostrophe wale ticket numbers na todein. */
+document.addEventListener('mouseover',e=>{
+  const t=e.target.closest && e.target.closest('[data-tno]');
+  if(t) edPrefetch(t.getAttribute('data-tno'));
+}, {passive:true});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tno]');
+  if(t){ openEdit(t.getAttribute('data-tno')); return; }
+  const a=e.target.closest('[data-agent-name]');
+  if(a){ openAgentList(a.getAttribute('data-agent-kind'),a.getAttribute('data-agent-name')); return; }
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(document.getElementById('ovEdit').classList.contains('on'))closeEdit();
+  else if(document.getElementById('ovList').classList.contains('on'))closeList();
+});
+init();
+</script>
+</body>
+</html>
