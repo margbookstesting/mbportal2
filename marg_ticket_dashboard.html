@@ -8921,7 +8921,15 @@ async function edFetchTicket(ticketNo){
   const r = await fetch('/api/bss-proxy',{method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
     body:JSON.stringify({action:'ticket',ticketNo})});
-  return r.json();
+  const j = await r.json().catch(()=>({}));
+  /* HTTP status yahin check hota hai. Caller ke paas ab `r` nahi hota
+     (prefetch se aane par response object hai hi nahi), isliye error
+     yahan se throw karna zaroori hai. */
+  if(!r.ok || (j && j.error)) throw new Error((j && j.error) || ('HTTP '+r.status));
+  /* 200 mila par body kharab/khali — bina iske `EDIT.raw` undefined ho jata
+     aur form chup-chaap khali render hota, jaise ticket me kuch hai hi nahi. */
+  if(!j || !j.ticket) throw new Error('Empty response from BSS');
+  return j;
 }
 function edPrefetch(ticketNo){
   if(!ticketNo || (_edPrefetch && _edPrefetch.n===ticketNo)) return;
@@ -8962,10 +8970,11 @@ async function openEdit(ticketNo){
     /* Prefetch: list me row par hover karte hi ye fetch shuru ho jata hai, to
        click tak response aksar aa chuka hota hai aur form turant khulta hai.
        Hover na hua ho to yahan normal fetch chalta hai — behaviour same. */
-    const j = await (_edPrefetch && _edPrefetch.n===ticketNo
-      ? _edPrefetch.p
-      : edFetchTicket(ticketNo));
-    if(!r.ok||j.error) throw new Error(j.error||('HTTP '+r.status));
+    /* Prefetch fail hua ho to `null` aata hai — us case me normal fetch. */
+    let j = null;
+    if(_edPrefetch && _edPrefetch.n===ticketNo) j = await _edPrefetch.p;
+    if(!j) j = await edFetchTicket(ticketNo);
+    if(j.error) throw new Error(j.error);
     EDIT.raw=j.ticket;
     /* Stage maps parser se pass kar rahe hain — bss-fields.js me duplicate
        nahi karte, warna wahi drift ka bug wapas aa jayega. */
