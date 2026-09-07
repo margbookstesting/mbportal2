@@ -2028,18 +2028,15 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 #tabBss .ed-row{align-items:start}
 
 
-/* ── type=date ─────────────────────────────────────────────────────────────
-   Isi app ka Management tab wala date filter (#tab7 .mg-bar input[type=date])
-   JetBrains Mono par chalta hai aur uska `dd-mm-yyyy` theek dikhta hai. Yahan
-   `.inp` ka `font-family:inherit` Sora de raha tha, jisme Chrome ke date
-   segments ("dd" / "mm" / "yyyy") theek render nahi hote — beech ka `mm`
-   gayab ho kar "dd-----yyyy" dikhta tha.
 
-   Isliye wahi font yahan bhi, aur baaki sab browser ke bharose. Internal
-   pseudo-elements (::-webkit-datetime-edit waghairah) ko chhedna hi galti
-   thi — unse rendering aur bigadti hai. */
-#tabBss input[type="date"].inp{font-family:'JetBrains Mono',monospace;
-  font-size:12px;padding:0 8px}
+#tabBss .ed-date{position:relative;display:flex;align-items:center}
+#tabBss .ed-date .inp{padding-right:32px}
+#tabBss .ed-date-btn{position:absolute;right:2px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border:0;background:none;cursor:pointer;font-size:14px;
+  line-height:1;opacity:.6;border-radius:6px;padding:0}
+#tabBss .ed-date-btn:hover{opacity:1;background:var(--s2)}
+#tabBss .ed-date-native{position:absolute;right:6px;bottom:0;width:1px;height:1px;
+  opacity:0;pointer-events:none;border:0;padding:0}
 </style>
 <style>
 .viewtabs{display:flex;gap:8px;padding:8px 26px;background:#fff;border-bottom:1px solid #e2e8f0;position:relative;z-index:4}
@@ -9301,6 +9298,62 @@ function edEnterNav(e){
   }
 }
 
+/* ── Timeline date ka apna field ───────────────────────────────────────────
+   Native <input type="date"> ka khali placeholder OS ke short-date format se
+   aata hai. Is machine par wo `dd-MMM-yyyy` hai, aur Chrome text-month
+   segment ko khali me DASHES se dikhata hai — isliye "dd-----yyyy" aur
+   "dd - --- - yyyy" dikh raha tha. Ye font ka issue nahi tha (Sora aur
+   JetBrains Mono dono me same aaya) aur CSS se theek ho hi nahi sakta.
+
+   Isliye ab text input hai jo hamesha dd-mm-yyyy dikhata hai, chahe OS ka
+   format kuch bhi ho. Value form me ISO (yyyy-mm-dd) me hi jati hai — BSS ko
+   wahi chahiye. Picker ke liye bagal me chhota calendar button hai jo ek
+   chhupa hua native date input kholta hai. */
+function edToISO(v){
+  const s = String(v||'').trim();
+  if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+  if(!m) return null;                                   // null = galat format
+  const d=+m[1], mo=+m[2], y=+m[3];
+  if(mo<1||mo>12||d<1||d>31) return null;
+  const dt=new Date(y,mo-1,d);
+  /* Roll-over pakadta hai: 31-02-2026 ko JS 03-Mar bana deta hai. */
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d) return null;
+  const p=n=>String(n).padStart(2,'0');
+  return y+'-'+p(mo)+'-'+p(d);
+}
+function edToDMY(iso){
+  const s=String(iso||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  return s.slice(8,10)+'-'+s.slice(5,7)+'-'+s.slice(0,4);
+}
+/* Text field se aane wali value ko ISO me badal kar form me rakhta hai. */
+function edTimelineInput(raw){
+  const iso = edToISO(raw);
+  const fld = document.getElementById('fld-timelineDate');
+  const er  = document.getElementById('er-timelineDate');
+  const hn  = document.getElementById('hint-timelineDate');
+  let msg = '';
+  if(iso === null) msg = 'Use dd-mm-yyyy';
+  else { EDIT.form.timelineDate = iso || undefined; msg = edTimelineError(iso); }
+  if(er)  er.textContent = msg;
+  if(fld) fld.classList.toggle('err', !!msg);
+  if(hn)  hn.style.display = msg ? 'none' : '';
+}
+/* Chhupa hua native input sirf picker ke liye. */
+function edOpenPicker(){
+  const p=document.getElementById('in-timelineDate-pick');
+  if(!p) return;
+  if(p.showPicker) { try{ p.showPicker(); return; }catch(_){} }
+  p.click();
+}
+function edPickerChange(v){
+  const t=document.getElementById('in-timelineDate');
+  if(t){ t.value = edToDMY(v); }
+  edTimelineInput(edToDMY(v));
+}
+
 function renderEditForm(){
   const rd=EDIT.read, v=rd.values;
   EDIT.form={};
@@ -9406,9 +9459,28 @@ function renderEditForm(){
         <div class="e" id="er-${f.key}"></div></div>`;
     }
 
+    if(f.key==='timelineDate'){
+      /* Text field — display hamesha dd-mm-yyyy. Bagal me native picker. */
+      return `<div class="fld" id="fld-timelineDate">
+        <label>${esc(f.label)}</label>
+        <div class="ed-date">
+          <input class="inp" type="text" id="in-timelineDate" inputmode="numeric"
+                 placeholder="dd-mm-yyyy" maxlength="10" autocomplete="off"
+                 value="${esc(edToDMY(val))}"
+                 oninput="BSS.timelineInput(this.value)"
+                 onchange="BSS.timelineInput(this.value)">
+          <button type="button" class="ed-date-btn" title="Pick a date"
+                  onclick="BSS.openPicker()">&#128197;</button>
+          <input type="date" id="in-timelineDate-pick" class="ed-date-native"
+                 max="${edMaxTimeline()}" tabindex="-1" aria-hidden="true"
+                 onchange="BSS.pickerChange(this.value)">
+        </div>
+        <div class="e" id="er-timelineDate"></div>
+        <div class="hint" id="hint-timelineDate">Up to ${edToDMY(edMaxTimeline())}</div></div>`;
+    }
+
     if(f.type==='text'||f.type==='date'){
-      /* Timeline par max — picker me aage ke din chunne hi nahi denge. */
-      const maxAttr = f.key==='timelineDate' ? ` max="${edMaxTimeline()}"` : '';
+      const maxAttr = '';
       return `<div class="fld" id="fld-${f.key}">
         <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
         <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
@@ -9756,7 +9828,7 @@ document.addEventListener('keydown',e=>{
 });
 
 
-window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), listSearch: (typeof listSearch!=="undefined"?listSearch:undefined), clearListFilters: (typeof clearListFilters!=="undefined"?clearListFilters:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof bssStatusKeyOf!=="undefined"?bssStatusKeyOf:undefined), statusLabelOf: (typeof bssStatusLabelOf!=="undefined"?bssStatusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), showTab: (typeof edShowTab!=="undefined"?edShowTab:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
+window.BSS = { _normSt: (typeof _normSt!=="undefined"?_normSt:undefined), agentTable: (typeof agentTable!=="undefined"?agentTable:undefined), applyFilters: (typeof applyFilters!=="undefined"?applyFilters:undefined), bucketOf: (typeof bucketOf!=="undefined"?bucketOf:undefined), buildFilterOptions: (typeof buildFilterOptions!=="undefined"?buildFilterOptions:undefined), cacheLoad: (typeof cacheLoad!=="undefined"?cacheLoad:undefined), clearFilters: (typeof clearFilters!=="undefined"?clearFilters:undefined), closeEdit: (typeof closeEdit!=="undefined"?closeEdit:undefined), closeList: (typeof closeList!=="undefined"?closeList:undefined), exportAll: (typeof exportAll!=="undefined"?exportAll:undefined), exportList: (typeof exportList!=="undefined"?exportList:undefined), listSearch: (typeof listSearch!=="undefined"?listSearch:undefined), clearListFilters: (typeof clearListFilters!=="undefined"?clearListFilters:undefined), exportStatus: (typeof exportStatus!=="undefined"?exportStatus:undefined), fillSelect: (typeof fillSelect!=="undefined"?fillSelect:undefined), init: (typeof init!=="undefined"?init:undefined), listColumns: (typeof listColumns!=="undefined"?listColumns:undefined), loadDropdowns: (typeof loadDropdowns!=="undefined"?loadDropdowns:undefined), onFieldChange: (typeof onFieldChange!=="undefined"?onFieldChange:undefined), openAgentList: (typeof openAgentList!=="undefined"?openAgentList:undefined), openEdit: (typeof openEdit!=="undefined"?openEdit:undefined), openList: (typeof openList!=="undefined"?openList:undefined), refreshCache: (typeof refreshCache!=="undefined"?refreshCache:undefined), render: (typeof render!=="undefined"?render:undefined), renderAgents: (typeof renderAgents!=="undefined"?renderAgents:undefined), renderEditForm: (typeof renderEditForm!=="undefined"?renderEditForm:undefined), renderKPIs: (typeof renderKPIs!=="undefined"?renderKPIs:undefined), renderList: (typeof renderList!=="undefined"?renderList:undefined), rowsToAOA: (typeof rowsToAOA!=="undefined"?rowsToAOA:undefined), saveXLSX: (typeof saveXLSX!=="undefined"?saveXLSX:undefined), showErrors: (typeof showErrors!=="undefined"?showErrors:undefined), signOut: (typeof signOut!=="undefined"?signOut:undefined), stageDateOf: (typeof stageDateOf!=="undefined"?stageDateOf:undefined), statusKeyOf: (typeof bssStatusKeyOf!=="undefined"?bssStatusKeyOf:undefined), statusLabelOf: (typeof bssStatusLabelOf!=="undefined"?bssStatusLabelOf:undefined), submitUpdate: (typeof submitUpdate!=="undefined"?submitUpdate:undefined), showTab: (typeof edShowTab!=="undefined"?edShowTab:undefined), timelineInput: (typeof edTimelineInput!=="undefined"?edTimelineInput:undefined), openPicker: (typeof edOpenPicker!=="undefined"?edOpenPicker:undefined), pickerChange: (typeof edPickerChange!=="undefined"?edPickerChange:undefined), toast: (typeof toast!=="undefined"?toast:undefined) };
 window.BSS.__booted = false;
 window.BSS.boot = function(){
   if(window.BSS.__booted) return;

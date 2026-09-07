@@ -372,18 +372,15 @@ select.inp{cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:
 .ed-row{align-items:start}
 
 
-/* ── type=date ─────────────────────────────────────────────────────────────
-   Isi app ka Management tab wala date filter (#tab7 .mg-bar input[type=date])
-   JetBrains Mono par chalta hai aur uska `dd-mm-yyyy` theek dikhta hai. Yahan
-   `.inp` ka `font-family:inherit` Sora de raha tha, jisme Chrome ke date
-   segments ("dd" / "mm" / "yyyy") theek render nahi hote — beech ka `mm`
-   gayab ho kar "dd-----yyyy" dikhta tha.
 
-   Isliye wahi font yahan bhi, aur baaki sab browser ke bharose. Internal
-   pseudo-elements (::-webkit-datetime-edit waghairah) ko chhedna hi galti
-   thi — unse rendering aur bigadti hai. */
-input[type="date"].inp{font-family:'JetBrains Mono',monospace;
-  font-size:12px;padding:0 8px}
+.ed-date{position:relative;display:flex;align-items:center}
+.ed-date .inp{padding-right:32px}
+.ed-date-btn{position:absolute;right:2px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border:0;background:none;cursor:pointer;font-size:14px;
+  line-height:1;opacity:.6;border-radius:6px;padding:0}
+.ed-date-btn:hover{opacity:1;background:var(--s2)}
+.ed-date-native{position:absolute;right:6px;bottom:0;width:1px;height:1px;
+  opacity:0;pointer-events:none;border:0;padding:0}
 </style>
 </head>
 <body>
@@ -1145,6 +1142,62 @@ function edEnterNav(e){
   }
 }
 
+/* ── Timeline date ka apna field ───────────────────────────────────────────
+   Native <input type="date"> ka khali placeholder OS ke short-date format se
+   aata hai. Is machine par wo `dd-MMM-yyyy` hai, aur Chrome text-month
+   segment ko khali me DASHES se dikhata hai — isliye "dd-----yyyy" aur
+   "dd - --- - yyyy" dikh raha tha. Ye font ka issue nahi tha (Sora aur
+   JetBrains Mono dono me same aaya) aur CSS se theek ho hi nahi sakta.
+
+   Isliye ab text input hai jo hamesha dd-mm-yyyy dikhata hai, chahe OS ka
+   format kuch bhi ho. Value form me ISO (yyyy-mm-dd) me hi jati hai — BSS ko
+   wahi chahiye. Picker ke liye bagal me chhota calendar button hai jo ek
+   chhupa hua native date input kholta hai. */
+function edToISO(v){
+  const s = String(v||'').trim();
+  if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+  if(!m) return null;                                   // null = galat format
+  const d=+m[1], mo=+m[2], y=+m[3];
+  if(mo<1||mo>12||d<1||d>31) return null;
+  const dt=new Date(y,mo-1,d);
+  /* Roll-over pakadta hai: 31-02-2026 ko JS 03-Mar bana deta hai. */
+  if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d) return null;
+  const p=n=>String(n).padStart(2,'0');
+  return y+'-'+p(mo)+'-'+p(d);
+}
+function edToDMY(iso){
+  const s=String(iso||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  return s.slice(8,10)+'-'+s.slice(5,7)+'-'+s.slice(0,4);
+}
+/* Text field se aane wali value ko ISO me badal kar form me rakhta hai. */
+function edTimelineInput(raw){
+  const iso = edToISO(raw);
+  const fld = document.getElementById('fld-timelineDate');
+  const er  = document.getElementById('er-timelineDate');
+  const hn  = document.getElementById('hint-timelineDate');
+  let msg = '';
+  if(iso === null) msg = 'Use dd-mm-yyyy';
+  else { EDIT.form.timelineDate = iso || undefined; msg = edTimelineError(iso); }
+  if(er)  er.textContent = msg;
+  if(fld) fld.classList.toggle('err', !!msg);
+  if(hn)  hn.style.display = msg ? 'none' : '';
+}
+/* Chhupa hua native input sirf picker ke liye. */
+function edOpenPicker(){
+  const p=document.getElementById('in-timelineDate-pick');
+  if(!p) return;
+  if(p.showPicker) { try{ p.showPicker(); return; }catch(_){} }
+  p.click();
+}
+function edPickerChange(v){
+  const t=document.getElementById('in-timelineDate');
+  if(t){ t.value = edToDMY(v); }
+  edTimelineInput(edToDMY(v));
+}
+
 function renderEditForm(){
   const rd=EDIT.read, v=rd.values;
   EDIT.form={};
@@ -1252,9 +1305,28 @@ function renderEditForm(){
         <div class="e" id="er-${f.key}"></div></div>`;
     }
 
+    if(f.key==='timelineDate'){
+      /* Text field — display hamesha dd-mm-yyyy. Bagal me native picker. */
+      return `<div class="fld" id="fld-timelineDate">
+        <label>${esc(f.label)}</label>
+        <div class="ed-date">
+          <input class="inp" type="text" id="in-timelineDate" inputmode="numeric"
+                 placeholder="dd-mm-yyyy" maxlength="10" autocomplete="off"
+                 value="${esc(edToDMY(val))}"
+                 oninput="timelineInput(this.value)"
+                 onchange="timelineInput(this.value)">
+          <button type="button" class="ed-date-btn" title="Pick a date"
+                  onclick="openPicker()">&#128197;</button>
+          <input type="date" id="in-timelineDate-pick" class="ed-date-native"
+                 max="${edMaxTimeline()}" tabindex="-1" aria-hidden="true"
+                 onchange="pickerChange(this.value)">
+        </div>
+        <div class="e" id="er-timelineDate"></div>
+        <div class="hint" id="hint-timelineDate">Up to ${edToDMY(edMaxTimeline())}</div></div>`;
+    }
+
     if(f.type==='text'||f.type==='date'){
-      /* Timeline par max — picker me aage ke din chunne hi nahi denge. */
-      const maxAttr = f.key==='timelineDate' ? ` max="${edMaxTimeline()}"` : '';
+      const maxAttr = '';
       return `<div class="fld" id="fld-${f.key}">
         <label>${esc(f.label)}${f.required?' <span class="req">*</span>':''}</label>
         <input class="inp" type="${f.type==='date'?'date':'text'}" id="in-${f.key}"
