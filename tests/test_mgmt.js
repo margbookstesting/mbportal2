@@ -630,10 +630,10 @@ eq('stage date column follows dateKey', xr[1][0], '2026-08-21');
 console.log('== 24. Currently Pending sheet ==');
 const pageSrc = fs.readFileSync(PAGE,'utf8');
 eq('sheet exists',            /Currently Pending/.test(pageSrc), true);
-eq('it reads RAW, not cfg.data',
-   /\(RAW\|\|\[\]\)\.filter\(r=>r\.sc===cfg\.pendingSc\)/.test(pageSrc), true);
+eq('it reads VIEW, not cfg.data',
+   /\(VIEW\|\|\[\]\)\.filter\(r=>r\.sc===cfg\.pendingSc\)/.test(pageSrc), true);
 eq('summary reports both counts',
-   /Currently Pending \(all data, no filters\)/.test(pageSrc), true);
+   /Currently Pending \(ignores the date range only\)/.test(pageSrc), true);
 const pend = sandbox.buildSheetRows(
   [{n:'P1',sc:'IT',a:'2020-01-01'},{n:'P2',sc:'IT'}], 'at','a','IT');
 eq('old tickets are not dropped by a date',  pend.length, 3);
@@ -779,8 +779,8 @@ eq('no stray jira',       rec.jira, undefined);
    IT par the). Ab modal wahi set kholta hai jo card ka `Overall:` pill hai. */
 console.log('== 31. View Details modal ==');
 const modalSrc = fs.readFileSync(PAGE,'utf8');
-eq('modal reads RAW, not the date-filtered set',
-   /\(RAW \|\| \[\]\)\.filter\(r => r\.sc === cfg\.pendingSc\)/.test(modalSrc), true);
+eq('modal reads VIEW, not the date-filtered set',
+   /\(VIEW \|\| \[\]\)\.filter\(r => r\.sc === cfg\.pendingSc\)/.test(modalSrc), true);
 eq('modal no longer passes cfg.data straight through',
    /_openSecModal\(cfg\.data \|\| \[\], \(cfg\.label/.test(modalSrc), false);
 eq('a stage with no pendingSc still falls back to cfg.data',
@@ -809,6 +809,44 @@ eq('IT modal count',             pick(stageRows,'IT').length, 3);
 eq('AK modal count',             pick(stageRows,'AK').length, 1);
 eq('a stage with nothing pending is empty, not a crash',
    pick(stageRows,'RU').length, 0);
+
+
+/* ══════ 32. Overall pill + modal filters ko maante hain ══════
+   Pehle dono RAW par the — ek ticket search karne par bhi Overall poore org
+   ka number dikhata tha aur click par 32 rows khul jati thi. Ab dono VIEW par
+   hain: DATE filter nahi lagta, baaki sab (ticket, licence, Tester, RM, Dev,
+   Status) lagte hain. */
+console.log('== 32. Overall + modal respect the filters ==');
+const pillSrc = fs.readFileSync(PAGE,'utf8');
+eq('no Overall pill still reads RAW',
+   /pendingFn: \(\) => RAW\.filter/.test(pillSrc), false);
+eq('every Overall pill reads VIEW',
+   (pillSrc.match(/pendingFn: \(\) => VIEW\.filter/g)||[]).length, 7);
+eq('modal reads VIEW too',
+   /\(VIEW \|\| \[\]\)\.filter\(r => r\.sc === cfg\.pendingSc\)/.test(pillSrc), true);
+eq('Currently Pending sheet reads VIEW',
+   /\(VIEW\|\|\[\]\)\.filter\(r=>r\.sc===cfg\.pendingSc\)/.test(pillSrc), true);
+eq('modal export sheet reads VIEW',
+   /mkSheet\(\(VIEW\|\|\[\]\)\.filter\(r=>r\.sc===pendingSc\)\)/.test(pillSrc), true);
+
+/* Pill ka number aur modal ka Total hamesha barabar hone chahiye — dono ek
+   hi expression se aate hain, isliye filter kuch bhi ho, fark nahi padna
+   chahiye. */
+const pool = [
+  {n:'1', sc:'IT', dev:'D1'}, {n:'2', sc:'IT', dev:'D2'},
+  {n:'3', sc:'AK', dev:'D1'}, {n:'4', sc:'IP', dev:'D1'}, {n:'5', sc:'IT'},
+];
+const pillOf  = (view, sc) => view.filter(r => r.sc === sc).length;
+const modalOf = (view, sc) => view.filter(r => r.sc === sc);
+[['no filter', pool],
+ ['dev filter', pool.filter(r=>r.dev==='D1')],
+ ['empty result', pool.filter(r=>r.dev==='NOBODY')]].forEach(([label, view])=>{
+  ['IT','AK','IP'].forEach(sc=>{
+    eq(label+' — pill matches modal for '+sc, pillOf(view,sc), modalOf(view,sc).length);
+  });
+});
+eq('dev filter narrows IT from 3 to 1', pillOf(pool.filter(r=>r.dev==='D1'),'IT'), 1);
+eq('empty filter gives zero, not everything', pillOf(pool.filter(r=>r.dev==='NOBODY'),'IT'), 0);
 
 console.log('\nMGMT RESULTS: '+pass+' passed, '+fail+' failed');
 process.exit(fail?1:0);
