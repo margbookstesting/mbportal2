@@ -1084,29 +1084,66 @@ function edShowTab(which){
   if(sv) sv.style.display = u ? '' : 'none';
 }
 
-/* ── Timeline date ki hadd ─────────────────────────────────────────────────
-   Aaj se 12 din se aage ki timeline nahi di ja sakti. Ye front-end guard hai:
-   date picker me aage ke din grey ho jate hain (max attribute), aur typing se
-   koi aage ki date daal bhi de to save block ho jata hai.
+/* ── Timeline ki hadd — disposition ke hisaab se ─────────────────────────────
+     Bug                → aaj se 12 din
+     Bug Urgent         → aaj se 2 din
+     Data Updation      → aaj se 1 mahina
+     baaki sab          → koi hadd nahi
 
-   Server par ye check nahi hai — agar zaroori ho to BSS/proxy me bhi lagana
-   padega, warna API se seedha aage ki date bheji ja sakti hai. */
-const ED_TIMELINE_MAX_DAYS = 12;
+   Hadd UI par ABHI chuni hui disposition se tay hoti hai, ticket me jo saved
+   hai usse nahi. Bug wale ticket ko Improvement kar dein to aage ki date
+   chal jayegi; wapas Bug karte hi wahi date galat ho jayegi aur error dikh
+   jayega. Isiliye disposition badalne par timeline dobara check hoti hai.
+
+   Hadd sirf NAYI date par lagti hai — purani (pehle se padi) date par nahi,
+   warna wo ticket kabhi update hi nahi ho paata. */
+const ED_TL_RULES = {
+  'bug':            {days:12},
+  'bug urgent':     {days:2},
+  'data updation':  {months:1},
+};
+let _tlOriginal = '';   // ticket par pehle se jo timeline thi
+
+function edDispName(){
+  try{
+    const id = EDIT && EDIT.form && EDIT.form.disposition;
+    if(!id) return '';
+    return String(bssNameById(DD, 'disposition', id) || '').trim().toLowerCase();
+  }catch(_){ return ''; }
+}
+function edTimelineRule(){ return ED_TL_RULES[edDispName()] || null; }
+
 function edMaxTimeline(){
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  d.setDate(d.getDate() + ED_TIMELINE_MAX_DAYS);
+  const r = edTimelineRule();
+  if(!r) return '';                       // khali = koi hadd nahi
+  const d = new Date(); d.setHours(0,0,0,0);
+  if(r.months){
+    /* Calendar mahina: 31 Jan + 1 month = 28/29 Feb, 3 March nahi. */
+    const day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + r.months);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate()));
+  } else {
+    d.setDate(d.getDate() + r.days);
+  }
   const p = n => String(n).padStart(2,'0');
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
 }
-/* Khali date theek hai (field optional hai). Sirf aage ki date galat hai —
-   peechhe ki date par rok nahi, kabhi backdate karni pad sakti hai. */
+function edTimelineLimitText(){
+  const r = edTimelineRule();
+  if(!r) return 'No limit for this disposition';
+  return 'Up to ' + edToDMY(edMaxTimeline())
+       + (r.months ? ' (1 month)' : ' (' + r.days + ' days)');
+}
+/* Khali date theek hai. Purani date par bhi rok nahi — sirf nayi aur sirf
+   tab jab uski disposition par koi hadd ho. */
 function edTimelineError(v){
   const s = String(v||'').slice(0,10);
-  if(!s) return '';
+  if(!s || s === _tlOriginal) return '';
   const max = edMaxTimeline();
-  return s > max ? ('Timeline cannot be later than ' + max + ' (' + ED_TIMELINE_MAX_DAYS + ' days from today)') : '';
+  if(!max) return '';
+  return s > max ? ('Timeline cannot be later than ' + edToDMY(max)) : '';
 }
+
 
 /* ── Enter se agle field par ─────────────────────────────────────────────────
    Data entry keyboard se hoti hai. Enter par form submit nahi hota (koi
@@ -1172,6 +1209,16 @@ function edToDMY(iso){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
   return s.slice(8,10)+'-'+s.slice(5,7)+'-'+s.slice(0,4);
 }
+/* Disposition badalne par: hint, native picker ka max, aur error dobara. */
+function edRecheckTimeline(){
+  const hn = document.getElementById('hint-timelineDate');
+  if(hn) hn.textContent = edTimelineLimitText();
+  const pick = document.getElementById('in-timelineDate-pick');
+  if(pick){ const m = edMaxTimeline(); if(m) pick.max = m; else pick.removeAttribute('max'); }
+  const t = document.getElementById('in-timelineDate');
+  if(t) edTimelineInput(t.value);
+}
+
 /* Text field se aane wali value ko ISO me badal kar form me rakhta hai. */
 function edTimelineInput(raw){
   const iso = edToISO(raw);
@@ -1180,7 +1227,11 @@ function edTimelineInput(raw){
   const hn  = document.getElementById('hint-timelineDate');
   let msg = '';
   if(iso === null) msg = 'Use dd-mm-yyyy';
-  else { EDIT.form.timelineDate = iso || undefined; msg = edTimelineError(iso); }
+  else {
+    EDIT.form.timelineDate = iso || undefined;
+    /* Wahi purani date wapas type kar di to error nahi — sirf nayi date par. */
+    msg = (iso && iso !== _tlOriginal) ? edTimelineError(iso) : '';
+  }
   if(er)  er.textContent = msg;
   if(fld) fld.classList.toggle('err', !!msg);
   if(hn)  hn.style.display = msg ? 'none' : '';
@@ -1267,6 +1318,11 @@ function renderEditForm(){
   const _tlExisting = rd.values.timelineDate
     ? String(rd.values.timelineDate).slice(0,10)
     : (_tlRow.tld ? String(_tlRow.tld).slice(0,10) : '');
+  /* 12-din ki hadd sirf NAYI timeline par lagti hai. Jo ticket pehle se
+     aage ki date le kar baitha hai (purani entry, ya kisi ne BSS se seedha
+     daali), uspar rok lagane se wo ticket kabhi update ho hi nahi paata —
+     baaki fields badalne par bhi save block ho jata. */
+  _tlOriginal = _tlExisting;
 
   const _fh={};
   BSS_CROSSWALK.forEach(f=>{
@@ -1318,11 +1374,11 @@ function renderEditForm(){
           <button type="button" class="ed-date-btn" title="Pick a date"
                   onclick="openPicker()">&#128197;</button>
           <input type="date" id="in-timelineDate-pick" class="ed-date-native"
-                 max="${edMaxTimeline()}" tabindex="-1" aria-hidden="true"
+                 ${edMaxTimeline() ? `max="${edMaxTimeline()}"` : ''} tabindex="-1" aria-hidden="true"
                  onchange="pickerChange(this.value)">
         </div>
         <div class="e" id="er-timelineDate"></div>
-        <div class="hint" id="hint-timelineDate">Up to ${edToDMY(edMaxTimeline())}</div></div>`;
+        <div class="hint" id="hint-timelineDate">${edTimelineLimitText()}</div></div>`;
     }
 
     if(f.type==='text'||f.type==='date'){
@@ -1426,6 +1482,10 @@ function fillSelect(key){
 }
 function onFieldChange(key,val){
   edSyncTitle(document.getElementById('in-'+key));
+  /* Disposition badalne se timeline ki hadd badal jati hai — Bug par 12 din,
+     Data Updation par 1 mahina, baaki par koi hadd nahi. Isliye jo date
+     pehle se padi hai use turant dobara check karo aur hint update karo. */
+  if(key==='disposition') setTimeout(edRecheckTimeline, 0);
   /* Turant feedback — save tak intezaar nahi. */
   if(key==='timelineDate'){
     const msg = edTimelineError(val);
@@ -1465,7 +1525,8 @@ async function submitUpdate(){
   /* Timeline ki hadd bss-fields.js ki validate me nahi hai (wo shared file
      hai), isliye yahan jodte hain — same shape me, taaki showErrors() usi
      field ko highlight kar sake. */
-  const _tlMsg = edTimelineError(EDIT.form.timelineDate);
+  const _tlNow = String(EDIT.form.timelineDate||'').slice(0,10);
+  const _tlMsg = (_tlNow && _tlNow !== _tlOriginal) ? edTimelineError(_tlNow) : '';
   if(_tlMsg) errs.push({field:'timelineDate', msg:_tlMsg});
   if(errs.length){showErrors(errs);toast('⚠️ Please fix '+errs.length+' field'+(errs.length>1?'s':''),4000);return;}
   showErrors([]);
