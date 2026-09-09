@@ -1103,6 +1103,7 @@ const ED_TL_RULES = {
   'data updation':  {months:1},
 };
 let _tlOriginal = '';   // ticket par pehle se jo timeline thi
+let _edAllowed = null;  // is stage se allowed next stages (null = sab)
 
 function edDispName(){
   try{
@@ -1323,6 +1324,7 @@ function renderEditForm(){
      daali), uspar rok lagane se wo ticket kabhi update ho hi nahi paata —
      baaki fields badalne par bhi save block ho jata. */
   _tlOriginal = _tlExisting;
+  _edAllowed  = edAllowedStages(rd);   // flowchart ke hisaab se allowed stages
 
   const _fh={};
   BSS_CROSSWALK.forEach(f=>{
@@ -1460,12 +1462,76 @@ function edSyncTitle(el){
   const o = el.options && el.options[el.selectedIndex];
   el.title = (o && o.value) ? o.text : '';
 }
+/* ── Stage flow ─────────────────────────────────────────────────────────────
+   Sub Disposition asli me ticket ka STATUS hai (BSS ki ulti naming). Poori
+   list dikhane se koi bhi stage kahin se bhi chuni ja sakti thi — jaise
+   Acknowledge se seedha Go Live. Ab sirf wahi stages dikhti hain jo flowchart
+   me is stage se aage jaati hain.
+
+   Flow:
+     Transfer To IT       → Approval Pending | Acknowledge | Transfer To Support
+     Approval Pending     → Acknowledge | Reject
+     Acknowledge          → In Progress
+     In Progress          → Ready For Code Review
+     Ready For Code Review→ Ready For Testing | In Progress (bugs)
+     Ready For Testing    → Ready For Merging | Reopend from Testing
+     Ready For Merging    → Ready For UAT
+     Ready For UAT        → Ready To Go Live | Reopend from Testing
+     Reopend from Testing → In Progress | Ready For Code Review
+     Ready To Go Live     → Transfer To Support
+     Transfer To Support  → (end)
+
+   Har stage se ye bhi allowed hain, kyunki ye flow se bahar ke valid exits
+   hain: Reject, Future Development, Reopen, Return to Support, Closed.
+   Current stage khud bhi list me rehti hai — sirf doosre field badalne ho to
+   status chhedna na pade. */
+const ED_FLOW_EXTRA = ['reject','future development','reopen','return to support','closed'];
+const ED_FLOW = {
+  'transfer to it':        ['approval pending','acknowledge','transfer to support'],
+  'approval pending':      ['acknowledge','reject'],
+  'acknowledge':           ['in progress'],
+  'in progress':           ['ready for code review'],
+  'ready for code review': ['ready for testing','in progress'],
+  'ready for testing':     ['ready for merging','reopend from testing'],
+  'ready for merging':     ['ready for uat'],
+  'ready for uat':         ['ready to go live','reopend from testing'],
+  'reopend from testing':  ['in progress','ready for code review'],
+  'ready to go live':      ['transfer to support'],
+  'transfer to support':   [],
+};
+function edNormStage(v){
+  return String(v==null?'':v).toLowerCase()
+    .replace(/[_\-\/]+/g,' ').replace(/\s+/g,' ').trim();
+}
+/* Abhi ka status: live record se, warna cache se. */
+function edCurrentStage(rd){
+  const live = rd && rd.values && rd.values.currentStatus;
+  if(live) return edNormStage(live);
+  const row = edRow0();
+  return edNormStage(row.st || '');
+}
+/* Is stage se kaun si stages chuni ja sakti hain. Stage flow me na mile to
+   sab dikha do — anjaan status par user ko block karna galat hoga. */
+function edAllowedStages(rd){
+  const cur = edCurrentStage(rd);
+  const next = ED_FLOW[cur];
+  if(!next) return null;                       // null = koi filter nahi
+  return new Set([cur].concat(next).concat(ED_FLOW_EXTRA));
+}
+
 function fillSelect(key){
   const f=bssField(key), el=document.getElementById('in-'+key);
   if(!el) return;
-  const opts=f.type==='cascade'
+  let opts=f.type==='cascade'
     ? bssCascadeOptions(DD,key,EDIT.form[f.parent])
     : bssOptions(DD,key);
+  /* Sub Disposition = ticket ka status. Sirf flowchart ke agle steps dikhao. */
+  if(key==='subDisposition' && _edAllowed){
+    const keep=opts.filter(o=>_edAllowed.has(edNormStage(o.Name)));
+    /* Agar filter ke baad kuch bacha hi nahi (naya status jo map me nahi),
+       to poori list wapas — user ko atkana theek nahi. */
+    if(keep.length) opts=keep;
+  }
   const cur=EDIT.form[key];
   /* Duplicate IDs (jaise AssignTo me 43 do baar) — dono dikhao, par value ek
      hi hai. Chhupana galat hoga: user ko pata hona chahiye ki list me kya hai. */
