@@ -1468,36 +1468,41 @@ function edSyncTitle(el){
    Acknowledge se seedha Go Live. Ab sirf wahi stages dikhti hain jo flowchart
    me is stage se aage jaati hain.
 
-   Flow:
-     Transfer To IT       → Approval Pending | Acknowledge | Transfer To Support
+   Flow (sirf ye options dikhte hain — koi extra exit nahi):
+     Transfer To IT       → Approval Pending | Acknowledge | Transfer To Support | Closed
      Approval Pending     → Acknowledge | Reject
-     Acknowledge          → In Progress
+     Acknowledge          → In Progress | Approval Pending
      In Progress          → Ready For Code Review
      Ready For Code Review→ Ready For Testing | In Progress (bugs)
      Ready For Testing    → Ready For Merging | Reopend from Testing
      Ready For Merging    → Ready For UAT
      Ready For UAT        → Ready To Go Live | Reopend from Testing
-     Reopend from Testing → In Progress | Ready For Code Review
+     Reopend from Testing → In Progress
      Ready To Go Live     → Transfer To Support
      Transfer To Support  → (end)
 
-   Har stage se ye bhi allowed hain, kyunki ye flow se bahar ke valid exits
-   hain: Reject, Future Development, Reopen, Return to Support, Closed.
-   Current stage khud bhi list me rehti hai — sirf doosre field badalne ho to
-   status chhedna na pade. */
-const ED_FLOW_EXTRA = ['reject','future development','reopen','return to support','closed'];
+   Ek exception: agar disposition "Data Updation" hai to In Progress se
+   seedha Ready To Go Live bhi ja sakte hain — us kaam me code review /
+   testing / UAT nahi hota.
+
+   Current stage khud hamesha list me rehti hai, warna sirf Developer ya RM
+   badalne ke liye bhi status chhedna padta. */
 const ED_FLOW = {
-  'transfer to it':        ['approval pending','acknowledge','transfer to support'],
+  'transfer to it':        ['approval pending','acknowledge','transfer to support','closed'],
   'approval pending':      ['acknowledge','reject'],
-  'acknowledge':           ['in progress'],
+  'acknowledge':           ['in progress','approval pending'],
   'in progress':           ['ready for code review'],
   'ready for code review': ['ready for testing','in progress'],
   'ready for testing':     ['ready for merging','reopend from testing'],
   'ready for merging':     ['ready for uat'],
   'ready for uat':         ['ready to go live','reopend from testing'],
-  'reopend from testing':  ['in progress','ready for code review'],
+  'reopend from testing':  ['in progress'],
   'ready to go live':      ['transfer to support'],
   'transfer to support':   [],
+};
+/* Disposition-specific shortcuts. */
+const ED_FLOW_DISP = {
+  'data updation': { 'in progress': ['ready to go live'] },
 };
 function edNormStage(v){
   return String(v==null?'':v).toLowerCase()
@@ -1516,7 +1521,10 @@ function edAllowedStages(rd){
   const cur = edCurrentStage(rd);
   const next = ED_FLOW[cur];
   if(!next) return null;                       // null = koi filter nahi
-  return new Set([cur].concat(next).concat(ED_FLOW_EXTRA));
+  /* Disposition ke hisaab se extra raasta (jaise Data Updation par
+     In Progress se seedha Go Live). */
+  const dispExtra = (ED_FLOW_DISP[edDispName()] || {})[cur] || [];
+  return new Set([cur].concat(next).concat(dispExtra));
 }
 
 function fillSelect(key){
@@ -1551,7 +1559,13 @@ function onFieldChange(key,val){
   /* Disposition badalne se timeline ki hadd badal jati hai — Bug par 12 din,
      Data Updation par 1 mahina, baaki par koi hadd nahi. Isliye jo date
      pehle se padi hai use turant dobara check karo aur hint update karo. */
-  if(key==='disposition') setTimeout(edRecheckTimeline, 0);
+  if(key==='disposition') setTimeout(()=>{
+    edRecheckTimeline();
+    /* Data Updation chunne par In Progress se Go Live khul jata hai — stage
+       list dobara banani padti hai. */
+    _edAllowed = edAllowedStages(EDIT.read || {values:{}});
+    fillSelect('subDisposition');
+  }, 0);
   /* Turant feedback — save tak intezaar nahi. */
   if(key==='timelineDate'){
     const msg = edTimelineError(val);
