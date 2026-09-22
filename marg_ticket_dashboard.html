@@ -3354,6 +3354,39 @@ body[data-theme="analyst"] table tr:hover td{ background:#F3F4F6 !important; }
 
 <div class="mg-foot" id="mgFoot"></div>
 
+<!-- Per-row breakdown modal (access-gated; sirf tat-management-details / admin) -->
+<div class="mg-detail-modal" id="mgDetailModal" onclick="if(event.target===this)mgCloseDetails()">
+  <div class="mg-detail-box">
+    <div class="mg-detail-hd">
+      <span id="mgDetailTitle">Details</span>
+      <button class="mg-detail-x" onclick="mgCloseDetails()" title="Close">✕</button>
+    </div>
+    <div class="mg-detail-body" id="mgDetailBody"></div>
+  </div>
+</div>
+<style>
+.mg-detail-btn{margin-left:8px;border:1px solid var(--border,#e2e8f0);background:#fff;border-radius:6px;
+  cursor:pointer;font-size:11px;line-height:1;padding:3px 8px;vertical-align:middle;transition:.15s;font-weight:600}
+.mg-detail-btn:hover{background:#f0fdfa;border-color:#5eead4}
+.mg-detail-modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;
+  align-items:center;justify-content:center;z-index:9999;padding:20px}
+.mg-detail-modal.active{display:flex}
+.mg-detail-box{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:80vh;
+  overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.mg-detail-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:15px 18px;border-bottom:1px solid var(--border,#e2e8f0);font-weight:800;font-size:15px;
+  position:sticky;top:0;background:#fff}
+.mg-detail-x{border:none;background:#f1f5f9;border-radius:8px;cursor:pointer;font-size:14px;
+  width:30px;height:30px;color:#475569;flex-shrink:0}
+.mg-detail-x:hover{background:#e2e8f0}
+.mg-detail-body{padding:14px 18px 18px}
+.mg-detail-empty{color:var(--muted,#64748b);font-size:13px;padding:8px 0}
+.mg-detail-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.mg-detail-tbl th,.mg-detail-tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid #f1f5f9}
+.mg-detail-tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;font-weight:700}
+.mg-detail-tbl td:last-child,.mg-detail-tbl th:last-child{text-align:right}
+</style>
+
 </main>
 
 <div class="loader-overlay" id="loaderOverlay">
@@ -4367,9 +4400,13 @@ function mgCompute(from, to){
   o.aged30 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=30; }).length;
   o.aged90 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=90; }).length;
 
-  const byAcc={};
-  open.forEach(r=>{ const k=String(r.l||'').trim(); if(k) byAcc[k]=(byAcc[k]||0)+1; });
+  const byAcc={}, accName={};
+  open.forEach(r=>{ const k=String(r.l||'').trim(); if(k){ byAcc[k]=(byAcc[k]||0)+1;
+    const nm=String(r.u||'').trim(); if(nm && nm.length>(accName[k]||'').length) accName[k]=nm; } });
   o.acc5 = Object.values(byAcc).filter(v=>v>=5).length;
+  /* Per-account breakdown (license + client + count) — Details button ke liye. */
+  o._acc5List = Object.entries(byAcc).filter(([,v])=>v>=5).sort((a,b)=>b[1]-a[1])
+    .map(([lic,c])=>({lic, name:accName[lic]||'', count:c}));
 
   /* Load concentration: bina tester wale tickets base se bahar hain, warna
      "Unassigned" hi hamesha top bucket ban jata aur number bemaani hota.
@@ -4378,9 +4415,9 @@ function mgCompute(from, to){
      aur tab ye row us table se alag number dikhati. */
   const byT={};
   /* Load concentration sirf TESTER KI QUEUE par nikalta hai — wo tickets jo
-     us din Ready For Testing ya Ready For UAT par pade the. Baaki backlog
-     (In Progress, Code Review, Merging) developer ke paas hai, tester ke
-     nahi, isliye usse tester ka load naapna galat tha.
+     us din Ready For Testing, Ready For UAT ya Ready To Go Live par pade the.
+     Baaki backlog (In Progress, Code Review, Merging) developer ke paas hai,
+     tester ke nahi, isliye usse tester ka load naapna galat tha.
 
      Ye point-in-time hai: "last week" column 24 Aug ke stage se banta hai,
      to jo ticket 24 ko RFT me tha aur 31 tak aage badh gaya, wo pichhle
@@ -4390,17 +4427,37 @@ function mgCompute(from, to){
      TransferTo) — API purana naam rakhta hi nahi. To agar kisi ticket ka
      tester baad me badla, purane hafte me bhi aaj wala naam dikhega.
      Historical assignment is data se reconstruct nahi ho sakti. */
-  const qStages=['rtd','uad'];
+  /* Go-Live (e) bhi tester queue me hai — app baaki jagah (section-modal
+     filter ~line 5038, aur RfT/UAT/Go-Live grouping) RT/RU/LV ko ek saath
+     tester queue maanta hai, isliye yahan bhi teeno stage. */
+  const qStages=['rtd','uad','e'];
   const queue=open.filter(r=>qStages.includes(mgStageAsOf(r,to)));
   queue.forEach(r=>{ const t=(_smfTesterVal(r)||'').trim(); if(t) byT[t]=(byT[t]||0)+1; });
-  const tv=Object.values(byT).sort((a,b)=>b-a), tot=tv.reduce((s,x)=>s+x,0);
+  const tEntries=Object.entries(byT).sort((a,b)=>b[1]-a[1]);
+  const tv=tEntries.map(e=>e[1]), tot=tv.reduce((s,x)=>s+x,0);
   o.loadTop2 = tot ? 100*(tv.slice(0,2).reduce((s,x)=>s+x,0))/tot : null;
   o._queueN=queue.length; o._testerN=tv.length;
+  /* Per-tester breakdown — "🔍 Details" button (access-gated) ke liye. */
+  o._loadTop = tot ? tEntries.map(([name,c])=>({name, count:c, pct:100*c/tot})) : [];
 
   /* _assigned footer ke liye hai — poore backlog me kitne tickets kisi ke
      naam par hain. Ye loadTop2 ke base se alag hai, jaan-bujh kar. */
   let _asg=0; open.forEach(r=>{ if((_smfTesterVal(r)||'').trim()) _asg++; });
   o._assigned=_asg;
+
+  /* Developer load concentration — In Progress QUEUE par (developer ke paas).
+     Tester wale loadTop2 ka developer-side counterpart. Sirf wo tickets jo us
+     din In Progress (stage 'c') par pade the; Code Review / Merging jaan-bujh
+     kar bahar — "inprogress wale ticket ke base par". Naam r.dev se (wahi jo
+     devSpread use karta hai), khali dev skip. */
+  const byD={};
+  const devQueue=open.filter(r=>mgStageAsOf(r,to)==='c');
+  devQueue.forEach(r=>{ const dv=String(r.dev||'').trim(); if(dv) byD[dv]=(byD[dv]||0)+1; });
+  const dEntries=Object.entries(byD).sort((a,b)=>b[1]-a[1]);
+  const dvv=dEntries.map(e=>e[1]), dtot=dvv.reduce((s,x)=>s+x,0);
+  o.devLoadTop2 = dtot ? 100*(dvv.slice(0,2).reduce((s,x)=>s+x,0))/dtot : null;
+  o._devQueueN=devQueue.length; o._devLoadN=dvv.length;
+  o._devLoadTop = dtot ? dEntries.map(([name,c])=>({name, count:c, pct:100*c/dtot})) : [];
 
   return o;
 }
@@ -4414,17 +4471,17 @@ const MG_ROWS=[
   {id:'ttsTat',    label:'Go-Live in-TAT %',     note:'Measured on the Transfer to Support date, not Ready to Go Live — only tickets with a TAT flag. Return to Support is not included: BSS reports no TAT for it', f:'pct', target:'≥ 80%', better:'up'},
   {id:'aged90',    label:'Aged backlog — no movement 30d+', note:'In the IT backlog with no stage change for 30+ days; the number shown is those already past 90 days', f:'num', target:'0', better:'down'},
   {id:'dupShare',  label:'Duplicate / repeat ticket share', note:'Keyword clustering — tickets that entered IT this week', f:'pct', target:'< 10%', better:'down'},
-  {id:'bypass',    label:'QA bypass rate',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
+  {id:'bypass',    label:'QA bypass rate (knowledge gap of support team)',        note:'Transfer to IT → Close by IT, Ack/In-Progress skip',  f:'pct',  target:'< 5%',   better:'down'},
   {id:'fcr',       label:'First call resolution / CSAT',            note:'Needs VoIP call data',                              f:'off',  target:'50% / 65%'},
   {id:'flow',      label:'Backlog flow ratio (closed ÷ created)', note:'Transfer to Support \u00f7 Transfer to IT, counted on this week\u2019s dates', f:'ratio',target:'\u2265 1.0',  better:'up'},
-  {id:'loadTop2',  label:'Load concentration — top 2 assignees',    note:'Share of the tester queue held by the top 2 — counts only tickets sitting at Ready For Testing or Ready For UAT on that day',        f:'pct',  target:'< 35% ea', better:'down'},
+  {id:'loadTop2',  label:'Load concentration — top 2 assignees',    note:'Share of the tester queue held by the top 2 — counts only tickets sitting at Ready For Testing, Ready For UAT or Ready To Go Live on that day',        f:'pct',  target:'< 35% ea', better:'down'},
   {id:'acc5',      label:'Accounts holding 5+ open tickets', note:'Five or more open tickets on a single license',          f:'num',  target:'0',      better:'down'},
   {sec:'Engineering'},
   {id:'devSpread', label:'Developer speed spread',note:'Slowest ÷ fastest (min 3 tickets per dev)',    f:'x',    target:'< 2.5x', better:'down'},
+  {id:'devLoadTop2', label:'Load concentration — top 2 developers', note:'Share of the In-Progress queue held by the top 2 developers — counts only tickets sitting at In Progress on that day', f:'pct', target:'< 35% ea', better:'down'},
   {id:'runChange', label:'Run vs Change ratio',         note:'Bug + Bug Urgent as a share of bug + development + improvement \u2014 this row ignores the Bug-only filter the rest of the tab uses', f:'pct', target:'50/50, then 40/60', better:'down'},
   {id:'volume',    label:'Delivered volume — MRs / net churn', note:'Needs GitLab connector',                          f:'off',  target:'baseline'},
   {id:'rework',    label:'Rework rate (churn <21d of merge)',           note:'Needs GitLab connector',                            f:'off',  target:'< 15%'},
-  {id:'cycTime',   label:'Cycle time P50 / P90',  note:'Transfer to IT → Close by IT, in days',                f:'cyc',  target:'\u2193 30% in 2 quarters', better:'down'},
   {id:'escaped',   label:'Escaped defects — last release',       note:'Needs release tags',                                f:'off',  target:'declining'},
 ];
 
@@ -4586,7 +4643,7 @@ function mgmtRenderNow(){
     const st=mgRowStatus(row, cur, prev);
     const rowCls=st ? ' class="mg-r-'+st.state+'"' : '';
     const tgtCls=st ? ' mg-t-'+st.state : '';
-    html+='<tr'+rowCls+'><td class="mg-metric">'+row.label+'<span class="mg-note">'+row.note+'</span></td>'+
+    html+='<tr'+rowCls+'><td class="mg-metric">'+row.label+mgDetailsBtn(row.id)+'<span class="mg-note">'+row.note+'</span></td>'+
       '<td class="mg-val">'+curTxt+'</td>'+
       '<td class="mg-prev">'+prevTxt+'</td>'+
       '<td class="mg-trend '+t.cls+'">'+t.txt+'</td>'+
@@ -4697,6 +4754,57 @@ function mgFmtDate(d){
   try{ return new Date(d+'T00:00:00').toLocaleDateString('en-GB',
         {day:'2-digit',month:'short',year:'numeric'}); }catch(_){ return d; }
 }
+
+/* ═══════════════ PER-ROW DETAILS (access-gated) ═══════════════
+   Chhota "🔍 Details" button sirf un rows par jinke paas breakdown hai
+   (loadTop2, devLoadTop2, acc5, devSpread). Button + modal SIRF unhe dikhta
+   hai jinke paas alag `tat-management-details` flag ho (ya admin ho) — baaki
+   Management users ko sirf aggregate numbers dikhte hain, naam/license nahi.
+   Data window compute (window._MG_LAST.cur) se aata hai, koi nayi query nahi. */
+function mgCanDetails(){
+  const p=window._MARG_PERM||{};
+  return !!(p.admin || (Array.isArray(p.dash) && p.dash.includes('tat-management-details')));
+}
+const MG_DETAIL_IDS=new Set(['loadTop2','devLoadTop2','acc5','devSpread']);
+function mgDetailsBtn(id){
+  if(!mgCanDetails() || !MG_DETAIL_IDS.has(id)) return '';
+  return ' <button class="mg-detail-btn" onclick="mgShowDetails(\''+id+'\')" title="View breakdown">🔍 Details</button>';
+}
+function mgDetailList(arr, kind){
+  if(!arr || !arr.length) return '<div class="mg-detail-empty">Nothing in this queue this week.</div>';
+  return '<table class="mg-detail-tbl"><thead><tr><th>'+esc(kind)+'</th><th>Tickets</th><th>Load %</th></tr></thead><tbody>'+
+    arr.map(x=>'<tr><td>'+esc(x.name||'—')+'</td><td>'+fmt(x.count)+'</td><td>'+x.pct.toFixed(0)+'%</td></tr>').join('')+
+    '</tbody></table>';
+}
+function mgAccList(arr){
+  if(!arr || !arr.length) return '<div class="mg-detail-empty">No account has 5+ open tickets this week.</div>';
+  return '<table class="mg-detail-tbl"><thead><tr><th>Client</th><th>License</th><th>Open tickets</th></tr></thead><tbody>'+
+    arr.map(x=>'<tr><td>'+esc(x.name||'—')+'</td><td>'+esc(x.lic)+'</td><td>'+fmt(x.count)+'</td></tr>').join('')+
+    '</tbody></table>';
+}
+function mgSpeedDetail(fast, slow){
+  if(!fast || !slow) return '<div class="mg-detail-empty">Not enough data — need at least two developers with 3+ closed tickets each this week.</div>';
+  return '<table class="mg-detail-tbl"><thead><tr><th></th><th>Developer</th><th>Avg days (IT → Close)</th></tr></thead><tbody>'+
+    '<tr><td>Fastest</td><td>'+esc(fast.dev)+'</td><td>'+fast.avg.toFixed(1)+'</td></tr>'+
+    '<tr><td>Slowest</td><td>'+esc(slow.dev)+'</td><td>'+slow.avg.toFixed(1)+'</td></tr>'+
+    '</tbody></table>';
+}
+function mgShowDetails(id){
+  if(!mgCanDetails()) return;
+  const cur=(window._MG_LAST||{}).cur; if(!cur) return;
+  let title='', body='';
+  if(id==='loadTop2'){         title='Load concentration — testers';     body=mgDetailList(cur._loadTop,    'Tester'); }
+  else if(id==='devLoadTop2'){ title='Load concentration — developers';  body=mgDetailList(cur._devLoadTop, 'Developer'); }
+  else if(id==='acc5'){        title='Accounts holding 5+ open tickets';  body=mgAccList(cur._acc5List); }
+  else if(id==='devSpread'){   title='Developer speed spread';           body=mgSpeedDetail(cur._devFast, cur._devSlow); }
+  else return;
+  const t=document.getElementById('mgDetailTitle'); if(t) t.textContent=title;
+  const b=document.getElementById('mgDetailBody');  if(b) b.innerHTML=body;
+  const m=document.getElementById('mgDetailModal'); if(m) m.classList.add('active');
+}
+function mgCloseDetails(){ const m=document.getElementById('mgDetailModal'); if(m) m.classList.remove('active'); }
+window.mgShowDetails=mgShowDetails; window.mgCloseDetails=mgCloseDetails;
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') mgCloseDetails(); });
 
 
 // ═══════════════ AI ANALYSIS TAB ═══════════════
