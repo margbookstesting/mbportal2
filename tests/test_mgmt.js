@@ -453,11 +453,11 @@ eq('table is 5 columns',            /colspan="6"/.test(pageHtml), false);
    bilkul wahi shabd hone chahiye jo slide par hain, usi kram me. */
 console.log('== 18. matches the one-page report ==');
 const SPEC={Support:['Acknowledge in-TAT %','Go-Live in-TAT %',
-  'Aged backlog — no movement 30d+','Duplicate / repeat ticket share','QA bypass rate',
+  'Aged backlog — no movement 30d+','Duplicate / repeat ticket share','QA bypass rate (knowledge gap of support team)',
   'First call resolution / CSAT','Backlog flow ratio (closed ÷ created)','Load concentration — top 2 assignees',
   'Accounts holding 5+ open tickets'],
- Engineering:['Developer speed spread','Run vs Change ratio','Delivered volume — MRs / net churn',
-  'Rework rate (churn <21d of merge)','Cycle time P50 / P90','Escaped defects — last release']};
+ Engineering:['Developer speed spread','Load concentration — top 2 developers','Run vs Change ratio','Delivered volume — MRs / net churn',
+  'Rework rate (churn <21d of merge)','Escaped defects — last release']};
 let _sec=null,_i=0;
 MG_ROWS_VAL.forEach(r=>{
   if(r.sec){ _sec=r.sec; _i=0; return; }
@@ -552,22 +552,23 @@ eq('explicit operators still win', sandbox.mgTargetMiss(12,'< 10%','down'), true
 /* ══════ 22. Load concentration = tester ki queue ══════ */
 console.log('== 22. load concentration base ==');
 sandbox.RAW=[
-  /* RFT/UAT par pade — queue me ginenge */
+  /* RFT/UAT/Go-Live par pade — tester queue me ginenge */
   {n:'q1', ld:'Bug', a:'2026-06-01', b:'2026-06-02', rtd:'2026-08-20', assignto:'QA1'},
   {n:'q2', ld:'Bug', a:'2026-06-01', b:'2026-06-02', rtd:'2026-08-20', assignto:'QA1'},
   {n:'q3', ld:'Bug', a:'2026-06-01', b:'2026-06-02', uad:'2026-08-20', assignto:'QA2'},
   {n:'q4', ld:'Bug', a:'2026-06-01', b:'2026-06-02', rtd:'2026-08-20', assignto:'QA3'},
+  {n:'q5', ld:'Bug', a:'2026-06-01', b:'2026-06-02', e:'2026-08-20',   assignto:'QA1'},  // Ready To Go Live → queue
   /* backlog me hain par tester ki queue me nahi */
   {n:'d1', ld:'Bug', a:'2026-06-01', c:'2026-08-20', assignto:'QA1'},
   {n:'d2', ld:'Bug', a:'2026-06-01', crd:'2026-08-20', assignto:'QA1'},
   {n:'d3', ld:'Bug', a:'2026-06-01', b:'2026-08-20', assignto:'QA1'},
 ];
 const lc=sandbox.mgCompute('2026-08-21','2026-08-27');
-eq('queue = RFT + UAT only',      lc._queueN, 4);
+eq('queue = RFT + UAT + Go-Live',  lc._queueN, 5);
 eq('In Progress / Code Review / Ack excluded', lc._queueN < lc._open, true);
-eq('top 2 of 4 = QA1(2)+QA2(1)',  lc.loadTop2, 75);
+eq('top 2 of 5 = QA1(3)+QA2(1)',  lc.loadTop2, 80);
 eq('three testers in the queue',  lc._testerN, 3);
-eq('_assigned still spans the whole backlog', lc._assigned, 7);
+eq('_assigned still spans the whole backlog', lc._assigned, 8);
 
 /* Point-in-time: jo ticket pichhle hafte RFT me tha aur is hafte aage badh
    gaya, wo pichhle hafte ginega — is hafte nahi. */
@@ -582,6 +583,25 @@ eq('still counted in last week\u2019s queue',
 
 sandbox.RAW=[{n:'z', ld:'Bug', a:'2026-06-01', c:'2026-08-20'}];
 eq('empty queue → null, not 0', sandbox.mgCompute('2026-08-21','2026-08-27').loadTop2, null);
+sandbox.RAW=savedRaw;
+
+console.log('== 22b. developer load concentration (In Progress) ==');
+sandbox.RAW=[
+  /* In Progress (stage c) par pade — developer queue me ginenge */
+  {n:'dq1', ld:'Bug', a:'2026-06-01', c:'2026-08-20', dev:'DEV1'},
+  {n:'dq2', ld:'Bug', a:'2026-06-01', c:'2026-08-20', dev:'DEV1'},
+  {n:'dq3', ld:'Bug', a:'2026-06-01', c:'2026-08-20', dev:'DEV2'},
+  {n:'dq4', ld:'Bug', a:'2026-06-01', c:'2026-08-20', dev:'DEV3'},
+  /* backlog me par In Progress nahi — dev queue se bahar */
+  {n:'dx1', ld:'Bug', a:'2026-06-01', rtd:'2026-08-20', dev:'DEV1'},   // Ready For Testing
+  {n:'dx2', ld:'Bug', a:'2026-06-01', crd:'2026-08-20', dev:'DEV1'},   // Code Review
+];
+const dl=sandbox.mgCompute('2026-08-21','2026-08-27');
+eq('dev queue = In Progress only',   dl._devQueueN, 4);
+eq('Code Review / RFT excluded',     dl._devQueueN < dl._open, true);
+eq('top 2 of 4 = DEV1(2)+DEV2(1)',   dl.devLoadTop2, 75);
+eq('three developers in the queue',  dl._devLoadN, 3);
+eq('breakdown carries name + pct',   dl._devLoadTop[0].name, 'DEV1');
 sandbox.RAW=savedRaw;
 
 
