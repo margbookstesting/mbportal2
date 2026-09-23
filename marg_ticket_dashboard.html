@@ -4182,6 +4182,23 @@ function mgOpenAsOf(r, X){
   if(!r.a || r.a > X) return false;
   return MG_IT_BACKLOG.has(mgStageAsOf(r, X));
 }
+/* "Accounts holding 5+" ka apna, thoda WIDER open set — baaki metrics ka
+   chhota MG_IT_BACKLOG hi rehta hai (unko global-consistent rakhna hai).
+   Yahan extra do:
+     - Future Development (fdd): iski date hoti hai, to date-model se as-of
+       theek pakad lete hain — bas backlog set me add kar diya.
+     - Approval Pending (sc==='AP'): iski KOI date nahi hoti, isliye ise sirf
+       ticket ke CURRENT status se pakad sakte hain. Matlab jab Upto ≈ aaj ho
+       tab sahi; kisi purani Upto date par AP ko "us din" reconstruct nahi kar
+       sakte (data hi nahi). FD ko bhi safety ke liye status-fallback me rakha
+       (agar kabhi fdd date missing ho). */
+const MG_ACC_BACKLOG = new Set([...MG_IT_BACKLOG, 'fdd']);
+function mgAccOpenAsOf(r, X){
+  if(!r.a || r.a > X) return false;
+  if(MG_ACC_BACKLOG.has(mgStageAsOf(r, X))) return true;
+  if(r.sc==='AP' || r.sc==='FD') return true;   // no date → current status
+  return false;
+}
 /* Window ke andar backlog me kitni baar ghusa aur kitni baar nikla.
    Ye event-level count hai, isliye ye identity HAMESHA sach rehti hai:
      backlog(to) = backlog(from-1) + entries - exits
@@ -4400,13 +4417,20 @@ function mgCompute(from, to){
   o.aged30 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=30; }).length;
   o.aged90 = open.filter(r=>{ const la=mgLastAct(r,to); return la && mgDayDiff(la,to)>=90; }).length;
 
-  const byAcc={}, accName={};
-  open.forEach(r=>{ const k=String(r.l||'').trim(); if(k){ byAcc[k]=(byAcc[k]||0)+1;
-    const nm=String(r.u||'').trim(); if(nm && nm.length>(accName[k]||'').length) accName[k]=nm; } });
+  /* Accounts holding 5+ open tickets — is metric ka apna WIDER open set
+     (mgAccOpenAsOf: backlog + Future Development + Approval Pending). Baaki
+     metrics ka chhota `open` waise hi rehta hai. Har account ka bug+bug-urgent
+     count bhi nikalte hain (Details modal ke column ke liye). */
+  const accOpen = R.filter(r=>mgAccOpenAsOf(r,to));
+  const byAcc={}, accBug={}, accName={};
+  accOpen.forEach(r=>{ const k=String(r.l||'').trim(); if(!k) return;
+    byAcc[k]=(byAcc[k]||0)+1;
+    if(isBug(r)) accBug[k]=(accBug[k]||0)+1;
+    const nm=String(r.u||'').trim(); if(nm && nm.length>(accName[k]||'').length) accName[k]=nm; });
   o.acc5 = Object.values(byAcc).filter(v=>v>=5).length;
-  /* Per-account breakdown (license + client + count) — Details button ke liye. */
+  /* Per-account breakdown (license + client + open + bug/urgent) — Details button ke liye. */
   o._acc5List = Object.entries(byAcc).filter(([,v])=>v>=5).sort((a,b)=>b[1]-a[1])
-    .map(([lic,c])=>({lic, name:accName[lic]||'', count:c}));
+    .map(([lic,c])=>({lic, name:accName[lic]||'', count:c, bug:accBug[lic]||0}));
 
   /* Load concentration: bina tester wale tickets base se bahar hain, warna
      "Unassigned" hi hamesha top bucket ban jata aur number bemaani hota.
@@ -4475,7 +4499,7 @@ const MG_ROWS=[
   {id:'fcr',       label:'First call resolution / CSAT',            note:'Needs VoIP call data',                              f:'off',  target:'50% / 65%'},
   {id:'flow',      label:'Backlog flow ratio (closed ÷ created)', note:'Transfer to Support \u00f7 Transfer to IT, counted on this week\u2019s dates', f:'ratio',target:'\u2265 1.0',  better:'up'},
   {id:'loadTop2',  label:'Load concentration — top 2 assignees',    note:'Share of the tester queue held by the top 2 — counts only tickets sitting at Ready For Testing, Ready For UAT or Ready To Go Live on that day',        f:'pct',  target:'< 35% ea', better:'down'},
-  {id:'acc5',      label:'Accounts holding 5+ open tickets', note:'Five or more open tickets on a single license',          f:'num',  target:'0',      better:'down'},
+  {id:'acc5',      label:'Accounts holding 5+ open tickets', note:'Five or more open on a single license — incl. Future Development & Approval Pending',          f:'num',  target:'0',      better:'down'},
   {sec:'Engineering'},
   {id:'devSpread', label:'Developer speed spread',note:'Slowest ÷ fastest (min 3 tickets per dev)',    f:'x',    target:'< 2.5x', better:'down'},
   {id:'devLoadTop2', label:'Load concentration — top 2 developers', note:'Share of the In-Progress queue held by the top 2 developers — counts only tickets sitting at In Progress on that day', f:'pct', target:'< 35% ea', better:'down'},
@@ -4778,8 +4802,8 @@ function mgDetailList(arr, kind){
 }
 function mgAccList(arr){
   if(!arr || !arr.length) return '<div class="mg-detail-empty">No account has 5+ open tickets this week.</div>';
-  return '<table class="mg-detail-tbl"><thead><tr><th>Client</th><th>License</th><th>Open tickets</th></tr></thead><tbody>'+
-    arr.map(x=>'<tr><td>'+esc(x.name||'—')+'</td><td>'+esc(x.lic)+'</td><td>'+fmt(x.count)+'</td></tr>').join('')+
+  return '<table class="mg-detail-tbl"><thead><tr><th>Client</th><th>License</th><th>Open tickets</th><th>Bug + Bug&nbsp;Urgent</th></tr></thead><tbody>'+
+    arr.map(x=>'<tr><td>'+esc(x.name||'—')+'</td><td>'+esc(x.lic)+'</td><td>'+fmt(x.count)+'</td><td>'+fmt(x.bug||0)+'</td></tr>').join('')+
     '</tbody></table>';
 }
 function mgSpeedDetail(fast, slow){
