@@ -35,7 +35,7 @@ function grabFn(name){
   }
   return null;
 }
-const NEEDED=['mgShift','mgToday','mgDayDiff','mgPctile','mgOpenAsOf','mgLastAct',
+const NEEDED=['mgShift','mgToday','mgDayDiff','mgPctile','mgOpenAsOf','mgAccOpenAsOf','mgLastAct',
   'mgWindows','mgStageAsOf','mgBacklogMoves','mgDupShare','mgFirstIT','mgInScope','mgDispOf','mgInDisp','esc','mgFmtDate','mgRowStatus','mgTargetMiss','mgExceptions','mgCompute','mgFmt','mgTrend','_smfTesterVal',
   'aiClean','aiTokens','aiVectorize','aiCosSparse','aiNormMap','aiAddMap','aiClusterSparse',
   'lastDisp','isBug'];
@@ -49,6 +49,7 @@ const consts=pageJs.match(/const MG_DATE_KEYS=\[[^\]]*\];/)[0];
 vm.runInContext(consts, sandbox);
 vm.runInContext(pageJs.match(/const MG_STAGE_ORDER = \[[^\]]*\];/)[0], sandbox);
 vm.runInContext(pageJs.match(/const MG_IT_BACKLOG  = new Set\([^)]*\);/)[0], sandbox);
+vm.runInContext(pageJs.match(/const MG_ACC_BACKLOG = new Set\([^)]*\);/)[0], sandbox);
 [/const MG_DATA_FROM   = '[^']*';/,/const MG_KEEP_DISP   = new Set\([^)]*\);/,/const MG_RUN_DISP    = new Set\([^)]*\);/,/const MG_CHANGE_DISP = new Set\([^)]*\);/,/const MG_FIRST_KEYS  = \[[^\]]*\];/].forEach(p=>vm.runInContext(pageJs.match(p)[0], sandbox));
 vm.runInContext(pageJs.match(/const MG_ROWS=\[[\s\S]*?\n\];/)[0], sandbox);
 /* `const` vm context ke sandbox OBJECT par attach nahi hota, isliye
@@ -602,6 +603,29 @@ eq('Code Review / RFT excluded',     dl._devQueueN < dl._open, true);
 eq('top 2 of 4 = DEV1(2)+DEV2(1)',   dl.devLoadTop2, 75);
 eq('three developers in the queue',  dl._devLoadN, 3);
 eq('breakdown carries name + pct',   dl._devLoadTop[0].name, 'DEV1');
+sandbox.RAW=savedRaw;
+
+console.log('== 22c. accounts 5+ — wider open set (Future Dev + Approval Pending) ==');
+/* predicate-level: kaun account-open maana jayega */
+eq('Transfer-to-IT alone is NOT account-open',   sandbox.mgAccOpenAsOf({a:'2026-06-01'}, '2026-08-27'), false);
+eq('Future Development IS account-open',          sandbox.mgAccOpenAsOf({a:'2026-06-01', fdd:'2026-08-20'}, '2026-08-27'), true);
+eq('Approval Pending (no date) IS account-open',  sandbox.mgAccOpenAsOf({a:'2026-06-01', sc:'AP'}, '2026-08-27'), true);
+eq('Reopen (rod) is NOT account-open',            sandbox.mgAccOpenAsOf({a:'2026-06-01', rod:'2026-08-20'}, '2026-08-27'), false);
+eq('Reopen-From-Testing (rfd) IS account-open',   sandbox.mgAccOpenAsOf({a:'2026-06-01', rfd:'2026-08-20'}, '2026-08-27'), true);
+/* integration: L1 ke 5 open (2 normal + data-updation + Future Dev + Approval Pending) */
+sandbox.RAW=[
+  {n:'L1-1', ld:'Bug',           l:'L1', u:'Client One', a:'2026-06-01', c:'2026-08-20'},
+  {n:'L1-2', ld:'Bug',           l:'L1', u:'Client One', a:'2026-06-01', rtd:'2026-08-20'},
+  {n:'L1-3', ld:'Data Updation', l:'L1', u:'Client One', a:'2026-06-01', uad:'2026-08-20'},
+  {n:'L1-4', ld:'Bug',           l:'L1', u:'Client One', a:'2026-06-01', fdd:'2026-08-20'},   // Future Development
+  {n:'L1-5', ld:'Bug',           l:'L1', u:'Client One', a:'2026-06-01', sc:'AP'},            // Approval Pending (no date)
+  {n:'L2-1', ld:'Bug',           l:'L2', u:'Client Two', a:'2026-06-01'},                     // Transfer-to-IT only → not open
+];
+const ac=sandbox.mgCompute('2026-08-21','2026-08-27');
+eq('L1 crosses 5+ (incl Future Dev + Approval Pending)', ac.acc5, 1);
+eq('L1 open count = 5',                       ac._acc5List[0].count, 5);
+eq('L1 bug+urgent = 4 (data updation excluded)', ac._acc5List[0].bug, 4);
+eq('breakdown carries client name',           ac._acc5List[0].name, 'Client One');
 sandbox.RAW=savedRaw;
 
 
